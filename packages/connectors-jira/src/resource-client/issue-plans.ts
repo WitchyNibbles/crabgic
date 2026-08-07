@@ -56,6 +56,12 @@ export function planIssueCreate(
   // point (generic dispatch vs. a direct `JiraResourceClient` call)
   // supplied it.
   assertSafeAdfDocument(input.summaryAdf, "issue.create summaryAdf");
+  // No attribution argument ⇒ Cloud's `validation`/`jira-cloud`, which is a
+  // RULING and not an omission — see `CustomFieldRefusalAttribution` in
+  // `../capability/field-metadata.ts` for why 18 and 19 differ, and note that
+  // 19's Data Center client pre-checks with its own attribution before ever
+  // reaching this line (`datacenter/jira-datacenter-resource-client.ts`).
+  // Same for `planIssueUpdate` and `planIssueBulkUpdate` below.
   assertCustomFieldWritesAreDiscovered(input.fields ?? {}, fieldMetadataIndex);
   const flag = unconditionalCapabilityFlagFor("issue.create");
   return buildJiraMutationPlan({

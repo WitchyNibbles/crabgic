@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
+import { createHash } from "node:crypto";
 import { GraderDriftError } from "../errors.js";
-import { EvalCaseSchema, type EvalCase } from "../eval/case-schema.js";
+import { computeCaseHash, EvalCaseSchema, type EvalCase } from "../eval/case-schema.js";
 import { caseSetDigest, runEvalPair, type EvalCaseSource } from "../eval/eval-pair.js";
 import { CaseFixtureStore } from "../store/case-fixture-store.js";
 
@@ -109,7 +110,10 @@ describe("@learning-redteam grader drift — a held-out set mutated between dev 
     // the same content ARE the finding). Swapping which cases are in the
     // held-out set, without changing any case's content, is still a changed
     // grader. `caseSetDigest` therefore covers every member of the `.strict()`
-    // `EvalCaseSchema`, pinned exhaustively by the last case in this file.
+    // `EvalCaseSchema`, pinned exhaustively by the case named "the digest
+    // input covers every member of EvalCaseSchema" below (named rather than
+    // positioned — this comment used to say "the last case in this file",
+    // which stopped being true as soon as one was appended).
     const dev = source([caseOf("dev-1", "p-dev")]);
     const heldOut: EvalCaseSource & { reads: number } = {
       reads: 0,
@@ -203,5 +207,85 @@ describe("@learning-redteam grader drift — a held-out set mutated between dev 
     // Order is not content: the same SET in a different order is the same set.
     const other = caseOf("b", "p-b");
     expect(caseSetDigest([base, other])).toBe(caseSetDigest([other, base]));
+  });
+
+  it("the per-case field separator is unambiguous — moving a field boundary changes the digest", () => {
+    // Added 2026-08-06, after `caseSetDigest`'s separator was found written as
+    // a RAW 0x00 byte instead of the escape `\0`. Correcting that byte was
+    // value-preserving, but the check for it was: measured at that commit,
+    // rewriting the separator to `"|"` left all 74 files / 785 tests of
+    // gateway+learning+renderer GREEN. Nothing pinned it at all.
+    //
+    // What the separator has to buy is this: a digest is a claim about a SET,
+    // so two DIFFERENT sets must not serialize to the same bytes. Any
+    // separator an `id` or a `provenanceId` could itself contain lets a field
+    // boundary slide — below, `id="x" provenanceId="y|z"` and `id="x|y"
+    // provenanceId="z"` — and a grader swap hides inside the collision. A
+    // control character does not occur in these ids, which is the whole reason
+    // it is the separator.
+    // `input` is pinned identical on both sides ON PURPOSE. `caseOf` normally
+    // derives `input.scenario` from the id, which would make `computeCaseHash`
+    // differ too and the assertion would pass under ANY separator — the test
+    // would measure nothing. Holding `input` and `expectedJudgment` fixed
+    // leaves the id/provenanceId split as the only difference, which is
+    // precisely what the separator has to keep distinguishable.
+    //
+    // GENERALIZED 2026-08-06 (adversarial review): the first version used only
+    // `"|"` and therefore bit only for separators that occur in ITS fixture
+    // ids — a reviewer's `":"` mutation left this test and the whole suite
+    // green. The candidate set below is swept instead, so the collision pair
+    // is rebuilt around whatever character is under suspicion.
+    const sharedInput = { actualJudgment: true, scenario: "shared" };
+    for (const sep of ["|", ":", ",", "-", " ", "\t", "\n", "@@", "::", "__"]) {
+      const left = caseOf("x", `y${sep}z`, { input: sharedInput });
+      const right = caseOf(`x${sep}y`, "z", { input: sharedInput });
+      // Same content, so the case HASH cannot be what distinguishes them.
+      expect(computeCaseHash(left), sep).toBe(computeCaseHash(right));
+      expect(caseSetDigest([left]), sep).not.toBe(caseSetDigest([right]));
+    }
+  });
+
+  it("caseSetDigest is byte-pinned to its exact serialization, not merely to some serialization", () => {
+    // The generalized collision sweep above still only refutes the separators
+    // it happens to enumerate. This pins the bytes outright: the expected
+    // digest is recomputed here from an INDEPENDENT, literal statement of the
+    // format — field order, the NUL field separator, the per-case sort, and
+    // the "\n" case joiner — rather than by calling the function under test.
+    //
+    // Anything that slides (reordering the four fields, swapping either
+    // joiner, dropping the sort, folding `groundTruthRequirementId`'s absent
+    // case to something other than "") reddens this, including the `":"`
+    // mutation the enumerated sweep would miss if `":"` were ever dropped
+    // from the list above.
+    const cases = [
+      caseOf("b", "p-b"),
+      caseOf("a", "p-a", { groundTruthRequirementId: TAMPERED_REQUIREMENT_ID }),
+    ];
+    const expected = createHash("sha256")
+      .update(
+        cases
+          .map((c) =>
+            [c.id, c.provenanceId, c.groundTruthRequirementId ?? "", computeCaseHash(c)].join("\0"),
+          )
+          .sort()
+          .join("\n"),
+      )
+      .digest("hex");
+    expect(caseSetDigest(cases)).toBe(expected);
+
+    // The control that stops the above from being a restatement of the
+    // implementation: the SAME construction with a printable separator must
+    // NOT match, so the assertion is known to depend on the separator's bytes.
+    const withPrintableSeparator = createHash("sha256")
+      .update(
+        cases
+          .map((c) =>
+            [c.id, c.provenanceId, c.groundTruthRequirementId ?? "", computeCaseHash(c)].join(":"),
+          )
+          .sort()
+          .join("\n"),
+      )
+      .digest("hex");
+    expect(caseSetDigest(cases)).not.toBe(withPrintableSeparator);
   });
 });

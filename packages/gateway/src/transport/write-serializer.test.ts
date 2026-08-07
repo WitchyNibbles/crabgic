@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WriteSerializer } from "./write-serializer.js";
+import { WriteSerializer, type WriteSerializerKey } from "./write-serializer.js";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -88,6 +88,56 @@ describe("WriteSerializer", () => {
     await serializer.runExclusive({ tenant: "t1", resource: "r1" }, async () => undefined);
     await serializer.runExclusive({ tenant: "t1", resource: "r2" }, async () => undefined);
     expect(serializer.activeKeyCount).toBe(2);
+  });
+
+  it("the key separator is unambiguous — a sliding field boundary yields two queues, not one", async () => {
+    // Added 2026-08-06. `keyOf` joins tenant and resource with a raw control
+    // character, and until this test NOTHING pinned that: rewriting the
+    // separator to ":" left gateway, learning and renderer entirely green
+    // (74 files / 785 tests). A residual named only in prose drifts.
+    //
+    // The pair below is where a printable separator breaks. ("a","b:c") and
+    // ("a:b","c") both render as "a:b:c" under ":", so two DIFFERENT tenants
+    // collapse onto one FIFO queue. That is not a write-order loss — order
+    // within each real key is still preserved — but it is cross-tenant
+    // latency coupling: tenant "a:b"'s writes queue behind tenant "a"'s, with
+    // no code path saying so. A control character cannot occur in either
+    // field, which is the whole reason it is the separator.
+    //
+    // Barrier, not wall clock: the tasks park on a deferred promise that only
+    // the test releases, so CI load lengthens the hold and makes the
+    // measurement MORE reliable rather than racier. No duration is asserted.
+    const observe = async (a: WriteSerializerKey, b: WriteSerializerKey) => {
+      const serializer = new WriteSerializer();
+      let release = (): void => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const task = async (): Promise<void> => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await gate;
+        inFlight -= 1;
+      };
+      const pending = [serializer.runExclusive(a, task), serializer.runExclusive(b, task)];
+      // Yield past the chain's own microtasks so every task that CAN start has.
+      await new Promise((resolve) => setImmediate(resolve));
+      release();
+      await Promise.all(pending);
+      return { maxInFlight, activeKeyCount: serializer.activeKeyCount };
+    };
+
+    expect(
+      await observe({ tenant: "a", resource: "b:c" }, { tenant: "a:b", resource: "c" }),
+    ).toEqual({ maxInFlight: 2, activeKeyCount: 2 });
+
+    // The control that rules out instrumentation which reports 2 for free:
+    // a genuinely identical key must serialize, giving exactly one in flight.
+    expect(
+      await observe({ tenant: "a", resource: "b:c" }, { tenant: "a", resource: "b:c" }),
+    ).toEqual({ maxInFlight: 1, activeKeyCount: 1 });
   });
 });
 

@@ -5,11 +5,50 @@ import { toADF } from "@crabgic/renderer";
 import { buildExternalConnection } from "@crabgic/testkit";
 import { buildFieldMetadataIndex } from "../../capability/field-metadata.js";
 import { JiraPlanPayloadRegistry } from "../plan-payload-registry.js";
+import type { JiraFieldMetadata, JiraResourceClient } from "../types.js";
 import { createJiraDatacenterResourceClient } from "./jira-datacenter-resource-client.js";
 import type { JiraDatacenterHttpContext } from "./jira-datacenter-http-context.js";
 
 const BASE_URL = "https://dc-resource-client-test.invalid";
 const ENVELOPE_ID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+
+/**
+ * Hoisted to module scope (it was declared mid-`describe`) so the
+ * field-refusal suite below can reuse it as its vacuity guard: a client
+ * given the FULL action vocabulary cannot be refused by
+ * `assertActionSupported`, which throws the SAME kind and provider the
+ * field gate does.
+ */
+const FULL_ACTIONS = [
+  "issue.create",
+  "issue.update",
+  "issue.transition",
+  "issue.link",
+  "issue.rank",
+  "issue.bulkUpdate",
+  "issue.bulkTransition",
+  "comment.create",
+  "comment.update",
+  "worklog.create",
+  "attachment.upload",
+  "board.create",
+  "board.update",
+  "sprint.create",
+  "sprint.start",
+  "sprint.complete",
+  "sprint.moveIssues",
+] as const;
+
+/** Captures the thrown `ConnectorError` so its typed kind and provider can be asserted — `.toThrow(ConnectorError)` passes for all ten canonical kinds (`docs/verification-playbook.md` §"ASSERT THE TYPED KIND, NOT JUST THE THROW"). */
+function catchConnectorError(run: () => void): ConnectorError {
+  try {
+    run();
+  } catch (err) {
+    expect(err).toBeInstanceOf(ConnectorError);
+    return err as ConnectorError;
+  }
+  throw new Error("expected the Data Center plan-build call to throw, it did not");
+}
 
 function buildCtx(
   responses: Parameters<typeof createFakeProviderTransport>[0]["responses"],
@@ -163,25 +202,176 @@ describe("createJiraDatacenterResourceClient — resource-by-resource conformanc
     );
   });
 
-  const FULL_ACTIONS = [
-    "issue.create",
-    "issue.update",
-    "issue.transition",
-    "issue.link",
-    "issue.rank",
-    "issue.bulkUpdate",
-    "issue.bulkTransition",
-    "comment.create",
-    "comment.update",
-    "worklog.create",
-    "attachment.upload",
-    "board.create",
-    "board.update",
-    "sprint.create",
-    "sprint.start",
-    "sprint.complete",
-    "sprint.moveIssues",
-  ] as const;
+  /**
+   * roadmap/19 criterion 3, the `falls back to typed unsupported for an
+   * unrecognized edition` conjunct, and defect
+   * `19-unrecognized-edition-fallback-kind-unproven` gap (i). The sibling
+   * case above asserts only `.toThrow(ConnectorError)`, which passes for
+   * every one of the ten canonical kinds — splitting `assertActionSupported`
+   * and downgrading the `dcFeatures === undefined` branch to
+   * `ConnectorError.validation` left the whole repository green
+   * (`docs/verification-playbook.md` §"ASSERT THE TYPED KIND, NOT JUST THE
+   * THROW").
+   *
+   * The message fragment asserted here is the one that is distinctive to the
+   * `dcFeatures === undefined` branch. The OTHER branch (recognized edition,
+   * action absent from `availableActions`) says `is unsupported on edition
+   * "…"`, so a probe that collapses the two branches cannot satisfy this
+   * assertion by accident — playbook §"ASSERT THE RULE'S DISTINCTIVE
+   * MESSAGE, NEVER JUST THE OFFENDING FILENAME".
+   */
+  it("the dcFeatures === undefined fallback is typed unsupported, attributed to jira-datacenter, on its own distinctive branch", () => {
+    const { ctx } = buildCtx([]);
+    const client = createJiraDatacenterResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      // dcFeatures intentionally omitted — the unrecognized-edition fallback
+    });
+    for (const call of [
+      () =>
+        client.boards.planCreate({ name: "B", type: "scrum", projectKeyOrId: "PROJ" }, ENVELOPE_ID),
+      () => client.sprints.planCreate({ boardId: 1, name: "S" }, ENVELOPE_ID),
+      () => client.issues.planUpdate("PROJ-1", "rev-1", { summary: "x" }, ENVELOPE_ID),
+    ]) {
+      const err = catchConnectorError(call);
+      expect(err.kind).toBe("unsupported");
+      expect(err.provider).toBe("jira-datacenter");
+      expect(err.message).toContain("has not been positively confirmed by discovery");
+    }
+  });
+
+  /**
+   * CONTROL for the case above, so "every branch throws unsupported with
+   * that message" cannot satisfy the suite equally well
+   * (`docs/verification-playbook.md` §"PIN A 'FAILS' RULING WITH A 'DOES NOT
+   * FAIL' CONTROL"): a RECOGNIZED edition whose `availableActions` omits the
+   * action is also `unsupported`/`jira-datacenter`, but carries the OTHER
+   * message and must NOT carry the fallback one.
+   */
+  it("CONTROL: a recognized edition's missing action is unsupported too, but on the other branch's message", () => {
+    const { ctx } = buildCtx([]);
+    const client = createJiraDatacenterResourceClient({
+      ctx,
+      fieldMetadataIndex: buildFieldMetadataIndex([]),
+      payloadRegistry: new JiraPlanPayloadRegistry(),
+      dcFeatures: { edition: "10.3", availableActions: [], availableFields: "discovered-only" },
+    });
+    const err = catchConnectorError(() =>
+      client.sprints.planCreate({ boardId: 1, name: "S" }, ENVELOPE_ID),
+    );
+    expect(err.kind).toBe("unsupported");
+    expect(err.provider).toBe("jira-datacenter");
+    expect(err.message).toContain('is unsupported on edition "10.3"');
+    expect(err.message).not.toContain("has not been positively confirmed by discovery");
+  });
+
+  /**
+   * roadmap/19 criterion 2, the `fields` conjunct, and defect
+   * `19-unsupported-fields-and-cassette-conjuncts`. Measured at
+   * `3dec9bf`: driving `customfield_99999` through the REAL Data Center
+   * client returned `kind="validation" provider="jira-cloud"` on all three
+   * write entry points, because the shared field gate hardcoded Cloud's
+   * attribution. roadmap/19 §In scope: "Unrecognized fields or actions
+   * return typed `unsupported` (P02)".
+   *
+   * ⚠️ Vacuity guard, deliberate: every client below is given the FULL
+   * action vocabulary, so `assertActionSupported` cannot fire. Without
+   * that, the action gate — which already throws
+   * `unsupported`/`jira-datacenter` — would satisfy the kind and provider
+   * assertions with the field gate never reached at all. The message
+   * assertion is the second, independent guard on the same trap: only the
+   * field gate produces these strings.
+   */
+  describe("DC-only unsupported FIELDS (roadmap/19 criterion 2, fields conjunct)", () => {
+    function dcClientWithNoDiscoveredFields(
+      fields: readonly JiraFieldMetadata[] = [],
+    ): JiraResourceClient {
+      const { ctx } = buildCtx([]);
+      return createJiraDatacenterResourceClient({
+        ctx,
+        fieldMetadataIndex: buildFieldMetadataIndex(fields),
+        payloadRegistry: new JiraPlanPayloadRegistry(),
+        dcFeatures: {
+          edition: "10.3",
+          availableActions: FULL_ACTIONS,
+          availableFields: "discovered-only",
+        },
+      });
+    }
+
+    const undiscoveredWrites: readonly [string, (client: JiraResourceClient) => unknown][] = [
+      [
+        "issues.planCreate",
+        (client) =>
+          client.issues.planCreate(
+            {
+              projectKeyOrId: "PROJ",
+              issueType: "Story",
+              summaryAdf: toADF("Summary"),
+              fields: { customfield_99999: "x" },
+            },
+            ENVELOPE_ID,
+          ),
+      ],
+      [
+        "issues.planUpdate",
+        (client) =>
+          client.issues.planUpdate("PROJ-1", "rev-1", { customfield_99999: "x" }, ENVELOPE_ID),
+      ],
+      [
+        "issues.planBulkUpdate",
+        (client) =>
+          client.issues.planBulkUpdate(
+            ["PROJ-1", "PROJ-2"],
+            { customfield_99999: "x" },
+            ENVELOPE_ID,
+          ),
+      ],
+    ];
+
+    for (const [label, write] of undiscoveredWrites) {
+      it(`${label}: an UNDISCOVERED custom field is typed unsupported and attributed to jira-datacenter`, () => {
+        const client = dcClientWithNoDiscoveredFields();
+        const err = catchConnectorError(() => void write(client));
+        expect(err.kind).toBe("unsupported");
+        expect(err.provider).toBe("jira-datacenter");
+        // Only the FIELD gate produces this string; the action gate says
+        // `Jira Data Center action "…" is unsupported…`.
+        expect(err.message).toContain(
+          'custom field "customfield_99999" is not present in discovered field metadata',
+        );
+      });
+    }
+
+    it("issues.planUpdate: a DISCOVERED custom field with an UNRECOGNIZED schema type is typed unsupported too", () => {
+      const client = dcClientWithNoDiscoveredFields([
+        {
+          id: "customfield_10010",
+          name: "Story Points",
+          custom: true,
+          schemaType: "some-future-jira-type",
+        },
+      ]);
+      const err = catchConnectorError(() =>
+        client.issues.planUpdate("PROJ-1", "rev-1", { customfield_10010: "x" }, ENVELOPE_ID),
+      );
+      expect(err.kind).toBe("unsupported");
+      expect(err.provider).toBe("jira-datacenter");
+      expect(err.message).toContain(
+        'custom field "customfield_10010" has an unrecognized schema type "some-future-jira-type"',
+      );
+    });
+
+    it("CONTROL: a DISCOVERED custom field with a known schema type still builds a plan (the gate is not a blanket refusal)", () => {
+      const client = dcClientWithNoDiscoveredFields([
+        { id: "customfield_10010", name: "Story Points", custom: true, schemaType: "number" },
+      ]);
+      expect(
+        client.issues.planUpdate("PROJ-1", "rev-1", { customfield_10010: 5 }, ENVELOPE_ID).action,
+      ).toBe("issue.update");
+    });
+  });
 
   it("exercises every remaining plan* method (bulk update/transition, comment update, board update/rank, sprint update/start/complete/moveIssues) and every remaining read (comments/worklogs/sprints/boards/get-by-id)", async () => {
     const { ctx } = buildCtx([

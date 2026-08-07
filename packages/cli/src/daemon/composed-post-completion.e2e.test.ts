@@ -72,6 +72,7 @@ import {
   type SupervisorDependencies,
 } from "@crabgic/supervisor";
 import { resolveGitControlDir } from "@crabgic/git-engine";
+import { REQUIRED_SECURITY_FIXTURE_IDS } from "@crabgic/gates";
 import {
   GIT_FIXTURE_IDENTITY_ENV,
   FakeEngineAdapter,
@@ -303,6 +304,28 @@ async function evidenceRecords(): Promise<readonly EvidenceRecord[]> {
   return found;
 }
 
+/**
+ * Every `evidence_pointer` this run's SECURITY gates journaled, in append
+ * order — phase 21's six fixture entries, registered into the production
+ * composition root by `./compose-gate-registry.ts`.
+ *
+ * Filtered by TAG and identified by `command`, never by array position or by a
+ * total record count: `fireAll` walks `GATE_RISK_TAGS` order, so the security
+ * tranche is journaled BEFORE the acceptance record, and a positional filter
+ * would silently re-point if either tranche changed size. `EvidenceRecord` has
+ * no gate-name member (02's schema), so the fixture id rides `command` — the
+ * `pass()`/`fail()` helpers in
+ * `packages/gates/src/security-fixture-manifest.ts` set it to the id.
+ */
+async function securityEvidence(): Promise<readonly EvidenceRecord[]> {
+  return (await evidenceRecords()).filter((record) => record.gateTag === "security");
+}
+
+/** The whole manifest's ids, as the shape the per-record assertions compare against. */
+function eachFixture<T>(value: T): readonly T[] {
+  return REQUIRED_SECURITY_FIXTURE_IDS.map(() => value);
+}
+
 /** Every run-lifecycle state this run was journaled into, in append order. */
 async function runTransitions(runId: string): Promise<readonly string[]> {
   const found: string[] = [];
@@ -409,6 +432,26 @@ describe("a completed run walks to published_local through a fired gate (defect 
     // `final_verifying` has no single owning unit — the context omits it.
     expect(acceptance[0]?.workUnitId).toBeUndefined();
 
+    // (b2) EVERY security-fixture gate fired too, in the same firing, against
+    // the same candidate — one `EvidenceRecord` per manifest id, each bound to
+    // the independently `rev-parse`d tip, not to a value the pipeline returned.
+    //
+    // HONEST SCOPE, stated where a reader lands rather than only in a PR body:
+    // these six verdicts do not depend on the candidate's diff. They are
+    // install-integrity self-checks of the shipped build's own security
+    // primitives, so each record attests "at the moment candidate X was
+    // verified for publication, the platform's own security fixtures held" —
+    // which is what roadmap/21 work item 6 designed, and is a weaker claim than
+    // the acceptance record's.
+    const security = await securityEvidence();
+    expect(security.map((record) => record.command)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(security.map((record) => record.gateVerdict)).toStrictEqual(eachFixture("passed"));
+    expect(security.map((record) => record.objectId)).toStrictEqual(eachFixture(publishedTip));
+    expect(security.map((record) => record.changeSetId)).toStrictEqual(eachFixture(CHANGE_SET_ID));
+    expect(security.map((record) => record.workUnitId)).toStrictEqual(eachFixture(undefined));
+
     // (c) the published tree really carries the worker's edit.
     expect(treePaths(branches[0]!)).toContain(unitFilePath(UNIT_A_ID));
   }, 180_000);
@@ -451,6 +494,16 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(acceptance).toHaveLength(1);
     expect(acceptance[0]?.objectId).toBe(publishedTip);
     expect(acceptance[0]?.gateVerdict).toBe("passed");
+
+    // The security tranche binds to the SAME two-unit tip. Registering six more
+    // gates must not introduce a second candidate resolution: every gate in one
+    // firing sees one `GateContext`, so every record here carries one objectId.
+    const security = await securityEvidence();
+    expect(security.map((record) => record.command)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(security.map((record) => record.objectId)).toStrictEqual(eachFixture(publishedTip));
+    expect(security.map((record) => record.gateVerdict)).toStrictEqual(eachFixture("passed"));
   }, 180_000);
 
   it("T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement", async () => {
@@ -516,6 +569,18 @@ describe("a completed run walks to published_local through a fired gate (defect 
     // The attacker-authored criteria text never leaks, into either channel.
     expect(JSON.stringify(acceptance[0])).not.toContain("skips the auth check");
     expect(driveErrors.join(" ")).not.toContain("skips the auth check");
+
+    // WHY THE RUN FAILED, not merely THAT it failed — "green" and "green for
+    // the stated reason" are different claims. All six security gates fired in
+    // the same `fireAll` and every one PASSED, so the refusal is the acceptance
+    // seal and nothing else. Without this, a security gate broken by an
+    // unrelated change would produce an identical `failed` run and this case
+    // would still be green.
+    const security = await securityEvidence();
+    expect(security.map((record) => record.command)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(security.map((record) => record.gateVerdict)).toStrictEqual(eachFixture("passed"));
   }, 180_000);
 
   it("T4 — a REAL cross-unit conflict settles the run blocked, with the typed resolution units journaled", async () => {
@@ -572,8 +637,12 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(driveErrors.join(" | ")).toContain(SHARED_FILE_PATH);
     expect(composed.deps.runs.get(runId)?.runState).toBe("blocked");
     expect(publishedBranches()).toEqual([]);
-    // No gate fired: the walk never reached `final_verifying`.
+    // No gate fired: the walk never reached `final_verifying`. CONTROL ROW for
+    // the security tranche — it is green both before and after this batch
+    // registered those six gates, which is what proves they fire at
+    // `final_verifying` and not merely "somewhere in the pipeline".
     expect((await evidenceRecords()).filter((r) => r.gateTag === "acceptance")).toEqual([]);
+    expect(await securityEvidence()).toEqual([]);
     expect(await runTransitions(runId)).toStrictEqual([
       "awaiting_approval",
       "ready",

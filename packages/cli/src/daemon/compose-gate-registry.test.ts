@@ -6,6 +6,12 @@
  * is the pinned residual: registering 14's own gate tranche or 15's performance
  * gate reddens this file and has to be acknowledged, rather than arriving
  * silently beside a doc comment that says they are deferred.
+ *
+ * Two families are registered as of Batch M — phase 24's criteria-seal gate
+ * under `acceptance`, and phase 21's six security fixtures under `security`.
+ * The emptiness assertions for `performance`/`tdd`/`coverage`/`flake`/
+ * `engine-conformance` are what still pin the UNregistered remainder, and they
+ * are as load-bearing as the membership ones.
  */
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,6 +25,7 @@ import {
   createWorkUnitsRegistry,
   type Registry,
 } from "@crabgic/supervisor";
+import { REQUIRED_SECURITY_FIXTURE_IDS } from "@crabgic/gates";
 import { buildRequirement, buildWorkUnit } from "@crabgic/testkit";
 import {
   COMPOSED_GATE_NAMES,
@@ -68,22 +75,130 @@ function unit(id: string, changeSetId: string, requirementIds: readonly string[]
 }
 
 describe("the registered gate set is pinned", () => {
-  it("registers EXACTLY the criteria-seal gate, under the existing `acceptance` tag", () => {
+  /**
+   * ⚠️ FLIPPED DELIBERATELY (Batch M). Four assertions in this case pinned the
+   * OLD residual — `COMPOSED_GATE_NAMES` being the single literal
+   * `["criteria-seal"]`, the tag list being the single literal
+   * `["acceptance"]`, and `list("security")` being empty. They were correct
+   * then and they were asserting the state this batch exists to change, so they
+   * change with disclosure rather than being quietly relaxed.
+   *
+   * What replaces the literal-constant assertion is NOT a restatement of the
+   * constant's own definition — that would be a tautology over a literal, since
+   * `COMPOSED_GATE_NAMES` is now derived from `REQUIRED_SECURITY_FIXTURE_IDS`.
+   * It is a per-TAG claim about the REGISTRY, which the constant cannot make:
+   * exactly one acceptance gate, and the whole security manifest.
+   *
+   * The `performance`/`tdd`/`coverage`/`flake`/`engine-conformance` emptiness
+   * assertions are UNCHANGED and must keep passing — they now pin the remaining
+   * residual (15's perf gate and 14's own tranche are still unregistered), and
+   * that residual is the one this batch deliberately did not close.
+   */
+  it("registers EXACTLY the security-fixture manifest plus the criteria-seal gate — nothing else", () => {
     const registry = composeGateRegistry({
       requirements: requirements([]),
       workUnits: units([]),
     });
 
-    // Deep equality: a `toContain` would let a silent addition through.
+    // Deep equality: a `toContain` would let a silent addition through. A new
+    // gate FAMILY grows `list()` without growing the derived constant, so it
+    // reddens here.
     expect(registry.list().map((gate) => gate.name)).toStrictEqual([...COMPOSED_GATE_NAMES]);
-    expect(COMPOSED_GATE_NAMES).toStrictEqual(["criteria-seal"]);
-    expect(registry.list().map((gate) => gate.tag)).toStrictEqual(["acceptance"]);
-    // The deferred tranches are ABSENT, not merely undocumented.
+    expect(registry.list("acceptance").map((gate) => gate.name)).toStrictEqual(["criteria-seal"]);
+    expect(registry.list("security").map((gate) => gate.name)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(new Set(registry.list().map((gate) => gate.tag))).toStrictEqual(
+      new Set(["security", "acceptance"]),
+    );
+    // The deferred tranches are ABSENT, not merely undocumented. UNCHANGED by
+    // Batch M — these are the residual it did not close.
     expect(registry.list("performance")).toEqual([]);
     expect(registry.list("tdd")).toEqual([]);
     expect(registry.list("coverage")).toEqual([]);
-    expect(registry.list("security")).toEqual([]);
+    expect(registry.list("flake")).toEqual([]);
     expect(registry.list("engine-conformance")).toEqual([]);
+  });
+});
+
+/**
+ * Phase 21 work item 6 calls the six security fixtures "standing, blocking
+ * entries in 14's gate manifest rather than one-off phase-exit tests"
+ * (`roadmap/21-connector-evidence-integration.md:21`). Before this suite
+ * existed, "standing" was true only inside `packages/gates`' own unit test:
+ * `registerSecurityFixtureManifest` had exactly ONE caller in the repository
+ * and it was `security-fixture-manifest.test.ts`. These cases are what makes
+ * the word true of the shipped daemon.
+ */
+describe("the security-fixture manifest is registered as a standing, blocking gate set", () => {
+  it("registers EVERY manifest entry under the shared `security` tag, named by fixture id", () => {
+    const registry = composeGateRegistry({
+      requirements: requirements([]),
+      workUnits: units([]),
+    });
+
+    expect(registry.list("security").map((gate) => gate.name)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(registry.list("security").map((gate) => gate.tag)).toStrictEqual(
+      REQUIRED_SECURITY_FIXTURE_IDS.map(() => "security"),
+    );
+  });
+
+  it("lists in GATE_RISK_TAGS order, not registration order — the seal gate registers FIRST and lists LAST", () => {
+    const registry = composeGateRegistry({
+      requirements: requirements([]),
+      workUnits: units([]),
+    });
+
+    // This is what makes `COMPOSED_GATE_NAMES`' own ordering correct, and it is
+    // a claim about `@crabgic/gates`' `list()` rather than about this file's
+    // constant: `registry.list()` flattens the tag map in `GATE_RISK_TAGS`
+    // order (`packages/gates/src/risk-tags.ts:28`), and that vocabulary opens
+    // by spreading `INTENT_CONTRACT_SECTION_KEYS`
+    // (`packages/contracts/src/contracts/intent-contract.ts:16`), which lists
+    // `security` fifth and `acceptance` ninth. Re-ordering either list reddens
+    // here even though every gate is still registered.
+    const names = registry.list().map((gate) => gate.name);
+    expect(names.at(-1)).toBe("criteria-seal");
+    expect(names.slice(0, -1)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
+  });
+
+  it("FIRES every one of them through the composed registry, each emitting its own EvidenceRecord bound to the candidate", async () => {
+    const registry = composeGateRegistry({
+      requirements: requirements([]),
+      workUnits: units([]),
+    });
+
+    const results = await registry.fireByTag("security", {
+      stage: "final_verifying",
+      changeSetId: CHANGE_SET_ID,
+      objectId: OBJECT_ID,
+      journal,
+    });
+
+    // Registration alone would be satisfied by a handler that throws. The
+    // failures are listed BY NAME rather than counted, so a red run says which
+    // fixture broke instead of "expected true to be false".
+    expect(
+      results
+        .filter((result) => !result.verdict.passed)
+        .map((result) => `${result.name}: ${result.verdict.detail}`),
+    ).toStrictEqual([]);
+    expect(results.map((result) => result.name)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
+    // `EvidenceRecord` has no gate-name member, so the fixture id reaches the
+    // journal as `command` — `pass()`/`fail()` in
+    // `packages/gates/src/security-fixture-manifest.ts` set it to the id. That
+    // is the field the composed-path e2e filters on, so pin it here too.
+    expect(results.map((result) => result.evidence.command)).toStrictEqual([
+      ...REQUIRED_SECURITY_FIXTURE_IDS,
+    ]);
+    expect(results.map((result) => result.evidence.objectId)).toStrictEqual(
+      REQUIRED_SECURITY_FIXTURE_IDS.map(() => OBJECT_ID),
+    );
+    expect(results.map((result) => result.evidence.gateTag)).toStrictEqual(
+      REQUIRED_SECURITY_FIXTURE_IDS.map(() => "security"),
+    );
   });
 });
 
