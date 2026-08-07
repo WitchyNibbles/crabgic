@@ -73,3 +73,21 @@ narrowings (mutations only, declared placement rather than actual, no config-tim
 **Kept open:** the multi-tenant judgement itself. The residual exposures an operator should assume
 are unchanged — reads on a tenant-scoped connection; a plan declaring an in-allowlist tenant while
 its URL targets another tenant reachable with the same credential; and unbound remote identity.
+
+## Addendum 2026-08-07 — the multi-tenant judgement is ruled
+
+This record's closing paragraph above says "**Kept open:** the multi-tenant judgement itself." That
+judgement arrived on 2026-08-07 as an owner ruling, recorded in `docs/deploy-posture.md`:
+**crabgic is certified for the SINGLE-TENANT, TRUSTED-OPERATOR scope only, and multi-tenant
+deployment is NOT certified.**
+
+The owner accepted the measured scope rather than funding read-path tenant checks and
+connection-doctor identity verification now. So the three residual exposures this record names stand
+**verbatim and unnarrowed** — reads on a tenant-scoped connection; a plan declaring an in-allowlist
+tenant while its URL targets another tenant reachable with the same credential; and unbound remote
+identity — and their disposition changes from _pending an owner judgement_ to _out of certified
+scope_. Those are different states and the distinction is why this addendum exists: nothing about
+the enforcement moved, nothing was re-measured, and no exposure was closed.
+
+Status stays **fixed**, unchanged: this record evidences a remedy, and it still does not clear
+multi-tenant deployment.

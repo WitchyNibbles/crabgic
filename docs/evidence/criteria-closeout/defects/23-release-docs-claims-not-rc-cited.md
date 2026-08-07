@@ -213,3 +213,19 @@ it is unchanged: the large majority of the audited lines rest on docker, live or
 no free run can produce. Status stays **owner-gated**, and the disposition — permanent untick versus a
 reword that loses a guarantee and therefore needs owner sight — is an owner question, not a
 maintenance task.
+
+## Addendum 2026-08-07 — the owner question is answered
+
+This record's preceding correction closes by saying the disposition "— permanent untick versus a
+reword that loses a guarantee and therefore needs owner sight — is an owner question, not a
+maintenance task." It was answered on 2026-08-07.
+
+**The ruling: permanent untick. The reword is REFUSED as guarantee-losing.** The criterion's second
+conjunct is a universal quantifier over claims cited to the release candidate, and narrowing it to
+what happens to exist would delete a guarantee rather than reconcile a drift. The census is unchanged
+and stands at **8 of 134**.
+
+Status stays **owner-gated**, now on a single channel rather than a disjunction: docker or live
+release-candidate evidence. The "or an owner re-scope ruling" disjunct is **closed** — the re-scope
+was considered and refused, so no ruling can discharge this box; only evidence can. The annotation at
+`roadmap/23-release-hardening.md:175` records the same ruling in place.

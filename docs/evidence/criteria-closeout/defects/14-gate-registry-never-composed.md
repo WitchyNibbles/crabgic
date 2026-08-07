@@ -123,3 +123,29 @@ decision, not a maintenance task**, which is what this record's own remedy secti
 
 Status stays **open** rather than `owner-gated`: what is missing is a design ruling, not an
 owner-authorised run against a paid system.
+
+## Addendum 2026-08-07 — owner ruling: the scope decision is made
+
+This record's previous addendum closes by saying "Status stays **open** rather than `owner-gated`:
+what is missing is a design ruling, not an owner-authorised run against a paid system." That ruling
+arrived on 2026-08-07 and is recorded in `docs/deploy-posture.md` beside the gate-registry row.
+
+**The v1 gate-composition scope is seal + security.** The criteria-seal gate plus the
+security-fixture manifest's entries, firing blocking at `final_verifying` — exactly what PRs #104,
+#121 and #122 composed — is the accepted scope, and nothing further is owed under v1.
+
+**The unregistered tranche is an accepted, disclosed residual, not an outstanding obligation.** 15's
+performance gate, 14's own tdd/coverage/flake/semgrep/gitleaks/osv-scanner/root-cause-policy/
+engine-conformance tranche and `createRemoteVerificationGate` stay unregistered, with the four-part
+measured cause this record already states restated so the ruling is legible on its own: `GateContext`
+carries no `baseObjectId`, so the A side of the A/B benchmark is unreachable from the firing context;
+`DispatchAttemptOutcome` exposes no `worktreePath`; no production code composes a `ProjectProfile`,
+so there is no benchmark command; and the methodology floor demands 22+ sequential stack commands per
+run, which is a worker-sandbox dispatch precondition rather than a preference. Because `fireAll`
+fires every registered gate on every run, registering them today would either fail every run or
+fabricate measurements.
+
+**Any future widening starts with building the measurement backends, not with a `register` call.**
+
+Status stays **open**, in the index's mechanical sense only — "this record does not evidence a
+remedy". The residual is now accepted by ruling rather than awaiting one.

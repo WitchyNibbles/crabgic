@@ -149,6 +149,33 @@ and need owner approval to run; **19** (7) is not yet started;
 > tenant scope — are separately superseded by dated amendments in `docs/deploy-posture.md`, and are
 > not re-litigated here: one correction per false fact.
 
+> **Updated 2026-08-07 (owner rulings).** Three of the statements above have stopped being true, and
+> each gets its own correction rather than a rewrite. Nothing here ticks, unticks or re-scopes a box;
+> the tally is unchanged at **211 criteria; 199 ticked, 12 not.**
+>
+> **1. Deploy posture.** The 2026-08-05 block's clause "Deployment posture lives in
+> `docs/deploy-posture.md` and is **conditional, not clear**" is superseded. An owner ruling of
+> 2026-08-07, recorded in that document, flipped the certification line: **CERTIFIED for the
+> single-tenant, trusted-operator scope, and nothing wider**, with multi-tenant explicitly NOT
+> certified, no broad `Read`/`Grep`/`Glob` allow rule permitted, and the live lane still never run.
+> It is a scope ruling, not a new measurement — the R7-P1 measurement it rests on is unchanged.
+>
+> **2. 23:175 — the re-scope disjunct is closed.** The enumeration above lists that box as needing
+> "Docker or live release-candidate evidence, **or an owner re-scope ruling**". The re-scope ruling
+> was given and it was a **refusal**: the narrowing reword loses a guarantee, so the criterion's
+> universal quantifier stands as written and the box waits on docker or live release-candidate
+> evidence **alone**. The census stands at 8 of 134. That box is permanently unticked until those
+> channels run.
+>
+> **3. 22:102 — the awaited RULING has arrived.** The paragraph above names it as "different in kind
+> … needs an owner RULING, not a run". The ruling of 2026-08-07 **withdraws the reword**: the
+> pre-authorized wording route is rescinded permanently, because the phase's own §Out of scope
+> "hands off" framing is unborne by the code too — `learn-command-backend.ts` constructs the
+> `ChangeSet`, prints it and returns. The box stays unticked as a disclosed gap, and its only closing
+> path is implementing the actual hand-off (the defect record's remedy (a)), if and when learning
+> promotion matters. So all twelve unticked boxes still await evidence or implementation; none of
+> them is now waiting on a decision.
+
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
 clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8, and

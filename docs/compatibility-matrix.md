@@ -240,3 +240,12 @@ status-bearing claims are cited to committed artifacts that pre-date the release
 rather than to a candidate-scoped CI run — measured, with numbers, in
 `docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`, which is why roadmap/23's
 release-docs box stays **unticked**.
+
+> **Dated correction 2026-08-07 — the sentence above stays verbatim and one clause of it is
+> superseded.** "**conditional, not clear**" was true when written; on 2026-08-07 an owner ruling
+> recorded in `docs/deploy-posture.md` flipped the certification line to **CERTIFIED for the
+> single-tenant, trusted-operator scope, and nothing wider** — with multi-tenant explicitly NOT
+> certified, no broad `Read`/`Grep`/`Glob` allow rule permitted, and the live lane still never run.
+> That is a scope ruling, not a new measurement, and it changes nothing else in this section: this
+> document still claims no live Jira, Jira Data Center or Grafana Cloud conformance, and the ruling
+> does not either. Deployment still lives solely in `docs/deploy-posture.md`.

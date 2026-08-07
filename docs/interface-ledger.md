@@ -1692,3 +1692,14 @@ line anchor into those files still resolves — swept in both notations).
    caller-supplied field on a surface whose sibling is derived, and it is recorded rather than hidden.
 4. A renderer that lies about the budgets while every hash stays consistent is outside any hash scheme. The
    guarantee is "enforcement is bound to the digest the token signed", not "the human understood the render".
+
+---
+
+**Gap 22 — RATIFIED 2026-08-07, owner ruling.** Gap 22 above stands **as written**, including the
+two points its provenance paragraph flagged for the owner: (1) the intro-sentence / origin-table /
+Index omission stands, per the Gap 21 precedent — line stability over self-consistency; and (2) the
+OPTIONAL-in-schema posture is accepted as ruled — the trade stated under "Schema members are
+OPTIONAL" stands, with no global version bump, no migrations, and no default, because a default here
+forges what the human signed. This paragraph supersedes the "Awaiting owner ratification" marker in
+Gap 22's provenance paragraph, which stays verbatim per this file's own annotate-never-rewrite
+convention. Appended at end of file so no protected anchor moves.
