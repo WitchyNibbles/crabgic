@@ -1,0 +1,237 @@
+===============================================================================
+Batch L — roadmap/06 criteria c6 and c9: the named suites now carry them
+Probes A (version gate), B (limit signal), C (the pre-batch counterfactual)
+===============================================================================
+
+# RULING-3 header
+# UTC: probes A/B captured 2026-08-06T13:22:34Z; probe C captured
+#      2026-08-06T13:31:57Z (mtime of the raw run logs the excerpts below are
+#      copied from). Every command in this file was run in ONE tree.
+# UPSTREAM BASE (stable — resolves for any reader, now and after merge): 1bc0d51
+#   ("Batch E: bind the enforced budget to the approved envelope … (#116)")
+# branch tip at capture (PROVISIONAL — see note): 90fe16c on closeout/batch-l
+# ⚠️ 90fe16c IS UNREACHABLE. Its commit was reworded (a 104-char subject fails
+#   commitlint's 100-char limit in CI; the local pre-push hook does not check
+#   header length — playbook §"the pre-push hook is weaker than CI"). Its content
+#   is identical and now lives at 70ca49a. Stated rather than silently rewritten:
+#   the UPSTREAM BASE above is the anchor a reader should resolve against, and
+#   every md5/count in this file is re-derivable at 70ca49a or at the merge tip.
+# NOTE: a later commit on this branch adds a comment-only RESIDUAL block to
+#   packages/engine-claude/src/live/live-verdicts-provenance.test.ts. It moves no
+#   test count: the same command re-run after it reported the identical
+#   "Test Files  41 passed (41) / Tests  543 passed (543)".
+# Toolchain: node v24.18.0, vitest/4.1.10 linux-x64
+# Scope of every measurement below (declared, not implied):
+#   npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+#   These are the two packages the two criteria's named suites live in. e2e/matrix
+#   has its own standalone vitest config and is NOT in this fan-out; the rebuilds
+#   recorded below are what make the cross-package half of probe B honest anyway.
+# Exit statuses are recorded per run. A deliberately RED run is the point of a
+#   mutation leg — it is not a failure of this transcript.
+
+-------------------------------------------------------------------------------
+WHAT THIS PROVES, IN ONE PARAGRAPH
+-------------------------------------------------------------------------------
+Defect record `06-criteria-name-suites-that-do-not-carry-them.md` measured that
+roadmap/06's criterion 9 names `version-gate.test` while the guarantee lived only
+in `adapter.test`, and that criterion 6 names `limit-signal.test` while the
+"against phase-00's captured shape" conjunct lived only in
+`event-normalizer.test`. Neither was a missing guarantee; both were pointers
+aimed off. Batch L took the record's add-tests route. Probes A and B show the
+named suites now redden under the record's own mutations. Probe C runs the SAME
+two mutations against the PRE-BATCH versions of those test files and reproduces
+the record's original result exactly — which is what makes A and B a delta this
+branch caused rather than something that was already true.
+
+Nothing here ticks a box: both criteria were already ticked on measured
+substance. What changes is where a reader who follows the criterion's own pointer
+lands.
+
+===============================================================================
+PROBE A — criterion 9. Delete the version gate from `resume()` and measure.
+Mutation: remove `assertEngineVersionAccepted(this.engineVersionResolver());`
+from `ClaudeEngineAdapter.resume()` (packages/engine-claude/src/adapter.ts:453;
+the same call is at :429 for spawn() and :481 for fork()).
+This is the record's probe A, verbatim.
+===============================================================================
+
+-------------------------------------------------------------------------------
+== PROBE A0 — baseline, unmutated ==
+adapter.ts md5: 0d0fcbb6c105c6364cbae17121c80209
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ Test Files  41 passed (41)
+      Tests  543 passed (543)
+exit=0
+
+-------------------------------------------------------------------------------
+== PROBE A1 — assertEngineVersionAccepted DELETED from resume() ==
+adapter.ts md5 after mutation: 7adbe14f82bdc9903db681c29852e9eb
+$ npm run build (cross-package rebuild, playbook rebuild rule)
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ ❯ |@crabgic/engine-claude| src/version-gate.test.ts (23 tests | 1 failed) 193ms
+     × resume() refuses above the accepted range, before any sdkQuery call or journal append 55ms
+ ❯ |@crabgic/engine-claude| src/adapter.test.ts (27 tests | 1 failed) 836ms
+     × resume() also refuses synchronously outside the accepted range 39ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed | 39 passed (41)
+      Tests  2 failed | 541 passed (543)
+exit=1
+
+  READ THIS ROW AGAINST THE RECORD. The record's own A1 reddened exactly ONE
+  test, in adapter.test.ts, with all 20 of version-gate.test.ts's tests green.
+  Here TWO reds: the criterion's own named suite is now one of them.
+
+-------------------------------------------------------------------------------
+== PROBE A2 — restore (explicit source AND explicit path) ==
+adapter.ts md5 restored: 0d0fcbb6c105c6364cbae17121c80209
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ Test Files  41 passed (41)
+      Tests  543 passed (543)
+exit=0
+-- new assertions still present? (grep count, playbook's three restore countermeasures) --
+1
+-- git status --short -- (empty: the restore deleted nothing of this branch's own work)
+
+===============================================================================
+PROBE B — criterion 6. Perturb the RECORDED utilization and measure.
+Mutation: packages/testkit/src/fake-engine/rate-limit-fixtures.ts,
+RATE_LIMIT_ALLOWED_WARNING_96.utilization 0.96 -> 0.97. This is the record's
+probe B, verbatim. The symbol crosses out of @crabgic/testkit into
+@crabgic/scheduler and e2e/matrix, so each leg rebuilds first and the build's
+exit code is recorded — a src-only run measures the previous dist.
+===============================================================================
+
+-------------------------------------------------------------------------------
+== PROBE B0 — baseline, unmutated ==
+rate-limit-fixtures.ts md5: 9c78462e1c30880879437a5da498970e
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ Test Files  41 passed (41)
+      Tests  543 passed (543)
+exit=0
+
+-------------------------------------------------------------------------------
+== PROBE B1 — recorded utilization 0.96 -> 0.97 ==
+(grep of the mutated file, showing the three warning payloads)
+28:  utilization: 0.97,
+37:  utilization: 0.98,
+46:  utilization: 0.99,
+rate-limit-fixtures.ts md5 after mutation: de7e89c1508a203af79f315fc098ffde
+$ npm run build (REQUIRED: this symbol crosses into scheduler + e2e/matrix)
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ ❯ |@crabgic/engine-claude| src/limit-signal.test.ts (26 tests | 2 failed) 155ms
+     × the hand-typed @crabgic/testkit constants ARE the captured payloads, member for member 59ms
+     × normalizing a captured sample and its hand-typed twin yields the identical limitSignal 27ms
+ ❯ |@crabgic/testkit| src/fake-engine/rate-limit-fixtures.test.ts (5 tests | 3 failed) 148ms
+     × is exactly the distinct payload set captured in the committed phase-00 fixtures 92ms
+     × exports the four constants the barrel names, in docs/engine-baseline.md §8's order 47ms
+     × the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99} 2ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed | 39 passed (41)
+      Tests  5 failed | 538 passed (543)
+exit=1
+
+  READ THIS ROW AGAINST THE RECORD. The record's own B1 reddened exactly ONE
+  test — rate-limit-fixtures.test.ts's utilization-set case — and said in so
+  many words that "limit-signal.test.ts stayed green". Here the criterion's own
+  named suite contributes two of the five reds.
+
+  The third testkit red is the pre-existing utilization-set case at
+  rate-limit-fixtures.test.ts. It is NOT new; it is quoted here because a
+  reader comparing against the record needs to see it survive the replacement
+  of the file's tautological first case (playbook: "adding a check can silently
+  un-pin the one it sits beside"). The new fixture-bytes case at rate-limit-fixtures.test.ts:67 SUBSUMES
+  both surviving pins — a fact stated here rather than left for someone to
+  rediscover. They are kept because they name narrower subjects (the verbatim
+  epoch; the monotone utilization set) and a named pin is what announces a
+  change.
+
+-------------------------------------------------------------------------------
+== PROBE B2 — restore (explicit source AND explicit path) ==
+rate-limit-fixtures.ts md5 restored: 9c78462e1c30880879437a5da498970e
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ Test Files  41 passed (41)
+      Tests  543 passed (543)
+exit=0
+-- new assertions still present? (grep counts) --
+1
+1
+-- git status --short -- (empty)
+
+===============================================================================
+PROBE C — the counterfactual. Same two mutations, PRE-BATCH test files.
+Each leg checks the test file OUT AT 1bc0d51 (the branch point), applies the
+same mutation, rebuilds, measures, then restores from HEAD by explicit path.
+This is what turns "my new test reddens" into "my new test is the reason it
+reddens".
+===============================================================================
+
+-------------------------------------------------------------------------------
+-- C1: pre-batch version-gate.test.ts + gate deleted from resume() --
+(grep count for the new block in the reverted file: 0 — the block is absent)
+0
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ ❯ |@crabgic/engine-claude| src/adapter.test.ts (27 tests | 1 failed) 1052ms
+     × resume() also refuses synchronously outside the accepted range 79ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 539 passed (540)
+exit=1
+restored md5s: a7446d181d2ca28667a284c3904ac47d  packages/engine-claude/src/version-gate.test.ts
+               0d0fcbb6c105c6364cbae17121c80209  packages/engine-claude/src/adapter.ts
+
+  Total 540 (= 543 minus this branch's three new version-gate cases), one red,
+  and it is adapter.test.ts. The record's finding reproduced at this tree.
+
+-------------------------------------------------------------------------------
+-- C2: pre-batch limit-signal.test.ts + rate-limit-fixtures.test.ts, 0.96 -> 0.97 --
+(grep count for the new block in the reverted file: 0)
+0
+build exit=0
+$ npx vitest run --project @crabgic/engine-claude --project @crabgic/testkit
+ ❯ |@crabgic/testkit| src/fake-engine/rate-limit-fixtures.test.ts (4 tests | 1 failed) 20ms
+     × the allowed_warning payloads carry a monotonically distinct utilization set {0.96, 0.98, 0.99} 12ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 40 passed (41)
+      Tests  1 failed | 538 passed (539)
+exit=1
+restored md5s: b649f51cd9fc89d4bfad9ce125621dda  packages/engine-claude/src/limit-signal.test.ts
+               04f7acca72cc594ae1db8c1f302136ca  packages/testkit/src/fake-engine/rate-limit-fixtures.test.ts
+               9c78462e1c30880879437a5da498970e  packages/testkit/src/fake-engine/rate-limit-fixtures.ts
+
+  Total 539 (= 543 minus three limit-signal cases and one testkit case, plus the
+  one pre-batch testkit case this branch replaced). limit-signal.test.ts green.
+  The record's finding reproduced at this tree.
+
+===============================================================================
+COUNTS TABLE — every number above in one place
+===============================================================================
+
+  leg                                          files          tests
+  -------------------------------------------  -------------  ---------------------
+  A0 baseline (this branch)                    41 passed      543 passed
+  A1 gate deleted from resume()                2 failed/39    2 failed / 541 passed
+  A2 restore                                   41 passed      543 passed
+  B0 baseline (this branch)                    41 passed      543 passed
+  B1 utilization 0.96 -> 0.97                  2 failed/39    5 failed / 538 passed
+  B2 restore                                   41 passed      543 passed
+  C1 pre-batch version-gate.test + mutation    1 failed/40    1 failed / 539 passed
+  C2 pre-batch limit-signal/testkit + mutation 1 failed/40    1 failed / 538 passed
+
+  Test totals are constant at 543 across every unmutated leg of this branch, and
+  every build in this file exited 0 — so no leg measured a stale `dist` under a
+  mutation that failed to compile.
+
+===============================================================================
+WHAT THIS FILE DOES NOT EVIDENCE
+===============================================================================
+- It does not tick anything. roadmap/06 c6 and c9 were already ticked, on the
+  substance the record measured.
+- It does not claim the duplicate cases in `version-gate.test.ts` are stronger
+  than `adapter.test.ts:217`/`:233`. They are not, and the record says so. They
+  exist so the criterion's own pointer resolves to a binding assertion.
+- It says nothing about the live lane. Nothing in this file ran an engine.

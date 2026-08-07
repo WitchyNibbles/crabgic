@@ -145,6 +145,30 @@ the committed transcripts, asserted to normalize to `undefined`): `system`/`thin
    `resetsAt` is set to a documented sentinel `0` — callers must treat a sentinel-`resetsAt`
    `rejected` event as this fallback channel, distinct from a real structured
    `rate_limit_event`. Parking policy stays 13's; this module only detects/surfaces.
+
+   > **Correction (2026-08-06).** The injection scope in the sentence above is stale and now
+   > describes the opposite of the shipped behaviour. It was true when written; work item 6
+   > reversed it. `normalizeSdkStream` runs `detectLimitErrorString` **ONLY over
+   > engine-originated error text** — a non-success `result` message's own `errors` array —
+   > and **deliberately NOT** over model-authored, prompt-injectable text: neither `assistant`
+   > prose nor a SUCCESS result's `result` field. See
+   > `packages/engine-claude/src/event-normalizer.ts:74-78` ("FINDING 6 (prompt-injection
+   > resistance)") and `docs/evidence/phase-06/wi6-security-hardening.md:222-225`, which
+   > records it as a prompt-injection-resistance fix: a worker induced to emit "you've hit
+   > your rate limit" could otherwise synthesize a spurious `rejected` limitSignal and stall
+   > 13's scheduler. The new behaviour is pinned by
+   > `packages/engine-claude/src/event-normalizer.test.ts:204`
+   > (`expect(events.some((e) => e.type === "limitSignal")).toBe(false);` for assistant prose)
+   > with its positive control at `:207`, which requires the SAME phrase in an ENGINE error
+   > result to still synthesize the `rejected` signal — so the fix is measured as scoped and
+   > not as a blanket disabling. (The defect record naming this nit cites `:192`/`:194`; at
+   > this tree those are the `it()` name and its comment, and the assertion itself is `:204`.)
+   > Nothing else in this item changed: the sentinel
+   > `resetsAt: 0`, the `status: "rejected"` synthesis and the parking-policy boundary are all
+   > still as described. Annotated rather than rewritten, per the repository's
+   > annotate-never-rewrite convention; filed as nit 2 of defect record
+   > `00-unresolved-hedge-nits.md`.
+
 4. **`rate_limit_event` field validation** (`limit-signal.ts`) treats `resetsAt` as
    required (throws `LimitSignalNormalizationError` if absent), even though the SDK types
    `SDKRateLimitInfo.resetsAt` as optional — because engine-core's `EngineLimitSignalEvent`
