@@ -114,6 +114,41 @@ and need owner approval to run; **19** (7) is not yet started;
 > said nothing. This pass appended that addendum. The index states the distinction it exposed:
 > `open` there means "this record does not evidence a remedy", never "no remedy exists".
 
+> **Updated 2026-08-07 (closeout reconciliation, batch G).** Ten more boxes are ticked, all of them
+> against work merged earlier in this wave rather than against anything this pass wrote: 09:383,
+> 15:161, 18:134, 18:139, 18:143, 19:192, 21:153, 21:157, 22:95 and 22:100. Tally arithmetic, verified
+> by counting the checkboxes at the final tree by both routes: the 2026-08-05 baseline of **182
+> ticked, 29 not** then PRs #108-#114 ticked seven (17 c5, 19 c4, 02 c8, 04 c1, 14 c2, 12 c5, 16 c12),
+> and this pass ticks ten. Running tally: **211 criteria; 199 ticked, 12 not.**
+>
+> **Every one of the twelve is owner-gated, and this is what each needs — no free channel discharges
+> any of them.** A `CLAUDE_CODE_OAUTH_TOKEN` secret plus an `engine-live` dispatch and live spend:
+> 06:198 (clause 2), 06:207, 10:222, 23:158. A capture against a licensed Jira Cloud sandbox: 18:142,
+> 23:159. Captures against licensed Jira Data Center 10.3 and 11.3 instances: 19:190, and the cassette
+> conjunct of 19:191. A `jira-datacenter-smoke` container dispatch: 19:196. Docker plus a Grafana
+> Enterprise licence: 20:118 (clause 2). Docker or live release-candidate evidence, or an owner
+> re-scope ruling: 23:175. **The twelfth is different in kind and is named separately rather than
+> folded in: 22:102 needs an owner RULING, not a run** — its "before publish (08)" clause is
+> unexercised, and the wording correction that would close it is one this wave declined to make,
+> because the phase's own §Out of scope says a promoted lesson "hands off" a `ChangeSet` and the
+> hand-off does not happen either, and because that criterion's defect record requires the reword to
+> land in its own reviewed commit rather than in a closeout pass.
+>
+> Two boxes stayed unticked that a reader might expect to have moved, and both are stated rather than
+> quietly omitted. 19:191's fields conjunct is now met while its cassette conjunct is owner-gated, so
+> the box is conjunctively unmet. 22:102 is above.
+>
+> **Dated correction to the paragraph above.** Its sentence "a gated release would fail today on a red
+> `check:e2e-types`" is stale twice over. The 25 pre-existing errors were fixed by PR #109, and the
+> script no longer `&&`-chains its eight projects, so one red project can no longer conceal the seven
+> behind it. Re-measured at this tree: `PASS — 8 project(s) typechecked clean`. One precision, because
+> it will otherwise be re-opened: the check typechecks `e2e/` against the workspace's built `dist/`,
+> so on a stale build it reports failures that are a build-state artifact rather than a regression —
+> and `release-e2e.yml` runs `npm run build` in the step immediately before it, which is the channel
+> the stale claim was about. The other clauses of that paragraph — the R7-P1 `Read` exposure and the
+> tenant scope — are separately superseded by dated amendments in `docs/deploy-posture.md`, and are
+> not re-litigated here: one correction per false fact.
+
 That closeout work is where the honesty lives. Walking each phase's criteria against its
 own recorded evidence produced **UNMET** classifications and filed defect records, not a
 clean sweep — phase 18 closed 6 of 10, phase 20 7 of 8, phase 21 4 of 6, phase 22 5 of 8, and
