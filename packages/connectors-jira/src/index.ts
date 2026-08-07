@@ -255,3 +255,19 @@ export type { RemoteVerificationPointer } from "./evidence/done-transition-verif
 // ---- Shared secret-pattern detector (newly exported, phase 21 work item 6 —
 // previously internal-only; 21's security-fixture manifest reuses it) ----
 export { containsSecretShapedContent, JIRA_SECRET_PATTERNS } from "./security/secret-patterns.js";
+
+// ---- Security fixtures: the Jira tenant-boundary breach scenario (phase 21
+// work item 6, the Jira twin of 20's `FAULT_INJECTION_MATRIX`). Consumed by
+// `@crabgic/gates`' `SECURITY_FIXTURE_MANIFEST` as a BLOCKING entry. The
+// module's `createRecordingJournal` is deliberately NOT re-exported here: it
+// is a fixture internal, exported from its own module only so its body can be
+// unit-covered. ----
+export {
+  JIRA_SECURITY_FIXTURE_MATRIX,
+  JIRA_TENANT_BOUNDARY_FORGED_TENANT,
+  JIRA_TENANT_BOUNDARY_IN_ALLOWLIST_TENANT,
+  makeJiraTenantBoundaryBreachScenario,
+  type JiraSecurityScenario,
+  type JiraSecurityScenarioResult,
+  type JiraTenantBoundaryScenarioOverrides,
+} from "./fixtures/tenant-boundary-scenario.js";
