@@ -198,10 +198,18 @@ RESTORE — explicit source AND explicit path
 CONCLUSION, both directions:
   - the new check DOES cover the old one's subject, so the invariant survives
     even if the old assertion were ever removed;
-  - the old assertion is NOT thereby redundant: it additionally drives
-    `UnpinnedMarketplaceSchema.parse` through `loadUnpinnedMarketplace`, which
-    the new check does not — it reads raw JSON. That is the thing the old check
-    catches and the new one cannot.
+  - the old assertion is NOT thereby redundant, but the reason is THINNER than
+    this file first stated. It said the old test "additionally drives
+    `UnpinnedMarketplaceSchema.parse`… That is the thing the old check catches
+    and the new one cannot." The first half is true; the second overclaims.
+    Measured: `loadUnpinnedMarketplace` is driven from four other files in
+    `packages/plugin/src` (`marketplace-metadata.test.ts`,
+    `plugin-manifest-version.test.ts`, `enabled-plugin-key.test.ts`, and
+    elsewhere in `marketplace-schema.test.ts` itself), so a schema regression
+    would redden those too and the freshness assertion is not the unique bearer
+    of that path. What IS accurate: the old assertion is the cited bearer of a
+    merged record and must not be weakened; the new check independently covers
+    its digest-freshness subject; and neither is a reason to remove the other.
   - it stays exactly as it is. This probe is a measurement, not a proposal.
 
 --------------------------------------------------------------------------------
@@ -273,15 +281,48 @@ could not see that, and its refusal is presence-not-proof by design.
 
 FIXED BY WRITING EACH CALL SITE WITH ITS LITERAL SUBCOMMAND, not by adding the
 magic identifier to a comment. `rev-parse`, `merge-base` and `archive` are all
-in the guard's read-only set, so the module's "read-only throughout" claim is
-now checked by a machine instead of asserted in prose — which is strictly better
-than what the helper had. The script carries a DO-NOT-REFACTOR note at the seam
-saying so, because collapsing three literal call sites into one helper is
-exactly the tidy-up a future reader would reach for.
+in the guard's read-only set. The script carries a DO-NOT-REFACTOR note at the
+seam, because collapsing three literal call sites into one helper is exactly the
+tidy-up a future reader would reach for.
 
-    after the fix:
+⛔ ...AND THE FIRST VERSION OF THAT VERY NOTE SWITCHED THE GUARD OFF. This
+section previously ended by claiming the read-only property was "now checked by
+a machine instead of asserted in prose". THAT WAS FALSE, and the sentence
+claiming it was the thing making it false.
+
+`git-spawn-hygiene.test.ts:112`'s `SANCTIONED_SCRUB` exemption is a PLAIN
+TEXTUAL PRESENCE CHECK over the whole file. The DO-NOT-REFACTOR note spelled all
+three sanctioned helper names while explaining why they could not be imported —
+so the file matched the exemption and was skipped by the mutating-spawn rule
+entirely, regardless of what it spawned. Measured on the pushed branch:
+
+    node -e '<the SANCTIONED_SCRUB regex> .test(<this file>)'  ->  true
+                                        first match: "runFixtureGit"
+
+    probe                                              git-spawn-hygiene
+    reintroduce the generic git(repoRoot, args) helper       4 passed  ❌
+    add `git commit -am` AND `git reset --hard` spawns       4 passed  ❌
+
+Both should have reddened. Neither did. The guard that "correctly reddened" the
+first draft had been disabled by the comment describing that event.
+
+REMEDY: de-tokenize the note — refer to `packages/testkit/src/git-env.ts` as a
+MODULE and never name its exports. Re-measured after that change:
+
+    as-is, de-tokenized                                      4 passed (4)  ✅
+    add `git commit -am` AND `git reset --hard` spawns
+        1 failed | 3 passed (4)  ✅  offenders: ["scripts/check-marketplace-pin-digest.mjs"]
+    restore                                                  4 passed (4)  ✅
+
+The claim in this section is now true, and it is true because it was tested in
+the failing direction rather than asserted. THE GENERAL LESSON, which is bigger
+than this file: a guard whose exemption is a textual token can be disabled by
+PROSE ABOUT the guard. Any comment that must discuss an exemption mechanism has
+to name it obliquely, and the only way to know is a reverse probe.
+
+    after both fixes:
       packages/testkit/src/git-spawn-hygiene.test.ts   4 passed (4)
-      scripts/check-marketplace-pin-digest.test.mjs   20 passed (20)
+      scripts/check-marketplace-pin-digest.test.mjs   21 passed (21)
 
 --------------------------------------------------------------------------------
 9c. ⚠️ AND THEN CI CAUGHT WHAT A GREEN LOCAL GATE COULD NOT — the shallow clone

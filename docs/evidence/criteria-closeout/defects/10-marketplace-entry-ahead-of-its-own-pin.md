@@ -113,10 +113,15 @@ rather than assumed, and the numbers are in the evidence transcript:
   **204 passed (204)** — the count drops by exactly one, proving the deletion took — while the new
   suite still goes 3 failed / 17 passed (20) and the CLI still exits 1.
 
-So the new check does cover the old one's subject, and the old one is **not** thereby redundant: it
-additionally drives `UnpinnedMarketplaceSchema.parse` through `loadUnpinnedMarketplace`, which the
-new check does not — it reads raw JSON. Both were restored to baseline md5 immediately after the
-probe. **The old assertion stays exactly as it is.**
+So the new check does cover the old one's subject, and the old one is **not** thereby redundant —
+though the reason is **thinner than first stated here**. This record originally said the old test
+"additionally drives `UnpinnedMarketplaceSchema.parse` … which the new check does not", implying
+that path is uniquely borne by it. Measured: `loadUnpinnedMarketplace` is driven from four other
+files under `packages/plugin/src`, so a schema regression reddens those too. What is accurate: the
+old assertion is the **cited bearer of a merged record** and must not be weakened; the new check
+independently covers its digest-freshness subject; neither is grounds for removing the other. Both
+files were restored to baseline md5 immediately after the probe. **The old assertion stays exactly
+as it is.**
 
 ## Residual, stated plainly
 

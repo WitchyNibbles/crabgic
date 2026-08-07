@@ -227,6 +227,15 @@ describe("the real repository is in one of the two legal states", () => {
     expect(LEGAL_STATES).toContain(result.state);
     expect(result.ok).toBe(true);
     expect(result.recordedDigest).toBe(result.worktreeDigest);
+    // The `tree@pin` digest was ACTUALLY COMPUTED, not left undefined.
+    //
+    // Added after the mutation battery showed the historical corpus was the
+    // ONLY thing pinning that computation: deleting it left this arm green,
+    // because a missing `tree@pin` reports `ahead-of-pin`, which is legal. This
+    // assertion pins it with NO history dependency beyond the entry's own
+    // commit — and it is a second signal for the shallow-clone breakage below,
+    // which the corpus test caught only because it names five older commits.
+    expect(result.pinnedTreeDigest).toMatch(/^[0-9a-f]{64}$/);
   }, 60_000);
 });
 

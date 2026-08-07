@@ -148,9 +148,20 @@ function scrubbedGitEnv() {
  * draft did exactly that, and `packages/testkit/src/git-spawn-hygiene.test.ts`
  * reddened the whole suite for it — correctly. That guard classifies a spawn by
  * the LITERAL first element of its argv array; a generic helper passing a
- * variable `args` is unclassifiable, so it is assumed MUTATING and required to
- * name a sanctioned scrub (`runFixtureGit`/`gitFixtureEnv`/
- * `GIT_LOCATION_ENV_VARS`), none of which this build-free script can import.
+ * variable `args` is unclassifiable, so it is assumed MUTATING and must then
+ * name one of the sanctioned scrub helpers from `packages/testkit/src/git-env.ts`
+ * — none of which this build-free script can import.
+ *
+ * ⚠️⚠️ AND THOSE HELPER NAMES ARE DELIBERATELY NOT SPELLED IN THIS FILE.
+ * The guard's exemption is a plain TEXTUAL PRESENCE CHECK over the whole
+ * source, so merely naming them anywhere — including in a comment explaining
+ * why they cannot be used — exempts the file from the rule entirely. This
+ * comment's first version spelled all three, which meant the very sentence
+ * claiming the read-only property was machine-checked was the thing switching
+ * the machine off. Measured: with those names present, reintroducing the
+ * generic helper AND adding `git commit`/`git reset --hard` spawns both left
+ * `git-spawn-hygiene` at 4 passed. Do not reintroduce them here; refer to the
+ * module, not to its exports.
  *
  * Writing each call site with its literal subcommand is the better answer
  * anyway, and not merely the one that satisfies the guard: it makes
