@@ -322,6 +322,46 @@ Independently re-counted 2026-08-05, not copied from a summary:
 
 ---
 
+## 2026-08-07 — the marketplace publication channel, measured (annotation, not a ruling)
+
+The certification block at the top of this document says the ruling "does not certify anything about
+the marketplace publication channel, on which it is silent." That silence is left standing. What is
+added here is a **measurement**, so the next reader is not silent for lack of a number.
+
+**Question asked:** does the committed marketplace entry's digest drifting past its own pinned commit
+between release cuts reach an operator?
+
+**Answer, measured on both published tarballs rather than argued: no, on every channel that exists.**
+
+- **npm (`npm i -g crabgic` → `crabgic install`) — the real channel.** The published tarball bundles
+  the whole plugin at `dist/plugin/`, including its own copy of `marketplace.json`, and is built at
+  the tag. Recomputing the packaged digest of the shipped tree and of the git tree at each entry's
+  own pinned commit gives a self-consistent `(version, commit, digest)` triple for **both** 1.6.0 and
+  1.5.0. The drift structurally cannot reach npm.
+- **`claude plugin marketplace add <local path>`.** The operator gets the digest freshly computed for
+  the tree in front of them, which is what the per-push freshness assertion guarantees. Nothing in
+  production reads the recorded `digest`: `install.ts`, `upgrade.ts` and
+  `capability-manifest-freshness.ts` each recompute from the plugin source directory, and the
+  recorded field has exactly two readers repo-wide, both test files. What the operator does get is
+  main's packaged content wearing the last release's `version` string — `version` drift, not `digest`
+  drift, and per `docs/engine-baseline.md` §16 that is the designed behaviour.
+- **A GitHub-hosted marketplace does not exist.** There is exactly one `marketplace.json` in this
+  repository, at `packages/plugin/.claude-plugin/`; there is no root `.claude-plugin/`, so this repo
+  cannot today be added as a GitHub-hosted marketplace. `README.md` tells operators to add it by
+  path. Whether to publish one is a product decision, not a defect. **Not claimed:** whether the
+  engine would refuse such an add — the baseline does not record it, and it is left UNVERIFIED.
+
+**What changed as a result:** the residual is no longer only prose. `npm run check:marketplace-pin`
+runs as a `meta-checks` step, names the two legal states, prints the drift on every push while it
+lasts, and blocks on the three states nothing named before. Filed as
+`docs/evidence/criteria-closeout/defects/10-marketplace-entry-ahead-of-its-own-pin.md`; evidence at
+`docs/evidence/phase-10/marketplace-pin-digest-states.txt`.
+
+**This annotation does not move the certification line.** It narrows what "silent" means, nothing
+more.
+
+---
+
 ## Changing this document
 
 Dated rulings, appended. Annotate; never rewrite. Only an owner ruling flips the certification line

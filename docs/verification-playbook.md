@@ -627,6 +627,44 @@ serialization.
 This is the same shape as the earlier de-grandfathering finding: **coverage can migrate between rules
 with no test failing.** Both times it took deleting the older rule to see it.
 
+## 📝 DOCUMENTATION CAN DISABLE THE GUARD IT DOCUMENTS
+
+_(Added 2026-08-07.)_ The two sections above are about coverage migrating between rules, and about
+encoding a residual so it cannot drift. This is a third member of the family and it is nastier than
+either, because the disabling edit **looks like the fix**.
+
+`packages/testkit/src/git-spawn-hygiene.test.ts` exempts a file from its mutating-git-spawn rule when
+the source textually contains one of three sanctioned scrub identifiers. `scripts/check-marketplace-
+pin-digest.mjs` had just been corrected to spawn only read-only subcommands, and carried a
+DO-NOT-REFACTOR note **naming all three helpers to explain why a build-free script cannot import
+them.** The note matched the exemption. Measured:
+
+| probe                                                    | guard                   | should be |
+| -------------------------------------------------------- | ----------------------- | --------- |
+| reintroduce the generic `git(repoRoot, args)` helper     | 4 passed                | red       |
+| add outright `git commit -am` **and** `git reset --hard` | 4 passed                | red       |
+| after de-tokenizing the comment, same mutating spawns    | **1 failed / 3 passed** | red ✅    |
+
+**The sentence claiming the property was machine-checked was the thing switching the machine off.**
+The file's own evidence transcript asserted "now checked by a machine instead of asserted in prose" —
+false, and false _because_ of the words asserting it.
+
+**Rules:**
+
+1. **A guard whose exemption is a textual token can be disabled by prose ABOUT the guard.** When you
+   must discuss an exemption mechanism, name it obliquely — refer to the module, never to its
+   exports.
+2. **Never write "this is now machine-checked" without a reverse probe.** Add the violation the guard
+   exists to catch, watch it redden, restore. An exemption is invisible in the passing direction —
+   green looks identical whether the guard ran or skipped the file entirely.
+3. Presence-not-proof exemptions are a deliberate trade (cheap, hard to bypass by accident). The edge
+   is a documented cost, not a bug to fix by tightening the regex — which is why the cost is now
+   written at the definition site as well as here.
+
+⚠️ Corollary for any presence-based rule: **grep the exemption tokens across the tree and ask which
+matches are prose.** A file that names a sanctioned helper without using it is exempt and nothing
+says so.
+
 ## 🔢 PROVE A NEW ASSERTION RUNS PER-PUSH BY THE JOB LOG'S TEST COUNT
 
 The cheapest, hardest proof that your fix actually executes in CI — not just that a workflow was green:

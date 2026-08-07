@@ -55,6 +55,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # FULL HISTORY, and this is load-bearing rather than defensive.
+          #
+          # `scripts/check-marketplace-pin-digest.test.mjs` classifies five REAL
+          # historical commits by `git archive`-ing each one's `packages/plugin`
+          # and running the production classifier over it. That corpus is the
+          # RED-first evidence for the check — the drift it pins actually
+          # happened, twice, and is recoverable only from history.
+          #
+          # `actions/checkout`'s default is a depth-1 shallow clone, under which
+          # every one of those commits is `fatal: not a valid object name`.
+          # Measured on PR #131: 7 failed on BOTH `ubuntu-latest` and
+          # `ubuntu-24.04-arm` while the same suite was green locally, because a
+          # developer's clone has the history and the runner's did not.
+          #
+          # The alternative — skipping those assertions when history is absent —
+          # is refused on the same grounds as the bubblewrap guard below: a
+          # suite that early-returns on a missing prerequisite reports a green
+          # tick having asserted nothing. The suite instead asserts the history
+          # IS present, so a future checkout change fails here with a message
+          # naming this setting rather than cascading into seven confusing
+          # assertion failures.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -223,6 +246,25 @@ jobs:
         run: npm run check:hygiene
       - name: release-notes-prep records the npm-name verdict
         run: npm run check:release-notes
+      # The committed marketplace entry couples three facts — `version`,
+      # `commit` and `digest` — but only the digest was kept fresh per push
+      # (`packages/plugin/src/marketplace-schema.test.ts`'s freshness
+      # assertion). `version` and `commit` move only at a release cut, so
+      # between cuts the entry describes HEAD's plugin content while naming the
+      # previous release's commit. Measured on five real commits: that state
+      # held for the whole of the 1.5.0 -> 1.6.0 interval, twice, and NOTHING
+      # per-push said a word about it — the only check that looks at the pin at
+      # all (`e2e/release`'s `marketplacePinCheck`) is not a `vitest.config.ts`
+      # project and runs in no per-push channel, so the drift surfaced once per
+      # release. This step names the two legal states, PASSES both, prints the
+      # drift on every push when the entry is ahead of its own pin, and blocks
+      # only on the third case (a digest describing no tree, a pin that
+      # resolves to nothing, or a pin HEAD cannot reach). Needs the full
+      # history the `fetch-depth: 0` above already provides: it `git archive`s
+      # the pinned commit to recompute that tree's digest. Dependency-free and
+      # build-free, like its siblings here.
+      - name: marketplace entry is in one of its two legal digest states
+        run: npm run check:marketplace-pin
       # The release gate refuses a cut once the committed vendor-support-window
       # record is more than 30 days old, or once a vendor's window has closed.
       # That check (`e2e/attestation`'s `checkVersionSupportWindows`) has no
