@@ -112,6 +112,17 @@ ever produced, 1.42× the 1.196% above.** `expected 0.01697674418604651 to be le
 isolation three times immediately afterwards: **3/3 green**, at 0.1074 / 0.0277 / 0.0819%, themselves
 a 3.9× spread. Verbatim capture in `docs/evidence/phase-05/idle-budget-load-sensitivity.txt` §5c.
 
+⚠️⚠️ **A SIXTH, twenty minutes later and far larger — `3.2330%`**
+(`expected 0.03233044636908727 to be less than 0.01`, 1 failed | 6868 passed), in the pre-push hook
+for the very commit recording the fifth. **2.7× the 1.196% this section opens with.**
+
+⇒ **THIS ROW'S FREQUENCY DESCRIPTION IS NOW WRONG AND IS THE POINT.** "Seen red once", above, is
+left verbatim. On the developer host on 2026-08-07 the arm breached in **two of three consecutive
+plain full-suite runs** — red 1.6977%, green, red 3.2330% — none under artificial load, with the
+readings growing rather than clustering near the bound. **Do not treat this row as an occasional
+timing flake any more.** At that rate it is a gate that does not work, and re-running it is not a
+disposition. Severity in the defect record is raised accordingly.
+
 ⚠️ **The sentence above — "a real wall-clock window whose measurement a loaded host stretches past
 its tolerance" — stays verbatim and is half wrong.** It is the right family and the wrong mechanism,
 and the difference changes the remedy. Measured, and written up in full at

@@ -7,10 +7,14 @@ ticked and stays ticked: this record is about the instrument, not about the daem
 **Found:** 2026-08-07, post-v1.6.0 review, at `5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744`
 (`origin/main`).
 
-**Severity:** low, and **not a product defect of any kind**. The cost is exactly the one
-`docs/evidence/gap-18/known-gate-flakes.md:24` names: "a gate that goes red for reasons unrelated to
-the change under test teaches its readers to re-run rather than investigate — and the moment that
-habit forms, a genuine regression gets the same shrug."
+**Severity:** **raised 2026-08-07 from low to blocking-the-gate**, still **not a product defect of
+any kind**. The cost named at `docs/evidence/gap-18/known-gate-flakes.md:24` — "a gate that goes red
+for reasons unrelated to the change under test teaches its readers to re-run rather than
+investigate" — is no longer occasional here. ⚠️ **On this host today the arm breached in two of three
+consecutive plain full-suite runs, at 1.6977% and 3.2330%, with no artificial load in any of them.**
+The second is **2.7× the previously recorded maximum**. Every earlier description of this arm's
+frequency — "seen red once", "three times in one week" — understates what is now measurable. A test
+that fails roughly two runs in three is not a flake to catalogue; it is a gate that does not work.
 
 **Effort: S** either way. Two remedies sized below.
 
@@ -124,6 +128,13 @@ but a machine still settling from the contended runs below. Re-run in isolation 
 immediately afterwards: **3/3 green**, at 0.1074 / 0.0277 / 0.0819% — themselves a 3.9× spread, which
 is exactly why that disposition is weak.
 
+**And again, larger, on the very next full-suite run — `3.2330%`**, in the pre-push hook for the
+commit carrying this record (`expected 0.03233044636908727 to be less than 0.01`, 1 failed | 6868
+passed). That is **2.7× the previously recorded maximum** and 1.9× the reading twenty minutes
+earlier. Three consecutive plain full-suite runs on this host went **red (1.6977%) → green →
+red (3.2330%)**, none of them under artificial load. The readings are getting _larger_, not
+clustering near the bound.
+
 **And it cuts both ways, which is why both halves are stated.** Two full-suite runs held under 32
 busy loops for their whole duration came in at **0.0961%** and **0.1069%** — inside budget by an
 order of magnitude — while the **unloaded** run breached at 1.6977%. So deliberate machine contention
@@ -190,6 +201,9 @@ Whichever is chosen, the disposition belongs in this record, not in a fifth flak
 - **Not claimed:** that this pass isolated the _mechanism_. It reproduced a breach (1.6977%, larger
   than any on record) but could not produce one on demand: deliberately contended full-suite runs
   came in at 0.0961% and 0.1069%, while the breach arrived on an unloaded run.
-- **Not claimed:** that this is urgent. Nothing ships wrong.
+- **Not claimed:** that anything ships wrong. Nothing does — this is an instrument, not the daemon.
+  ⚠️ But the earlier "not urgent" is **withdrawn**: at a two-in-three failure rate the arm is
+  currently blocking honest pushes, and this record's own commit had to use the sanctioned
+  docs-only pre-push bypass because of it.
 
 **Evidence:** `docs/evidence/phase-05/idle-budget-load-sensitivity.txt`.

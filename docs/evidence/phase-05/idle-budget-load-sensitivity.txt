@@ -275,7 +275,8 @@ artificial load:
     exit status: 1
 
 **1.6977% against a <1% budget — 1.42x the previous maximum on record (1.196%)
-and the largest figure this arm has ever produced.**
+and, at the time it was captured, the largest figure this arm had ever produced.
+It held that title for about twenty minutes; see the 3.2330% reading below.**
 
 HOST STATE, checked rather than assumed, because it is the whole value of the
 sample: `pgrep` for the busy-loop generators returned **0** — every spinner from
@@ -300,6 +301,33 @@ RE-RUN IN ISOLATION IMMEDIATELY AFTERWARDS, three times, verbatim:
 3/3 green, spanning 3.9x among themselves — the same disposition every prior
 sighting used, from the same noisy channel, and it says nothing about the 1.6977
 reading.
+
+⚠️ AND AGAIN, LARGER, ON THE VERY NEXT FULL-SUITE RUN — 3.2330%. The pre-push
+hook for the commit carrying this transcript:
+
+    [ECC pre-push] Running: test
+     × RSS and CPU both stay within budget over a sustained idle window, using
+       the REAL 5s-paced scheduler 1511ms
+     AssertionError: expected 0.03233044636908727 to be less than 0.01
+      ❯ src/idle-budget/idle-budget.integration.test.ts:46:25
+          Tests  1 failed | 6868 passed (6869)
+    [ECC pre-push] FAILED: test failed
+
+**3.2330% — 2.7x the previously recorded maximum of 1.196%, and 1.9x the
+1.6977% reading twenty minutes earlier.**
+
+⇒ THE FREQUENCY CLAIM IN EVERY EARLIER RECORD IS NOW WRONG, and this is the most
+important thing in this file. The committed sighting describes "seen red once";
+the flake lists treat it as an occasional event; the first draft of the record
+this transcript supports said "three times in one week". On THIS host, TODAY,
+the arm breached in **two of the three** consecutive plain full-suite runs taken
+while writing this section — 1.6977% (red), then green, then 3.2330% (red) —
+with no artificial load in any of them. Whatever the mechanism, it is not rare
+here, and the readings are getting larger rather than clustering near the bound.
+
+A test that fails roughly two runs in three is not a flake to be catalogued; it
+is a gate that does not work, and the remedy is owed sooner than "whoever owns
+that phase" implies.
 
 ⚠️ TWO CONSEQUENCES, and they pull in opposite directions, which is why both are
 stated. It STRENGTHENS the record: the breach is real, reproducible without any

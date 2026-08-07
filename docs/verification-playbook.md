@@ -982,7 +982,11 @@ directions:
   `vitest run --coverage` full-suite run with NO artificial load** (`pgrep` for the generators
   returned 0; `/proc/loadavg` read `6.47 16.96 20.59`), 3/3 green in isolation immediately
   afterwards. So deliberate contention is **neither necessary nor sufficient**, and the mechanism is
-  not isolated. ⚠️ **And the disposition every sighting has used —
+  not isolated. ⚠️⚠️ **Then a SIXTH at `3.2330%` twenty minutes later — 2.7× the 1.196% — in the
+  pre-push hook for the commit recording the fifth. Two of three consecutive plain full-suite runs
+  on that host breached, unloaded, with the readings GROWING.** Stop treating this as an occasional
+  timing flake: at that rate it is a gate that does not work, and a green isolated re-run is not a
+  disposition. ⚠️ **And the disposition every sighting has used —
   "re-ran in isolation, green" — comes from the noisiest channel there is:** the isolated channel
   spans **11.6×** on the committed record (0.0284% up to 0.3293% at
   `docs/evidence/phase-05/closeout-c6-idle-budget.txt:20`, isolated with coverage off), against 1.6×
