@@ -57,6 +57,12 @@ import {
 const REPO_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PLUGIN_ROOT = path.join(REPO_ROOT, ...PLUGIN_RELATIVE_PATH.split("/"));
 
+/**
+ * The five commits this suite classifies. Named once so the shallow-clone guard
+ * below and the historical-corpus assertion cannot drift apart.
+ */
+const CORPUS_COMMITS = ["cb450e3", "1c85913", "b5a609c", "2ff3bce", "6b9dd7b"];
+
 /** A 40-hex string that is deliberately NOT a git object — see the assertion that proves it. */
 const NOT_AN_OBJECT = "dead".repeat(10);
 
@@ -135,6 +141,30 @@ describe("classifyMarketplacePinDigest — the three FAIL fixtures", () => {
       facts({ commitResolves: false, recordedDigest: "x", worktreeDigest: "y" }),
     );
     expect(r.state).toBe("unresolvable-pin");
+  });
+});
+
+describe("the checkout carries the history this suite measures against", () => {
+  it("has the five corpus commits — fails HERE, naming the cause, rather than cascading", () => {
+    // MEASURED ON PR #131, and this test is the remedy. `actions/checkout`'s
+    // default is a depth-1 shallow clone, under which every commit below is
+    // `fatal: not a valid object name`. The suite was green locally (a
+    // developer's clone has the history) and went 7-failed on BOTH
+    // `ubuntu-latest` and `ubuntu-24.04-arm`, as a scatter of unrelated-looking
+    // assertion errors that said nothing about the real cause.
+    //
+    // `ci.yml`'s `test` job now sets `fetch-depth: 0`. This assertion is what
+    // makes a future revert of that setting fail with ONE message that names
+    // it, instead of seven that do not.
+    //
+    // Deliberately NOT a skip. A suite that early-returns on a missing
+    // prerequisite reports a green tick having asserted nothing — the exact
+    // defect class `ci.yml`'s own bubblewrap guard was rewritten to avoid.
+    const missing = CORPUS_COMMITS.filter((rev) => resolveCommit(REPO_ROOT, rev) === undefined);
+    expect(
+      missing,
+      "shallow clone: set `fetch-depth: 0` on this job's actions/checkout step",
+    ).toEqual([]);
   });
 });
 
@@ -260,6 +290,8 @@ describe("the historical corpus this classifier was built from", () => {
       { rev: "2ff3bce", version: "1.5.0", state: "ahead-of-pin" }, // PR #50 drift
       { rev: "6b9dd7b", version: "1.5.0", state: "at-release" }, // the v1.5.0 tag
     ];
+    // Bound to the shallow-clone guard's list, so the two cannot drift.
+    expect(expected.map((e) => e.rev)).toEqual(CORPUS_COMMITS);
     const actual = expected.map(({ rev }) => {
       const exported = extractPluginTreeAt(REPO_ROOT, rev);
       cleanups.push(exported.cleanup);

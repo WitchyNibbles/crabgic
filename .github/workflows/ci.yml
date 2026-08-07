@@ -55,6 +55,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # FULL HISTORY, and this is load-bearing rather than defensive.
+          #
+          # `scripts/check-marketplace-pin-digest.test.mjs` classifies five REAL
+          # historical commits by `git archive`-ing each one's `packages/plugin`
+          # and running the production classifier over it. That corpus is the
+          # RED-first evidence for the check — the drift it pins actually
+          # happened, twice, and is recoverable only from history.
+          #
+          # `actions/checkout`'s default is a depth-1 shallow clone, under which
+          # every one of those commits is `fatal: not a valid object name`.
+          # Measured on PR #131: 7 failed on BOTH `ubuntu-latest` and
+          # `ubuntu-24.04-arm` while the same suite was green locally, because a
+          # developer's clone has the history and the runner's did not.
+          #
+          # The alternative — skipping those assertions when history is absent —
+          # is refused on the same grounds as the bubblewrap guard below: a
+          # suite that early-returns on a missing prerequisite reports a green
+          # tick having asserted nothing. The suite instead asserts the history
+          # IS present, so a future checkout change fails here with a message
+          # naming this setting rather than cascading into seven confusing
+          # assertion failures.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

@@ -284,6 +284,56 @@ exactly the tidy-up a future reader would reach for.
       scripts/check-marketplace-pin-digest.test.mjs   20 passed (20)
 
 --------------------------------------------------------------------------------
+9c. ⚠️ AND THEN CI CAUGHT WHAT A GREEN LOCAL GATE COULD NOT — the shallow clone
+--------------------------------------------------------------------------------
+The full local gate was GREEN — 652 files / 6814 tests, EXIT=0 — and the same
+suite failed on BOTH arches in CI. Recorded because it is the sharpest instance
+in this pass of a rule this repository already knows: a green run somewhere is
+not a green run in the channel that matters.
+
+    PR #131, run 31181816965
+      unit-test+coverage (ubuntu-latest)     fail   4m16s
+      unit-test+coverage (ubuntu-24.04-arm)  fail    4m8s
+      every other job on both arches         pass
+
+    from the job log:
+      fatal: not a valid object name: b5a609c
+      fatal: not a valid object name: cb450e3
+      × resolves a real commit and refuses a 40-hex string that is not an object
+      × reports ancestry in the direction it claims, and refuses the reverse
+      × classifies THIS worktree, and it is legal
+      × prints the ahead-of-pin drift rather than passing silently
+      × renders a FAIL to stderr with a non-zero exit
+      × reproduces all five measured commits, using the real classifier
+      × removes its scratch directory on cleanup
+      AssertionError: expected [ 'at-release', 'ahead-of-pin' ] to include 'unresolvable-pin'
+
+CAUSE: `actions/checkout`'s default is a DEPTH-1 SHALLOW CLONE. The `meta-checks`
+job already sets `fetch-depth: 0` (for the criteria-baseline re-derivation), which
+is why `npm run check:marketplace-pin` was green there — but the `test` job did
+not, so every historical commit this suite classifies was absent. A developer's
+clone has the history; the runner's did not. The local gate could not have caught
+this, and no amount of re-running it would have.
+
+REMEDY, and the shape of it matters:
+
+  1. `fetch-depth: 0` on the `test` job's checkout, with the reason written at
+     the setting rather than in a commit message.
+  2. A FIRST-CLASS ASSERTION that the history is present, listing the missing
+     revisions and naming `fetch-depth: 0` in its failure message — so a future
+     revert fails with ONE actionable line instead of seven that point
+     elsewhere. The corpus list is a single `CORPUS_COMMITS` constant shared
+     with the historical-corpus test, so the guard and the thing it guards
+     cannot drift.
+
+  ⛔ REFUSED: skipping those assertions when history is absent. That is the
+  defect class `ci.yml`'s own bubblewrap guard was rewritten to avoid — a suite
+  that early-returns on a missing prerequisite reports a green tick having
+  asserted nothing.
+
+    after the fix, locally:  21 passed (21)   (20 before, +1 for the guard)
+
+--------------------------------------------------------------------------------
 10. WHAT IS AND IS NOT CLAIMED
 --------------------------------------------------------------------------------
 CLAIMED: the two legal states are named and asserted; `ahead-of-pin` prints on
