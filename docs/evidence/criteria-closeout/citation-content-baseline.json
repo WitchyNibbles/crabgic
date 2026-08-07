@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "bda264dc3e5798dc29383721e2f297ce5f9442bf",
+  "generatedAtSha": "cb450e3ef11610e2cd5d18ccf7da6cb7a3a65442",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2685,
-    "seededStale": 637,
+    "anchored": 2682,
+    "seededStale": 640,
     "outsideSpan": 772,
-    "repeatText": 529,
+    "repeatText": 528,
     "crossFile": 20,
     "skipped": 609
   },
@@ -10821,7 +10821,7 @@
       "qa": "ce736975ff1f",
       "ref": "OK",
       "pins": [
-        "OK-file/collapsed@6,15,24,32,41,50~repeat",
+        "ABSENT@-",
         "SKIP-short",
         "SKIP-short",
         "SKIP-short",
@@ -10865,8 +10865,8 @@
         "OK/collapsed@72,126,165~repeat",
         "OK/collapsed@162",
         "OK/collapsed@150,158,163,175,180,189~repeat",
-        "OK/collapsed@164",
-        "OK/collapsed@165",
+        "ABSENT@-",
+        "ABSENT@-",
         "SKIP-short",
         "OK/collapsed@73"
       ]

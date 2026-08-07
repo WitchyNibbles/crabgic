@@ -23,8 +23,8 @@ import { buildCheckResult, type AttestationCheckResult } from "./checkResult.js"
  *
  *   1. COVERAGE — every Jira/Grafana target the compatibility matrix
  *      commits to has a re-confirmation record.
- *   2. FRESHNESS — the confirmation was taken close enough to the release
- *      cut to still be meaningful, and is not dated after it.
+ *   2. FRESHNESS — the PROBE ran close enough to the release cut for its
+ *      record to still describe reality, and is not dated after it.
  *   3. THE WINDOW COVERS THE RELEASE — `supportEndsOn` is after the
  *      release date. A version already out of vendor support at the moment
  *      it ships is the failure this item names.
@@ -99,7 +99,7 @@ export const SupportWindowRecordSchema = z
      * covers this release. Omitted for a `continuous` one.
      */
     supportEndsOn: z.string().regex(ISO_DATE).optional(),
-    /** When this confirmation was taken, ISO `YYYY-MM-DD`. */
+    /** When the automated PROBE last ran, ISO `YYYY-MM-DD` — NOT a human re-read; see `CONFIRMED_ON_PROVENANCE` at the foot of this file. */
     confirmedOn: z.string().regex(ISO_DATE),
     /** Where the support-end date came from — a vendor policy URL or an evidence artifact path. */
     source: z.string().min(1),
@@ -161,8 +161,8 @@ export function checkVersionSupportWindows(
       );
     } else if (age > maxAgeDays) {
       reasons.push(
-        `${target}: re-confirmation is ${Math.floor(age)} days stale at the release cut ` +
-          `(confirmed ${record.confirmedOn}, limit ${maxAgeDays} days) — not "current at release time".`,
+        `${target}: the support-window PROBE last ran ${Math.floor(age)} days before the release ` +
+          `cut (probed ${record.confirmedOn}, limit ${maxAgeDays} days) — the record is not "current at release time". The probe re-checks that the pinned artifact still resolves; the support-end date is transcribed by a human into docs/vendor-support-policy.json and is NOT re-read here.`,
       );
     }
 
@@ -223,3 +223,51 @@ export function readVersionSupportWindowsInput(
     requiredTargets: REQUIRED_SUPPORT_WINDOW_TARGETS,
   };
 }
+
+/**
+ * WHAT `confirmedOn` IS, AND — the part the name gets wrong — WHAT IT IS NOT.
+ *
+ * OWNER RULING, 2026-08-07. Probe-based confirmation is ACCEPTED: the automated
+ * probe *is* the confirmation, and `confirmedOn` may legitimately be re-stamped
+ * by a probe run. What was not accepted is the wording. This block, the field's
+ * own doc comment above, and the staleness reason this module emits were all
+ * reworded in the same pass so they say what actually happens.
+ *
+ * ⚠️ THE ACCEPTED LIMITATION, stated plainly and not softened, because an
+ * oversold control is how a check ends up trusted and inert:
+ *
+ *   WHAT A FRESH `confirmedOn` PROVES — that `e2e/provisioning`'s probe ran on
+ *   that date and that the pinned container tag still resolves at the vendor's
+ *   registry. That is a real HTTP fact, re-checked every time, and it is the
+ *   half that caught the open Grafana OSS 13.1 case.
+ *
+ *   WHAT IT DOES NOT PROVE — that the support-end DATES are unchanged. Those
+ *   are not probed at all. `supportEndsOn` is copied out of the committed,
+ *   human-maintained `docs/vendor-support-policy.json`, whose entries cite the
+ *   vendor page a human transcribed them from and carry their own transcription
+ *   date. A probe run that copies a stale date forward re-stamps `confirmedOn`
+ *   without having looked at a vendor page, and this module cannot tell the
+ *   difference. Scraping those pages and calling the result verified is exactly
+ *   the aspirational evidence roadmap/23 forbids — see
+ *   `e2e/provisioning/src/supportWindows.ts`'s MECHANICAL/ATTESTED split.
+ *
+ * THE GATE IS NOT RENAMED, and that is a considered call rather than an
+ * omission. `release-gate:jira-grafana-version-support-windows` describes its
+ * SUBJECT accurately — Jira/Grafana version support windows — and the roadmap
+ * criterion it evidences uses the same words. What overclaimed was the message's
+ * implication that a human had re-read the vendor pages, and that is what
+ * changed. Renaming the tag would also re-derive its requirement id and desync
+ * it from the criterion, for no gain in honesty.
+ *
+ * AUTO-RENEWAL IS STILL REFUSED. Accepting a probe as the confirmer is not
+ * accepting a workflow that renews the gate's own input: a refresh must land
+ * through a deliberate, reviewable change. `scripts/check-support-window-
+ * freshness.mjs` fails per-push if any workflow both runs the probe and can
+ * commit or push its output, and warns 21 days before this bound expires — the
+ * lane that exists because THIS check has no per-push caller.
+ */
+export const CONFIRMED_ON_PROVENANCE =
+  "confirmedOn is the date the automated support-window probe last ran. It attests that the " +
+  "pinned artifact still resolves at the vendor registry. It does NOT attest that the vendor's " +
+  "support-end dates are unchanged: those are transcribed by a human into " +
+  "docs/vendor-support-policy.json, which records its own transcription date and source quote.";
