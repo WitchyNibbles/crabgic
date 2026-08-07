@@ -242,3 +242,38 @@ $ grep -c '^exports\[' …/cli.snapshots.test.ts.snap   ->  51   (19 + 32)
    File length 100 -> 1033 lines. Dynamic imports would have avoided the drift
    at the cost of real fixtures; real fixtures won, and the drift is recorded
    here and in commit 81d9cd8's message so the flip annotation can carry it.
+
+== 9. CORRECTION 2026-08-06 — the <uuid> count in section 4 is a LINE count ==
+   Annotated, not rewritten: section 4's number above stays as written.
+
+   Section 4 reports "placeholders landed: <uuid> x61". 61 is the number of
+   LINES bearing the placeholder, not the number of OCCURRENCES. The committed
+   .snap holds 62 occurrences on 61 lines, because line 424 carries two in a
+   single string — and that line is the very one section 4's DEFECT 1 quotes
+   ("Inverse of ChangeSet ... (promoted learning proposal ...)"), so this
+   transcript already contained its own counter-example.
+
+   Cause: `grep -c` counts matching lines. The section-4 sweep read its output
+   as an occurrence count.
+
+   Measured at 2c0562d (the squash that landed this work) and re-checked at
+   1bc0d51 and 6f964d7; identical at all three (6f964d7 rewrote four lines of
+   this .snap for Gap 22's provisionalBudgetHash without touching a <uuid>):
+
+     $ SNAP=packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap
+     $ git grep -c '<uuid>' 2c0562d -- $SNAP
+       2c0562d:packages/cli/.../cli.snapshots.test.ts.snap:61
+     $ git grep -o -e '<uuid>' 2c0562d -- $SNAP | wc -l
+       62
+     $ git grep -n '<uuid>.*<uuid>' 2c0562d -- $SNAP
+       2c0562d:packages/cli/.../cli.snapshots.test.ts.snap:424:    "rollbackStrategy": "Inverse of ChangeSet <uuid> (promoted learning proposal <uuid>): restore the pre-promotion baseline.",
+
+   The other three placeholders in that same line were re-counted both ways, in
+   case the miscount was wider than the one number: <sha256> 1 line / 1
+   occurrence, <timestamp> 21 / 21, <token> 1 / 1. Only <uuid> diverges.
+
+   NOTHING ABOUT THE CONCLUSION CHANGES. Section 4's finding is that no raw
+   uuid survived normalization, and 62 normalized occurrences discharge that at
+   least as well as 61. The correction is to the measurement's units, which is
+   exactly the class of error a line-anchored repository cannot afford to leave
+   standing.
