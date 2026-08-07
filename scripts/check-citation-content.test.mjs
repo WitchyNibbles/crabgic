@@ -498,8 +498,21 @@ describe("the ratchet", () => {
     expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
     const baseline = JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8"));
     expect(baseline.allowUnanchored).toBe(true);
-    expect(baseline.unanchoredAccepted).toBe(1);
+    // Names the citation, not just a count: `allowUnanchored: true` beside
+    // `unanchoredAccepted: 0` is a flag pointing at nothing, and a confession
+    // that does not say what it is confessing to is not much of one.
+    expect(baseline.unanchoredKeys).toEqual(["phase-99.json#c1#src/guard.ts:1"]);
     expect(baseline.allowUnanchoredWarning).toContain("do NOT resolve");
+  });
+
+  it("leaves no trace when --allow-unanchored had nothing to swallow", () => {
+    const { root, write } = makeFixtureRepo(drifted(4));
+    expect(main(["--seed", "--repo", root])).toBe(0);
+    write("src/guard.ts", `// one inserted line\n${GUARD_SOURCE}`);
+    expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
+    const baseline = JSON.parse(readFileSync(path.join(root, BASELINE_FILE), "utf8"));
+    expect(baseline.allowUnanchored).toBe(undefined);
+    expect(baseline.unanchoredKeys).toBe(undefined);
   });
 
   it("seeds known-stale legacy drift instead of failing on it — zero day-one noise", () => {

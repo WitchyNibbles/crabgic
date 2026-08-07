@@ -1,17 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-07",
-  "generatedAtSha": "31ecf30d8adc51acd8e9df50978d508e1e7c4963",
+  "generatedAtSha": "da873d27c655b9f7217c9f5f274bdfeab874d75e",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
-  "allowUnanchored": true,
-  "unanchoredAccepted": 0,
-  "allowUnanchoredWarning": "Regenerated with --allow-unanchored: the citation(s) counted above do NOT resolve where they claim, and were pinned anyway. This must be justified in the PR body.",
   "counts": {
     "citations": 1292,
     "fragments": 3903,
-    "anchored": 2655,
-    "seededStale": 640,
-    "outsideSpan": 766,
+    "anchored": 2651,
+    "seededStale": 644,
+    "outsideSpan": 780,
     "repeatText": 525,
     "crossFile": 20,
     "skipped": 608
@@ -6424,9 +6421,9 @@
       "qa": "45dc93de10e5",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@132!span",
-        "MOVED/collapsed@131!span",
-        "MOVED-AMBIG/collapsed@128,886!span~repeat"
+        "MOVED/collapsed@139!span",
+        "MOVED/collapsed@138!span",
+        "MOVED-AMBIG/collapsed@135,992!span~repeat"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:130-145": {
@@ -6434,8 +6431,8 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED/collapsed@150!span",
-        "MOVED/collapsed@151!span"
+        "MOVED/collapsed@157!span",
+        "MOVED/collapsed@158!span"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:147-163": {
@@ -6443,11 +6440,11 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "MOVED/collapsed@162",
-        "MOVED/collapsed@167!span",
-        "MOVED/collapsed@168!span",
         "MOVED/collapsed@169!span",
-        "MOVED/collapsed@154"
+        "MOVED/collapsed@174!span",
+        "MOVED/collapsed@175!span",
+        "MOVED/collapsed@176!span",
+        "OK/collapsed@161"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:347-429": {
@@ -6455,11 +6452,11 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED-AMBIG/collapsed@188,255,281,349,384,433,539!span~repeat",
-        "MOVED-AMBIG/collapsed@256,282,350,385,434,540!span~repeat",
-        "MOVED/collapsed@386",
-        "MOVED/collapsed@410",
-        "MOVED-AMBIG/collapsed@189,386,411,435,496,523,838,946!span~repeat"
+        "MOVED-AMBIG/collapsed@195,262,288,356,391,440,546!span~repeat",
+        "MOVED-AMBIG/collapsed@263,289,357,392,441,547!span~repeat",
+        "MOVED/collapsed@393",
+        "MOVED/collapsed@417",
+        "MOVED-AMBIG/collapsed@196,393,418,442,503,530,944,1052,1126,1138,1152,1174,1196,1237,1252,1300,1319!span~repeat"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:600-630": {
@@ -6467,12 +6464,12 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED-AMBIG/collapsed@609,624,641,662~repeat",
-        "MOVED/collapsed@608",
-        "MOVED/collapsed@623",
-        "MOVED-AMBIG/collapsed@615,630~repeat",
-        "MOVED-AMBIG/collapsed@616,631~repeat",
-        "MOVED-AMBIG/collapsed@620,635,657,677~repeat"
+        "MOVED-AMBIG/collapsed@616,631,648,669~repeat",
+        "MOVED/collapsed@615",
+        "MOVED/collapsed@630",
+        "MOVED-AMBIG/collapsed@622,637~repeat",
+        "MOVED-AMBIG/collapsed@623,638~repeat",
+        "MOVED-AMBIG/collapsed@627,642,664,684~repeat"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:632-671": {
@@ -6480,21 +6477,21 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED/collapsed@640",
-        "MOVED-AMBIG/collapsed@647,668~repeat",
-        "MOVED/collapsed@653",
+        "MOVED/collapsed@647",
+        "MOVED-AMBIG/collapsed@654,675~repeat",
         "MOVED/collapsed@660",
-        "MOVED/collapsed@671",
-        "MOVED/collapsed@661"
+        "MOVED/collapsed@667",
+        "MOVED/collapsed@678!span",
+        "MOVED/collapsed@668"
       ]
     },
     "phase-16.json#c1#packages/gateway/src/mutation-pipeline/mutation-pipeline.test.ts:89-108": {
       "qa": "e29e22bc4703",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@113,848,859!span~repeat",
-        "MOVED/collapsed@114!span",
-        "MOVED-AMBIG/collapsed@151,259!span~repeat"
+        "MOVED-AMBIG/collapsed@120,954,965,1100,1111!span~repeat",
+        "MOVED/collapsed@121!span",
+        "MOVED-AMBIG/collapsed@158,266!span~repeat"
       ]
     },
     "phase-16.json#c10#docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt": {
@@ -7106,11 +7103,11 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@162",
-        "MOVED/collapsed@188",
-        "OK/collapsed@191",
+        "MOVED/collapsed@189",
         "OK/collapsed@192",
+        "MOVED/collapsed@193",
         "SKIP-short",
-        "MOVED/collapsed@194!span"
+        "MOVED/collapsed@195!span"
       ]
     },
     "phase-16.json#c5#packages/gateway/src/security/leak-hunt.test.ts:33-53": {
@@ -8023,13 +8020,13 @@
       "qa": "3c1cd73269cb",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@223!span",
-        "MOVED/collapsed@233!span",
-        "MOVED/collapsed@242!span",
-        "MOVED/collapsed@251!span",
-        "MOVED/collapsed@259!span",
-        "MOVED/collapsed@281!span",
-        "MOVED/collapsed@296!span"
+        "MOVED/collapsed@229!span",
+        "MOVED/collapsed@239!span",
+        "MOVED/collapsed@248!span",
+        "MOVED/collapsed@257!span",
+        "MOVED/collapsed@265!span",
+        "MOVED/collapsed@287!span",
+        "MOVED/collapsed@302!span"
       ]
     },
     "phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:14": {
@@ -8043,20 +8040,20 @@
       "qa": "23fc595a1dc7",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@262!span",
-        "MOVED/collapsed@263!span",
-        "MOVED-AMBIG/collapsed@105,255,264,275,290,321,368!span~repeat",
-        "MOVED/collapsed@265!span",
-        "MOVED/collapsed@271!span"
+        "MOVED/collapsed@268!span",
+        "MOVED/collapsed@269!span",
+        "MOVED-AMBIG/collapsed@105,261,270,281,296,327,375!span~repeat",
+        "MOVED/collapsed@271!span",
+        "MOVED/collapsed@277!span"
       ]
     },
     "phase-18.json#c1#packages/connectors-jira/src/testkit/jira-flow.integration.test.ts:190-286": {
       "qa": "93f0d57be46b",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@344!span",
-        "MOVED/collapsed@390!span",
-        "MOVED/collapsed@391!span"
+        "MOVED/collapsed@351!span",
+        "MOVED/collapsed@398!span",
+        "MOVED/collapsed@399!span"
       ]
     },
     "phase-18.json#c10#docs/evidence/phase-18/closeout-c10-write-order-probe.txt": {
@@ -8185,9 +8182,9 @@
       "qa": "57d1f68e5742",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@92",
-        "MOVED/collapsed@106",
-        "MOVED/collapsed@137",
+        "MOVED/collapsed@93",
+        "MOVED/collapsed@107",
+        "MOVED/collapsed@138",
         "OK/collapsed@53"
       ]
     },
@@ -8204,37 +8201,37 @@
       "qa": "48ead8e5bb87",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@124,288~repeat",
-        "MOVED/collapsed@125",
-        "MOVED/collapsed@144!span",
-        "MOVED/collapsed@145!span"
+        "MOVED-AMBIG/collapsed@125,292~repeat",
+        "MOVED/collapsed@126",
+        "MOVED/collapsed@146!span",
+        "MOVED/collapsed@147!span"
       ]
     },
     "phase-18.json#c3#packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:138-180": {
       "qa": "3d8512b41144",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@193!span",
-        "MOVED/collapsed@194!span"
+        "MOVED/collapsed@196!span",
+        "MOVED/collapsed@197!span"
       ]
     },
     "phase-18.json#c3#packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:191-273": {
       "qa": "40e60dd4d84b",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@292!span",
-        "MOVED-AMBIG/collapsed@124,288!span~repeat",
-        "MOVED/collapsed@289!span"
+        "MOVED/collapsed@296!span",
+        "MOVED-AMBIG/collapsed@125,292!span~repeat",
+        "MOVED/collapsed@293!span"
       ]
     },
     "phase-18.json#c3#packages/connectors-jira/src/resource-client/exactly-once.integration.test.ts:204-253": {
       "qa": "753cd2a79f7e",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@259!span",
-        "MOVED/collapsed@266!span",
-        "MOVED/collapsed@267!span",
-        "MOVED/collapsed@230"
+        "MOVED/collapsed@262!span",
+        "MOVED/collapsed@269!span",
+        "MOVED/collapsed@270!span",
+        "MOVED/collapsed@233"
       ]
     },
     "phase-18.json#c4#docs/evidence/phase-18/closeout-c3-c4-exactly-once-and-forged.txt": {
@@ -8280,9 +8277,9 @@
       "qa": "a769e525b58e",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@250!span",
+        "MOVED/collapsed@331!span",
         "SKIP-commentary",
-        "MOVED/collapsed@254!span"
+        "MOVED/collapsed@335!span"
       ]
     },
     "phase-18.json#c5#docs/evidence/phase-18/closeout-c5-c6-never-guess-and-comparator.txt": {
@@ -8610,8 +8607,8 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@71",
-        "OK/collapsed@72,185,216~repeat",
-        "MOVED/collapsed@92!span"
+        "OK/collapsed@72,186,218~repeat",
+        "MOVED/collapsed@93!span"
       ]
     },
     "phase-19.json#c1#packages/connectors-jira/src/testkit/scripted-read-scenario-dc.ts:135-145": {
@@ -9053,21 +9050,21 @@
       "qa": "ddad11ca836c",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@162",
         "MOVED/collapsed@163",
-        "MOVED/collapsed@167",
-        "MOVED/collapsed@171",
-        "MOVED/collapsed@175"
+        "MOVED/collapsed@164",
+        "MOVED/collapsed@168",
+        "MOVED/collapsed@172",
+        "MOVED/collapsed@176!span"
       ]
     },
     "phase-20.json#c1#packages/connectors-grafana/src/fixtures/integration-cassette-replay.test.ts:177-189": {
       "qa": "b1740ff281d8",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@180",
-        "MOVED/collapsed@182",
-        "MOVED/collapsed@187",
+        "MOVED/collapsed@181",
+        "MOVED/collapsed@183",
         "MOVED/collapsed@188",
+        "MOVED/collapsed@189",
         "SKIP-short"
       ]
     },
@@ -9078,10 +9075,10 @@
         "OK/collapsed@66",
         "OK/collapsed@67",
         "OK/collapsed@68",
-        "MOVED/collapsed@155",
         "MOVED/collapsed@156",
-        "MOVED/collapsed@136",
-        "MOVED/collapsed@159!span"
+        "MOVED/collapsed@157",
+        "MOVED/collapsed@137",
+        "MOVED/collapsed@160!span"
       ]
     },
     "phase-20.json#c2#docs/evidence/phase-20/closeout-c2-mutation-safety.txt": {
@@ -9107,38 +9104,38 @@
       "qa": "0cd32e81566b",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@135",
-        "MOVED-AMBIG/collapsed@179,226~repeat",
-        "MOVED/collapsed@180",
-        "MOVED/collapsed@183"
+        "MOVED/collapsed@141",
+        "MOVED-AMBIG/collapsed@185,232!span~repeat",
+        "MOVED/collapsed@186!span",
+        "MOVED/collapsed@189!span"
       ]
     },
     "phase-20.json#c2#packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:185-227": {
       "qa": "4711d36a5bb7",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@186",
-        "MOVED-AMBIG/collapsed@179,226!span~repeat",
-        "MOVED/collapsed@227"
+        "MOVED/collapsed@192",
+        "MOVED-AMBIG/collapsed@185,232~repeat",
+        "MOVED/collapsed@233!span"
       ]
     },
     "phase-20.json#c2#packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:229-271": {
       "qa": "527b817a4da7",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@230",
-        "MOVED-AMBIG/collapsed@131,270!span~repeat",
-        "MOVED/collapsed@271"
+        "MOVED/collapsed@236",
+        "MOVED-AMBIG/collapsed@137,276!span~repeat",
+        "MOVED/collapsed@277!span"
       ]
     },
     "phase-20.json#c2#packages/connectors-grafana/src/mutation/apply-with-rebase.test.ts:87-132": {
       "qa": "8d981f68008f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@88",
-        "MOVED/collapsed@89",
-        "MOVED-AMBIG/collapsed@131,270~repeat",
-        "MOVED/collapsed@132"
+        "MOVED/collapsed@94",
+        "MOVED/collapsed@95",
+        "MOVED-AMBIG/collapsed@137,276!span~repeat",
+        "MOVED/collapsed@138!span"
       ]
     },
     "phase-20.json#c2#packages/connectors-grafana/src/mutation/precondition.property.test.ts:111-117": {
@@ -9391,46 +9388,46 @@
       "qa": "ad3d10816035",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@238"
+        "MOVED/collapsed@244"
       ]
     },
     "phase-20.json#c6#packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:274-319": {
       "qa": "303822f651b3",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@275",
-        "MOVED-AMBIG/collapsed@280,369~repeat",
-        "OK/collapsed@127,190,234,270,315,357,404,443~repeat",
-        "MOVED-AMBIG/collapsed@128,191,235,316,405!span~repeat",
-        "MOVED-AMBIG/collapsed@193,319,360,407,446!span~repeat"
+        "MOVED/collapsed@281",
+        "MOVED-AMBIG/collapsed@286,375~repeat",
+        "MOVED-AMBIG/collapsed@133,196,240,276,321,363,410,449!span~repeat",
+        "MOVED-AMBIG/collapsed@134,197,241,322,411,576!span~repeat",
+        "MOVED-AMBIG/collapsed@199,325,366,413,452,578!span~repeat"
       ]
     },
     "phase-20.json#c6#packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:321-360": {
       "qa": "375cb7da108c",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@327",
-        "OK/collapsed@358,444~repeat",
-        "MOVED-AMBIG/collapsed@359,445~repeat",
-        "MOVED-AMBIG/collapsed@193,319,360,407,446!span~repeat"
+        "MOVED/collapsed@333",
+        "MOVED-AMBIG/collapsed@364,450!span~repeat",
+        "MOVED-AMBIG/collapsed@365,451!span~repeat",
+        "MOVED-AMBIG/collapsed@199,325,366,413,452,578!span~repeat"
       ]
     },
     "phase-20.json#c6#packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:362-407": {
       "qa": "d709e192c919",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@363",
-        "MOVED-AMBIG/collapsed@193,319,360,407,446!span~repeat"
+        "MOVED/collapsed@369",
+        "MOVED-AMBIG/collapsed@199,325,366,413,452,578!span~repeat"
       ]
     },
     "phase-20.json#c6#packages/connectors-grafana/src/mutation/mutation-apply-client.test.ts:409-446": {
       "qa": "b015000c5862",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@422",
-        "OK/collapsed@358,444~repeat",
-        "OK/collapsed@359,445~repeat",
-        "MOVED-AMBIG/collapsed@193,319,360,407,446!span~repeat"
+        "MOVED/collapsed@428",
+        "MOVED-AMBIG/collapsed@364,450!span~repeat",
+        "MOVED-AMBIG/collapsed@365,451!span~repeat",
+        "MOVED-AMBIG/collapsed@199,325,366,413,452,578!span~repeat"
       ]
     },
     "phase-20.json#c7#docs/evidence/phase-20/closeout-c7-high-impact-tagging.txt": {

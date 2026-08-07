@@ -406,8 +406,10 @@ const BLOCKING_HEADINGS = [
   ],
   [
     "improved",
-    "CITATIONS THAT NOW RESOLVE (a correction landed)",
-    `Good news. Run \`${REPAIR_COMMAND}\` so the baseline stops claiming they are stale.`,
+    "CITATIONS THAT RESOLVE BETTER THAN THE BASELINE CLAIMS",
+    "At least one fragment now anchors where the baseline says it does not, and none regressed. " +
+      "That can be a landed correction OR an unrelated edit that happened to move code onto its " +
+      `cited line — read the diff before assuming which. Run \`${REPAIR_COMMAND}\`.`,
   ],
   [
     "changed",
@@ -526,26 +528,35 @@ function runUpdate(repoRoot, { allowUnanchored, seed, today }) {
     }
   }
   const census = censusOf(entries);
-  const unanchoredCount =
+  // Name the citations the flag swallowed, not just how many. A bare count can
+  // read as a dangling flag pointing at nothing (`allowUnanchored: true` beside
+  // `unanchoredAccepted: 0` is exactly that), and a confession that does not say
+  // WHAT it is confessing to leaves the next reader to re-derive it.
+  const unanchoredKeys = (
     baseline === null
       ? entries.filter((entry) => entry.pins.some((pin) => isStalePin(pin) || isOutOfSpanPin(pin)))
-          .length
-      : diffAgainstBaseline(entries, baseline).filter(
-          (divergence) => divergence.class === "unanchored",
-        ).length;
+      : diffAgainstBaseline(entries, baseline)
+          .filter((divergence) => divergence.class === "unanchored")
+          .map((divergence) => divergence.entry)
+  ).map((entry) => entry.key);
   const next = buildBaseline(entries, {
     generatedAt: today,
     generatedAtSha: headSha(repoRoot),
     // The escape hatch confesses in the artifact, not just in a terminal nobody
     // kept. A baseline produced by overriding the refusal says so, and says how
     // many citations it swallowed, so a reviewer meets the fact in the diff.
-    ...(allowUnanchored && baseline !== null
+    // Only recorded when the flag actually swallowed something. Passing
+    // --allow-unanchored on a run with nothing to swallow leaves no trace,
+    // because there is nothing to confess to.
+    ...(allowUnanchored && baseline !== null && unanchoredKeys.length > 0
       ? {
           allowUnanchored: true,
-          unanchoredAccepted: unanchoredCount,
+          unanchoredKeys,
           allowUnanchoredWarning:
-            "Regenerated with --allow-unanchored: the citation(s) counted above do NOT resolve " +
-            "where they claim, and were pinned anyway. This must be justified in the PR body.",
+            "Regenerated with --allow-unanchored: the citations named in `unanchoredKeys` do NOT " +
+            "resolve where they claim, and were pinned anyway. This must be justified in the PR " +
+            "body, and the entry disappears once each is corrected (see the correction recipe in " +
+            "docs/evidence/citation-resolver/README.md).",
         }
       : {}),
     ...(seed && baseline === null ? { seeded: true } : {}),
