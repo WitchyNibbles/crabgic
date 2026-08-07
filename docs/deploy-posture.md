@@ -155,6 +155,20 @@ document, and this document is not evidence that it was.
 > three filed test defects are fixed and `test:live` bails on first failure. **The row's substance is
 > unchanged:** zero runs ever, the `CLAUDE_CODE_OAUTH_TOKEN` secret is still unconfirmed, and dispatch
 > remains an owner action. **Nothing in that change was verified against a live engine**, and this
+>
+> _Correction 2026-08-07 (closeout batch G) — five of this document's own `docs/engine-baseline.md`
+> line anchors are stale by exactly +1, measured at `ed999b9`:_ the blocking-condition section above
+> cites `:519`, `:523`, `:528`, `:545` and `:566`, and each quoted passage now sits one line lower —
+> `:520`, `:524`, `:529`, `:546`, `:567`. Three of them (`:519`, `:523`, `:528`) currently land on a
+> **blank line**, which is worse than landing on the wrong prose because it reads as a deleted claim.
+> The anchors at `:290`, `:308` and `:312` still resolve to the text this document attributes to them
+> and are untouched. **Nothing about the argument changes:** every quoted sentence is still present,
+> verbatim, one line further down — the deny recording `insideDenied: false`, the "inert on the
+> permission layer" consequence, §14's own Limits paragraph, the `sandbox-write-tool` result, and
+> the "says nothing about `Read(...)`" caveat. Only the pointers moved, and one inserted line above
+> §14 accounts for all five. The original text is left verbatim per this document's own convention.
+> This was found while EOF-appending a §11 addendum to `docs/engine-baseline.md` in the same pass —
+> that append cannot shift anything, and did not cause this; the drift predates it.
 > annotation is not evidence that it was.
 
 ### Measurement behind the gate-registry row
