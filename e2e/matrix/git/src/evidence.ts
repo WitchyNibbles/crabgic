@@ -38,7 +38,7 @@ export const GIT_MATRIX_GATE_TAG = "release-gate:git-matrix";
  * harness's attribution-leak fixtures actually prove.
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:git-matrix": "7a8b876c-23a1-55fa-943f-9001f4f36b32",
+  "release-gate:git-matrix": "117e688c-e286-5c58-96a3-9788e868c90f",
 } as const);
 
 const TOOLCHAIN_FINGERPRINT = `node ${process.version}`;

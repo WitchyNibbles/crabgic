@@ -43,8 +43,8 @@ export const ENGINE_PIN_RECORDED_GATE_TAG = "release-gate:engine-pin-recorded";
  * engine-pin recorded), as this module's own header already notes.
  */
 export const REQUIREMENT_ID_BY_GATE_TAG = Object.freeze({
-  "release-gate:reproducible-build": "c287a275-e495-5279-8d18-3b57d29d6d5a",
-  "release-gate:engine-pin-recorded": "195cba15-c154-5130-aaa4-0b17fbc1e7b5",
+  "release-gate:reproducible-build": "80b7e1bb-d84b-5d6b-8340-8e9b4b01f4e1",
+  "release-gate:engine-pin-recorded": "bd7756df-b7bc-59c3-827f-b8409313ea49",
 } as const);
 
 /** The requirement a given emitted tag evidences, or `undefined` for a tag this harness does not map. */

@@ -73,3 +73,79 @@ tagged or dispatched.
   above is that re-check, passing today.
 
 Captured verbatim in `docs/evidence/phase-23/closeout/c14-release-docs-citations.txt`.
+
+## Re-check 2026-08-07 — release-time verdict for the 1.6.0 cut
+
+**Verdict: available as of 2026-08-07T10:02:31Z** — read in the sense this check exists to
+establish, stated explicitly below because the 2026-07-26 sense above stopped being true at the
+v1.0.0 publish.
+
+The re-check was run against the live public registry at the timestamp above. Real output, pasted
+rather than reconstructed:
+
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-08-07T10:02:31Z
+
+$ npm view crabgic
+
+crabgic@1.5.0 | Apache-2.0 | deps: 4 | versions: 10
+crabgic CLI & doctor (roadmap/09-cli-and-doctor.md).
+https://github.com/WitchyNibbles/crabgic#readme
+
+bin: crabgic, crabgic-supervisord
+
+dist
+.tarball: https://registry.npmjs.org/crabgic/-/crabgic-1.5.0.tgz
+.shasum: 15bcfe1c3a3df0143fd254af0a15a147c9eea337
+.integrity: sha512-DPcZSUO+3+tCRDpvT5tNR9fuuJLwHIftB3TRqZYk3OuWr5kVcgiIdjny+jHh7WD0+KyCdEGuZ352tx18QAKq+A==
+.unpackedSize: 1.4 MB
+
+dependencies:
+@anthropic-ai/claude-agent-sdk: 0.3.218, @modelcontextprotocol/sdk: 1.29.0, zod: 4.4.3, zod-to-json-schema: 3.25.2
+
+maintainers:
+- witchynibbles <eimimartinezarenas@gmail.com>
+
+dist-tags:
+latest: 1.5.0
+
+published a week ago by witchynibbles <eimimartinezarenas@gmail.com>
+
+$ npm view crabgic dist-tags
+{ latest: '1.5.0' }
+
+$ npm view crabgic@1.6.0 version
+npm error code E404
+npm error 404 No match found for version 1.6.0
+npm error 404
+npm error 404  The requested resource 'crabgic@1.6.0' could not be found or you do not have permission to access it.
+```
+
+**What the word means here, and what it does not.** `available` above means: the name `crabgic`
+resolves to **this project's own package**, published by this project's own maintainer account, and
+the version about to be cut — `1.6.0` — is **unclaimed on the registry** (`E404` for
+`crabgic@1.6.0`, quoted above), so the publish can proceed. It does **not** mean the 2026-07-26
+sense, "no package has ever been published under this name": ten versions, `1.0.0` through `1.5.0`,
+are published, and `latest` is `1.5.0`. The original 2026-07-26 record stands verbatim above as the
+record of the pre-first-publish state; this section supersedes it in place for release-time purposes
+rather than rewriting it.
+
+**Why it is recorded at all.** `e2e/release/src/npmNameRecheck.ts` requires a
+`Verdict: available|taken … as of <ISO-8601>` on one line, no older than its
+`NPM_NAME_RECHECK_MAX_AGE_DAYS` window of 7 days, and folds any failure into the
+`reproducible-build` gate item as a blocking reason. The 2026-07-26 record went stale on 2026-08-02
+and was **11 days old** on 2026-08-07 — measured by running the real function against this repo, not
+inferred: `{ recordedAt: "2026-07-26T18:11:17Z", ageDays: 11, verdictAvailable: true, fresh: false }`
+with one blocking reason. That window is exactly what makes a release-time re-check auditable, and
+this section is the re-check for the 1.6.0 cut.
+
+**A disclosed limitation of the check itself, filed rather than papered over.** The check has only
+two verdict words, and both were minted before the first publish: `taken` means _somebody else_
+claimed the name and fails the gate outright as a product decision for the owner. It has no way to
+express "the name is ours and the version we are cutting is free", which is the true state from
+v1.0.0 onward — so the honest verdict word is `available` **only** under the redefinition stated
+above, and a reader who assumes the 2026-07-26 sense would be misled. The semantic gap is filed as
+the defect record `23-npm-name-recheck-cannot-express-owned-name.md` under
+`docs/evidence/criteria-closeout/defects/`; the wording of this section is a judgement call and is
+flagged to the owner rather than settled here.
