@@ -13,6 +13,8 @@ defect record may cite this file — name a defect record in prose and cite its 
 directly. Deliberately, no row below carries a `path:NN` reference: a citation here would dress
 bookkeeping up as evidence.
 
+> **Corrected 2026-08-07 (closeout batch G) — that sentence is aspirational, not descriptive, and it has been false since before this reconciliation.** Four rows carry a bare-basename `path:NN` (`limit-parked-resume-restart.test.ts:194`, `run-driver.test.ts:456`, `plugin-load.live.test.ts:32`, `plugin-inventory-probe.ts:63`), plus three fuller paths, all present at `ed999b9` and none added by this pass. They survived a full row-by-row re-derivation of every status here, which is worth recording rather than quietly fixing: a rule stated in prose and enforced by nothing is the same shape as the declared-and-inert config fields two of these records are about. The rule stands and no row this pass wrote carries one; the existing seven are left in place — rewriting merged rows to satisfy a sentence would be the wrong direction — and making the rule mechanical (the citation-content prose lane already resolves this directory, so refusing any `path:NN` in INDEX.md specifically is a small addition to it) is recorded here as the honest remedy.
+
 ## Status vocabulary
 
 A closed, disjoint vocabulary — the same discipline the annotation labels follow. Every value below

@@ -140,8 +140,10 @@ content arms produce the identical field set to the snapshotted escalate arm; (i
 `status --watch --json` is byte-produced by the same `formatJson(result)` expression as the
 snapshotted non-watch branch; (iii) `status <run-id> --json` for an unknown run serializes to `{}`,
 so that entry pins an empty object rather than the populated `RunStatusResult` shape, which is pinned
-instead by a zod parse in `cli.commands.schema.test` — strictly stronger than a snapshot, but in a
-different suite from the one the criterion names.
+instead by the router's own result-schema wrap — strictly stronger than a snapshot, but in a
+different package from the one the criterion names.
+
+> **Corrected 2026-08-07 after review, and measured rather than re-reasoned.** This sentence previously attributed the populated-shape pin to `cli.commands.schema.test.ts`'s `RunStatusResultSchema.parse`. That attribution was FALSE and the review was right: that case dispatches `status` for a UUID against an empty `createRunsRegistry()`, so the payload it parses is `{}` — the very thin payload narrowing (iii) discloses — and `z.object({ run: RunRecordSchema.optional() }).strict()` accepts `{}` whatever its members are called. Probe, with a COMPILING mutation so nothing measured stale `dist/` (`npm run build` exit 0): tightening `RunRecordSchema.updatedAt` so a populated record fails its parse reddens 4 of 1574 — `build-router.test.ts`'s populated `run.status` case, both `compose-supervisor.test.ts` recovery cases and the concurrent `uds-server` case — while `cli.commands.schema.test.ts` stays GREEN. That asymmetry is what proves the old attribution vacuous and the new one load-bearing, and it also shows the wrap fires on the production dispatch path rather than only in a test. Restored by explicit source and path; md5 back to baseline, 1574 tests back, `git status` clean.
 
 **Residual, named so it cannot drift:** no case in `cli.snapshots.test` snapshots a **populated**
 `RunStatusResult`, and `status (no run-id) --json` snapshots a `runs` key holding an empty array,

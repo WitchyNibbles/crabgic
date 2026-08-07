@@ -277,3 +277,76 @@ $ grep -c '^exports\[' …/cli.snapshots.test.ts.snap   ->  51   (19 + 32)
    least as well as 61. The correction is to the measurement's units, which is
    exactly the class of error a line-anchored repository cannot afford to leave
    standing.
+
+== 10. CORRECTION 2026-08-07 — §7(iii)'s compensating pin is VACUOUS as attributed ==
+   Annotated, not rewritten: §7(iii) above stays exactly as written, and the
+   roadmap annotation that quotes it verbatim quotes the ORIGINAL wording.
+
+   §7(iii) says the populated `RunStatusResult` shape "is pinned by
+   cli.commands.schema.test.ts's `RunStatusResultSchema.parse` against 05's own
+   published zod schema, which is strictly stronger than a snapshot". THAT
+   ATTRIBUTION IS FALSE, found by adversarial review of PR #127 and confirmed
+   here by measurement rather than by re-reasoning.
+
+   Cause. cli.commands.schema.test.ts:91-102 dispatches `status` for run id
+   11111111-... against the router built in its own beforeEach (:52-82), whose
+   `createRunsRegistry()` is EMPTY. So `run.status` returns `{}` and the parse
+   runs on `{}` — the same thin payload §7(iii) discloses. And
+   `RunStatusResultSchema` is `z.object({ run: RunRecordSchema.optional() })
+   .strict()` (packages/supervisor/src/router/operations.ts:77), which accepts
+   `{}` no matter what `RunRecordSchema`'s members are called. The parse is real;
+   it simply never sees a populated record.
+
+   WHERE THE GUARANTEE ACTUALLY LIVES, and it is stronger than the claim it
+   replaces: packages/supervisor/src/router/router.ts:48-50 wraps EVERY
+   registered handler with `return resultSchema.parse(result);`, so the parse is
+   on the production dispatch path, and
+   packages/supervisor/src/router/build-router.test.ts:52 ("run.status reflects
+   the RunsRegistry after a transitionRun call") drives a POPULATED record
+   through it.
+
+   THE PROBE, baseline -> mutation -> restore, one sha, compiling mutation so
+   nothing measured a stale dist:
+
+   $ npm run build                                            -> exit 0
+   $ npx vitest run --project @crabgic/supervisor --project crabgic \
+       --coverage.enabled=false
+     BASELINE   Test Files 157 passed (157) / Tests 1574 passed (1574)
+
+   MUTATION (compiling, type-identical): operations.ts's RunRecordSchema
+   `updatedAt: z.string()` -> `updatedAt: z.string().uuid()`, so a POPULATED
+   record fails its own parse while `{}` still passes.
+   $ npm run build                                            -> exit 0
+     Test Files 3 failed | 154 passed (157) / Tests 4 failed | 1570 passed (1574)
+       x build-router.test.ts > run.status reflects the RunsRegistry after a
+         transitionRun call
+       x compose-supervisor.test.ts > recovers prior run state from the journal
+         at startup
+       x compose-supervisor.test.ts > recovers a crashed worker from the journal
+         and reaps it at startup, firing the orphan hook
+       x uds-server.concurrent.test.ts > both clear SO_PEERCRED ... and receive
+         identical run.status/run.cancel responses
+     GREEN THROUGHOUT, and this is the load-bearing half:
+       cli.commands.schema.test.ts > "status <run-id> --json is real,
+       published-schema-valid RunStatusResultSchema output, not merely
+       snapshot-stable"  -- zero failures in the `crabgic` project.
+
+   A FIRST ATTEMPT IS RECORDED RATHER THAN DISCARDED. The obvious mutation
+   (rename `updatedAt` outright) gave `npm run build` exit 2, so the cli leg ran
+   on the PREVIOUS dist and could not settle the question the probe exists to
+   answer. It was redone with the compiling form above and both runs are
+   reported, per the playbook's rule that a failed build during a probe means
+   the cross-package legs measured the old code wearing the new code's label.
+
+   RESTORE: `git checkout HEAD -- packages/supervisor/src/router/operations.ts`
+   (explicit source AND explicit path), `npm run build` exit 0, md5 of the file
+   back to 974d65a3fa971fc6d4c1c2798b496383, test COUNT back to 157/1574 (not
+   the exit code), `git status --porcelain` empty.
+
+   CONSEQUENCE FOR THE TICK. roadmap/09's box stays TICKED, and the reasoning
+   that carries it is unchanged in substance: the guarantee is met while the
+   suite the criterion NAMES does not carry it, which is the roadmap/06 c6/c9
+   precedent. What changes is the citation — the pin is the router's wrap and
+   its populated-record test, not the cli conformance suite. The residual named
+   in the box and in the record is unaffected and still stands: no case in
+   `cli.snapshots.test` snapshots a populated `RunStatusResult`.

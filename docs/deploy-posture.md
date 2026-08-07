@@ -154,7 +154,7 @@ document, and this document is not evidence that it was.
 > in-range; `latest` is 2.1.223, outside it) and verifies the binary before the suite; the spawn case's
 > three filed test defects are fixed and `test:live` bails on first failure. **The row's substance is
 > unchanged:** zero runs ever, the `CLAUDE_CODE_OAUTH_TOKEN` secret is still unconfirmed, and dispatch
-> remains an owner action. **Nothing in that change was verified against a live engine**, and this
+> remains an owner action. **Nothing in that change was verified against a live engine**, and this annotation is not evidence that it was.
 >
 > _Correction 2026-08-07 (closeout batch G) — five of this document's own `docs/engine-baseline.md`
 > line anchors are stale by exactly +1, measured at `ed999b9`:_ the blocking-condition section above
@@ -169,7 +169,6 @@ document, and this document is not evidence that it was.
 > §14 accounts for all five. The original text is left verbatim per this document's own convention.
 > This was found while EOF-appending a §11 addendum to `docs/engine-baseline.md` in the same pass —
 > that append cannot shift anything, and did not cause this; the drift predates it.
-> annotation is not evidence that it was.
 
 ### Measurement behind the gate-registry row
 
