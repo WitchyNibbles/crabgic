@@ -1,0 +1,185 @@
+================================================================================
+`releaseGateSummary.test.ts` GOES RED AFTER EVERY PUBLISH — SIX ASSERTION SITES
+Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744.
+Command in every run below, from `e2e/release/`:
+
+    $ npx vitest run src/releaseGateSummary.test.ts
+================================================================================
+
+--------------------------------------------------------------------------------
+1. THE RED, AT HEAD, WITH NOTHING MUTATED
+--------------------------------------------------------------------------------
+     FAIL  src/releaseGateSummary.test.ts >
+       runAndEmitReleaseGateSummaryEvidence — genuine integration (real git/npm,
+       this repo's own HEAD, NEVER a real publish/tag/marketplace mutation) >
+       runs every real constituent check, reports today's real overall verdict,
+       and journals matching evidence
+     AssertionError: expected true to be false // Object.is equality
+
+     - Expected
+     + Received
+     - false
+     + true
+
+      ❯ src/releaseGateSummary.test.ts:334:44
+         334|       expect(result.publication.published).toBe(false);
+            |                                            ^
+
+     Test Files  1 failed (1)
+           Tests  1 failed | 16 passed (17)
+
+crabgic@1.6.0 was published today. `published` is `true` because it is true.
+
+--------------------------------------------------------------------------------
+2. THE PRODUCTION CHECK IS CORRECT — QUOTED, NOT ASSERTED
+--------------------------------------------------------------------------------
+`e2e/release/src/releaseGateSummary.ts:225` passes
+`expectation: options.publicationExpectation ?? "publishable"`, and
+`e2e/release/src/publicationCheck.ts` branches on it:
+
+    :214  } else if (expectation === "publishable" && published) {
+    :215    // Pre-publish, an already-present version is the blocker: npm refuses to
+    :216    // republish a version that has ever existed, so a tag that names one that
+    :217    // is already live cannot be cut. "Not yet published" is the EXPECTED,
+    :218    // ready state here and carries no reason.
+    :219    reasons.push(
+    :220      `the npm registry already serves ${options.packageName}@${options.version} ` +
+    ...
+
+That branch is not a bug and this transcript proposes no change to it. Emitting a
+blocking reason when a pre-publish gate is handed an already-served version is
+exactly right: `npm` refuses to republish, so the candidate genuinely cannot be
+cut, and the only fix is a version bump or a re-cut tag.
+
+WHAT IS WRONG IS THE TEST. It asserts a release-CANDIDATE moment ("the version
+about to be cut is not yet on the registry") as though it were a repository
+invariant that holds at every commit — while, four lines below, the SAME test
+explicitly reasons the other way about the tag clause:
+
+    :345  // asserted here: this harness runs against whatever HEAD happens to be,
+    :346  // and HEAD moves with every commit after a cut while the tag stays put.
+    :347  // Pinning "tag === HEAD" would make an ordinary commit fail the suite.
+
+The publication clause has the identical shape and did not get the identical
+treatment.
+
+--------------------------------------------------------------------------------
+2b. WHY THE REPOSITORY DID NOT NOTICE
+--------------------------------------------------------------------------------
+`e2e/release` is not one of `vitest.config.ts`'s projects, so `npm test` never
+runs it, and `npm run test:e2e` appears in no workflow. Its only CI channel is
+`test:e2e:release-evidence` at `.github/workflows/release-e2e.yml:389` —
+`workflow_dispatch` plus `workflow_call` from a `v*` tag. See the sibling record
+`docs/evidence/criteria-closeout/defects/23-release-evidence-lanes-run-in-no-
+per-push-channel.md` for the full channel measurement; this transcript's subject
+is only what that channel would find.
+
+--------------------------------------------------------------------------------
+3. HOW MANY ASSERTIONS ACTUALLY BREAK — MEASURED BY SERIAL NEUTRALISATION
+--------------------------------------------------------------------------------
+Each step comments out the assertion the previous step stopped on, and re-runs.
+The count is what the fix has to cover; guessing it was the point of doing this.
+
+STEP 1 — neutralise :334.
+
+     AssertionError: expected [ Array(1) ] to deeply equal []
+     + [
+     +   "the npm registry already serves crabgic@1.6.0 (registry-known versions:
+     +    1.0.0, 1.0.1, 1.0.2, 1.1.0, 1.1.1, 1.1.2, 1.2.0, 1.3.0, 1.4.0, 1.5.0,
+     +    1.6.0); npm refuses to republish an existing version, so this candidate
+     +    cannot be cut — the tag or the version bump is stale. Pre-publish the
+     +    \"package published\" clause requires a PUBLISHABLE version; the published
+     +    state is verified after publish by the publish job's own registry re-check.",
+     + ]
+      ❯ src/releaseGateSummary.test.ts:335:42
+         335|       expect(result.publication.reasons).toEqual([]);
+     Test Files  1 failed (1)
+           Tests  1 failed | 16 passed (17)
+
+STEP 2 — neutralise :335 as well.
+
+     AssertionError: expected 'both checkouts were populated from th…'
+                     not to contain 'package published'
+      ❯ src/releaseGateSummary.test.ts:336:26
+         336|       expect(joined).not.toContain("package published");
+
+     (`joined` at this point holds four reasons: the rebuild-leg reason, the
+      tag-points-elsewhere reason, the marketplace-pin reason, and the
+      already-serves reason. Only the last contains the phrase, via its own
+      words `the "package published" clause requires a PUBLISHABLE version`.)
+
+STEP 3 — neutralise :336 as well.
+
+      ❯ src/releaseGateSummary.test.ts:382:44
+         381|       expect(result.publication.manifestPrivate).toBe(false);
+         382|       expect(result.publication.published).toBe(false);
+
+STEP 4 — neutralise :382 and :383 as well.
+
+     AssertionError: unexpected release-gate reason: the npm registry already
+     serves crabgic@1.6.0 …: expected false to be true
+      ❯ src/releaseGateSummary.test.ts:423:11
+         421|           EXPECTED_REASON_PATTERNS.some((pattern) => pattern.test(reas…
+         423|         ).toBe(true);
+
+     `EXPECTED_REASON_PATTERNS` at :413-418 is an allowlist of the reasons this
+     harness tolerates on an ordinary commit. Its npm entry is `/npm registry
+     reports/` — the phrasing of the NEVER-PUBLISHED direction only. The
+     already-served direction has no entry.
+
+STEP 5 — add `/npm registry already serves/` to `EXPECTED_REASON_PATTERNS`,
+everything else still neutralised.
+
+     Test Files  1 passed (1)
+           Tests  17 passed (17)
+
+⇒ SIX SITES, not one: `:334`, `:335`, `:336`, `:382`, `:383`, and the pattern
+list at `:413-418`. A fix that changes only the assertion the failure message
+names leaves five more reds behind it, each surfacing only after the one before
+is cleared. That is the reason for measuring rather than reading.
+
+--------------------------------------------------------------------------------
+4. THE SIZED FIX (NOT IMPLEMENTED HERE)
+--------------------------------------------------------------------------------
+Assert the CONDITIONAL that is actually invariant, in the shape the tag clause
+already uses three lines away:
+
+    if the release version is ABSENT from `publishedVersions`:
+        publication.published === false  and  publication.reasons === []
+    if the release version is PRESENT:
+        publication.published === true, and reasons is exactly one entry that
+        matches /already serves/ AND names the version being scored — so the
+        arm cannot be satisfied by any other publication reason;
+
+plus `/npm registry already serves/` in `EXPECTED_REASON_PATTERNS`, and the
+`joined).not.toContain("package published")` assertion moved inside the
+absent-arm.
+
+Both arms stay reachable: the present-arm is what runs today, and the absent-arm
+runs on the next version bump. Effort **S**. Deliberately NOT implemented in the
+pass that filed it — `docs/evidence/criteria-closeout/README.md`: "Never fix a
+defect in the same pass."
+
+--------------------------------------------------------------------------------
+5. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the failure reproduces at HEAD with nothing mutated; the production
+branch that produces it is correct and quoted; six assertion sites are affected,
+measured by serial neutralisation; and the suite reaches 17/17 once all six are
+addressed.
+
+NOT CLAIMED: that the release gate is broken. It is not — it is reporting a true
+fact about a candidate that cannot be cut. The composed verdict on this commit is
+a genuine FAIL for four independent reasons, three of which the test already
+tolerates by design.
+
+NOT CLAIMED: that this red would have blocked a release. `e2e/release` runs in no
+per-push channel, so it blocked nothing; at the next cut, with a bumped version,
+the assertion self-corrects and the harness goes green again on its own. That is
+precisely why it can sit red for a whole release cycle unnoticed.
+
+NOT CLAIMED: any measurement of the OTHER three reasons in `joined`. They are
+HEAD-relative by design and the test says so at :344-349.
+
+`e2e/release/src/releaseGateSummary.test.ts` was restored to its committed bytes
+after step 5; `git status` reports a clean tree.

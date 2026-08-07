@@ -1,0 +1,175 @@
+================================================================================
+THE IDLE-BUDGET ARM'S HEADROOM IS A FUNCTION OF ITS CO-TENANTS — MEASURED
+Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744.
+Host: 16 logical CPUs, WSL2 (`nproc` = 16).
+================================================================================
+
+WHAT THIS IS. `packages/supervisor/src/idle-budget/idle-budget.integration.test
+.ts`'s sustained-idle arm has been observed red in full-suite runs and green in
+isolation, and the handling each time was to add a sighting to a flake list. This
+transcript asks the question a flake list cannot: what does the arm actually
+measure, and how much headroom does it have in the channel it actually runs in?
+
+--------------------------------------------------------------------------------
+1. THE ARM, AND WHAT ITS NUMBER MEANS
+--------------------------------------------------------------------------------
+    idle-budget.integration.test.ts
+    :15  const CPU_BUDGET_FRACTION = 0.01;      // <1% of one core
+    :16  const SUSTAINED_WINDOW_MS = 1_500;
+    :24    const before = sampleResourceUsage();
+    :25    const scheduler = createHeartbeatScheduler();   // real HEARTBEAT_INTERVAL_MS
+    :28    await new Promise((resolve) => setTimeout(resolve, SUSTAINED_WINDOW_MS));
+    :32    const cpuFraction = cpuFractionBetween(before, after);
+    :46    expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);
+
+`resource-probe.ts:37-45` defines the number:
+
+    cpuDelta  = (userCPUTime + systemCPUTime) delta      // process.resourceUsage()
+    wallDelta = Date.now() delta
+    fraction  = cpuDelta / wallDelta
+
+⚠️ THIS IS `getrusage(RUSAGE_SELF)` OVER WALL TIME, and that is the crux. It is
+the CPU of THE WHOLE PROCESS — every thread of it — divided by a fixed 1500 ms
+of wall clock. The scheduler under test is idle for the entire window (its real
+interval is 5 s and the window is 1.5 s, so it fires ZERO times inside it). So
+essentially all of the measured CPU is the *host process's* other work, not the
+subject's.
+
+The module's own header (`resource-probe.ts:1-11`) makes the scope explicit and
+correct: "a SELF-CONTAINED … probe of THIS process alone". The defect is not the
+probe. It is that a threshold calibrated against a process containing only this
+test is being applied to a process containing 654 test files' worth of module
+graphs, V8 GC and v8 coverage collection.
+
+--------------------------------------------------------------------------------
+2. MEASURED — FOUR CHANNELS, SAME ASSERTION
+--------------------------------------------------------------------------------
+Every figure below is the arm's own `console.log`, captured with
+`--disable-console-intercept`. All four channels PASSED, seven runs in total;
+the interest is the margin, not the verdict.
+
+  A. ISOLATED — one file, `npx vitest run --project @crabgic/supervisor
+     src/idle-budget/idle-budget.integration.test.ts`, three consecutive runs:
+
+        cpuFraction = 0.0827%    RSS 71 MiB
+        cpuFraction = 0.0897%    RSS 70 MiB
+        cpuFraction = 0.0842%    RSS 70 MiB
+        (2 passed (2) each time)
+
+  B. ONE PROJECT — `npx vitest run --project @crabgic/supervisor`,
+     55 files / 354 tests:
+
+        cpuFraction = 0.0992%    RSS 70 MiB
+
+  C. FULL SUITE — `npx vitest run --coverage`, 654 files / 6869 tests, EXIT=0
+     both times, two separate runs an hour apart on the same host:
+
+        cpuFraction = 0.1571%    RSS 70 MiB      (run 1)
+        cpuFraction = 0.0971%    RSS 70 MiB      (run 2)
+
+  D. EXTERNAL HOST LOAD — the isolated command again, with 8 busy-loop
+     processes saturating half the host's 16 cores:
+
+        cpuFraction = 0.0910%    RSS 70 MiB   (2 passed (2))
+
+⇒ TWO THINGS, and the second is the more useful one.
+
+FIRST: A → C rises, by 1.14x on one full-suite sample and 1.84x on the other,
+against an isolated mean of ~0.0855%. The direction is up.
+
+SECOND, AND THE POINT: **the full-suite figure is not a figure, it is a spread.**
+Three isolated runs land inside 0.0827-0.0897% — a 1.08x band. Two full-suite
+runs of the identical command on the identical host land at 0.0971% and 0.1571%
+— a 1.62x band, WIDER than the entire gap between isolation and the full suite.
+The channel the assertion actually runs in has variance the channel it was
+calibrated in does not, and that is exactly the shape a threshold cannot be
+picked against from a single sample. Two samples are not a distribution either;
+they are enough to show one exists.
+
+A → D is essentially flat, which is the diagnostic result: EXTERNAL host load
+barely moves this number at all. Descheduling the process lowers its own CPU
+delta while the wall denominator keeps running, so "a loaded host" is the wrong
+model of the failure. **What inflates this metric is work in the SAME PROCESS** —
+GC, module evaluation and v8 coverage collection belonging to the other test
+files that worker is chewing through.
+
+That matters for the remedy: "re-run it on a quieter machine" does not address
+the mechanism, and neither does any tolerance expressed in terms of host load.
+
+--------------------------------------------------------------------------------
+3. THE OBSERVED BREACHES — WHAT IS ON RECORD AND WHAT IS NOT
+--------------------------------------------------------------------------------
+ON RECORD, one breach, committed and independently readable:
+
+    docs/evidence/gap-18/known-gate-flakes.md:81-86
+      "expected 0.011960719041278295 to be less than 0.01", i.e. 1.196% of one
+      core, in a full `npm test` taken immediately after `npm run build`;
+      re-run in isolation three times immediately afterwards: 3/3 green; the
+      branch touched nothing under `packages/supervisor`.
+      Mirrored at docs/verification-playbook.md:922-928.
+
+NOT ON RECORD, and stated as UNVERIFIED rather than repeated as fact: reviewers
+during this wave reported two further breaches of the same arm, at 1.075% and
+1.159%, both in full-suite runs and both clean 3/3 in isolation. A repo-wide grep
+for those figures (and for their fractional forms) returns nothing outside this
+paragraph. They have no committed transcript, no run id and no flake-list row. I
+did not observe them and I do not record them as measurements — what I can say is
+that no artifact in this tree corroborates them, and that the one breach that IS
+corroborated is enough to carry this record on its own.
+
+NOT REPRODUCED BY THIS PASS. No breach occurred in any of the seven runs
+above. The corroborated breach is 1.196% against an isolated baseline of
+~0.0855% — a factor of **14**, where the largest isolated-to-full-suite factor I
+could measure is **1.84**. So the breach condition is materially heavier than a plain full-suite
+run on this host, which is consistent with the sighting note's own "taken
+immediately after `npm run build`" and with §2's finding that the pressure is
+in-process. **This transcript does not claim to have found the breach condition.**
+It claims something narrower and sufficient: the arm's margin is not a constant,
+it moves with the process the arm is running in, and the direction is measured.
+
+--------------------------------------------------------------------------------
+4. WHY "ALREADY IN BOTH FLAKE LISTS" IS NOT A DISPOSITION
+--------------------------------------------------------------------------------
+The arm is currently listed in both catalogues:
+
+    docs/evidence/gap-18/known-gate-flakes.md:16   (the sixth table row)
+    docs/verification-playbook.md:922-928          (the cross-reference section)
+
+Both entries are honest and both were the right immediate response. But
+`known-gate-flakes.md:22-28` states the standard those lists hold themselves to:
+
+    "A gate that goes red for reasons unrelated to the change under test teaches
+    its readers to re-run rather than investigate — and the moment that habit
+    forms, a genuine regression gets the same shrug. The catalogue is the
+    minimum honest response; the fix is to make each of these … either
+    deterministic (inject the clock) or explicitly tolerant of a slow host,
+    which is work for whoever owns those phases."
+
+The list itself calls itself the minimum, and names the fix as owed. What has
+changed since is that the sighting count went up while the calibration did not.
+
+--------------------------------------------------------------------------------
+5. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the assertion is `getrusage(RUSAGE_SELF)`/wall over a 1.5 s window in
+which the scheduler under test fires zero times; the measured figure rises from
+isolation to the full suite (1.14x and 1.84x on two samples) and is flat under
+external host load; the two full-suite samples differ from each other by more
+than the isolated-to-full-suite gap; one breach at 1.196% is committed and
+readable; the arm sits in both flake lists.
+
+NOT CLAIMED: that the test is wrong about the daemon. The daemon's real idle cost
+is not in dispute and RSS was comfortably inside its own budget in every run
+here (70-71 MiB against a 100 MiB budget).
+
+NOT CLAIMED: that 1% is the wrong number for a real daemon. It is very probably
+the right number for the SUBJECT and the wrong number for the INSTRUMENT, and
+those are different sentences.
+
+NOT CLAIMED: the two uncorroborated breach figures. See §3.
+
+NOT CLAIMED: that this is urgent. Nothing ships wrong; the cost is a gate that
+occasionally reds for a reason unrelated to the change, which is exactly the cost
+`known-gate-flakes.md:22-28` describes.
+
+NO PRODUCTION CODE AND NO TEST WAS CHANGED BY THIS PASS.

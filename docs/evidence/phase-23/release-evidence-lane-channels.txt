@@ -1,0 +1,255 @@
+================================================================================
+THE RELEASE-EVIDENCE LANES HAVE NO CHANNEL THAT OBSERVES THEM BETWEEN TAGS
+Captured 2026-08-07, post-v1.6.0, at 5b10f1e257a5ae835fb5edbba1cf3b8e87ca6744.
+================================================================================
+
+WHAT THIS IS. Three findings that reviewers surfaced separately during the
+post-release pass. They are folded into one transcript because they are one
+shape: every instrument this repository owns for checking a RELEASE runs only at
+a release, so between two tags nothing observes them, and a regression in any of
+them is discovered at the most expensive possible moment.
+
+An earlier statement of the first finding already exists at
+`docs/evidence/phase-23/npm-bin-normalization.txt:231-248` (PR #130, this
+morning). It is re-measured here at the current commit rather than cited from,
+because two `check:` scripts have been added to `ci.yml` since — the counts have
+moved and the conclusion has not.
+
+--------------------------------------------------------------------------------
+1. THE `check:` SCRIPTS NO WORKFLOW INVOKES
+--------------------------------------------------------------------------------
+    $ grep -rn "npm run check:" .github/workflows/
+    .github/workflows/ci.yml:226          run: npm run check:engine-pin
+    .github/workflows/ci.yml:244          run: npm run check:workspace-count
+    .github/workflows/ci.yml:246          run: npm run check:hygiene
+    .github/workflows/ci.yml:248          run: npm run check:release-notes
+    .github/workflows/ci.yml:267          run: npm run check:marketplace-pin
+    .github/workflows/ci.yml:301          run: npm run check:support-windows
+    .github/workflows/ci.yml:323          run: npm run check:criteria-closeout
+    .github/workflows/ci.yml:330          run: npm run check:criteria-baseline
+    .github/workflows/ci.yml:340          run: npm run check:citation-runs
+    .github/workflows/ci.yml:357          run: npm run check:citation-content
+    .github/workflows/release-e2e.yml:16  # (a comment, not a step)
+    .github/workflows/release-e2e.yml:198 run: npm run check:e2e-types
+
+    12 grep hits; 11 are `run:` steps; 11 distinct scripts.
+
+    $ grep -rn "check:tarball\|check:install-smoke\|check:package-graph\|check:all" .github/
+    (no output)
+
+    $ grep -rn "check-published-tarball\|check-package-graph\|install-smoke" .github/
+    (no output)
+
+⇒ `check:tarball`, `check:install-smoke`, `check:package-graph` and `check:all`
+appear NOWHERE under `.github/`. Their only invocation path is a human typing
+`npm run check:all`, which chains all three (`package.json`, `"check:all"`).
+
+⚠️ A NOTE ON THE FIGURE. The review that raised this counted "nine invocations".
+That does not reproduce at this commit and the difference is benign: PRs #131 and
+#132 added `check:marketplace-pin` and `check:support-windows` to `meta-checks`
+after the count was taken. The load-bearing half — that none of the four is
+among them — reproduces exactly.
+
+--------------------------------------------------------------------------------
+2. WHAT `check:tarball` IS THE ONLY BEARER OF
+--------------------------------------------------------------------------------
+`scripts/check-published-tarball.mjs:33-47` — `FORBIDDEN_PATTERNS`, four classes
+of file that must never reach the registry:
+
+    :34  { label: "compiled test files",  test: (p) => /(^|\/)[^/]*\.test\.[^/]+$/.test(p) },
+    :35  { label: "test-support fixtures", test: (p) => p.includes("/test-support/") },
+    :36  { label: "TypeScript sources",    test: (p) => p.endsWith(".ts") && !p.endsWith(".d.ts") },
+    :46  { label: "incremental build state", test: (p) => p.endsWith(".tsbuildinfo") },
+
+Its header (`:8-14`) records why it exists: the build compiles `*.test.ts` too,
+so before the guard "252 of 514 files — 49% of the published tarball" were
+compiled tests, and "`npm publish --dry-run` … never inspects the file list."
+
+The mechanism these guards protect is `packages/cli/package.json`'s `files`:
+
+    "files": ["dist", "!dist/**/*.test.*", "!dist/**/test-support/**", "!dist/.tsbuildinfo"]
+
+Nothing else in the repository asserts that those negation patterns work.
+`.github/workflows/publish.yml` runs `npm publish --dry-run` immediately before
+the real publish (`:125`), which by that header's own account does not look.
+
+--------------------------------------------------------------------------------
+3. MUTATION — WHAT WOULD ACTUALLY NOTICE A WEAKENED TARBALL GUARD?
+--------------------------------------------------------------------------------
+Baseline, tree untouched:
+
+    $ npm run check:tarball
+      check-published-tarball: PASS — 31 files, 1517 kB unpacked, no
+      tests/sources included, every declared bin target already in npm's
+      normalized form.                                                  EXIT=0
+
+MUTATION A — DELETE the `"!dist/**/*.test.*"` entry from `files`:
+
+    $ npm run check:tarball
+      check-published-tarball: PASS …                                   EXIT=0
+
+  ⚠️ Recorded rather than discarded, because it is a real and separate fact:
+  `npm run build` is `tsc -b && bundle:types && bundle:cli`, and the bundler
+  REPLACES `packages/cli/dist` with 30 bundled files. `find packages/cli/dist
+  -name '*.test.js'` returns 0 (against 558 across the other packages' `dist`
+  trees, which are not published). So at this commit the compiled-test negation
+  has no subject in the one published package and cannot be falsified there.
+  Two of the four guards are latent; that is a property of today's bundling
+  step, not a property anything asserts.
+
+MUTATION B — DELETE the `"!dist/.tsbuildinfo"` entry (this one has a live
+subject: `packages/cli/dist/.tsbuildinfo`, 233 931 bytes):
+
+    $ npm run check:tarball
+      check-published-tarball: FAIL
+        - 1 incremental build state would be published, e.g.: dist/.tsbuildinfo
+      Fix by adjusting the `files` field in the offending package.json …  EXIT=1
+
+    $ npm run check:citation-content
+      THIS PR MOVED LINES UNDER A MERGED CITATION — 1
+        phase-23.json#c16#packages/cli/package.json:49
+            OK/collapsed@49  →  MOVED/collapsed@48!span              EXIT=1
+
+  ⚠️ THAT SECOND RED IS NOT COVERAGE AND MUST NOT BE READ AS ANY. The merged
+  citation quotes the SDK pin line (`"@anthropic-ai/claude-agent-sdk":
+  "0.3.218"`), not the negation patterns. It reddened because a line above it
+  was deleted, and the sanctioned remedy for that class is
+  `check:citation-content -- --update-baseline`, which re-pins and lets the
+  deletion through. So run the mutation again without the line-count change:
+
+MUTATION C — LINE-COUNT-NEUTRAL: rewrite `"!dist/.tsbuildinfo"` as
+`"!dist/nothingxxxxx"`. Same semantic weakening, same file length.
+
+    $ npm run check:tarball              EXIT=1   (FAIL, same message as B)
+
+    $ npx vitest run --coverage
+        Test Files  654 passed (654)
+              Tests  6869 passed (6869)   EXIT=0
+
+    $ npm run check:workspace-count      EXIT=0
+    $ npm run check:hygiene              EXIT=0
+    $ npm run check:release-notes        EXIT=0
+    $ npm run check:marketplace-pin      EXIT=0
+    $ npm run check:support-windows      EXIT=0
+    $ npm run check:engine-pin           EXIT=0
+    $ npm run check:criteria-closeout    EXIT=0
+    $ npm run check:criteria-baseline    EXIT=0
+    $ npm run check:citation-content     EXIT=0
+
+⇒ THE WHOLE PER-PUSH CHANNEL IS GREEN ON A TREE WHOSE PUBLISHED TARBALL WOULD
+SHIP A 234 kB `.tsbuildinfo`, and the one thing that objects is a script no
+workflow runs.
+
+ANTI-VACUITY CONTROL: the mutated full-suite counts (654 files / 6869 tests) are
+IDENTICAL to the same command on the pristine tree, so nothing was skipped or
+filtered — the suite really ran and really did not care.
+
+`packages/cli/package.json` was restored to its committed bytes after each
+mutation; `git status` reports it unmodified.
+
+--------------------------------------------------------------------------------
+4. THE SAME SHAPE, ONE LEVEL UP — `e2e/release` AND `e2e/attestation`
+--------------------------------------------------------------------------------
+`vitest.config.ts`'s `projects` are: every `packages/*` directory, plus exactly
+two hand-declared entries — `e2e/report` and `scripts`. Neither
+`e2e/release` nor `e2e/attestation` is among them, so `npm test` never loads
+them.
+
+    $ grep -rn "run: npm run test:e2e" .github/workflows/
+    .github/workflows/release-e2e.yml:389        run: npm run test:e2e:release-evidence
+
+    `npm run test:e2e` — the plain, file-parallel variant — appears in NO
+    workflow at all as a step. Its single mention anywhere under `.github/` is
+    `release-e2e.yml:29`, inside a comment. (`ci.yml:273` names the
+    `:release-evidence` variant, also in a comment, and makes this same point
+    about `e2e/attestation`.)
+
+`release-e2e.yml` triggers (`:70-95`) are `workflow_dispatch` and
+`workflow_call`. The only caller is `publish.yml:64` (`uses:
+./.github/workflows/release-e2e.yml`), whose own trigger is `push: tags: v*`.
+
+The three per-push workflows besides `ci.yml` run `packages/*` paths only:
+
+    gates-conformance.yml:44,46,77  npx vitest run packages/gates/…
+    perf-conformance.yml:44,46,48,50 npx vitest run packages/perf/…
+    learning-redteam.yml:45,47       npx vitest run packages/learning …
+
+Test files with no per-push channel: `e2e/release` 19, `e2e/attestation` 20 —
+and, for completeness, the other six harnesses too (`e2e/provisioning` 10,
+`e2e/matrix/installation` 12, `e2e/matrix/git` 12, `e2e/matrix/orchestration` 14,
+`e2e/matrix/connector` 15, `e2e/live` 8). 110 test files in total whose first
+execution on any push is at a `v*` tag or a manual dispatch.
+
+--------------------------------------------------------------------------------
+5. BLAST RADIUS ON THE MERGED CORPUS — BOUNDED, MEASURED
+--------------------------------------------------------------------------------
+The natural worry is that a merged closeout record ticked a criterion on a CI run
+of one of these unrun checks. It did not.
+
+`phase-01.json` criterion 3 is the only merged criterion whose evidence mentions
+`check-package-graph-acyclic`. Its six citations are:
+
+    ci-run     CI / typecheck (ubuntu-latest), job 91419417975      — `tsc -b`
+    ci-run     CI / meta-checks, job 91419417950                    — check-workspace-count
+    artifact   docs/evidence/phase-01/wi2-tsc-cold-build-passing.txt
+    artifact   docs/evidence/phase-01/wi2-tsc-incremental-build-passing.txt
+    artifact   docs/evidence/phase-01/wi2-tsc-cycle-failing.txt
+    artifact   docs/evidence/phase-01/closeout-c3-tsc-18-packages.txt   <<<<
+
+The `check-package-graph-acyclic: PASS — 18 workspace packages, dependency graph
+is a DAG` line is quoted from the LAST of those — a COMMITTED TRANSCRIPT
+(`closeout-c3-tsc-18-packages.txt:42-43`), captured by hand. It is not attributed
+to either `ci-run`. The criterion's own named channel is the typecheck job log,
+and `tsc -b`'s TS6202 is what actually bears the zero-cycles clause. Nothing in
+that record claims the acyclicity script runs in CI.
+
+⇒ NO MERGED RECORD IS FALSIFIED by any of this. What is affected is the future:
+these instruments cannot regress loudly.
+
+--------------------------------------------------------------------------------
+6. WHAT ALREADY LANDED TODAY — SO THIS IS NOT READ AS WORSE THAN IT IS
+--------------------------------------------------------------------------------
+Two PRs merged today deliberately routed new work into the per-push channel
+rather than into the unobserved ones. Both are the right pattern and both are
+partial by construction.
+
+PR #132 — `scripts/check-support-window-freshness.test.mjs:470` does
+`await import("../e2e/attestation/src/versionSupportWindows.ts")` and drives real
+committed records through the REAL `checkVersionSupportWindows`, with a
+one-day-earlier control at `:485` so a gate that refused everything would not
+satisfy it. That is a genuine per-push execution of production code inside
+`e2e/attestation`. It covers the freshness threshold; it does not make the other
+19 files of that project run.
+
+PR #130 — `scripts/check-published-tarball.test.mjs` puts the bin-normalization
+invariant in the `scripts` vitest project, explicitly so it runs per push
+(`npm-bin-normalization.txt:250-253`). Its `describe("the REAL published
+manifest")` at `:132-148` asserts against the real `packages/cli/package.json`.
+It covers `nonNormalizedBinTargets` ONLY — mutation C above ran with that suite
+green, which is the measurement of exactly how far it reaches.
+
+--------------------------------------------------------------------------------
+7. WHAT IS AND IS NOT CLAIMED
+--------------------------------------------------------------------------------
+CLAIMED: the four scripts are in no workflow; the tarball content guards are the
+sole bearer of their subject and a line-count-neutral weakening of that subject
+leaves 654 test files, 6869 tests and nine meta-checks green; `e2e/release` and
+`e2e/attestation` are in no per-push channel and their only CI channel is a
+dispatch or a `v*` tag; and the one merged record that could have depended on
+this cites a committed transcript instead.
+
+NOT CLAIMED: that anything shipped wrong. Every published tarball to date is
+covered by §5's reasoning and by `check:tarball` having been run by hand at the
+cut (`npm-bin-normalization.txt:265-275` records the v1.6.0 run).
+
+NOT CLAIMED: that wiring these into `ci.yml` is free. `check:install-smoke` packs
+a tarball and installs it into a scratch project; `check:tarball` runs `npm pack`.
+Both need a completed build, and the cost is real CI minutes on two arches. The
+remedy in the defect record sizes that rather than waving at it.
+
+NOT CLAIMED: any figure for how long `e2e/release` has been red. This transcript
+measures the channel; the sibling record
+`docs/evidence/phase-23/release-gate-summary-post-publish-probe.txt` measures
+what the channel currently holds.
+
+NO PRODUCTION CODE WAS CHANGED BY THIS PASS.
