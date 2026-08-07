@@ -332,3 +332,72 @@ The third is not hypothetical here: two DIFFERENT `canonical-target.test.ts`
 files appear in these logs, one in connectors-jira and one in
 connectors-grafana. A comparer keyed on basename + count would have matched the
 wrong suite and reported success.
+
+================================================================================
+APPENDED 2026-08-07 — RE-PROOF AFTER MERGING #121, #120, #122, #124
+================================================================================
+
+# UPSTREAM BASE (stable): 7ded38b  ("fix(connectors-jira): type DC custom-field
+#   refusals as unsupported/jira-datacenter (#124)") — origin/main at this merge.
+# The sections above remain pinned to 6f964d7 and are NOT restated: their
+# commands ran at that tree and RULING-3 asks the header to name the tree the
+# commands actually ran at. This section re-runs the two headline bearers at the
+# new base, because four PRs landed under them.
+
+BASELINE (connectors-jira + gateway + connectors-grafana)
+   Test Files  121 passed (121)
+        Tests  1386 passed (1386)
+
+PROBE C (reverse — fold the bulk mapping back to the pre-fix passthrough)
+   Test Files  2 failed | 49 passed (51)
+        Tests  9 failed | 596 passed (605)
+  Same 9 assertions as at 6f964d7. The bearer is unchanged by #124's DC work.
+
+PROBE E3 (the pipeline never sees the connection's folderAllowlist)
+  npm run build → exit 0
+   Test Files  3 failed | 118 passed (121)
+        Tests  13 failed | 1373 passed (1386)
+  12 at 6f964d7, 13 now — the extra is the operator-remedy case added for the
+  reviewer's advisory (a).
+
+RESTORED BASELINE   121 files / 1386 tests; `git status --porcelain` empty.
+
+--------------------------------------------------------------------------------
+PROBE L (NEW) — did this branch's delegation ABSORB #120's separator pin?
+--------------------------------------------------------------------------------
+
+#120 landed a test pinning that `keyOf`'s separator is unambiguous (a sliding
+field boundary must yield two queues, not one). This branch then rewrote the
+same class so that `runExclusive` DELEGATES to `runExclusiveMulti` — exactly the
+shape of the playbook's "adding a check can silently un-pin the one it sits
+beside": coverage migrating between two rules with no test failing.
+
+So it was measured rather than assumed. Mutate the joiner `\0` → `:`:
+
+   Test Files  1 failed (1)
+        Tests  1 failed | 14 passed (15)
+   × the key separator is unambiguous — a sliding field boundary yields two
+     queues, not one
+
+#120's test still bites THROUGH the delegated path. Its coverage was not
+absorbed. The suite is 15 cases: 5 original + 1 from #120 + 9 multi-key.
+
+--------------------------------------------------------------------------------
+THE CONFLICT, AND WHY IT EXISTED AT ALL
+--------------------------------------------------------------------------------
+
+`git merge` reported "Cannot merge binary files" for write-serializer.ts and
+fell back to a whole-file conflict. The cause was the defect #120 fixed: OUR
+side still carried the raw 0x00 joiner, so git classified our blob as binary and
+disabled the line merge — the two edits do not overlap by a single line.
+
+Resolution: this branch's file, with #120's one-line change applied to it.
+Measured afterwards, at the merge commit:
+
+  raw NUL bytes in the file                             0
+  `\0` escapes                                          2  (code + doc comment)
+  git diff --numstat origin/main -- <file>          75  5  (numbers ⇒ TEXT)
+  git grep reads it as text                            yes (not "Binary file … matches")
+  npm run check:hygiene                                PASS, incl. its whole-file NUL scan
+  runtime equivalence, measured: `${"a"}\0${"b"}` → [97, 0, 98], identical to a
+    raw-NUL join — the escape is a SOURCE-ENCODING change only.
