@@ -113,8 +113,8 @@
       "index": 3,
       "text": "Enforced budgets are hash-linked to the approved envelope; a tampered post-approval edit fails closed (integration test + journal entry).",
       "textSha256": "14c63c29f26ed6360214ebb863e687ecd585afae452e89ed97a1b8b1506eaf0f",
-      "classification": "UNMET",
-      "ticked": false,
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
       "citations": [
         {
           "kind": "test",
@@ -165,10 +165,39 @@
           "kind": "artifact",
           "ref": "docs/evidence/phase-15/closeout-c3-hash-link-tamper.txt",
           "quotedAssertion": "' Test Files  4 passed (4)' / '      Tests  23 passed (23)' — scoped local re-run of contract-builder / journal-anchor / performance-gate / performance-gate.e2e at the closeout commit, exit status 0. Recorded even though the box stays unticked: the second clause's evidence is real and a future pass should not have to re-derive it."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/authorization-envelope.ts:134",
+          "quotedAssertion": "packages/contracts/src/contracts/authorization-envelope.ts:134 — 'provisionalBudgetHash: NonEmptyStringSchema.optional(),'. The member this criterion's first clause needs, added by PR #116 (interface-ledger Gap 22). It is OPTIONAL in the schema for evolution only — a legacy envelope without it still parses and cannot pass enforcement."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/envelope-builder.ts:77-94",
+          "quotedAssertion": "packages/supervisor/src/intake/envelope-builder.ts:77 — 'export function hashEnvelopeContent(content: AuthorizationEnvelopeContent): string {' — and :94 — 'provisionalBudgetHash: content.provisionalBudgetHash,'. The member is inside the object the canonical hash is taken over, so the approval token, which signs the envelope hash, now covers the budget set. That is the hash link the criterion names."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/performance-contract.ts:177",
+          "quotedAssertion": "packages/contracts/src/contracts/performance-contract.ts:177 — 'approvedEnvelopeHash: NonEmptyStringSchema.optional(),' on EnforcedPerformanceContractSchema — the other end of the link, carried on the enforced record."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/intake-pipeline.ts:73-84",
+          "quotedAssertion": "packages/supervisor/src/intake/intake-pipeline.ts:73 — 'export type RequestedEnvelopeContent = Omit<AuthorizationEnvelopeContent, \"provisionalBudgetHash\">;' — and :84 — 'readonly envelopeContent: RequestedEnvelopeContent;'. The binding is DERIVED at intake, never declared by a caller. Measured limit, not asserted: excess-property checking binds object literals only, so a widened intermediate assigns through at tsc exit 0 — which is why the runtime override is pinned by its own reverse-probed test rather than by the type."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/perf/src/contract/hash-link.ts:189-208",
+          "quotedAssertion": "packages/perf/src/contract/hash-link.ts:201 — 'return { ok: false, recomputedHash, reason: \"no_envelope_budget_binding\" };' — and :208 — 'return { ok: false, recomputedHash, reason: \"envelope_hash_mismatch\" };'. Checks 4 and 5, ordered LAST after the three journal checks on purpose: first failure wins, so moving them above check 1 reddens the three PRE-EXISTING tests this criterion's already-merged evidence cites. Position is semantics, and it was measured rather than argued."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/evidence/phase-15/envelope-binding-probe-batchE.txt",
+          "quotedAssertion": "The probe battery behind the two clauses. P1 deletes checks 4+5: 6 of 1160 red, all six the new binding tests, zero pre-existing ones, with both does-not-fail controls (C1 the successful build, C2 the passing verdict through the real registry and real journal) green. P2a changes check 5's reason literal to a colliding EXISTING member of the union and reddens exactly the three whose subject IS that reason. P2b moves checks 4+5 above check 1 and reddens exactly the three pre-existing tests, which is the measurement that justifies the order. P3 deletes the derivation, recording both the stale-dist and the rebuilt numbers. P4 falsifies the compile-time claim in the direction it does not hold. Nothing in this transcript ran live, docker, or any paid system."
         }
       ],
-      "defectRef": "docs/evidence/criteria-closeout/defects/15-enforced-budget-not-bound-to-approved-envelope.md",
-      "notes": "Why UNMET and not WORDING-MISMATCH, stated plainly because it is the judgement call in this record. The criterion has two clauses; the second ('a tampered post-approval edit fails closed (integration test + journal entry)') is fully and non-vacuously evidenced by the citations above. The first ('hash-linked to the approved envelope') names a binding that does not exist anywhere in the tree. A wording correction would have to read 'hash-linked to the provisional contract 11 committed at approval time, anchored in 04's append-only journal' — and that is not merely more precise, it is weaker on exactly the axis the original words carry: the journal anchor cannot detect a budget that was already wrong when intake journaled it, i.e. one the approver never actually sanctioned. The pass's own rule is that a correction losing a guarantee is UNMET, not a wording fix, so the box stays unticked and the defect carries the coordinated 02/11 remedy. Two dated notes for whoever picks it up: ledger Gap 21 (2026-08-01) offers roadmap/24's criteria seal as a transitive binding for criteria-sourced budgets, but `criteria-seal.ts`'s own header shows that seal is journal-anchored on the same principle, so it does not close this; and the enforcement path this criterion describes has no production caller at all (Gap 21: '`createPerformanceGateHandler` still has no production caller'), so today the gap is latent rather than live. Resolver note: four citations in this record quote prose rather than code and are therefore not line-anchored by the closeout citation resolver — three of them are here (authorization-envelope.ts:73-104 and performance-contract.ts:157-167, which enumerate a .strict() schema member list, and criteria-seal.ts:6-22, whose sentence contains a backtick and so is not extractable as a quoted span). All three were byte-verified by hand against the files at the closeout commit: the two member lists were read off the schema literals, and the criteria-seal sentence was matched whitespace-normalized after stripping JSDoc markers."
+      "notes": "Why UNMET and not WORDING-MISMATCH, stated plainly because it is the judgement call in this record. The criterion has two clauses; the second ('a tampered post-approval edit fails closed (integration test + journal entry)') is fully and non-vacuously evidenced by the citations above. The first ('hash-linked to the approved envelope') names a binding that does not exist anywhere in the tree. A wording correction would have to read 'hash-linked to the provisional contract 11 committed at approval time, anchored in 04's append-only journal' — and that is not merely more precise, it is weaker on exactly the axis the original words carry: the journal anchor cannot detect a budget that was already wrong when intake journaled it, i.e. one the approver never actually sanctioned. The pass's own rule is that a correction losing a guarantee is UNMET, not a wording fix, so the box stays unticked and the defect carries the coordinated 02/11 remedy. Two dated notes for whoever picks it up: ledger Gap 21 (2026-08-01) offers roadmap/24's criteria seal as a transitive binding for criteria-sourced budgets, but `criteria-seal.ts`'s own header shows that seal is journal-anchored on the same principle, so it does not close this; and the enforcement path this criterion describes has no production caller at all (Gap 21: '`createPerformanceGateHandler` still has no production caller'), so today the gap is latent rather than live. Resolver note: four citations in this record quote prose rather than code and are therefore not line-anchored by the closeout citation resolver — three of them are here (authorization-envelope.ts:73-104 and performance-contract.ts:157-167, which enumerate a .strict() schema member list, and criteria-seal.ts:6-22, whose sentence contains a backtick and so is not extractable as a quoted span). All three were byte-verified by hand against the files at the closeout commit: the two member lists were read off the schema literals, and the criteria-seal sentence was matched whitespace-normalized after stripping JSDoc markers. **Remediated 2026-08-07 (closeout batch G).** Both conjuncts now have bearers and this criterion's UNMET reasoning above is SUPERSEDED, not deleted: its central negative fact — that AuthorizationEnvelopeSchema carries no budget hash and EnforcedPerformanceContractSchema no envelope hash — stopped being true when PR #116 landed interface-ledger Gap 22. Two residuals are kept open rather than absorbed. (1) Gap 22 itself is appended to the ledger AWAITING OWNER RATIFICATION on two points: its omission from the ledger intro table and origin table (deliberate, because an inserted line moves every protected anchor below it, and Gap 21 sets the same precedent), and the OPTIONAL-in-schema posture. That gates the LEDGER ENTRY's ratification, not the enforcement. (2) createPerformanceGateHandler still has no production caller — ledger Gap 21, unchanged — so everything here is measured through 14's real registry and 04's real journal in tests and in the perf-conformance job, never through a shipped run. Remedy step 2's disclosed deviation, that the approval-time check is discharged by signature coverage, is recorded at hash-link.ts. Legacy envelopes parse but cannot pass enforcement, so in-flight runs must be drained before upgrading."
     },
     {
       "index": 4,

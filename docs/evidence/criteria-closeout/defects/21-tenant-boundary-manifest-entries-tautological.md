@@ -82,3 +82,28 @@ The other five entries and the completeness/removal machinery are sound and are 
 **Effort sizing: S** for the Grafana half plus step 3 (import an already-exported, already-self-verifying scenario). **M** overall if step 1(a) is chosen and a genuine Jira tenant-boundary scenario has to be written, and for step 2's anti-tautology guard, which needs a small design decision about how an entry declares what it exercises. No live system, no owner subscription; CI minutes only.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — remedy option (a), and the chain that got there
+
+Option (a) was taken: a real cross-tenant scenario in `packages/connectors-jira`, exercising a real
+`RemoteMutationPlan` against the real apply client, registered as a seventh manifest entry. The
+chain, so no single PR is credited with the whole thing: PR #94 replaced the Grafana entry with 20's
+real breach scenario, PR #112 pinned the fault-injection scenarios' own oracles (the layer this
+record's class hides in), and PR #122 added the Jira fixture and the seventh entry — with the oracle
+pinned from day one rather than retrofitted, and with a second gate-level control born from the
+first run of its own probe B2.
+
+The measurement that answers this record's actual question — is the replacement another tautology? —
+is in `docs/evidence/phase-21/fix-21c5-jira-tenant-boundary-probe-batchH.txt` §2: deleting the real
+tenant refusal from the gateway mutation pipeline takes the suite from **5 failures src-only to 13
+after a workspace build**, and the 8 rows that appear only under the rebuild are exactly the ones
+the new entry adds. The mutation is deliberately kept compiling, because a non-compiling one leaves
+every cross-package leg measuring the previous `dist/`. The Grafana half's equivalent is
+`docs/evidence/phase-21/fix-c5-tenant-boundary-probe.txt`. Cite the transcripts for the coupling;
+the unit assertions alone cannot carry it.
+
+**Kept open: nothing** — but two things must not be read into the fix. The entry does **not** make
+the enforcement Jira-side: it stays gateway-owned and provider-agnostic, so phase 18 owns the
+fixture and not the check. And it does not touch the multi-tenant scope question carried by
+`21-tenant-allowlist-declared-not-enforced` — reads are still unchecked and remote identity is still
+unverified.

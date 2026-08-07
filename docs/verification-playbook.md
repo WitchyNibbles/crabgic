@@ -749,6 +749,17 @@ tree. It is `&&`-chained **4th** in its script, so it short-circuits before most
 `release-e2e.yml:198` would **fail today**. Not caused by any current PR. If your work touches `e2e/`,
 typecheck your projects **individually**; the aggregate script will not reach them.
 
+> **Corrected 2026-08-07 (closeout batch G) — this section is now HISTORY. The text above stays
+> verbatim.** Both halves of it have stopped being true. The 25 errors were fixed by PR #109, and the
+> `&&` chain is gone: `scripts/check-e2e-types.mjs` runs each project independently and reports every
+> failure, so one red project can no longer conceal the seven behind it — which was the bigger of the
+> two findings and is the part that cannot recur silently. Re-measured at `ed999b9`:
+> `PASS — 8 project(s) typechecked clean`, and independently in three separate batch transcripts this
+> wave. **One precision, or this gets re-opened:** the check typechecks `e2e/` against the workspace's
+> built `dist/`, so on a stale build it reports failures that are a build-state artifact rather than a
+> regression. `release-e2e.yml` runs `npm run build` in the step immediately before it. If you see it
+> red, build first and re-measure before writing it down.
+
 ## 💸 BOUNDING A SUBAGENT-SPAWNING TEST — and why `--max-turns` is NOT the answer
 
 **Measured overspend, 2026-08-05.** A 12-turn cap was honoured by the ledger's convention
@@ -796,3 +807,79 @@ subagent). **The subject held; the test did not.**
 Correct handling: record that the subject held, file the test's defects (tight timeout, unbounded prompt,
 no model pinned), fix **neither** the test nor the manifest to force a pass, and **leave the box unticked
 because the criterion names the suite and the suite is not green.**
+
+## ⚪ WARN-BLIND PROBE CHANNELS — silence only discriminates if the channel speaks for a POSITIVE CONTROL
+
+_(Added 2026-08-07.)_ A probe that reads "the tool printed no warning, therefore the value was
+accepted" is worthless unless you have first shown the channel prints a warning for a value you KNOW
+is invalid. Measured: `claude plugin details` surfaced **no warning at all** even for a deliberately
+invalid `maxTurns: banana`, so its silence for a valid value evidences nothing about whether the
+value was read. Before treating a channel's silence as a measurement, drive a positive control
+through it and see it speak. If it will not, say the channel is warn-blind and go find one that
+reaches the loader's own warn output.
+
+## 🎨 STRIP ANSI ESCAPES BEFORE ANY JOB-LOG BYTE COMPARISON
+
+_(Added 2026-08-07, appended to the one-space rule above.)_ Vitest's per-file
+`✓ … (N tests)` lines in a GitHub job log are **ANSI colour-coded**. So
+`grep 'test.ts ('` over the raw log returns **zero** — a smaller answer with no error, the exact
+instrument-failure shape this file already records for mis-scoped pathspecs and notation-blind greps.
+One pass published "this repo's CI prints only the repo-wide summary, there are no per-file lines to
+byte-compare" **as a measurement** on the strength of that zero, and it was false; the lines were
+all there. Two agents in one wave were misled by it, in opposite directions.
+
+```
+sed -E 's/\x1b\[[0-9;]*m//g' joblog.txt | grep 'test.ts ([0-9]* tests)'
+```
+
+Strip first, then compare, then quote. And re-read the earlier rule with this in mind: the one-space
+form is correct **after** the escapes are gone, not before.
+
+## 🧬 MUTATE THE NOTATION, NOT ONLY THE VALUES
+
+_(Added 2026-08-07.)_ An instrument can pass a battery that exercises every one of its RULES and
+still be systematically blind in its **association grammar**. Measured: a citation resolver passed a
+three-way mutation battery (falsified quote text, moved marker, marker past EOF) and was
+simultaneously blind to every prose-separated quote — its marker-to-quote pairing required the quote
+to follow the marker immediately, so `:28-30 says so ('…')` and `:57 proves … — '…'` fell through
+unchecked — and to every **bare marker**, which carries no quote at all and was therefore never
+span-checked. All three mutations happened to land on markers in the adjacent form, so the battery
+tested the rules and never the grammar that feeds them. The published finding count was an
+understatement by more than a factor of three.
+
+**When you mutation-test a text instrument, mutate how the thing is WRITTEN — separator, ordering,
+punctuation, an entry with the optional half missing — not only what it says.** And when an
+instrument's own limitations section names none of its grammar assumptions, that section is not a
+limitations section.
+
+## 🚫 NEVER RUN `git push` AS A BACKGROUND HARNESS TASK
+
+_(Added 2026-08-07.)_ A backgrounded push runs the repository's `pre-push` hook, which runs the
+suite — and the harness's task lifecycle can kill the process group out from under it. The hook then
+reports a failure that looks exactly like a load flake, and the push silently did not happen. Two
+things go wrong at once: you chase a test that was never failing, and you believe you pushed.
+
+Detach with `setsid`, or push in the FOREGROUND and wait for it. And whenever a pre-push hook failure
+looks like a flake, check first whether the push was backgrounded — the same shrug this file warns
+about for real flakes applies here, and here it is hiding a missing push rather than a regression.
+
+## 🔁 KNOWN LOAD-FLAKE LISTS — reconcile the two, they have drifted
+
+_(Added 2026-08-07.)_ This file names two known load flakes above
+(`packages/perf/src/measurement/command-runner.test.ts`'s zero-CPU read, and
+`packages/journal/src/lease.test.ts`'s `onLeaseLost`/`autoRenew` arms).
+`docs/evidence/gap-18/known-gate-flakes.md` catalogues a different set. Cross-referenced in both
+directions:
+
+- **The same family, recorded twice under different names:** this file's `lease.test.ts` entry and
+  gap-18's `@crabgic/journal` "automatic heartbeat interval actually renews the on-disk record"
+  row are the same `autoRenew` real-timer race.
+- **In gap-18 and not here:** the git-engine ref-collision row, the perf self-`getrusage` row, and
+  the CLI HIGH-H2 overlapping-verification row.
+- **In this file and not gap-18:** `command-runner.test.ts`'s zero-CPU read.
+- **New this wave, in neither until now — three fast-check property timeouts under concurrent load,
+  never assertion failures:** `packages/engine-core`'s footguns property, `packages/gates`'
+  coverage-ratchet property, and `packages/engine-claude`'s session property. Seen across PRs #115,
+  #116 and #118.
+
+Neither list is authoritative on its own. Read both, and add a new sighting to **both**.

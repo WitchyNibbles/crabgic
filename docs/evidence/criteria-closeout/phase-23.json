@@ -96,8 +96,8 @@
         },
         {
           "kind": "test",
-          "ref": "vitest.config.ts:138-143",
-          "quotedAssertion": "...and the thresholds that make that step a GATE rather than a report, so a sub-80% run would have reddened it: :138 '      thresholds: {' / :139 '        lines: 80,' / :140 '        branches: 80,' / :141 '        functions: 80,' / :142 '        statements: 80,' / :143 '      },'. Identical at the candidate — `git show 6b9dd7b:vitest.config.ts` carries the same five lines at :125-130."
+          "ref": "vitest.config.ts:150-155",
+          "quotedAssertion": "...and the thresholds that make that step a GATE rather than a report, so a sub-80% run would have reddened it: :150 '      thresholds: {' / :151 '        lines: 80,' / :152 '        branches: 80,' / :153 '        functions: 80,' / :154 '        statements: 80,' / :155 '      },'. Identical at the candidate — `git show 6b9dd7b:vitest.config.ts` carries the same five lines at :125-130. (Lines corrected 2026-08-07, in both the ref and this text: the six markers read `:138`-`:143` and the ref read `vitest.config.ts:138-143`. Correct when written; later PRs inserted coverage `include`/`exclude` entries above the block, moving it down twelve lines. The quoted lines and the claim are unchanged, and the sentence about the candidate tree is untouched because it names its own revision. Found by `scripts/check-citation-content.mjs`, PR #126.)"
         },
         {
           "kind": "ci-run",

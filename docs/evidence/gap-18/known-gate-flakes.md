@@ -6,12 +6,13 @@ standing-approval work — and all four are timing-sensitive rather than logical
 Catalogued here because an uncatalogued flake is indistinguishable from a regression, and
 this branch hit that confusion once already (see `live-verification.md`).
 
-| Suite                 | Test                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `@crabgic/git-engine` | ref-collision resistance: many concurrent attempts on the SAME task never collide          |
-| `@crabgic/perf`       | times a default-exported sync benchmark function and self-reports real `getrusage` figures |
-| `crabgic` (CLI)       | HIGH H2: two overlapping verifications of the SAME token — exactly one succeeds            |
-| `@crabgic/journal`    | the automatic heartbeat interval actually renews the on-disk record (`autoRenew: true`)    |
+| Suite                 | Test                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| `@crabgic/git-engine` | ref-collision resistance: many concurrent attempts on the SAME task never collide                |
+| `@crabgic/perf`       | times a default-exported sync benchmark function and self-reports real `getrusage` figures       |
+| `crabgic` (CLI)       | HIGH H2: two overlapping verifications of the SAME token — exactly one succeeds                  |
+| `@crabgic/journal`    | the automatic heartbeat interval actually renews the on-disk record (`autoRenew: true`)          |
+| `@crabgic/git-engine` | control-clone crash/recovery (`control-clone.crash.test.ts`) — see the 2026-08-07 row note below |
 
 Each was observed failing once during this branch's work, re-run in isolation, and passed.
 The pattern is the same in all four: a real wall-clock interval or a concurrency window
@@ -37,3 +38,39 @@ above argues against. Corrected to four; the table was always the authority.
 
 Round 32 re-confirmed row 3 (`HIGH H2`) directly: it failed once in a full-suite run and
 passed 3/3 in isolation immediately afterwards.
+
+## Fifth row, added 2026-08-07 — and its provenance, stated rather than implied
+
+The table above is now **five** rows. The prose above it still says "Four tests" and "all four"; that
+text is left verbatim, and this section is the correction — the same handling this file's own Round
+32 note applied when it last miscounted itself. **The table has always been the authority; it now has
+five rows and the reader should count them rather than trust either sentence.**
+
+⚠️ **Provenance of the new row, and it is weaker than every other row here.**
+`control-clone.crash.test.ts` (`@crabgic/git-engine`) was observed failing during the 2026-08-06/07
+remediation wave in **local pre-push runs, by two independent agents; no CI run id was captured**,
+and no committed artifact or PR body records the failing run. Both sightings were on a loaded host
+running the full suite. That is thinner evidence than rows 1–4, every one of which was observed,
+re-run in isolation and seen to pass — so this row is a **catalogue entry, not a verdict**: it says
+"if you see this red under parallel load, you are not the first", and it does not assert the test is
+wrong. It must not be cited as evidence that the suite is flaky, and the first agent to reproduce it
+should replace this paragraph with a run id.
+
+**A second, sharper caution earned in the same wave and recorded here because this file is where a
+reader lands when a pre-push run goes red:** a `git push` run as a BACKGROUND harness task has its
+pre-push hook — and therefore the suite — killed by the task lifecycle, and the result presents as a
+failing test. Before adding any sighting to this table, check whether the push was backgrounded. The
+ruling is in `docs/verification-playbook.md`.
+
+**Remedy, same shape as the other four rows' fix note:** inject the clock, or widen the tolerance so
+a slow host cannot stretch the window past it. S-sized, and it belongs to whoever owns that phase.
+
+**Cross-reference, both directions.** `docs/verification-playbook.md` keeps its own known-load-flake
+list, and the two have drifted. Its `lease.test.ts` `onLeaseLost`/`autoRenew` entry and this file's
+`@crabgic/journal` heartbeat row are **the same `autoRenew` real-timer family** recorded twice under
+different names. Its `command-runner.test.ts` zero-CPU entry has no row here. Three fast-check
+property timeouts seen this wave — `engine-core`'s footguns property, `gates`' coverage-ratchet
+property and `engine-claude`'s session property, all timeouts under concurrent load and never
+assertion failures — are now listed there and are deliberately **not** given rows here, because none
+was re-run in isolation to confirm it passes. Neither list is authoritative alone; add a new sighting
+to both.

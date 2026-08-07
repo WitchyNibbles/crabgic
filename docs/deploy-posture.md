@@ -103,6 +103,73 @@ document, and this document is not evidence that it was.
 > _Amended 2026-08-05 (PR #95):_ **closed.** The guard now additionally scans the document's whole JSON serialization — which on Cloud _is_ the outbound body — while keeping the extracted-text scan, since JSON escaping defeats the `\s`-bearing patterns. This also closed an **unknown-extra-member** smuggling path that `validateAdfSafeSubset`'s `type`/`marks`/`content` walk never visited, and Data Center's `[text|href]` wiki-markup path, pinned by its own apply-boundary test. False-positive risk measured at zero over 250 real URLs, 37 fixture JSONs and 1,000,000 synthetic high-entropy segments.
 > | Live evidence: phases 00 and 06 | Neither has a closeout record (23 of 25 phases do). `engine-live.yml` has **zero runs ever**, and the repository has **no `CLAUDE_CODE_OAUTH_TOKEN` secret** — `gh secret list` returns only `NPM_TOKEN` (created 2026-07-26), verified 2026-08-05. CI dispatch of the live lane is therefore impossible today, and that is an owner action, not agent work. |
 
+> _Amended 2026-08-07 (PRs #104, #121) — the "Gate registry never composed" row above:_ **partially
+> closed; the measurement in "Measurement behind the gate-registry row" below, taken at `a7988c1`, is
+> superseded.** The daemon's one production composition root now composes a gate registry
+> (`packages/cli/src/daemon/compose-gate-registry.ts:113`) and the post-completion pipeline walks
+> `running → verifying → integrating → final_verifying → published_local`
+> (`packages/cli/src/daemon/post-completion-pipeline.ts:217`, `:288`, `:364`, `:454`). Since PR #121 the
+> security-fixture manifest's gates — seven entries once PR #122's Jira tenant-boundary entry
+> auto-registered through the derived list, with no edit — fire **blocking** at `final_verifying` for
+> every run, and a failure names the fixture id in the refusal. Per-push proof, byte-compared under the
+> one-space rule with the ANSI escapes stripped: `compose-gate-registry.test.ts` 7 → 10 cases in the
+> `unit-test+coverage (ubuntu-latest)` job logs, with three control rows that correctly do not move.
+> Transcript: `docs/evidence/phase-14/gate-composition-security-manifest-batchM.txt`, whose §12 is a
+> dated self-correction worth reading here: in one adjacent suite those gates are **registered and fire
+> zero times**, measured with an instrumented counter and two instrument controls rather than inferred
+> from a green run. **Still inert, by measured necessity rather than omission:** 15's performance gate
+> and 14's own tdd/coverage/flake/scanner/engine-conformance tranche have no production registration.
+> The perf gate's measurement backend is missing in four independent places (transcript §9), and a
+> registered handler without a backend either fails every run or fabricates. **Whether they fire in the
+> daemon is an owner scope decision, not a maintenance task.**
+>
+> _Amended 2026-08-07 (PR #125) — the `bulk:<keys>` write-order row above:_ **closed.** 16's
+> `WriteSerializer` gained multi-key acquisition (`runExclusiveMulti`), and both Jira apply clients now
+> map a `bulk:<keys>` plan to its sorted member issue keys, so a bulk write serializes against
+> single-issue writes of its members and against order-permuted bulk twins (`maxInFlight === 1`), while
+> disjoint sets deliberately stay concurrent (`=== 2` controls, green both before and after the fix).
+> Connector-level integration proof through the real `executeMutationPlan` and a real temp-dir journal,
+> with the race observed on the wire as `expected 2 to be 1`:
+> `docs/evidence/phase-18/bulk-write-order-batchC.txt`. `roadmap/18-jira-cloud-adapter.md:143` is ticked
+> in the same pass. Nothing here evidences behaviour against a real Jira; every leg is a fake transport.
+>
+> _Added 2026-08-07 (PR #125) — a new residual row, beside the `tenantAllowlist` one above:_
+> `ExternalConnection.folderAllowlist` — until now declared, published and read by **zero** code, the
+> same declared-and-inert shape `tenantAllowlist` had — is **enforced at `executeMutationPlan`,
+> mutations only**, via a provider `folderAttribution` hook with three answers (`folders` /
+> `outside-folders` / `unknown`). Scope bound, stated verbatim from the change: it binds the folder the
+> provider derives **from the plan**, never where the resource actually lives on the remote; it is not
+> "writes outside these folders are impossible", it is "an operator can bound which folder a write may
+> claim to land in." Reads are not folder-checked. **Ruling filling a spec silence: a provider that
+> supplies no attribution is REFUSED, not waved through** — with a visible consequence, written into the
+> published schema description: **setting `folderAllowlist` on a Jira connection refuses every Jira
+> mutation on it**, because Jira has no folder concept and registers no hook; Grafana's `annotation`
+> kind is `unknown` by construction and is likewise refused on a folder-scoped connection. There is no
+> config-time signal for either; a connection-doctor warning is recorded as future work in the
+> `16-folder-allowlist` defect record. Evidence:
+> `docs/evidence/phase-16/folder-allowlist-batchC.txt`.
+>
+> _Amended 2026-08-07 (PR #118) — the "Live evidence: phases 00 and 06" row above:_ the CI-channel
+> preconditions are landed. `engine-live.yml` now installs `@anthropic-ai/claude-code@2.1.218` (pinned
+> in-range; `latest` is 2.1.223, outside it) and verifies the binary before the suite; the spawn case's
+> three filed test defects are fixed and `test:live` bails on first failure. **The row's substance is
+> unchanged:** zero runs ever, the `CLAUDE_CODE_OAUTH_TOKEN` secret is still unconfirmed, and dispatch
+> remains an owner action. **Nothing in that change was verified against a live engine**, and this annotation is not evidence that it was.
+>
+> _Correction 2026-08-07 (closeout batch G) — five of this document's own `docs/engine-baseline.md`
+> line anchors are stale by exactly +1, measured at `ed999b9`:_ the blocking-condition section above
+> cites `:519`, `:523`, `:528`, `:545` and `:566`, and each quoted passage now sits one line lower —
+> `:520`, `:524`, `:529`, `:546`, `:567`. Three of them (`:519`, `:523`, `:528`) currently land on a
+> **blank line**, which is worse than landing on the wrong prose because it reads as a deleted claim.
+> The anchors at `:290`, `:308` and `:312` still resolve to the text this document attributes to them
+> and are untouched. **Nothing about the argument changes:** every quoted sentence is still present,
+> verbatim, one line further down — the deny recording `insideDenied: false`, the "inert on the
+> permission layer" consequence, §14's own Limits paragraph, the `sandbox-write-tool` result, and
+> the "says nothing about `Read(...)`" caveat. Only the pointers moved, and one inserted line above
+> §14 accounts for all five. The original text is left verbatim per this document's own convention.
+> This was found while EOF-appending a §11 addendum to `docs/engine-baseline.md` in the same pass —
+> that append cannot shift anything, and did not cause this; the drift predates it.
+
 ### Measurement behind the gate-registry row
 
 Verified 2026-08-05 at `a7988c1`, because the claim is strong enough to deserve it:

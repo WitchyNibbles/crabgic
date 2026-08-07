@@ -133,3 +133,34 @@ every envelope-hash fixture in the repo. No CI job, no live engine, no owner inp
 ratifying the ledger amendment.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — the binding exists, and one thing is still owed
+
+PR #116 landed the binding this record measured as absent, as interface-ledger Gap 22.
+`AuthorizationEnvelopeSchema` now carries `provisionalBudgetHash`; `hashEnvelopeContent` takes the
+canonical hash **over** it, so the approval token — which signs the envelope hash — covers the budget
+set; and `EnforcedPerformanceContractSchema` carries the matching `approvedEnvelopeHash`. The binding
+is **derived at intake and cannot be declared by a caller**: `IntakeRequest`'s envelope content is
+typed as the envelope content minus that member. Two new fail-closed reasons,
+`no_envelope_budget_binding` and `envelope_hash_mismatch`, are checks 4 and 5 of `hash-link.ts`.
+Evidence: `docs/evidence/phase-15/envelope-binding-probe-batchE.txt`.
+
+Why the two new checks are ordered **last** is a measurement rather than a style choice (probe P2b):
+first failure wins, so moving them above check 1 reddens the three **pre-existing** tests this
+criterion's already-merged evidence cites — including the fixture the merged record quotes for
+`journal_anchor_mismatch`. The last-position order is the only one that both catches the new vector
+and leaves the existing evidence reporting the reason it was merged reporting.
+
+The compile-time claim was **falsified rather than asserted** (probe P4), which is the part of this
+remedy most worth reading. TypeScript's excess-property check binds object literals only, so a
+widened intermediate assigns straight through at `tsc` exit 0 — "unrepresentable" is true of the
+shape a caller writes, not of every value that can reach the field. The runtime override that closes
+the other half is pinned by its own reverse-probed test.
+
+**Kept open: ledger Gap 22 awaits owner ratification**, on two points — its deliberate omission from
+the ledger's intro sentence and origin table (an inserted line moves every protected anchor below it;
+Gap 21 sets the same precedent) and the OPTIONAL-in-schema posture. That gates the **ledger entry's**
+ratification, not the enforcement. Remedy step 2's disclosed deviation is recorded at `hash-link.ts`:
+the approval-time check is discharged by signature coverage rather than by a separate check. And
+legacy envelopes without the member still parse but cannot pass enforcement, so in-flight runs must
+be drained before upgrading.

@@ -861,3 +861,34 @@ An attempt to settle it empirically **failed and is recorded rather than hidden*
 **Evidence caveat (load-bearing):** every fact above is a byte read of an installed binary. No spike probes it, no live session was driven, and no `@live` test was run — the batch that landed this section had a standing prohibition on paid engine turns. The `--help`-sourced half of the neighbouring facts (`--max-budget-usd` present, `--model` single-arity, `--max-turns` absent) came from a free local `claude --help` on the same binary, which is §15's evidentiary class rather than this one's. A live verification — load a plugin whose agent declares a bound, drive a subagent past it, and observe `max_turns_reached` — is **OWED** and belongs on §11's list, together with the quoted-value question above. Transcript: `docs/evidence/phase-10/live-lane-preconditions-batchK.txt`.
 
 **Invalidation trigger (also listed in §10):** any change to the agent-frontmatter `maxTurns` key name or schema, to the 200-turn built-in default, to the drop-on-invalid behaviour (a version that _rejects the agent_ rather than dropping the key would be a materially different failure mode), or to `max_turns_reached` as the loop's terminating signal.
+
+---
+
+## §11 addendum (2026-08-07) — two owed probes, recorded here rather than inside §11
+
+**Why at EOF and not in §11 itself.** Merged `docs/deploy-posture.md` cites this file by line number
+at `:290`, `:308`, `:312`, `:519`, `:523`, `:528`, `:545` and `:566`, and §11 sits above every one of
+them. Inserting bullets into §11 would shift all eight and leave a merged document pointing at the
+wrong lines forever — the exact failure the line-anchored discipline in
+`docs/verification-playbook.md` exists to prevent. So the two entries live here, and §11's list
+should be read as continuing into this section.
+
+Both are **OWED and owner-gated**: each needs a live engine session, which no free channel provides.
+
+- **§16's owed probe — marketplace install version resolution.** §16 records its own live
+  verification as owed. The probe: install a plugin from a scratch marketplace at a KNOWN
+  manifest-version / entry-version pair, then read the resolved version back out, so which of the two
+  wins is observed rather than inferred from a static read of the binary.
+
+- **§21's owed probe — an agent-declared `maxTurns` actually bounding a subagent loop.** §21 says in
+  its own evidence caveat that a live verification is owed and belongs on §11's list. The probe: load
+  a plugin whose agent frontmatter declares a bound, drive a subagent past it, and observe the
+  `max_turns_reached` terminating signal. The **quoted-value question** §21 leaves open must be
+  settled in the same run, and it needs a channel that reaches the loader's own warn output —
+  `claude plugin details` is warn-blind here, measured: it surfaced no warning even for a
+  deliberately invalid value, so its silence discriminates nothing (see the warn-blind-channel ruling
+  in the playbook).
+
+Neither is blocking. §16's consumer and §21's bound both degrade to already-recorded defaults, and
+both facts are currently binary-sourced rather than probe-verified — which is the evidentiary class
+each section already declares for itself.

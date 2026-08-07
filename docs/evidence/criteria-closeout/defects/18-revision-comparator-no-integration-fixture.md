@@ -121,3 +121,32 @@ inside the default `npm test` fan-out. Coordinate with phase 21's owner, since 2
 declared consumer of the signal.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — the poll exists, and three disclosures come with it
+
+PR #113 made `planMilestoneSync` the poll this record measured as missing. The comparator is now
+imported and called from the milestone path; each call carrying `revisionPoll` stamps a
+`RemoteResource`; and the returned `MaterialChangeSignal` is produced by a caller rather than sitting
+latent in a dead export. The new two-cycle integration fixture runs over a real
+`createJiraResourceClient` on a real `GatewayHttpClient` over the gateway's own fake provider
+transport, which is what makes it an integration fixture rather than a second unit test. Evidence:
+`docs/evidence/phase-18/milestone-poll-probe-batchB.txt`, which captures the RED in **both** halves
+the bearer has — a runtime red and a typecheck red of fourteen errors for a field that existed on
+neither the input nor the outcome.
+
+Non-vacuity is carried by the difference between two mutations, not by either alone: deleting the
+poll reddens four tests in two packages, including the CLI seam e2e through `dist/`, which is what
+proves the seam consumes 18's real producer rather than a hand-built stand-in; replacing the
+comparator call with a non-material literal reddens three, and the unchanged-revision control
+correctly **survives** — its survival is what proves it is a control rather than a restatement of the
+positive case.
+
+**Kept open — disclosures, not gaps in the criterion.** (1) There is no production milestone-polling
+**loop**: `planMilestoneSync` still has no production caller, and the poll is exercised by the
+fixture and by the seam e2e. (2) The composed daemon does not invoke the halt this signal feeds; that
+residual is carried by `21-material-amendment-halt-not-wired-to-phase-11`. (3) When Jira omits
+`fields.updated` the read normalizer stamps the literal `"unknown"`, so two such polls compare equal
+and the coarse revision signal reports non-material even if fields did change. The `fieldSnapshot`
+channel is what still surfaces such an edit to 21's classifier — which is the halt decision — so the
+guarantee survives, but the coarse signal alone does not carry it. That residual is encoded in the
+module's own doc comment at the call site rather than left in prose here.

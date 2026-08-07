@@ -138,3 +138,19 @@ registering the gate into a registry nothing fires would be harness-only vacuity
 
 So phase 24's enforcement is no longer inert in the shipped daemon on the **per-unit completion
 funnel**; the **final gate** remains unreached.
+
+## Second addendum 2026-08-07 — this record's closing claim is superseded
+
+The sentence in the earlier addendum that nothing in production creates a gate registry or moves a
+run into `verifying`/`final_verifying` at all was true when written and is **superseded by PR #104**
+(and extended by PR #121). The daemon's composition root now builds a gate registry and the
+post-completion pipeline walks a completed run through `verifying`, `integrating`,
+`final_verifying` and on to `published_local`; since PR #121 the security-fixture manifest's gates
+fire blocking at `final_verifying` for every run. Evidence:
+`docs/evidence/phase-14/gate-composition-security-manifest-batchM.txt`.
+
+The requirements half of this record stands exactly as recorded. Criterion 7's gate gap is no longer
+this record's to carry — it now lives under `14-gate-registry-never-composed`, whose amended text
+states which gates fire and which remain unregistered, and why each of the latter is a measured
+necessity rather than an oversight. Nothing here is re-classified: this is a pointer correction so a
+reader does not act on a claim the tree has moved past.

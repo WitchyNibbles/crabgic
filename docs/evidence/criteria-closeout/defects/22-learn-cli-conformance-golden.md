@@ -109,3 +109,32 @@ uncovered.
 **Effort:** S. **Needs CI:** no. **Needs live engine:** no. **Needs owner input:** no.
 
 **Ticket-ready:** yes.
+
+## Remedied 2026-08-07 — all three conjuncts, on phase 12's precedent
+
+PR #115 took this record's S-sized remedy, mirroring phase 12's ticked `trust` criterion including
+its control shape. `packages/cli/src/commands/learn-dispatch.test.ts` now drives all four verbs
+through the real `dispatchCommand` to the real backend, and the golden CLI-output conjunct is borne
+by the `learn list --json` snapshot entries.
+
+The seam probe **is** this criterion's redness, and it is worth stating in the record because a
+reader who only counts new tests will miss it: un-wiring each verb one at a time — replacing the
+whole ternary with an unconditional not-implemented result, exactly as a shipped CLI missing its
+composition-root wiring behaves — left 119 files and 1398 tests green, four times over. Afterwards
+each un-wiring reddens one or two cases, while `learn-command-backend.test.ts` stays green throughout
+because it bypasses the dispatcher, which is precisely the seam this record named. The goldens are
+proven load-bearing in the same way: adding a key to the payload reddens both snapshot cases while
+the backend suite's `toMatchObject` stays green. Evidence:
+`docs/evidence/phase-22/probe-22-100-batchA.txt`, which also records a correction to the plan it
+executed — inverting the wiring condition measures the wrong direction and would have produced a red
+run labelled as the criterion's green redness.
+
+**Correction to this record's own text, measured 2026-08-07.** This record reads the four `learn-*`
+rows inside `cli.commands.schema.test`'s `NOT_IMPLEMENTED stubs` describe as the harness recording
+the stub as still present. They are still there, and that is correct rather than a remaining gap:
+that suite supplies no learning dependency, and `install`, `run`, `approve`, the connection verbs and
+the trust verbs sit in the same `it.each` list while carrying ticked criteria of their own. The
+deps-absent row is the **control** — the same one roadmap/12's ticked box cites for `trust` — and
+reading it as evidence that a verb is unwired would untick phase 12's box too.
+
+**Residual: none.**

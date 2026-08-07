@@ -103,3 +103,41 @@ Three parts, separable; part 3 is the one that is not bookkeeping.
 **Needs live engine:** no. **Needs owner input:** yes, for part 3's (a)-vs-(b) choice.
 
 **Ticket-ready:** yes for parts 1 and 2; part 3 needs the owner ruling first.
+
+## Addendum 2026-08-07 — parts 1 and 2 remedied; part 3 still needs the owner ruling
+
+**Part 1 (make the absence permanent) — done.** `no-gate-bypass-surface.redteam.test.ts` turns the
+doc-comment grep into an enforced static scan in the `spawn-surface-scan` idiom this record's remedy
+named, with the `toBeGreaterThan(5)` anti-vacuity floor and a directory-resolves guard. Planting one
+file that imports the firing surface reddens that case **and only that case**. The stronger form this
+record did not ask for — banning the `@crabgic/gates` import outright — was written, measured and
+**rejected**: the eval runner legitimately imports `findEvidenceForRequirement`, which roadmap/22's
+own §In scope requires, so banning the package would misstate the boundary the criterion draws.
+
+**Part 2 (put the engine in the integration test) — done, by this record's own cheapest faithful
+version.** The gate hop is appended to `pipeline.e2e.test.ts`, which already runs on the fake engine
+adapter, after its last cited line and through a dynamic import so every line the merged phase-22
+record cites stays byte-stable (one hunk). That it binds to the genuine registry rather than a local
+double is measured: green-lighting the gates registry's own `fireOne` reddens the new beat alongside
+`no-bypass.redteam.test.ts` — but **only after a rebuild**; the src-only leg under-reported the blast
+radius to zero, and both numbers are reported. Evidence:
+`docs/evidence/phase-22/probe-22-102-batchA.txt`, which says plainly that part 2 makes the conjunct
+literally true and adds no new enforcement.
+
+**Part 3 (the publish hop) — still open, and this pass declined to close it by wording.** The
+situation is unchanged: `learn-command-backend.ts` is still the only production caller of
+`promoteProposal`, and it constructs the `ChangeSet`, prints it and returns. The box at
+`roadmap/22-learning-system.md:102` therefore stays unticked. Two measured reasons, not one, for
+declining the wording route (option (b)) in this pass:
+
+1. This phase's §Out of scope says a promoted lesson "only constructs and **hands off** a
+   `ChangeSet`". The hand-off does not happen either — nothing persists or dispatches it — so a
+   criterion reworded to say the phase hands one off would not be borne by the code any more than
+   the present wording is. The before/after this pass would have written is therefore **not** a
+   wording correction; it would be reading a clause down to what happens to exist.
+2. This record's own remedy already rules that option (b) must land "in its own reviewed commit, not
+   by a closeout pass". This is a closeout pass.
+
+The gap is now exactly one clause wide, and its disposition is an owner ruling between remedy (a) —
+persist the promoted `ChangeSet` into the durable registry so it genuinely enters the
+scheduler→gates→publish pipeline, M–L — and remedy (b), S.
