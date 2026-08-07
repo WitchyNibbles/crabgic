@@ -58,8 +58,13 @@ vendor registry. It does **not** prove the support-end dates are unchanged.
 **The gate is NOT renamed**, and that is a considered call. `release-gate:jira-grafana-version-
 support-windows` describes its subject accurately, and the roadmap criterion it evidences uses the
 same words. What overclaimed was the message's implication of a human read, and that is what
-changed. Renaming would also re-derive the tag's requirement id and desync it from its criterion,
-for no gain in honesty.
+changed.
+
+⚠️ **Correction to this record's own first draft**, left visible rather than deleted: it also said
+renaming would "re-derive the tag's requirement id". **That is false.**
+`releaseRequirements.ts`'s `deriveRequirementId` hashes the criterion bullet text and nothing else;
+a gate tag is only a lookup key in `CRITERION_TAG_RULES`, and this tag is not among the nine frozen
+id literals at all. The subject-accuracy reason stands on its own.
 
 ## The auto-renewal hazard — what actually kept D1 from mattering
 
@@ -115,10 +120,17 @@ pin entries (one for the re-stamp, two for D1's reworded gate message). Nothing 
 merged record itself was **not** edited: hard rule 4 forbids editing another pass's
 `phase-*.json`, and the annotate-never-rewrite discipline forbids silently correcting it.
 
-**Cost, stated plainly:** merged `phase-23.json` c13's quotation of that date no longer resolves, and
-never will again — the quoted value is gone from the file by design. The record's _claim_ (six
-targets, all freshly confirmed at the cut) remains true and is still evidenced by the file; only that
-one pointer is dead.
+**Cost, stated plainly and counted:** **three fragments across two citations** stopped resolving, not
+one — the earlier "only that one pointer is dead" understated it, and the 7-line baseline disclosure
+two paragraphs above is the accurate account. Specifically: `phase-23.json` c13's quotation of
+`"confirmedOn": "2026-07-25"` (one fragment, collapsed across six line positions), and its two
+quoted lines of the staleness message at `versionSupportWindows.ts:164-165`, which this pass
+deliberately reworded. The first will never resolve again — the quoted value is gone by design. The
+second two are a reword, so they could in principle be re-quoted.
+
+The record's _claims_ (six targets freshly confirmed at the cut; freshness enforced numerically as a
+30-day bound) both remain TRUE and are both still evidenced by the same files. What died is where
+they point.
 
 ### Why the real remedy was not taken now
 
@@ -136,6 +148,37 @@ correction block. Filed rather than done, deliberately.
 value some job is designed to rewrite is a citation with an expiry date. When a record cites a
 generated or refreshed artifact, it should quote the artifact's **structure**, not its **contents**.
 Nothing currently checks for that shape.
+
+## ⚖️ The arm split — owner ruling 2026-08-07, correcting this record's own first remedy
+
+The lane as first shipped **failed per-push** on a stale probe stamp, in a required `meta-checks`
+step. From the 31st day after each probe run that would have turned **every pull request in the
+repository** red until a human ran the probe — an escalation from "cannot cut a release" to "cannot
+merge anything", for work unrelated to releasing. The condition was disclosed; the consequence was
+not.
+
+| arm                                      | risk it names                                          | per-push | at a release cut                                   |
+| ---------------------------------------- | ------------------------------------------------------ | -------- | -------------------------------------------------- |
+| stale probe stamp                        | we would be **shipping** on evidence nobody re-checked | **WARN** | **FAIL** (`checkVersionSupportWindows`, unchanged) |
+| expired vendor window                    | this repo **pins** an out-of-support version, today    | **FAIL** | **FAIL**                                           |
+| malformed record / auto-renewal offender | integrity error, not a clock                           | **FAIL** | **FAIL**                                           |
+
+The release-time half is not a promise in a comment: the suite **imports the real gate** and drives
+records through it, including a control that it does _not_ refuse one day earlier, and a sweep
+proving this lane and the gate cross at the same day.
+
+## ⚠️ A defect this PR introduced into itself, and the mechanism is this record's own subject
+
+The reword changed the staleness message, and two assertions in
+`e2e/attestation/src/versionSupportWindows.test.ts` matched the old phrase — **2 failed / 17 passed
+(19)**. The full local gate was green and CI was green on both arches, 15/15, the entire time,
+because `e2e/attestation` is not a `vitest.config.ts` project and `npm test` never runs it. That is
+precisely the gap this record exists to describe, biting the change that describes it.
+
+Fixed: both assertions now match the new wording and name the arithmetic rather than a phrase.
+**The residual is unchanged and not claimed away** — nothing per-push runs that project, and the
+next reword can break it the same way. What is new is that the per-push lane imports the real gate,
+so at least the threshold agreement is checked on every push.
 
 ## Not claimed
 

@@ -106,24 +106,73 @@ export function addDays(iso, days) {
   return at.toISOString().slice(0, 10);
 }
 
+// ---------------------------------------------------------------------------
+// ⚖️ THE TWO ARMS ARE ENFORCED AT DIFFERENT PLACES, AND THAT IS THE RULING.
+//
+// OWNER RULING, 2026-08-07, and it corrects this lane's first version.
+//
+// The two things this file measures carry different risks and must not share a
+// blast radius:
+//
+//   A. A STALE PROBE STAMP. The record has not been refreshed inside the 30-day
+//      bound. The risk is "we would be SHIPPING on evidence nobody re-checked".
+//      That is a release-time risk and nothing else.
+//
+//   B. AN ACTUALLY-EXPIRED VENDOR WINDOW. The vendor has stopped supporting a
+//      version this repository still pins. The risk is real right now, for
+//      everyone, whether or not anyone is cutting a release.
+//
+// The first version failed on BOTH, per-push, in a required `meta-checks` step.
+// The undisclosed consequence: from the 31st day, EVERY PULL REQUEST IN THE
+// REPOSITORY would have gone red until a human ran the probe and committed —
+// an escalation from "cannot cut a release" to "cannot merge anything", for
+// work with no connection to releasing. A 30-day clock must not be able to
+// brick the repository.
+//
+// So the arms are split:
+//
+//   A. staleness  -> WARNS here, per-push, from 21 days out and thereafter.
+//                    It FAILS at release/tag time, where it already did and
+//                    still does: `e2e/attestation`'s `checkVersionSupportWindows`,
+//                    which `publish.yml` blocks on at a `v*` tag. That is not a
+//                    promise in a comment — `check-support-window-freshness.test.mjs`
+//                    imports the REAL gate and drives a stale record through it.
+//   B. expiry     -> FAILS everywhere, per-push included. You cannot merge a
+//                    repository that pins an out-of-support version, because
+//                    that is not a fact about releasing.
+//
+// Malformed records (future-dated, missing target, versioned target with no
+// support-end date) FAIL everywhere too: they are integrity errors, not clocks.
+//
+// `enforceStaleness: true` puts arm A back on FAIL, for a caller that IS a
+// release cut. It is exercised by the suite rather than left as an unreachable
+// flag, and it is what keeps the two halves' arithmetic provably identical.
+// ---------------------------------------------------------------------------
+
 /**
  * Assesses one target against `today`.
  *
- * The FAIL conditions are deliberately the release gate's own, not a stricter
- * approximation of them: `age > maxAgeDays` and `supportEndsOn <= today`. A
- * pre-warning lane that fails on conditions the gate tolerates would block
- * pushes for something no release would ever have refused.
+ * The thresholds are deliberately the release gate's own, not a stricter
+ * approximation of them: `age > maxAgeDays` and `supportEndsOn <= today`. What
+ * differs between here and the gate is the LEVEL the staleness threshold
+ * produces — see the ruling above — never the threshold itself.
  */
 export function assessTarget(record, today, options = {}) {
   const maxAgeDays = options.maxAgeDays ?? MAX_RECORD_AGE_DAYS;
   const leadDays = options.leadDays ?? WARN_LEAD_DAYS;
   const expiryWarnDays = options.expiryWarnDays ?? EXPIRY_WARN_DAYS;
+  /** Arm A's level. `false` (the per-push default) warns; `true` is the release-cut caller. */
+  const staleLevel = options.enforceStaleness === true ? "fail" : "warn";
 
   const age = daysBetween(record.confirmedOn, today);
   // The gate fails at `age > maxAgeDays`, so the first failing day is
   // `confirmedOn + maxAgeDays + 1`. Computed rather than described, because the
   // whole value of this lane is naming that date before it arrives.
   const staleOn = addDays(record.confirmedOn, maxAgeDays + 1);
+  // ...and the first day this lane says anything at all, which is `staleOn`
+  // minus the lead. Computed and PRINTED, because a reader of the passing
+  // output should not have to do this arithmetic to know when it will speak.
+  const warnFrom = addDays(record.confirmedOn, maxAgeDays - leadDays + 1);
 
   const findings = [];
   if (age < 0) {
@@ -135,11 +184,15 @@ export function assessTarget(record, today, options = {}) {
     });
   } else if (age > maxAgeDays) {
     findings.push({
-      level: "fail",
+      level: staleLevel,
       message:
         `${record.target}: the support-window probe last ran ${Math.floor(age)} days ago ` +
-        `(${record.confirmedOn}, limit ${String(maxAgeDays)}) — the release gate REFUSES a cut ` +
-        `from ${staleOn} onward. Re-run \`npm run probe:support-windows\` and commit the result.`,
+        `(${record.confirmedOn}, limit ${String(maxAgeDays)}) — a RELEASE CUT HAS BEEN BLOCKED ` +
+        `SINCE ${staleOn}. ` +
+        (staleLevel === "warn"
+          ? "This does NOT block your push: a stale probe stamp bars shipping, not merging. "
+          : "") +
+        `Re-run \`npm run probe:support-windows\` and commit the result.`,
     });
   } else if (age > maxAgeDays - leadDays) {
     findings.push({
@@ -164,8 +217,10 @@ export function assessTarget(record, today, options = {}) {
         level: "fail",
         message:
           `${record.target}: vendor support for ${record.pinnedVersion} ENDED ${endsOn} — ` +
-          "shipping an out-of-support version. The remedy is a fixture refresh (retire or move " +
-          "the pinned version), never a weakened bound.",
+          "this repository pins an out-of-support version. Unlike a stale probe stamp, this " +
+          "BLOCKS EVERYWHERE, per-push included: it is a fact about what is pinned today, not " +
+          "about releasing. The remedy is a fixture refresh (retire or move the pinned " +
+          "version), never a weakened bound.",
       });
     } else if (remaining <= expiryWarnDays) {
       findings.push({
@@ -177,7 +232,7 @@ export function assessTarget(record, today, options = {}) {
     }
   }
 
-  return { target: record.target, age, staleOn, findings };
+  return { target: record.target, age, staleOn, warnFrom, findings };
 }
 
 const WORST = { pass: 0, warn: 1, fail: 2 };
@@ -229,14 +284,36 @@ const RUNS_PROBE = [/probe:support-windows/, /supportWindowsCli/];
  * holding write permission, and requiring that to be argued for is the point.
  */
 const COMMITS_OUTPUT = [
-  { label: "`git commit`", pattern: /git\s+(?:-c\s+\S+\s+)*commit\b/ },
-  { label: "`git push`", pattern: /git\s+push\b/ },
+  // `-C <dir>` is the spelling a workflow that checks out into a subdirectory
+  // would naturally use, and the first version matched only `-c <cfg>`. Both
+  // flags repeat, hence the `*`.
+  { label: "`git commit`", pattern: /git\s+(?:-[cC]\s+\S+\s+)*commit\b/ },
+  { label: "`git push`", pattern: /git\s+(?:-[cC]\s+\S+\s+)*push\b/ },
   { label: "`contents: write` permission", pattern: /contents:\s*write/ },
   { label: "git-auto-commit-action", pattern: /git-auto-commit-action/ },
   { label: "add-and-commit action", pattern: /add-and-commit/ },
   { label: "create-pull-request action", pattern: /create-pull-request/ },
   { label: "`gh pr create`", pattern: /gh\s+pr\s+create/ },
+  // The two API spellings that write a file without ever invoking git.
+  { label: "`gh api` contents write", pattern: /gh\s+api[^\n]*\/contents\// },
+  { label: "github-script createOrUpdateFileContents", pattern: /createOrUpdateFileContents/ },
 ];
+
+/**
+ * ⚠️ WHAT THIS SCAN DOES NOT COVER, stated rather than left to be discovered.
+ *
+ * It is a textual scan over workflow YAML, so it sees spellings, not
+ * capabilities. A workflow could still persist the probe's output by a route
+ * none of the patterns above name — a third-party action wrapping a commit, a
+ * shell script in the repository invoked from a `run:` step, `curl` against the
+ * contents API, or a `git` alias. The `contents: write` arm is the broad net
+ * underneath all of those, and it catches them ONLY when the workflow declares
+ * that permission explicitly rather than inheriting a permissive default.
+ *
+ * That residual is real and is not claimed away. What the scan buys is that the
+ * ORDINARY spellings — the ones someone would actually reach for when adding
+ * "and commit the refreshed record" to `drift-ci.yml` — cannot land silently.
+ */
 
 /**
  * Workflows that both RUN the probe and CAN commit its output.
@@ -277,9 +354,22 @@ export function readCommittedRecords(repoRoot = REPO_ROOT) {
   );
 }
 
-export function runSupportWindowFreshnessCheck(repoRoot = REPO_ROOT, today = undefined) {
+/**
+ * `options.enforceStaleness` selects the arm-A level — see the ruling above.
+ * The default (`false`) is the per-push posture this script is wired into
+ * `meta-checks` with: a stale probe stamp warns and does not block a merge.
+ */
+export function runSupportWindowFreshnessCheck(
+  repoRoot = REPO_ROOT,
+  today = undefined,
+  options = {},
+) {
   const at = today ?? new Date().toISOString().slice(0, 10);
-  const assessment = assessSupportWindows({ records: readCommittedRecords(repoRoot), today: at });
+  const assessment = assessSupportWindows({
+    records: readCommittedRecords(repoRoot),
+    today: at,
+    ...options,
+  });
   const offenders = scanWorkflowsForAutoRenewal(readWorkflows(repoRoot));
 
   for (const finding of assessment.findings) {
@@ -305,15 +395,21 @@ export function runSupportWindowFreshnessCheck(repoRoot = REPO_ROOT, today = und
   if (assessment.level === "fail" || offenders.length > 0) return 1;
 
   for (const entry of assessment.perTarget) {
+    // BOTH dates, printed rather than implied. The first version printed only
+    // the red date, while a committed transcript claimed both were printed —
+    // and got the warn day wrong by eleven days in the process. A reader should
+    // not have to redo this arithmetic to check a claim about it.
     console.log(
       `check-support-window-freshness: ${entry.target} — probed ${Math.floor(entry.age)} day(s) ` +
-        `ago, gate turns red ${entry.staleOn}`,
+        `ago, warns from ${entry.warnFrom}, release cut blocked from ${entry.staleOn}`,
     );
   }
   console.log(
     assessment.level === "warn"
       ? `check-support-window-freshness: WARN — ${String(assessment.findings.length)} advance ` +
-          `warning(s) above; no workflow can renew the bound by committing the probe's output.`
+          `warning(s) above. A stale probe stamp does NOT block this push; it blocks a release ` +
+          `cut, where \`e2e/attestation\`'s own gate refuses it. No workflow can renew the bound ` +
+          `by committing the probe's output.`
       : "check-support-window-freshness: PASS — every target is inside the freshness bound and " +
           "inside its vendor support window; no workflow can renew the bound by committing the " +
           "probe's output.",

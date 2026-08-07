@@ -69,21 +69,56 @@ const levels = (assessment) => assessment.findings.map((f) => f.level);
 afterEach(() => vi.restoreAllMocks());
 
 describe("the freshness bound — the arm that goes red at a release cut", () => {
-  it("FAILS on the first day the release gate would refuse a cut", () => {
+  it("crosses the threshold on the first day the release gate would refuse a cut", () => {
     // RED-FIRST. Written against the real committed date (2026-07-25) and the
     // real limit (30) before the check existed: the gate fails at `age > 30`, so
-    // the first failing day is 2026-08-25.
-    const assessed = assessTarget(record(), "2026-08-25");
-    expect(assessed.findings.some((f) => f.level === "fail")).toBe(true);
-    expect(assessed.staleOn).toBe("2026-08-25");
+    // the first blocked day is 2026-08-25.
+    expect(assessTarget(record(), "2026-08-25").staleOn).toBe("2026-08-25");
+    // AT RELEASE the threshold is a FAIL...
+    expect(assessTarget(record(), "2026-08-25", { enforceStaleness: true }).findings).toEqual([
+      expect.objectContaining({ level: "fail" }),
+    ]);
+    // ...and PER-PUSH it is a WARN. See the ruling in the module header: a
+    // stale probe stamp bars shipping, not merging.
+    expect(assessTarget(record(), "2026-08-25").findings).toEqual([
+      expect.objectContaining({ level: "warn" }),
+    ]);
   });
 
-  it("does NOT fail one day earlier — the control that rules out 'fails every day'", () => {
-    // `docs/verification-playbook.md:400-403`. Without this, a check that failed
-    // unconditionally would satisfy the assertion above just as well.
-    const assessed = assessTarget(record(), "2026-08-24");
+  it("says, in the message itself, that a stale stamp does not block the push", () => {
+    // The consequence has to be legible to whoever reads the annotation, not
+    // only to whoever reads this file.
+    const [warned] = assessTarget(record(), "2026-08-25").findings;
+    expect(warned.message).toContain("RELEASE CUT HAS BEEN BLOCKED SINCE 2026-08-25");
+    expect(warned.message).toContain("does NOT block your push");
+    // ...and the release-cut caller must NOT carry that reassurance.
+    const [failed] = assessTarget(record(), "2026-08-25", { enforceStaleness: true }).findings;
+    expect(failed.message).not.toContain("does NOT block your push");
+  });
+
+  it("does NOT cross it one day earlier — the control that rules out 'fires every day'", () => {
+    // `docs/verification-playbook.md:400-403`. Without this, a check that fired
+    // unconditionally would satisfy the assertion above just as well. Asserted
+    // in the AT-RELEASE mode, where the threshold is a fail, so the control is
+    // about the threshold rather than about the level.
+    const assessed = assessTarget(record(), "2026-08-24", { enforceStaleness: true });
     expect(assessed.findings.some((f) => f.level === "fail")).toBe(false);
     expect(daysBetween("2026-07-25", "2026-08-24")).toBe(30);
+  });
+
+  it("NEVER fails per-push on staleness alone, however stale — the anti-brick control", () => {
+    // THE POINT OF THE SPLIT. Before the ruling this arm failed per-push in a
+    // required `meta-checks` step, so from the 31st day every PR in the
+    // repository would have gone red until a human ran the probe. A 30-day
+    // clock must not be able to brick the repository for work unrelated to
+    // releasing. Measured a year out, not just a day past the bound.
+    for (const day of ["2026-08-25", "2026-09-30", "2027-08-07"]) {
+      const assessed = assessTarget(record({ supportEndsOn: "2099-01-01" }), day);
+      expect(
+        assessed.findings.map((f) => f.level),
+        day,
+      ).toEqual(["warn"]);
+    }
   });
 
   it("warns from exactly T-21, and not the day before that", () => {
@@ -95,6 +130,17 @@ describe("the freshness bound — the arm that goes red at a release cut", () =>
       true,
     );
     expect(assessTarget(record(), "2026-08-03").findings).toEqual([]);
+  });
+
+  it("computes the first warning day, not just the first blocked day", () => {
+    // A committed transcript in the first version of this PR claimed the warn
+    // day was `confirmedOn + 21`. It is not: the arm fires at
+    // `age > maxAgeDays - leadDays`, i.e. `staleOn - leadDays`. Eleven days
+    // apart on the real record. Both are now computed AND printed.
+    const assessed = assessTarget(record(), "2026-08-07");
+    expect(assessed.warnFrom).toBe("2026-08-04");
+    expect(assessed.staleOn).toBe("2026-08-25");
+    expect(daysBetween(assessed.warnFrom, assessed.staleOn)).toBe(WARN_LEAD_DAYS);
   });
 
   it("names the exact date the gate turns red, in the warning text", () => {
@@ -148,7 +194,12 @@ describe("the vendor window itself", () => {
       supportEndsOn: undefined,
     });
     expect(assessTarget(cloud, "2026-08-03").findings).toEqual([]);
+    // Freshness still applies to a hosted target — as a warn per-push...
     expect(assessTarget(cloud, "2026-08-25").findings).toEqual([
+      expect.objectContaining({ level: "warn" }),
+    ]);
+    // ...and as a fail at a release cut.
+    expect(assessTarget(cloud, "2026-08-25", { enforceStaleness: true }).findings).toEqual([
       expect.objectContaining({ level: "fail" }),
     ]);
   });
@@ -307,13 +358,17 @@ describe("the REAL committed record", () => {
     expect(assessment.findings[0].message).toContain(addDays(probedOn, MAX_RECORD_AGE_DAYS + 1));
   });
 
-  it("goes RED from the real record on the day the release gate would", () => {
+  it("goes RED from the real record on the day the release gate would — AT RELEASE", () => {
+    const probedOn = records[0].confirmedOn;
+    const atRelease = (today) => assessSupportWindows({ records, today, enforceStaleness: true });
+    expect(atRelease(addDays(probedOn, MAX_RECORD_AGE_DAYS + 1)).level).toBe("fail");
+    expect(atRelease(addDays(probedOn, MAX_RECORD_AGE_DAYS)).level).toBe("warn");
+  });
+
+  it("stays at WARN per-push on the same day — the split, on real data", () => {
     const probedOn = records[0].confirmedOn;
     expect(
       assessSupportWindows({ records, today: addDays(probedOn, MAX_RECORD_AGE_DAYS + 1) }).level,
-    ).toBe("fail");
-    expect(
-      assessSupportWindows({ records, today: addDays(probedOn, MAX_RECORD_AGE_DAYS) }).level,
     ).toBe("warn");
   });
 });
@@ -332,14 +387,61 @@ describe("the reporting channel actually speaks", () => {
     expect(out.join("\n")).toContain("WARN —");
   });
 
-  it("exits 1 and writes to stderr once the bound has expired", () => {
+  it("still exits 0 once the bound has expired — staleness does not block a merge", () => {
+    // The CLI-level half of the anti-brick control. `meta-checks` is a required
+    // check; if this returned 1 here, every PR in the repository would be red
+    // from the 31st day.
+    const records = readCommittedRecords(REPO_ROOT);
+    const expired = addDays(records[0].confirmedOn, MAX_RECORD_AGE_DAYS + 1);
+    const out = [];
+    vi.spyOn(console, "log").mockImplementation((m) => out.push(String(m)));
+    vi.spyOn(console, "error").mockImplementation((m) => out.push(String(m)));
+    expect(runSupportWindowFreshnessCheck(REPO_ROOT, expired)).toBe(1 - 1);
+    expect(out.join("\n")).toContain("RELEASE CUT HAS BEEN BLOCKED SINCE");
+    expect(out.join("\n")).toContain("does NOT block your push");
+  });
+
+  it("exits 1 on the same day when the caller IS a release cut", () => {
     const records = readCommittedRecords(REPO_ROOT);
     const expired = addDays(records[0].confirmedOn, MAX_RECORD_AGE_DAYS + 1);
     const errors = [];
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation((m) => errors.push(String(m)));
-    expect(runSupportWindowFreshnessCheck(REPO_ROOT, expired)).toBe(1);
-    expect(errors.join("\n")).toContain("the release gate REFUSES a cut");
+    expect(runSupportWindowFreshnessCheck(REPO_ROOT, expired, { enforceStaleness: true })).toBe(1);
+    expect(errors.join("\n")).toContain("RELEASE CUT HAS BEEN BLOCKED SINCE");
+  });
+
+  it("exits 1 per-push for an EXPIRED VENDOR WINDOW — the arm that blocks everywhere", () => {
+    // Arm B. Unlike a stale stamp, this is a fact about what the repository
+    // pins today, so it blocks a merge as well as a cut.
+    const records = readCommittedRecords(REPO_ROOT).map((r) =>
+      r.target === "jira-dc-10.3" ? { ...r, supportEndsOn: "2026-01-01" } : r,
+    );
+    const errors = [];
+    vi.spyOn(console, "error").mockImplementation((m) => errors.push(String(m)));
+    const assessment = assessSupportWindows({ records, today: records[0].confirmedOn });
+    expect(assessment.level).toBe("fail");
+    expect(assessment.findings).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("BLOCKS EVERYWHERE") }),
+    ]);
+  });
+
+  it("prints BOTH the warn day and the blocked day, so a claim about them is checkable", () => {
+    // A committed transcript claimed "both printed" while the passing branch
+    // printed only the red date — and named the wrong warn day. Pinned here so
+    // the prose and the program cannot diverge again.
+    const records = readCommittedRecords(REPO_ROOT);
+    const probedOn = records[0].confirmedOn;
+    const out = [];
+    vi.spyOn(console, "log").mockImplementation((m) => out.push(String(m)));
+    runSupportWindowFreshnessCheck(REPO_ROOT, probedOn);
+    const joined = out.join("\n");
+    expect(joined).toContain(
+      `warns from ${addDays(probedOn, MAX_RECORD_AGE_DAYS - WARN_LEAD_DAYS + 1)}`,
+    );
+    expect(joined).toContain(
+      `release cut blocked from ${addDays(probedOn, MAX_RECORD_AGE_DAYS + 1)}`,
+    );
   });
 
   it("passes quietly at the record's own probe date", () => {
@@ -350,6 +452,72 @@ describe("the reporting channel actually speaks", () => {
     expect(runSupportWindowFreshnessCheck(REPO_ROOT, records[0].confirmedOn)).toBe(0);
     expect(out.join("\n")).toContain("PASS —");
     expect(out.join("\n")).not.toContain("::warning::");
+  });
+});
+
+describe("the release-time half is REAL, not a promise in a comment", () => {
+  /**
+   * The split only holds if something still fails at a release cut. Asserting
+   * that by grepping `versionSupportWindows.ts` for a `fail` branch would be a
+   * textual presence check — the exact instrument class this repository has
+   * been bitten by twice. So this imports the ACTUAL gate and drives records
+   * through it.
+   *
+   * `e2e/attestation` is a self-contained TypeScript project and is not part of
+   * the workspace graph, but vitest transforms the module directly, so the
+   * production function is genuinely under test here rather than a copy of it.
+   */
+  const gate = async () => await import("../e2e/attestation/src/versionSupportWindows.ts");
+
+  it("the release gate STILL refuses a record past the freshness bound", async () => {
+    const { checkVersionSupportWindows, DEFAULT_MAX_RECORD_AGE_DAYS } = await gate();
+    const records = readCommittedRecords(REPO_ROOT);
+    const probedOn = records[0].confirmedOn;
+    const result = checkVersionSupportWindows({
+      releaseCutDate: addDays(probedOn, DEFAULT_MAX_RECORD_AGE_DAYS + 1),
+      records,
+      requiredTargets: REQUIRED_SUPPORT_WINDOW_TARGETS,
+    });
+    expect(result.reasons.length).toBeGreaterThan(0);
+    expect(result.reasons.join("\n")).toContain("PROBE last ran");
+  });
+
+  it("...and does NOT refuse it one day earlier — the control", async () => {
+    // Without this, a gate that refused every record would satisfy the
+    // assertion above.
+    const { checkVersionSupportWindows, DEFAULT_MAX_RECORD_AGE_DAYS } = await gate();
+    const records = readCommittedRecords(REPO_ROOT);
+    const result = checkVersionSupportWindows({
+      releaseCutDate: addDays(records[0].confirmedOn, DEFAULT_MAX_RECORD_AGE_DAYS),
+      records,
+      requiredTargets: REQUIRED_SUPPORT_WINDOW_TARGETS,
+    });
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("this lane and the real gate agree on the threshold, day for day", async () => {
+    // The two implementations must cross at the same instant or the advance
+    // warning is calibrated against a bound nothing enforces. Swept across the
+    // boundary rather than sampled at it.
+    const { checkVersionSupportWindows, DEFAULT_MAX_RECORD_AGE_DAYS } = await gate();
+    const records = readCommittedRecords(REPO_ROOT);
+    const probedOn = records[0].confirmedOn;
+    for (
+      let offset = DEFAULT_MAX_RECORD_AGE_DAYS - 2;
+      offset <= DEFAULT_MAX_RECORD_AGE_DAYS + 2;
+      offset += 1
+    ) {
+      const day = addDays(probedOn, offset);
+      const gateRefuses =
+        checkVersionSupportWindows({
+          releaseCutDate: day,
+          records,
+          requiredTargets: REQUIRED_SUPPORT_WINDOW_TARGETS,
+        }).reasons.length > 0;
+      const laneFails =
+        assessSupportWindows({ records, today: day, enforceStaleness: true }).level === "fail";
+      expect({ day, gateRefuses }).toEqual({ day, gateRefuses: laneFails });
+    }
   });
 });
 

@@ -233,9 +233,19 @@ jobs:
       # a tag-triggered publish, which is the most expensive moment to learn it.
       #
       # This step warns 21 days ahead, naming the exact date each target turns
-      # the gate red, and fails on the gate's own conditions — never on a
-      # stricter one, so it can never block a push for something no release
-      # would have refused.
+      # the gate red.
+      #
+      # ⚖️ THE TWO ARMS ARE ENFORCED IN DIFFERENT PLACES, by owner ruling
+      # 2026-08-07, and the split is the whole reason this is safe to make a
+      # required check. A STALE PROBE STAMP only WARNS here: the risk it names
+      # is "we would be shipping on evidence nobody re-checked", which is a
+      # release-time risk, and it still FAILS at a cut inside
+      # `checkVersionSupportWindows`. An ACTUALLY-EXPIRED VENDOR WINDOW FAILS
+      # here too, because pinning an out-of-support version is a fact about the
+      # repository today rather than about releasing. Without that split this
+      # step would have turned EVERY pull request red from the 31st day until a
+      # human ran the probe — an escalation from "cannot cut a release" to
+      # "cannot merge anything", for work with no connection to releasing.
       #
       # It also carries the auto-renewal tripwire, which is the durable half. A
       # 30-day evidence bound is worth something only while refreshing it is a

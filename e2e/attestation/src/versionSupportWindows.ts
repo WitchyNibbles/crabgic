@@ -148,7 +148,7 @@ export function checkVersionSupportWindows(
     const record = input.records.find((candidate) => candidate.target === target);
     if (record === undefined) {
       reasons.push(
-        `${target}: no vendor support-window re-confirmation recorded for this release.`,
+        `${target}: no vendor support-window probe record exists for this release — coverage gap.`,
       );
       continue;
     }
@@ -156,8 +156,8 @@ export function checkVersionSupportWindows(
     const age = daysBetween(record.confirmedOn, input.releaseCutDate);
     if (age < 0) {
       reasons.push(
-        `${target}: re-confirmation is dated ${record.confirmedOn}, AFTER the release cut ` +
-          `(${input.releaseCutDate}) — it cannot attest to the candidate being cut.`,
+        `${target}: the probe record is dated ${record.confirmedOn}, AFTER the release cut ` +
+          `(${input.releaseCutDate}) — it cannot describe the candidate actually being cut.`,
       );
     } else if (age > maxAgeDays) {
       reasons.push(
@@ -256,8 +256,16 @@ export function readVersionSupportWindowsInput(
  * SUBJECT accurately — Jira/Grafana version support windows — and the roadmap
  * criterion it evidences uses the same words. What overclaimed was the message's
  * implication that a human had re-read the vendor pages, and that is what
- * changed. Renaming the tag would also re-derive its requirement id and desync
- * it from the criterion, for no gain in honesty.
+ * changed.
+ *
+ * ⚠️ A CORRECTION TO AN EARLIER DRAFT OF THIS VERY BLOCK, left visible rather
+ * than quietly deleted: it also claimed renaming the tag would "re-derive its
+ * requirement id". That is FALSE and was never measured. `releaseRequirements
+ * .ts`'s `deriveRequirementId` hashes the CRITERION BULLET TEXT and nothing
+ * else; a gate tag is only a lookup key in `CRITERION_TAG_RULES` and never
+ * enters the hash. This tag is not even among the nine frozen id literals the
+ * emitters declare. The subject-accuracy reason above carries the decision on
+ * its own and does not need a second, invented one.
  *
  * AUTO-RENEWAL IS STILL REFUSED. Accepting a probe as the confirmer is not
  * accepting a workflow that renews the gate's own input: a refresh must land
