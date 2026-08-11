@@ -29,6 +29,7 @@ import { DEFAULT_PRESENTATION_POLICY } from "./presentation-policy.js";
 import { STRUCTURE_COLORS, paint, paintRole } from "./colors.js";
 import { glyph, type PresentationGlyphRole, type PresentationProfile } from "./glyphs.js";
 import type { PresentationContext } from "./profile.js";
+import { displayWidth, truncateToWidth } from "../renderer-core/display-width.js";
 
 /** Box-drawing rules degrade to a hyphen where Unicode is not safe. */
 const HEADING_RULE: Readonly<Record<PresentationProfile, string>> = {
@@ -71,13 +72,26 @@ export function renderStatusLine(
  * title is bolded while the rule is dimmed, so the scaffolding recedes behind
  * the label it holds up.
  *
- * The rule length is `title.length`, which is correct because section titles
- * are plain single-width text by contract — an emoji or CJK title would
- * mis-measure, so this throws on an empty title and callers keep titles plain.
+ * The rule is drawn to the title's DISPLAY WIDTH, and the title is checked
+ * against `titleMaxColumns`. This file previously used `title.length` and
+ * asserted in prose that titles are "plain single-width text by contract" —
+ * a contract nothing enforced, and which a CJK title silently broke (8 columns
+ * of title, 4 columns of rule).
  */
 export function renderHeading(title: string, ctx: PresentationContext): string {
   if (title.length === 0) throw new Error("renderHeading: title must not be empty");
-  const rule = HEADING_RULE[ctx.profile].repeat(title.length);
+  // Columns, not `title.length`. Measured before this changed: the 8-column
+  // title `評価結果` got a 4-column rule, because `.length` is 4. The
+  // "titles are plain single-width text by contract" note this file used to
+  // carry was a comment where a check belonged — here is the check.
+  const width = displayWidth(title);
+  const { titleMaxColumns } = DEFAULT_PRESENTATION_POLICY.limits;
+  if (width > titleMaxColumns) {
+    throw new Error(
+      `renderHeading: title is ${String(width)} columns, over the ${String(titleMaxColumns)}-column budget — shorten it`,
+    );
+  }
+  const rule = HEADING_RULE[ctx.profile].repeat(width);
   return `${paint(STRUCTURE_COLORS.heading, title, ctx.color)}\n${paint(
     STRUCTURE_COLORS.rule,
     rule,
@@ -111,11 +125,14 @@ export interface KeyValueRow {
  */
 export function renderKeyValues(rows: readonly KeyValueRow[], ctx: PresentationContext): string {
   if (rows.length === 0) return "";
-  const width = Math.max(...rows.map((row) => row.key.length));
+  // Padding measured in COLUMNS. `padEnd` on `.length` sheared the value column
+  // by one space per wide character — measured, in the one function whose
+  // entire purpose is alignment: keys `run` and `実行` started their values at
+  // column 5 and column 7 respectively.
+  const width = Math.max(...rows.map((row) => displayWidth(row.key)));
   return rows
     .map((row) => {
-      const padded = row.key.padEnd(width + KEY_VALUE_GAP);
-      const gap = padded.slice(row.key.length);
+      const gap = " ".repeat(Math.max(0, width - displayWidth(row.key)) + KEY_VALUE_GAP);
       const painted = `${paint(STRUCTURE_COLORS.key, row.key, ctx.color)}${gap}${row.value}`;
       return row.value.length === 0 ? painted.replace(/\s+$/, "") : painted;
     })
@@ -123,17 +140,42 @@ export function renderKeyValues(rows: readonly KeyValueRow[], ctx: PresentationC
 }
 
 /**
- * Trims a bullet to the policy's word budget, marking the cut.
+ * Trims a bullet to the policy's budgets, marking the cut.
  *
  * Elision, not rejection: a bullet's text is DATA — a doctor finding's evidence,
  * a path, an engine message — whose length is not knowable when the call site is
  * written. Throwing would convert "this finding has a wordy message" into a
  * crashed command. The `…` is what keeps the shortening honest; `--json` remains
  * the lossless channel, and the overflow line below points at it.
+ *
+ * TWO BUDGETS, BOTH APPLIED, because they bound different failure modes and
+ * neither implies the other:
+ *
+ *   - `bulletMaxWords` catches many short words.
+ *   - `bulletMaxColumns` catches ONE long one. A word budget alone let a single
+ *     500-column token — `sha256:<64 hex>`, a URL, a stack frame — through
+ *     untouched, which is the horizontal wall this whole policy exists to
+ *     prevent. That was the residual reported at merge on 2026-08-11.
+ *
+ * The column cut falls back through a word boundary where one exists, so an
+ * ordinary sentence is not sliced mid-word, and lands on a grapheme boundary
+ * always — `truncateToWidth` will drop a whole cluster rather than emit half a
+ * surrogate pair.
  */
-function elideToWordBudget(text: string, maxWords: number): string {
+function elideToBudget(text: string, maxWords: number, maxColumns: number): string {
   const words = text.split(/\s+/).filter((word) => word.length > 0);
-  return words.length <= maxWords ? text : `${words.slice(0, maxWords).join(" ")} …`;
+  const byWords = words.length <= maxWords ? text : `${words.slice(0, maxWords).join(" ")} …`;
+  if (displayWidth(byWords) <= maxColumns) return byWords;
+
+  // Room for the marker itself, so the result never exceeds the budget.
+  const room = Math.max(0, maxColumns - 2);
+  const cut = truncateToWidth(byWords, room);
+  const lastSpace = cut.lastIndexOf(" ");
+  // Prefer a word boundary, but only when it keeps most of the budget — for a
+  // single unbroken token there is no boundary to find, and cutting at the
+  // last space would throw the whole bullet away.
+  const kept = lastSpace > room / 2 ? cut.slice(0, lastSpace) : cut;
+  return `${kept.replace(/\s+$/, "")} …`;
 }
 
 export interface HumanReportSection {
@@ -192,8 +234,13 @@ export interface HumanReport {
  * never user input, so this is a programming error and should surface as one.
  */
 export function renderHumanReport(report: HumanReport, ctx: PresentationContext): string {
-  const { leadAnswerMaxLines, proseBlockMaxLines, bulletMaxWords, sectionMaxBullets } =
-    DEFAULT_PRESENTATION_POLICY.limits;
+  const {
+    leadAnswerMaxLines,
+    proseBlockMaxLines,
+    bulletMaxWords,
+    sectionMaxBullets,
+    bulletMaxColumns,
+  } = DEFAULT_PRESENTATION_POLICY.limits;
   const leadLines = report.lead.split("\n").length;
   if (leadLines > leadAnswerMaxLines) {
     throw new Error(
@@ -220,7 +267,7 @@ export function renderHumanReport(report: HumanReport, ctx: PresentationContext)
     const allBullets = section.bullets ?? [];
     const keptBullets = allBullets.slice(0, sectionMaxBullets);
     const bullets = renderBullets(
-      keptBullets.map((item) => elideToWordBudget(item, bulletMaxWords)),
+      keptBullets.map((item) => elideToBudget(item, bulletMaxWords, bulletMaxColumns)),
       ctx,
     );
     if (bullets.length > 0) parts.push(bullets);
@@ -236,7 +283,7 @@ export function renderHumanReport(report: HumanReport, ctx: PresentationContext)
       const table = renderKeyValues(
         keptRows.map((row) => ({
           key: row.key,
-          value: elideToWordBudget(row.value, bulletMaxWords),
+          value: elideToBudget(row.value, bulletMaxWords, bulletMaxColumns),
         })),
         ctx,
       );

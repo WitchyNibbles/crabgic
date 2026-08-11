@@ -48,6 +48,14 @@ import {
  * - `sectionMaxBullets` — past this, split the section or use a table.
  * - `tableMinRows` — at this many items carrying two or more attributes
  *   each, a table beats a list.
+ * - `bulletMaxColumns` — a bullet's DISPLAY WIDTH, in terminal columns.
+ *   Bounds what `bulletMaxWords` cannot: one 500-character token — a digest, a
+ *   URL, a stack frame — is a single word and a horizontal wall. Both apply,
+ *   and whichever bites first wins, because they bound different failure
+ *   modes (many short words vs. one huge one).
+ * - `titleMaxColumns` — a section title's display width. Turns the standing
+ *   claim that "section titles are plain single-width text by contract" into
+ *   something checked rather than asserted in a comment.
  */
 export const HUMAN_REPORT_LIMITS = {
   leadAnswerMaxLines: 2,
@@ -56,6 +64,8 @@ export const HUMAN_REPORT_LIMITS = {
   bulletMaxWords: 15,
   sectionMaxBullets: 7,
   tableMinRows: 3,
+  bulletMaxColumns: 100,
+  titleMaxColumns: 40,
 } as const;
 
 const HumanReportLimitsSchema = z
@@ -66,6 +76,8 @@ const HumanReportLimitsSchema = z
     bulletMaxWords: z.number().int().positive(),
     sectionMaxBullets: z.number().int().positive(),
     tableMinRows: z.number().int().positive(),
+    bulletMaxColumns: z.number().int().positive(),
+    titleMaxColumns: z.number().int().positive(),
   })
   .strict();
 

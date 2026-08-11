@@ -240,14 +240,54 @@ for the statusline's hot path.
 
 From `HUMAN_REPORT_LIMITS`:
 
-| Limit                       | Value | Rule                                                      |
-| --------------------------- | ----- | --------------------------------------------------------- |
-| `leadAnswerMaxLines`        | 2     | the conclusion comes first, in at most two lines          |
-| `headingRequiredAboveLines` | 5     | past five lines, a report needs headings                  |
-| `proseBlockMaxLines`        | 3     | the longest unbroken paragraph                            |
-| `bulletMaxWords`            | 15    | a bullet is scannable in one fixation                     |
-| `sectionMaxBullets`         | 7     | past seven, split the section or use a table              |
-| `tableMinRows`              | 3     | three-plus items with two-plus attributes each is a table |
+| Limit                       | Value | Rule                                                         |
+| --------------------------- | ----- | ------------------------------------------------------------ |
+| `leadAnswerMaxLines`        | 2     | the conclusion comes first, in at most two lines             |
+| `headingRequiredAboveLines` | 5     | past five lines, a report needs headings                     |
+| `proseBlockMaxLines`        | 3     | the longest unbroken paragraph                               |
+| `bulletMaxWords`            | 15    | a bullet is scannable in one fixation                        |
+| `sectionMaxBullets`         | 7     | past seven, split the section or use a table                 |
+| `tableMinRows`              | 3     | three-plus items with two-plus attributes each is a table    |
+| `bulletMaxColumns`          | 100   | a bullet's DISPLAY WIDTH — what the word budget cannot bound |
+| `titleMaxColumns`           | 40    | a section title's display width                              |
+
+### Width is measured in columns
+
+Added 2026-08-11. Every limit above is ultimately about **how much screen a
+thing occupies**, and until this landed nothing measured that: the code carried
+four notions of "length" — UTF-16 code units (`text.length`), code points
+(`countChars`), grapheme clusters (nothing), display columns (nothing) — and
+used the first two wherever the fourth was meant. Two measured consequences,
+both latent only because every caller passed ASCII:
+
+- `renderHeading` drew a **4-column rule under the 8-column title `評価結果`**.
+  This file's own claim that "section titles are plain single-width text by
+  contract" was a contract nothing enforced. `titleMaxColumns` is now that check.
+- `renderKeyValues` — whose entire purpose is alignment — started its value
+  column at **5 for a `run` key and 7 for a `実行` key**.
+
+`displayWidth()` (`renderer-core/display-width.ts`) is the single primitive, over
+`Intl.Segmenter` grapheme clusters. It supersedes `.length` at every layout site.
+
+**It picks a convention, because there is no single correct answer.** `⚠️`
+(U+26A0 + VS16) is one column in some terminals and two in others; East Asian
+Ambiguous characters depend on locale. So:
+
+| Case                                | Columns | Why                                                                |
+| ----------------------------------- | ------- | ------------------------------------------------------------------ |
+| VS16-qualified / emoji-presentation | 2       | the modern-terminal default, and what the glyph vocabulary assumes |
+| East Asian Wide / Fullwidth         | 2       | EastAsianWidth.txt                                                 |
+| East Asian Ambiguous                | 1       | the Western-locale default                                         |
+| Format, combining, control          | 0       | occupies no cell                                                   |
+
+**±1 column per emoji is expected and tolerated** — these are floors on
+legibility, not layout guarantees. Silent shearing of an _aligned_ column is not
+tolerable, which is the distinction that decides where exactness matters.
+
+`bulletMaxWords` and `bulletMaxColumns` **both** apply, whichever bites first.
+They bound different failures: many short words, versus one enormous token. A
+`sha256:` digest is a single word and a horizontal wall, which is precisely what
+the word budget alone let through.
 
 `proseBlockMaxLines` is held strictly below `headingRequiredAboveLines` — a
 test asserts the relation — so prose cannot grow into a wall in the gap between

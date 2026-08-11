@@ -7,6 +7,7 @@
  * "`renderer-core` module" bullet and Work item 6.
  */
 export * from "./length-counter.js";
+export * from "./display-width.js";
 export * from "./line-counter.js";
 export * from "./limit-check.js";
 export * from "./attribution-scanner.js";

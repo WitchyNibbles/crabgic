@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESENTATION_POLICY } from "./presentation-policy.js";
 import { ROLE_COLORS, STRUCTURE_COLORS, paint, stripAnsi } from "./colors.js";
+import { displayWidth } from "../renderer-core/display-width.js";
 import type { PresentationProfile } from "./glyphs.js";
 import type { PresentationContext } from "./profile.js";
 import {
@@ -10,6 +11,9 @@ import {
   renderKeyValues,
   renderStatusLine,
 } from "./human-report.js";
+
+/** `"  " + bullet + " "` — the furniture a bullet line carries before its text. */
+const BULLET_PREFIX_COLUMNS = 4;
 
 /** Monochrome context — what a pipe, a snapshot or `NO_COLOR` resolves to. */
 const plain = (profile: PresentationProfile): PresentationContext => ({ profile, color: false });
@@ -92,6 +96,106 @@ describe("renderBullets", () => {
     expect(renderBullets(["first"], lit("text"))).toBe(
       `  ${paint(STRUCTURE_COLORS.bullet, "•", true)} first`,
     );
+  });
+});
+
+/**
+ * Both of these were LATENT bugs — real, measured, and invisible only because
+ * every caller today passes ASCII. They are the reason `displayWidth` exists;
+ * see `docs/design/display-width-budget.md` §2.
+ */
+describe("width is measured in columns, not code units", () => {
+  it("draws a heading rule the same width as its title, for wide text", () => {
+    // Measured before the fix: title 8 columns, rule 4. `title.length` is 4,
+    // which is what made it look correct.
+    const [title, rule] = renderHeading("評価結果", plain("text")).split("\n");
+    expect(displayWidth(title!)).toBe(8);
+    expect(displayWidth(rule!)).toBe(displayWidth(title!));
+  });
+
+  it("aligns the value column when a key contains wide characters", () => {
+    // Measured before the fix: values started at column 5 and column 7 — in a
+    // function whose entire purpose is alignment.
+    const rendered = renderKeyValues(
+      [
+        { key: "run", value: "r-1" },
+        { key: "実行", value: "r-2" },
+      ],
+      plain("text"),
+    );
+    const columns = rendered
+      .split("\n")
+      .map((line) => displayWidth(line.slice(0, line.lastIndexOf("r-"))));
+    expect(new Set(columns).size).toBe(1);
+  });
+
+  /**
+   * THE RESIDUAL reported at merge on 2026-08-11: a word budget bounds many
+   * short words and says nothing about one enormous one. A digest, a URL or a
+   * stack frame is a single "word" and a horizontal wall.
+   */
+  it("elides a single over-long token, which the word budget alone let through", () => {
+    const { bulletMaxColumns } = DEFAULT_PRESENTATION_POLICY.limits;
+    const token = `sha256:${"a".repeat(500)}`;
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: [token] }] },
+      plain("text"),
+    );
+    const bullet = rendered.split("\n").find((l) => l.includes("sha256")) ?? "";
+    expect(displayWidth(bullet)).toBeLessThanOrEqual(bulletMaxColumns + BULLET_PREFIX_COLUMNS);
+    expect(bullet).toContain("…");
+    expect(bullet).toContain("sha256:aaa");
+  });
+
+  it("cuts an over-long sentence at a word boundary, not mid-word", () => {
+    const sentence = `${"alpha ".repeat(40)}omega`;
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: [sentence] }] },
+      plain("text"),
+    );
+    const bullet = rendered.split("\n").find((l) => l.includes("alpha")) ?? "";
+    expect(bullet).toMatch(/alpha …$/);
+  });
+
+  /**
+   * Asserted on the TEXT, not the whole line. A line also carries furniture —
+   * `"  • "` for a bullet, `"  " + key + gap` for a row — and a row's key is
+   * author-chosen (a command name, a field label), not data, so it is budgeted
+   * the way titles are rather than elided the way values are.
+   */
+  it("holds every bullet and every row value inside the column budget", () => {
+    const { bulletMaxColumns } = DEFAULT_PRESENTATION_POLICY.limits;
+    const rendered = renderHumanReport(
+      {
+        lead: "x",
+        sections: [
+          { title: "S", bullets: ["x".repeat(400), "評".repeat(200), "ok short one"] },
+          { title: "T", rows: [{ key: "kk", value: "y".repeat(400) }] },
+        ],
+      },
+      plain("text"),
+    );
+
+    const bullets = rendered
+      .split("\n")
+      .filter((line) => line.startsWith("  • "))
+      .map((line) => line.slice(BULLET_PREFIX_COLUMNS));
+    expect(bullets.length).toBeGreaterThan(0);
+    for (const text of bullets) {
+      expect(displayWidth(text)).toBeLessThanOrEqual(bulletMaxColumns);
+    }
+
+    const rowValue = rendered
+      .split("\n")
+      .find((line) => line.includes("yyy"))
+      ?.replace(/^ {2}kk {2}/, "");
+    expect(rowValue).toBeDefined();
+    expect(displayWidth(rowValue!)).toBeLessThanOrEqual(bulletMaxColumns);
+  });
+
+  it("rejects a title wider than the policy's column budget", () => {
+    const tooWide = "評".repeat(DEFAULT_PRESENTATION_POLICY.limits.titleMaxColumns);
+    expect(() => renderHeading(tooWide, plain("text"))).toThrow(/columns/i);
   });
 });
 
