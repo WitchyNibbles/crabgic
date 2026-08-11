@@ -22,6 +22,7 @@ import {
   startSupervisorServer,
   type SupervisorServer,
 } from "@crabgic/supervisor";
+import { DEFAULT_PRESENTATION_POLICY } from "@crabgic/contracts";
 import { EXIT_DOCTOR_FINDINGS, EXIT_OK } from "../exit-codes.js";
 import { connectUdsClient } from "../uds-client/client.js";
 import type { CliDependencies } from "./types.js";
@@ -131,6 +132,76 @@ describe("runDoctorCommand", () => {
     );
     const parsed = JSON.parse(result.stdout!) as { repairPlan?: readonly string[] };
     expect(Array.isArray(parsed.repairPlan)).toBe(true);
+  });
+
+  /**
+   * `doctor` was the product's largest human report and the one furthest from
+   * the policy it is supposed to obey: ten findings, emitted as ten flat
+   * `<glyph> [severity] id: evidence` lines with no lead, no headings and no
+   * cap — an undifferentiated block, which `docs/presentation-policy.md` names
+   * as the defect it exists to prevent ("a report that technically contains the
+   * answer somewhere inside an undifferentiated block has not delivered it").
+   *
+   * The passing checks are the bulk of that block and carry no action, so they
+   * collapse to a count. The failures — the only part that asks anything of the
+   * reader — get the section.
+   */
+  describe("answer-first rendering (docs/presentation-policy.md)", () => {
+    it("leads with the verdict, before any detail", async () => {
+      const result = await runDoctorCommand(
+        { command: "doctor", repairPlan: false, json: false },
+        { ...deps, resolveAuthState: () => Promise.resolve("missing") },
+      );
+      const first = result.stdout!.split("\n")[0] ?? "";
+      expect(first).toMatch(/^✗ \d+ of \d+ checks failed\.$/);
+    });
+
+    it("collapses the passing checks to a count instead of listing them", async () => {
+      const result = await runDoctorCommand(
+        { command: "doctor", repairPlan: false, json: false },
+        { ...deps, resolveAuthState: () => Promise.resolve("missing") },
+      );
+      expect(result.stdout).toMatch(/\d+ of \d+ checks passed/);
+      // The passing checks' own ids must not appear: they are the noise this
+      // rendering exists to remove, and `--json` still carries every one.
+      expect(result.stdout).not.toContain("git.plumbing");
+    });
+
+    it("heads the failures, so they are findable without reading the whole report", async () => {
+      const result = await runDoctorCommand(
+        { command: "doctor", repairPlan: false, json: false },
+        { ...deps, resolveAuthState: () => Promise.resolve("missing") },
+      );
+      expect(result.stdout).toContain("Failed\n──────");
+      expect(result.stdout).toContain("auth.probe");
+    });
+
+    it("collapses a fully passing run to a single line", async () => {
+      const result = await runDoctorCommand(
+        { command: "doctor", repairPlan: false, json: false },
+        { ...deps, resolveAuthState: () => Promise.resolve("valid") },
+      );
+      if (result.exitCode !== EXIT_OK) return; // host-dependent: other checks may fail here
+      expect(result.stdout!.trimEnd().split("\n")).toHaveLength(1);
+      expect(result.stdout).toMatch(/^✓ all \d+ checks passed\.\n$/);
+    });
+
+    it("holds every human line within the policy's limits", async () => {
+      const result = await runDoctorCommand(
+        { command: "doctor", repairPlan: true, json: false },
+        { ...deps, resolveAuthState: () => Promise.resolve("missing") },
+      );
+      for (const line of result.stdout!.split("\n")) {
+        expect(line).toBe(line.replace(/\s+$/, ""));
+        if (!line.startsWith("  • ")) continue;
+        const words = line.slice(4).split(/\s+/).filter(Boolean);
+        // `…` is the elision marker the renderer appends, not a content word.
+        const content = words.filter((w) => w !== "…");
+        expect(content.length).toBeLessThanOrEqual(
+          DEFAULT_PRESENTATION_POLICY.limits.bulletMaxWords,
+        );
+      }
+    });
   });
 });
 

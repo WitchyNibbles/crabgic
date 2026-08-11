@@ -29,6 +29,7 @@
 import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@crabgic/contracts";
 import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@crabgic/contracts";
 import { CliUsageError } from "../errors.js";
+import { pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
 import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@crabgic/gateway";
 import type {
   ConnectionAddCommand,
@@ -153,7 +154,10 @@ export async function runConnectionAddCommand(
     exitCode: EXIT_OK,
     stdout: cmd.json
       ? formatJson(summary)
-      : `added ${created.provider} connection ${created.id} (${created.baseUrl})\n`,
+      : renderResultLine(
+          "ok",
+          `added ${created.provider} connection ${created.id} (${created.baseUrl})`,
+        ),
   };
 }
 
@@ -170,13 +174,20 @@ export async function runConnectionListCommand(
   if (summaries.length === 0) {
     return {
       exitCode: EXIT_OK,
-      stdout: "no external connections configured\n",
+      stdout: renderResultLine("info", "no external connections configured"),
     };
   }
-  const lines = summaries.map(
-    (summary) => `${summary.id}  ${summary.provider}  ${summary.baseUrl}  ${summary.secretRef}`,
-  );
-  return { exitCode: EXIT_OK, stdout: `${lines.join("\n")}\n` };
+  return {
+    exitCode: EXIT_OK,
+    stdout: renderItemListReport({
+      role: "info",
+      lead: `${pluralize(summaries.length, "connection")}.`,
+      title: "Connections",
+      items: summaries.map(
+        (summary) => `${summary.provider} ${summary.id} ${summary.baseUrl} ${summary.secretRef}`,
+      ),
+    }),
+  };
 }
 
 export async function runConnectionDoctorCommand(
@@ -211,6 +222,9 @@ export async function runConnectionDoctorCommand(
     exitCode: result.reachable ? EXIT_OK : EXIT_GENERAL_ERROR,
     stdout: cmd.json
       ? formatJson(payload)
-      : `${connection.provider} ${connection.id}: ${result.reachable ? "reachable" : "UNREACHABLE"} — ${result.detail}\n`,
+      : renderResultLine(
+          result.reachable ? "ok" : "fail",
+          `${connection.provider} ${connection.id}: ${result.reachable ? "reachable" : "UNREACHABLE"} — ${result.detail}`,
+        ),
   };
 }

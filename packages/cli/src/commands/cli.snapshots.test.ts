@@ -78,6 +78,40 @@ describe("help text snapshots", () => {
   it("gateway mcp has its own help entry", () => {
     expect(COMMAND_HELP["gateway"]?.usage).toBe(`${BINARY_NAME} gateway mcp`);
   });
+
+  /**
+   * Top-level help groups commands by task instead of listing all fourteen
+   * flat. Grouping introduces a failure mode a flat list did not have: a
+   * command declared in `COMMAND_HELP` but missing from `COMMAND_GROUPS` could
+   * disappear from the one screen that tells an operator it exists. The
+   * fallback group is what prevents that, and this is what proves the fallback
+   * is wired — a snapshot would not, because a snapshot of a screen with a
+   * missing command looks exactly like a correct one.
+   */
+  it("lists every declared command exactly once", () => {
+    const stdout = renderHelp({ command: "help", json: false }).stdout ?? "";
+    // Matched in the KEY COLUMN only (indent, then the name, then the gap).
+    // A looser "appears anywhere" match counts the word inside a neighbouring
+    // summary — "Dispatch a new run." made `run` look duplicated.
+    const named = stdout
+      .split("\n")
+      .map((line) => /^ {2}(\S+) {2,}\S/.exec(line)?.[1])
+      .filter((name): name is string => name !== undefined);
+    expect([...named].sort()).toEqual(Object.keys(COMMAND_HELP).sort());
+  });
+
+  it("keeps the top-level screen free of the long usage strings", () => {
+    const stdout = renderHelp({ command: "help", json: false }).stdout ?? "";
+    // `connection`'s usage alone is >200 chars and wraps into a paragraph of
+    // flags. It belongs to `help connection`, not to the first screen.
+    expect(stdout).not.toContain("--base-url");
+    expect(renderHelp({ command: "help", json: false, topic: "connection" }).stdout).toContain(
+      "--base-url",
+    );
+    for (const line of stdout.split("\n")) {
+      expect(line.length).toBeLessThanOrEqual(100);
+    }
+  });
 });
 
 describe("--json output schema snapshots", () => {

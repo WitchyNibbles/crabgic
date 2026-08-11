@@ -158,7 +158,10 @@ describe("dispatchCommand — real backends", () => {
   it("status with no run-id renders a human-readable empty state in non-json mode", async () => {
     const result = await dispatchCommand({ command: "status", watch: false, json: false }, deps);
     expect(result.exitCode).toBe(EXIT_OK);
-    expect(result.stdout).toBe("no runs\n");
+    // Glyph-signposted since 2026-08-11 (`docs/presentation-policy.md`): the
+    // `info` role renders `•` in the monochrome `text` profile CLI stdout
+    // resolves to when piped or captured.
+    expect(result.stdout).toBe("• no runs\n");
   });
 
   it("cancel: an unknown run is reported as not-accepted, exit OK, --json shape", async () => {
@@ -229,8 +232,12 @@ describe("dispatchCommand — real backends", () => {
   it("help: renders the command table", async () => {
     const result = await dispatchCommand({ command: "help", json: false }, deps);
     expect(result.exitCode).toBe(EXIT_OK);
-    expect(result.stdout).toContain("Commands:");
-    expect(result.stdout).toContain("gateway mcp");
+    // Grouped, answer-first table since 2026-08-11: the `Commands:` header is
+    // now a lead stating the count, and `gateway`'s full usage string
+    // (`gateway mcp`) moved to `help gateway`.
+    expect(result.stdout).toMatch(/^\d+ commands\./);
+    expect(result.stdout).toContain("gateway");
+    expect(result.stdout).toContain("Connectors");
   });
 });
 

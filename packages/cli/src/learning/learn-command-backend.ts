@@ -24,6 +24,7 @@ import type {
 } from "../argv/types.js";
 import { EXIT_GENERAL_ERROR, EXIT_OK } from "../exit-codes.js";
 import { formatJson, type CommandResult } from "../output/format.js";
+import { pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
 import { toErrorMessage } from "../errors.js";
 import {
   ApprovalDeclinedError,
@@ -115,10 +116,27 @@ export async function runLearnListCommand(
     return { exitCode: EXIT_OK, stdout: formatJson({ proposals }) };
   }
   if (proposals.length === 0) {
-    return { exitCode: EXIT_OK, stdout: "no learning proposals recorded yet\n" };
+    return {
+      exitCode: EXIT_OK,
+      stdout: renderResultLine("info", "no learning proposals recorded"),
+    };
   }
-  const lines = proposals.map((p) => `- ${p.id} [${p.state}] ${p.content}`);
-  return { exitCode: EXIT_OK, stdout: `${lines.join("\n")}\n` };
+  // A proposal's `content` is free text of unbounded length and the registry
+  // grows without limit, so this is exactly the shape the policy's cap and
+  // elision exist for — see `../output/reports.ts`.
+  const awaiting = proposals.filter((p) => p.state === "independent_review").length;
+  return {
+    exitCode: EXIT_OK,
+    stdout: renderItemListReport({
+      role: awaiting > 0 ? "question" : "info",
+      lead:
+        awaiting > 0
+          ? `${pluralize(proposals.length, "proposal")}, ${String(awaiting)} awaiting review.`
+          : `${pluralize(proposals.length, "proposal")}, none awaiting review.`,
+      title: "Proposals",
+      items: proposals.map((p) => `[${p.state}] ${p.id} ${p.content}`),
+    }),
+  };
 }
 
 export async function runLearnApproveCommand(
@@ -152,7 +170,7 @@ export async function runLearnApproveCommand(
     if (err instanceof ApprovalDeclinedError) {
       return {
         exitCode: EXIT_OK,
-        stdout: "independent review declined at the terminal prompt — no token minted\n",
+        stdout: renderResultLine("blocked", "review declined at the prompt — no token minted"),
       };
     }
     return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };
@@ -175,10 +193,13 @@ export async function runLearnApproveCommand(
 
   const distinctCount = new Set(reviewApprovals.map((a) => a.tokenId)).size;
   if (distinctCount < REQUIRED_DISTINCT_APPROVALS) {
-    const message =
-      `recorded independent-review approval ${String(distinctCount)}/` +
-      `${String(REQUIRED_DISTINCT_APPROVALS)} for proposal "${proposal.id}" — ` +
-      "awaiting at least one more DISTINCT reviewer approval before promotion\n";
+    // `pending`, not `ok`: an approval that does not promote has not finished
+    // the job, and a green glyph here would read as "done".
+    const message = renderResultLine(
+      "pending",
+      `approval ${String(distinctCount)}/${String(REQUIRED_DISTINCT_APPROVALS)} recorded for ` +
+        `"${proposal.id}" — needs another DISTINCT reviewer`,
+    );
     return cmd.json
       ? {
           exitCode: EXIT_OK,
@@ -197,9 +218,10 @@ export async function runLearnApproveCommand(
       ? { exitCode: EXIT_OK, stdout: formatJson({ promoted: true, changeSet: result.changeSet }) }
       : {
           exitCode: EXIT_OK,
-          stdout:
-            `proposal "${proposal.id}" PROMOTED — ChangeSet ${result.changeSet.id} constructed ` +
-            "for the normal scheduler->gates->publish pipeline\n",
+          stdout: renderResultLine(
+            "ok",
+            `proposal "${proposal.id}" PROMOTED — ChangeSet ${result.changeSet.id} queued`,
+          ),
         };
   } catch (err) {
     return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };
@@ -218,7 +240,10 @@ export async function runLearnRejectCommand(
     const rejected = await deps.registry.transition(cmd.proposalId, "rejected");
     return cmd.json
       ? { exitCode: EXIT_OK, stdout: formatJson({ rejected: true, proposal: rejected }) }
-      : { exitCode: EXIT_OK, stdout: `proposal "${cmd.proposalId}" rejected\n` };
+      : {
+          exitCode: EXIT_OK,
+          stdout: renderResultLine("ok", `proposal "${cmd.proposalId}" rejected`),
+        };
   } catch (err) {
     return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };
   }
@@ -245,9 +270,10 @@ export async function runLearnRollbackCommand(
         }
       : {
           exitCode: EXIT_OK,
-          stdout:
-            `proposal "${cmd.proposalId}" ROLLED BACK — inverse ChangeSet ` +
-            `${result.inverseChangeSet.id} constructed to restore the baseline\n`,
+          stdout: renderResultLine(
+            "ok",
+            `proposal "${cmd.proposalId}" ROLLED BACK — inverse ChangeSet ${result.inverseChangeSet.id}`,
+          ),
         };
   } catch (err) {
     return { exitCode: EXIT_GENERAL_ERROR, stderr: `${toErrorMessage(err)}\n` };

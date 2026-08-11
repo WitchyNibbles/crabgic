@@ -126,7 +126,11 @@ describe("runLearnApproveCommand", () => {
       { ...deps, io: yesIo() },
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("awaiting at least one more DISTINCT reviewer");
+    expect(result.stdout).toContain("needs another DISTINCT reviewer");
+    // `•` (the `pending` role in the `text` profile), never `✓`: an approval
+    // that has not promoted is not a completed act, and a success glyph here
+    // would report the job as done one reviewer early.
+    expect(result.stdout!.startsWith("•")).toBe(true);
     expect((await registry.get(proposal.id))?.state).toBe("independent_review");
   });
 

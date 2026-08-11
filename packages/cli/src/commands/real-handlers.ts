@@ -9,6 +9,9 @@ import { EXIT_DOCTOR_FINDINGS, EXIT_OK, EXIT_GENERAL_ERROR } from "../exit-codes
 import { toErrorMessage } from "../errors.js";
 import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
+import { renderHumanReport, renderStatusLine, type HumanReportSection } from "../output/human.js";
+import { CLI_TEXT, pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
+import type { PresentationContext, PresentationGlyphRole } from "@crabgic/contracts";
 import { renderRunProgress, summarizeRunProgress } from "../output/run-progress.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
 import { buildDefaultDoctorChecks } from "../doctor/run-doctor.js";
@@ -27,6 +30,14 @@ import { runIntakeCommand, type RunIntakeCommandResult } from "../intake/run-int
 import { sanitizeForTerminal } from "../output/sanitize.js";
 import { findUnusedAuthority, renderUnusedAuthority } from "../intake/unused-authority.js";
 
+/** The finding members `doctor`'s human rendering reads — the framework owns the full shape. */
+interface DoctorFindingLike {
+  readonly id: string;
+  readonly passed: boolean;
+  readonly severity: string;
+  readonly evidence: string;
+}
+
 interface RunRecordLike {
   readonly runId: string;
   readonly changeSetId: string;
@@ -34,11 +45,31 @@ interface RunRecordLike {
   readonly updatedAt: string;
 }
 
+/**
+ * One run, as a glyph line. The run's own lifecycle state picks the glyph, so
+ * a parked or failed run is findable in a list without reading the words.
+ */
+function runGlyphRole(runState: string): PresentationGlyphRole {
+  if (runState.startsWith("parked")) return "parked";
+  if (runState === "failed") return "fail";
+  if (runState === "succeeded" || runState === "completed") return "ok";
+  if (runState === "cancelled") return "info";
+  return "running";
+}
+
 function renderRunRecord(run: RunRecordLike | undefined, runId: string): string {
   if (run === undefined) {
-    return `run "${runId}" is unknown (not yet started, or never existed)\n`;
+    return renderResultLine("info", `run "${runId}" is unknown (not started, or never existed)`);
   }
-  return `run ${run.runId}: ${run.runState} (changeSet ${run.changeSetId}, updated ${run.updatedAt})\n`;
+  return renderResultLine(
+    runGlyphRole(run.runState),
+    `run ${run.runId}: ${run.runState} (changeSet ${run.changeSetId}, updated ${run.updatedAt})`,
+  );
+}
+
+/** The list form: one compact line per run, without the per-run glyph line's detail tail. */
+function runListItem(run: RunRecordLike): string {
+  return `${run.runId}: ${run.runState} (updated ${run.updatedAt})`;
 }
 
 /**
@@ -74,7 +105,7 @@ export async function runResumeCommand(
       };
     }
     return result.accepted
-      ? { exitCode: EXIT_OK, stdout: `run ${cmd.runId}: resumed\n` }
+      ? { exitCode: EXIT_OK, stdout: renderResultLine("ok", `run ${cmd.runId}: resumed`) }
       : {
           exitCode: EXIT_GENERAL_ERROR,
           stderr: `run ${cmd.runId} was not resumed: ${result.reason ?? "refused"}\n`,
@@ -102,10 +133,18 @@ async function runStatusAllCommand(
     );
 
     if (cmd.json) return { exitCode: EXIT_OK, stdout: formatJson({ runs }) };
-    if (runs.length === 0) return { exitCode: EXIT_OK, stdout: "no runs\n" };
+    if (runs.length === 0)
+      return { exitCode: EXIT_OK, stdout: renderResultLine("info", "no runs") };
+    // A registry with many runs was the one place this command could emit an
+    // unbounded wall; the list report caps it and says what it held back.
     return {
       exitCode: EXIT_OK,
-      stdout: runs.map((run) => renderRunRecord(run, run.runId)).join(""),
+      stdout: renderItemListReport({
+        role: "info",
+        lead: `${pluralize(runs.length, "run")}.`,
+        title: "Runs",
+        items: runs.map(runListItem),
+      }),
     };
   } finally {
     client.close();
@@ -203,8 +242,14 @@ export async function runCancelCommand(
       stdout: cmd.json
         ? formatJson(result)
         : result.accepted
-          ? `cancelled "${cmd.targetId}"${result.runState !== undefined ? ` (now ${result.runState})` : ""}\n`
-          : `could not cancel "${cmd.targetId}" (unknown run, or already in a non-cancellable state)\n`,
+          ? renderResultLine(
+              "ok",
+              `cancelled "${cmd.targetId}"${result.runState !== undefined ? ` (now ${result.runState})` : ""}`,
+            )
+          : renderResultLine(
+              "fail",
+              `could not cancel "${cmd.targetId}" (unknown run, or not cancellable)`,
+            ),
     };
   } finally {
     await client.close();
@@ -223,13 +268,30 @@ export async function runEvidenceCommand(
   if (report.records.length === 0) {
     return {
       exitCode: EXIT_OK,
-      stdout: `no evidence recorded yet for change set "${cmd.changeSetId}"\n`,
+      stdout: renderResultLine(
+        "info",
+        `no evidence recorded yet for change set "${cmd.changeSetId}"`,
+      ),
     };
   }
-  const lines = report.records.map(
-    (r) => `- ${r.command} (exit ${String(r.exitStatus)}) @ ${r.objectId} — ${r.capturedAt}`,
-  );
-  return { exitCode: EXIT_OK, stdout: `${lines.join("\n")}\n` };
+  const failed = report.records.filter((r) => r.exitStatus !== 0).length;
+  return {
+    exitCode: EXIT_OK,
+    stdout: renderItemListReport({
+      // The lead answers the question the command is actually asked — "did the
+      // evidence pass?" — rather than making the reader tally exit codes down
+      // a column to find out.
+      role: failed > 0 ? "fail" : "ok",
+      lead:
+        failed > 0
+          ? `${String(failed)} of ${String(report.records.length)} evidence records failed.`
+          : `${pluralize(report.records.length, "evidence record")}, all passing.`,
+      title: "Evidence",
+      items: report.records.map(
+        (r) => `${r.exitStatus === 0 ? "ok" : "FAILED"} ${r.command} @ ${r.capturedAt}`,
+      ),
+    }),
+  };
 }
 
 /** `doctor [--repair-plan] [--json]`. */
@@ -273,16 +335,74 @@ export async function runDoctorCommand(
     };
   }
 
-  const lines = report.findings.map(
-    (f) => `${f.passed ? "✓" : "✗"} [${f.severity}] ${f.id}: ${f.evidence}`,
-  );
-  if (repairPlan !== undefined && repairPlan.length > 0) {
-    lines.push("", "Repair plan (non-destructive, not auto-executed):", ...repairPlan);
-  }
   return {
     exitCode: report.allPassed ? EXIT_OK : EXIT_DOCTOR_FINDINGS,
-    stdout: `${lines.join("\n")}\n`,
+    stdout: renderDoctorReport(report, repairPlan),
   };
+}
+
+/**
+ * `doctor`'s human report, under `docs/presentation-policy.md`.
+ *
+ * WHAT THIS REPLACED. Ten findings, one flat `<glyph> [severity] id: evidence`
+ * line each, in registration order, with the passing checks — the majority —
+ * interleaved among the failures. That is the "undifferentiated block" the
+ * presentation policy names as its motivating defect, and it was the product's
+ * largest human report.
+ *
+ * WHY THE PASSERS COLLAPSE TO A COUNT. A passing check asks nothing of the
+ * reader. Eight of them ahead of the two that do is eight chances to lose the
+ * thread before reaching the part that matters. The count keeps the report
+ * honest about what ran, `--json` remains the lossless channel, and the
+ * failures get the space instead.
+ *
+ * The context is monochrome `text`, matching `status-renderer.ts`'s
+ * `MONOCHROME_TEXT`: `doctor` emitted `✓`/`✗` before this rendering existed and
+ * its output is asserted byte-wise, so the glyphs are pinned. A caller that has
+ * resolved an interactive terminal can pass a context and get the same layout
+ * in colour — `renderHumanReport` guarantees the two strip back to each other.
+ */
+function renderDoctorReport(
+  report: { readonly allPassed: boolean; readonly findings: readonly DoctorFindingLike[] },
+  repairPlan: readonly string[] | undefined,
+): string {
+  const ctx: PresentationContext = CLI_TEXT;
+  const failed = report.findings.filter((f) => !f.passed);
+  const total = report.findings.length;
+
+  if (failed.length === 0) {
+    return `${renderStatusLine("ok", `all ${String(total)} checks passed.`, ctx)}\n`;
+  }
+
+  const sections: HumanReportSection[] = [
+    {
+      title: "Failed",
+      bullets: failed.map((f) => `[${f.severity}] ${f.id}: ${f.evidence}`),
+    },
+  ];
+  if (repairPlan !== undefined && repairPlan.length > 0) {
+    sections.push({
+      title: "Repair plan",
+      body: "Non-destructive; not run for you.",
+      bullets: repairPlan,
+    });
+  }
+  sections.push({
+    title: "Passed",
+    body: `${String(total - failed.length)} of ${String(total)} checks passed (--json for the full list).`,
+  });
+
+  return renderHumanReport(
+    {
+      lead: renderStatusLine(
+        "fail",
+        `${String(failed.length)} of ${String(total)} checks failed.`,
+        ctx,
+      ),
+      sections,
+    },
+    ctx,
+  );
 }
 
 /**

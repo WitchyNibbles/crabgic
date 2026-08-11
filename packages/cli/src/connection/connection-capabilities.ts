@@ -24,6 +24,7 @@
 import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@crabgic/contracts";
 import type { ConnectionCapabilitiesCommand } from "../argv/types.js";
 import type { ConnectionDependencies } from "./connection-commands.js";
+import { renderResultLine } from "../output/reports.js";
 
 /** A failure payload shaped like the success one, so `--json` consumers can branch on `discovered` alone. */
 function failure(connectionId: string, detail: string, json: boolean): CommandResult {
@@ -92,8 +93,11 @@ export async function runConnectionCapabilitiesCommand(
     exitCode: EXIT_OK,
     stdout: cmd.json
       ? formatJson(payload)
-      : `${snapshot.product} ${snapshot.edition} ${snapshot.version} (${connection.id}): ` +
-        `${snapshot.isReadOnly ? "read-only" : "writable"} — ` +
-        `${snapshot.resources.length} resource kinds, ${snapshot.actions.length} actions\n`,
+      : renderResultLine(
+          "ok",
+          `${snapshot.product} ${snapshot.edition} ${snapshot.version} (${connection.id}): ` +
+            `${snapshot.isReadOnly ? "read-only" : "writable"} — ` +
+            `${snapshot.resources.length} resource kinds, ${snapshot.actions.length} actions`,
+        ),
   };
 }

@@ -330,7 +330,7 @@ exports[`--json output schema snapshots — install / upgrade / uninstall > upgr
 `;
 
 exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn approve (human mode, 1 of 2) — golden CLI output 1`] = `
-"recorded independent-review approval 1/2 for proposal "<uuid>" — awaiting at least one more DISTINCT reviewer approval before promotion
+"• approval 1/2 recorded for "<uuid>" — needs another DISTINCT reviewer
 "
 `;
 
@@ -362,12 +362,16 @@ exports[`--json output schema snapshots — learn list|approve|reject|rollback (
 `;
 
 exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list (human mode, empty registry) — golden CLI output 1`] = `
-"no learning proposals recorded yet
+"• no learning proposals recorded
 "
 `;
 
 exports[`--json output schema snapshots — learn list|approve|reject|rollback (roadmap/22's golden CLI-output test) > learn list (human mode, one proposal) — golden CLI output 1`] = `
-"- <uuid> [observation] always re-check X
+"• 1 proposal, none awaiting review.
+
+Proposals
+─────────
+  • [observation] <uuid> always re-check X
 "
 `;
 
@@ -712,7 +716,8 @@ exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = 
   },
   "approve": {
     "usage": "crabgic approve <envelope-digest> [--json]",
-    "summary": "Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work)."
+    "summary": "Approve a pending authorization envelope at an interactive terminal.",
+    "detail": "Human-only; the escalation path for out-of-policy work."
   },
   "connection": {
     "usage": "crabgic connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>",
@@ -743,42 +748,40 @@ exports[`help text snapshots > top-level help (--json) is snapshot-stable 1`] = 
 `;
 
 exports[`help text snapshots > top-level help (human) is snapshot-stable 1`] = `
-"Commands:
+"14 commands. \`crabgic help <command>\` for usage and flags.
 
-  crabgic install [--dry-run] [--json]
-      Install the plugin/managed config into this project.
-  crabgic doctor [--repair-plan] [--json]
-      Validate the host end-to-end against seeded fault checks.
-  crabgic run [--json]
-      Dispatch a new run.
-  crabgic status [run-id] [--watch] [--json]
-      Show (or stream) a run's status.
-  crabgic resume <run-id>
-      Resume a parked or interrupted run.
-  crabgic cancel <run-id|task-id>
-      Cancel a run or a single task within it.
-  crabgic evidence <change-set-id>
-      Show every EvidenceRecord journaled for a ChangeSet.
-  crabgic approve <envelope-digest> [--json]
-      Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work).
-  crabgic connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>
-      Manage external connector connections.
-  crabgic trust review|approve|revoke
-      Review and approve high-impact capability grants.
-  crabgic learn list|approve|reject|rollback
-      Manage reviewed learning proposals.
-  crabgic upgrade [--dry-run]
-      Upgrade the installed plugin/managed config.
-  crabgic uninstall [--keep-state]
-      Remove the installed plugin/managed config.
-  crabgic gateway mcp
-      Boot the gateway MCP server over stdio (no user-facing flags).
+Setup
+─────
+  install    Install the plugin/managed config into this project.
+  upgrade    Upgrade the installed plugin/managed config.
+  uninstall  Remove the installed plugin/managed config.
+  doctor     Validate the host end-to-end against seeded fault checks.
+
+Runs
+────
+  run       Dispatch a new run.
+  status    Show (or stream) a run's status.
+  resume    Resume a parked or interrupted run.
+  cancel    Cancel a run or a single task within it.
+  evidence  Show every EvidenceRecord journaled for a ChangeSet.
+
+Approvals
+─────────
+  approve  Approve a pending authorization envelope at an interactive terminal.
+  trust    Review and approve high-impact capability grants.
+  learn    Manage reviewed learning proposals.
+
+Connectors
+──────────
+  connection  Manage external connector connections.
+  gateway     Boot the gateway MCP server over stdio (no user-facing flags).
 "
 `;
 
 exports[`help text snapshots > topic help for every declared command is snapshot-stable > topic-approve 1`] = `
 "crabgic approve <envelope-digest> [--json]
-    Approve a pending authorization envelope at an interactive terminal (human-only; the escalation path for out-of-policy work).
+    Approve a pending authorization envelope at an interactive terminal.
+    Human-only; the escalation path for out-of-policy work.
 "
 `;
 

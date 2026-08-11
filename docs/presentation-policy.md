@@ -66,7 +66,17 @@ contracts.
 Consumers:
 
 - `packages/cli/src/output/human.ts` — the human-mode stdout primitives.
+- `packages/cli/src/output/reports.ts` — the two shapes every command reduces
+  to: `renderResultLine` for a single-fact result, `renderItemListReport` for a
+  list whose length is unknown when the code is written. Split by CARDINALITY,
+  not by command: a headed report over one line is scaffolding with nothing to
+  hold up, and would add reading rather than remove it.
 - `packages/cli/src/output/status-renderer.ts` — `status --watch`.
+- `packages/cli/src/commands/real-handlers.ts` — `doctor`, `status`, `evidence`,
+  `cancel`, `resume`.
+- `packages/cli/src/learning/learn-command-backend.ts` — `learn *`.
+- `packages/cli/src/connection/connection-commands.ts` and
+  `connection-capabilities.ts` — `connection *`.
 - `packages/plugin/src/manager-protocol.ts` — the always-loaded `CLAUDE.md`
   operating protocol, which quotes the limits and the vocabulary rather than
   restating them.
@@ -231,15 +241,33 @@ the two rules.
 Brevity is the default. When the owner asks for detail the answer gets longer,
 not looser: a long report is still answer-first, still headed, still bulleted.
 
+### Prose throws; data degrades
+
+`renderHumanReport` enforces the limits two different ways, and which one
+applies is decided by **who controls the input**, not by which limit it is.
+
+| Field          | Over the limit                                      | Why                                                                                                                       |
+| -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `lead`, `body` | **throws**                                          | prose an author typed — a wall here is a programming error, and the call site that can fix it should hear about it loudly |
+| `bullets`      | **elided / capped, and the shortfall is announced** | data (doctor findings, evidence rows, work units) whose count and length are unknown when the code is written             |
+
+Throwing on data would turn "the host has eleven findings" into a crashed
+command, which is strictly worse than a capped list. So an over-long bullet is
+cut at `bulletMaxWords` with a `…`, a section past `sectionMaxBullets` keeps the
+first `sectionMaxBullets` and appends `… N more (--json for all)`, and nothing
+is ever dropped **silently** — a truncated list that does not say it was
+truncated reads as a complete one, which is the exact failure this whole policy
+exists to prevent. `--json` remains the lossless channel in both cases.
+
 ## Enforcement, honestly
 
 Only part of this is enforceable.
 
-| Surface               | Enforcement                                                                                              |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| CLI stdout            | **Structural.** `renderHumanReport` throws on an over-long lead and heads every section by construction. |
-| Manager session prose | **Instruction only.** The `CLAUDE.md` block states the rules; a model's prose cannot be linted mid-turn. |
-| Outbound artifacts    | **Blocking lint** — but under `CommunicationPolicy`, not this one.                                       |
+| Surface               | Enforcement                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI stdout            | **Structural.** `renderHumanReport` heads every section by construction and enforces all six limits — see "Prose throws; data degrades" above. |
+| Manager session prose | **Instruction only.** The `CLAUDE.md` block states the rules; a model's prose cannot be linted mid-turn.                                       |
+| Outbound artifacts    | **Blocking lint** — but under `CommunicationPolicy`, not this one.                                                                             |
 
 This is the same limitation `manager-protocol.ts` already records for the
 autonomy rules: _"Prose is not enforcement."_ There is no equivalent of the
