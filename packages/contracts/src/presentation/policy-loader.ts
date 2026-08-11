@@ -92,13 +92,43 @@ export function loadPresentationPolicy(projectRoot: string): PresentationPolicyL
     };
   }
 
-  return {
-    policy: {
-      ...DEFAULT_PRESENTATION_POLICY,
-      limits: { ...DEFAULT_PRESENTATION_POLICY.limits, ...result.data.limits },
-      formatGate: { ...DEFAULT_PRESENTATION_POLICY.formatGate, ...result.data.formatGate },
+  // The MERGED whole is re-validated through the policy schema, not merely
+  // assembled. Two things fall out of that, both wanted: the result carries the
+  // exact `PresentationPolicy` type rather than one widened by spreading a
+  // partial, and a combination that is individually valid but jointly not is
+  // still caught here rather than reaching a renderer.
+  const merged = PresentationPolicySchema.safeParse({
+    ...DEFAULT_PRESENTATION_POLICY,
+    limits: { ...DEFAULT_PRESENTATION_POLICY.limits, ...definedOnly(result.data.limits) },
+    formatGate: {
+      ...DEFAULT_PRESENTATION_POLICY.formatGate,
+      ...definedOnly(result.data.formatGate),
     },
-    source: "file",
-    problems: [],
-  };
+  });
+  if (!merged.success) {
+    return {
+      policy: DEFAULT_PRESENTATION_POLICY,
+      source: "invalid",
+      problems: merged.error.issues.map(
+        (issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+      ),
+    };
+  }
+
+  return { policy: merged.data, source: "file", problems: [] };
+}
+
+/**
+ * Drops members whose value is `undefined`.
+ *
+ * A partial override's members are `T | undefined`, and spreading that over the
+ * defaults would overwrite a default WITH `undefined` — the opposite of
+ * "unnamed members keep their default", and a type error besides. Filtering
+ * first makes the spread a genuine `Partial<T>` over `T`, which is `T`.
+ */
+function definedOnly<T extends object>(source: T | undefined): Partial<T> {
+  if (source === undefined) return {};
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
 }
