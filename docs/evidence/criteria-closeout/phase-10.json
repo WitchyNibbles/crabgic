@@ -141,8 +141,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/installer/settings-merge.ts:59",
-          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:59 — 'if (!(\"enabledPlugins\" in merged)) {' — the implementation the property fuzzes: presence-guarded, so the monotonicity rule is \"a key present as ANY value, of ANY type, is never touched\", which is why the wrong-typed arm above is a real branch and not a hypothetical"
+          "ref": "packages/cli/src/installer/settings-merge.ts:74",
+          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:74 — 'if (!(\"enabledPlugins\" in merged)) {' — the implementation the property fuzzes: presence-guarded, so the monotonicity rule is \"a key present as ANY value, of ANY type, is never touched\", which is why the wrong-typed arm above is a real branch and not a hypothetical (Ref and marker corrected 2026-08-11, from `settings-merge.ts:59`. Pure line drift: this change inserted the add-only `outputStyle` key — the installer-written output style, engine-baseline §23 — fifteen lines above it. The quoted line is unchanged in text and in meaning.)"
         },
         {
           "kind": "artifact",
@@ -183,8 +183,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/installer/install.ts:153",
-          "quotedAssertion": "packages/cli/src/installer/install.ts:153 — 'const mcp = mergeMcpJson(existingMcp);' inside `buildDesiredArtifacts`, whose result is written to `.mcp.json` at :181-184. The golden test drives the production merge, not a test-local reimplementation of it."
+          "ref": "packages/cli/src/installer/install.ts:154",
+          "quotedAssertion": "packages/cli/src/installer/install.ts:154 — 'const mcp = mergeMcpJson(existingMcp);' inside `buildDesiredArtifacts`, whose result is written to `.mcp.json` at :183-186. The golden test drives the production merge, not a test-local reimplementation of it. (Ref and marker corrected 2026-08-11, from `install.ts:153`. Pure line drift: this change inserted the add-only `outputStyle` key — the installer-written output style, engine-baseline §23 — and its writer import one line above. The quoted line is unchanged in text and in meaning.)"
         },
         {
           "kind": "artifact",

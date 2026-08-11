@@ -21,10 +21,10 @@
     "note": "Neither outcome is a PASS or FAIL for the design question on its own. `plugin details` is warn-blind (engine-baseline §21), so silent acceptance discriminates nothing — it is recorded because a future engine that DOES reject the key would change this reading."
   },
   {
-    "probe": "output-style.changes-the-register",
-    "expectation": "a project-level output style measurably changes the assistant's default register, composes predictably with a project `outputStyle` setting, and survives --resume",
-    "observed": "NOT RUN — Tier B needs real turns and therefore real budget; re-run with --live to execute it",
+    "probe": "output-style.project-level-reaches-the-model",
+    "expectation": "a project-level .claude/output-styles/ entry selected by the outputStyle setting reaches the model: the sentinel OKAPI42 appears in the styled arm and not in the control arm",
+    "observed": "probe could not run (not authenticated): styled \"Failed to authenticate: OAuth session expired and could not be refreshed\" / control \"Failed to authenticate: OAuth session expired and could not be refreshed\"",
     "verdict": "UNRESOLVED",
-    "note": "Deliberately gated. Tier A is decisive for the plugin-shipping question and costs nothing; the behavioural half is only worth spending on once a delivery path exists."
+    "note": "No turn happened, so nothing about output styles was observed. Re-run after `claude setup-token` (or an interactive login) to obtain a verdict."
   }
 ]

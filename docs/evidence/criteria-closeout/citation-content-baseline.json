@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-11",
-  "generatedAtSha": "bb94a7fdf0beac63d6447427c8253a775a0ff41e",
+  "generatedAtSha": "ef5be70e9a060ed7da625417b6e45462f551d000",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -4181,11 +4181,11 @@
         "OK/collapsed@57,164~repeat"
       ]
     },
-    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:59": {
-      "qa": "092e1dc831d4",
+    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:74": {
+      "qa": "91ec372877f7",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@59"
+        "OK/collapsed@74"
       ]
     },
     "phase-10.json#c3#docs/evidence/phase-10/closeout-c3-mcp-entry-golden.txt": {
@@ -4205,11 +4205,11 @@
         "OK-file/collapsed@190,201~repeat"
       ]
     },
-    "phase-10.json#c3#packages/cli/src/installer/install.ts:153": {
-      "qa": "b5ab8eaaf119",
+    "phase-10.json#c3#packages/cli/src/installer/install.ts:154": {
+      "qa": "2447fb2ec317",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@153"
+        "OK/collapsed@154"
       ]
     },
     "phase-10.json#c3#packages/cli/src/installer/mcp-entry.golden.test.ts:34": {
@@ -4558,13 +4558,13 @@
       "qa": "ab0a1e899109",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@31",
         "OK/collapsed@32",
-        "OK/collapsed@33,37,47,61,64~repeat",
+        "OK/collapsed@33",
+        "OK/collapsed@34,38,48,62,76,79~repeat",
         "SKIP-short",
-        "OK/collapsed@35",
         "OK/collapsed@36",
-        "OK/collapsed@33,37,47,61,64~repeat",
+        "OK/collapsed@37",
+        "OK/collapsed@34,38,48,62,76,79~repeat",
         "SKIP-short"
       ]
     },

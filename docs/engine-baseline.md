@@ -960,12 +960,27 @@ and still yields no category. Silence discriminates nothing here, because §21 a
 `claude plugin details` is **warn-blind**. Recorded so that a future engine which DOES reject the
 key is recognisable as a change.
 
-### 23.4 Behavioural verification — **UNRESOLVED, deliberately not run**
+### 23.4 Behavioural verification — **UNRESOLVED, attempted and blocked**
 
-Whether a _project-level_ style changes the register, how it composes with a project `outputStyle`
-setting, and whether it survives `--resume` all need real turns. The probe implements them behind
-`--live` and does not run them by default. Tier A already answers the design's question, and the
-behavioural half is only worth spending budget on once a delivery path exists.
+Whether a _project-level_ style changes the register needs a real turn. The probe implements it
+behind `--live`, with a CONTROL ARM in an identical project without the style, because a missing
+sentinel is otherwise ambiguous between "the style was ignored", "print mode ignores styles" and
+"the model did not comply".
+
+**Attempted 2026-08-11 and it did not run**: both arms returned
+`Failed to authenticate: OAuth session expired and could not be refreshed`. **No turn happened, so
+nothing about output styles was observed, and no budget was spent.** Re-run after
+`claude setup-token` or an interactive login:
+
+```
+node spikes/11-output-style.mjs --live
+```
+
+**This is the one fact the installer-written path depends on, and it is NOT yet established.**
+Anything built on it must say so. The probe distinguishes "ran and the effect was absent" (FAIL)
+from "never ran" (UNRESOLVED) explicitly — an earlier draft reported the auth failure as a FAIL,
+which would have recorded as an engine fact that project-level styles do not work, on evidence that
+no turn had occurred.
 
 ### 23.5 What this means for the design
 

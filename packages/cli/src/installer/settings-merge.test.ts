@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mergeSettingsJson } from "./settings-merge.js";
 import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
+import { OUTPUT_STYLE_SETTINGS_VALUE } from "./output-style-writer.js";
 
 const PLUGIN = "crabgic";
 
@@ -9,10 +10,11 @@ const FULLY_INSTALLED = {
   attribution: { commit: "", pr: "" },
   sessionUrl: false,
   statusLine: { ...STATUSLINE_SETTINGS_ENTRY },
+  outputStyle: OUTPUT_STYLE_SETTINGS_VALUE,
 };
 
 describe("mergeSettingsJson — add-only defaults", () => {
-  it("adds attribution, sessionUrl, statusLine, and enabledPlugins to a brand-new (empty) settings object", () => {
+  it("adds attribution, sessionUrl, statusLine, outputStyle and enabledPlugins to a brand-new (empty) settings object", () => {
     const result = mergeSettingsJson({}, PLUGIN);
     expect(result.changed).toBe(true);
     expect(result.settings).toEqual({

@@ -105,16 +105,16 @@ describe("runInstall — basic writes", () => {
     await runInstall(deps(dir), { dryRun: false });
     const state = await readInstallState(dir);
     expect(state?.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
-    // CLAUDE.md, .claude/settings.json, .mcp.json, FIVE eo-* subagents, and the
-    // status-line script. The standing policy is deliberately NOT among them:
-    // it lands in XDG state, never the repo.
+    // CLAUDE.md, .claude/settings.json, .mcp.json, FIVE eo-* subagents, the
+    // status-line script, and the output style. The standing policy is
+    // deliberately NOT among them: it lands in XDG state, never the repo.
     //
     // Three subagents became five on 2026-07-29 when the staged review pipeline
     // gained producers for its design and plan stages (eo-architect, eo-planner).
     // The count is derived rather than restated so this assertion cannot drift
     // from the list the installer actually copies -- a hand-typed 7 is what let
     // two agents ship uninstallable in the first place.
-    expect(state?.artifacts).toHaveLength(REQUIRED_SUBAGENT_NAMES.length + 4);
+    expect(state?.artifacts).toHaveLength(REQUIRED_SUBAGENT_NAMES.length + 5);
   });
 
   it("writes enabledPlugins keyed by the LIVE-VERIFIED <plugin-name>@<marketplace-name> format, not the bare plugin name", async () => {

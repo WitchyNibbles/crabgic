@@ -229,6 +229,10 @@ exports[`--json output schema snapshots — install / upgrade / uninstall > inst
     {
       "relPath": ".claude/crabgic-statusline.mjs",
       "action": "create"
+    },
+    {
+      "relPath": ".claude/output-styles/crabgic.md",
+      "action": "create"
     }
   ],
   "policy": {
@@ -277,6 +281,10 @@ exports[`--json output schema snapshots — install / upgrade / uninstall > unin
     {
       "relPath": ".claude/crabgic-statusline.mjs",
       "action": "removed"
+    },
+    {
+      "relPath": ".claude/output-styles/crabgic.md",
+      "action": "removed"
     }
   ]
 }
@@ -321,6 +329,10 @@ exports[`--json output schema snapshots — install / upgrade / uninstall > upgr
     },
     {
       "relPath": ".claude/crabgic-statusline.mjs",
+      "action": "unchanged"
+    },
+    {
+      "relPath": ".claude/output-styles/crabgic.md",
       "action": "unchanged"
     }
   ],

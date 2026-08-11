@@ -10,6 +10,7 @@
  * this code never writes to one.
  */
 import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
+import { OUTPUT_STYLE_SETTINGS_VALUE } from "./output-style-writer.js";
 
 export interface SettingsMergeResult {
   readonly settings: Record<string, unknown>;
@@ -44,6 +45,20 @@ export function mergeSettingsJson(
   // loosening a key they set deliberately.
   if (!("statusLine" in merged)) {
     merged.statusLine = { ...STATUSLINE_SETTINGS_ENTRY };
+    changed = true;
+  }
+
+  // The output style (`./output-style-writer.ts`). Add-only on exactly the same
+  // terms, and for a stronger version of the same reason: this key changes the
+  // REGISTER of every session in the project, so an operator who already chose
+  // a style — or deliberately chose none — keeps their choice. Replacing it
+  // silently would be the communication equivalent of loosening a setting they
+  // set on purpose.
+  //
+  // The mechanism is not probe-verified (engine-baseline §23.4). Add-only means
+  // the worst case is an inert key, never a clobbered one.
+  if (!("outputStyle" in merged)) {
+    merged.outputStyle = OUTPUT_STYLE_SETTINGS_VALUE;
     changed = true;
   }
 

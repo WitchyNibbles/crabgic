@@ -189,16 +189,59 @@ try {
       "utf8",
     );
 
-    const styled = await runClaude(["-p", "Say the word ready."], {
-      cwd: projectRoot,
-      timeoutMs: 120000,
+    // A CONTROL ARM, in an identical project WITHOUT the style. Without it a
+    // missing sentinel is ambiguous — "the style was ignored" and "print mode
+    // ignores styles" and "the model just did not comply" are indistinguishable.
+    // The discriminating observation is the DIFFERENCE between the two arms.
+    const controlRoot = mkdtempSync(join(tmpdir(), "crabgic-spike11-control-"));
+    scratch.push(controlRoot);
+    mkdirSync(join(controlRoot, ".claude"), { recursive: true });
+    writeFileSync(join(controlRoot, ".claude", "settings.json"), "{}\n", "utf8");
+
+    const PROMPT = "Say the word ready.";
+    const styled = await runClaude(["-p", PROMPT], { cwd: projectRoot, timeoutMs: 120000 });
+    const control = await runClaude(["-p", PROMPT], { cwd: controlRoot, timeoutMs: 120000 });
+
+    const inStyled = styled.stdout.includes(SENTINEL);
+    const inControl = control.stdout.includes(SENTINEL);
+
+    // DID THE TURN ACTUALLY RUN? Checked before the sentinel is interpreted at
+    // all. An earlier draft reported FAIL when both arms carried
+    // "OAuth session expired" — recording, as an engine fact, that a style does
+    // not work, on evidence that no turn had happened. A probe that cannot tell
+    // "ran and the effect was absent" from "never ran" is worse than no probe,
+    // because its output looks like a measurement.
+    const failedToRun = [styled, control].map((arm) => {
+      const text = `${arm.stdout}${arm.stderr}`;
+      if (arm.timedOut) return "timed out";
+      if (/OAuth|authenticate|not logged in|credential/i.test(text)) return "not authenticated";
+      if (arm.code !== 0) return `exit ${String(arm.code)}`;
+      if (text.trim().length === 0) return "no output";
+      return null;
     });
+    const blocked = failedToRun.find((reason) => reason !== null);
+
     entries.push(
       verdict({
-        probe: "output-style.changes-the-register",
-        expectation: `a project-level output style reaches the model: the reply begins with ${SENTINEL}`,
-        observed: `reply: ${styled.stdout.trim().slice(0, 200)}`,
-        verdict: styled.stdout.includes(SENTINEL) ? "PASS" : "FAIL",
+        probe: "output-style.project-level-reaches-the-model",
+        expectation: `a project-level .claude/output-styles/ entry selected by the outputStyle setting reaches the model: the sentinel ${SENTINEL} appears in the styled arm and not in the control arm`,
+        observed: blocked
+          ? `probe could not run (${blocked}): styled "${styled.stdout.trim().slice(0, 100)}" / control "${control.stdout.trim().slice(0, 100)}"`
+          : `styled arm ${inStyled ? "CONTAINS" : "lacks"} the sentinel (${styled.stdout.trim().slice(0, 120)}); control arm ${inControl ? "CONTAINS" : "lacks"} it (${control.stdout.trim().slice(0, 120)})`,
+        verdict: blocked
+          ? "UNRESOLVED"
+          : inStyled && !inControl
+            ? "PASS"
+            : inControl
+              ? "UNRESOLVED"
+              : "FAIL",
+        note: blocked
+          ? "No turn happened, so nothing about output styles was observed. Re-run after `claude setup-token` (or an interactive login) to obtain a verdict."
+          : inControl
+            ? "The sentinel appeared in the CONTROL arm too, so it did not come from the style; the probe cannot discriminate and needs a rarer sentinel."
+            : inStyled
+              ? undefined
+              : "Neither arm carried the sentinel. Either the project-level style is not honoured, or `-p` print mode does not apply output styles — this probe cannot separate those two, and an interactive-transport variant would be needed to.",
       }),
     );
   }

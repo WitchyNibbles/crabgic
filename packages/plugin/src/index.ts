@@ -51,3 +51,4 @@ export {
   type ManagerStopCondition,
   type ManagerApprovalGate,
 } from "./manager-protocol.js";
+export * from "./output-style.js";

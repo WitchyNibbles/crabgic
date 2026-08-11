@@ -28,6 +28,7 @@ import {
 import { mergeMcpJson } from "./mcp-json-merge.js";
 import { mergeSettingsJson } from "./settings-merge.js";
 import { loadStatusLineFileToInstall } from "./statusline-writer.js";
+import { loadOutputStyleFileToInstall } from "./output-style-writer.js";
 import {
   atomicWriteFile,
   readInstallState,
@@ -154,6 +155,7 @@ export async function buildDesiredArtifacts(
 
   const subagentFiles = await loadSubagentFilesToInstall(deps.pluginSourceDir);
   const statusLineFile = await loadStatusLineFileToInstall(deps.pluginSourceDir);
+  const outputStyleFile = loadOutputStyleFileToInstall();
 
   const claudeMdOriginal = resolveOriginalContent(previousState, "CLAUDE.md", existingClaudeMd);
   const settingsRelPath = join(".claude", "settings.json");
@@ -191,6 +193,11 @@ export async function buildDesiredArtifacts(
     {
       relPath: statusLineFile.relPath,
       content: statusLineFile.content,
+      kind: "full" as const,
+    },
+    {
+      relPath: outputStyleFile.relPath,
+      content: outputStyleFile.content,
       kind: "full" as const,
     },
   ];
