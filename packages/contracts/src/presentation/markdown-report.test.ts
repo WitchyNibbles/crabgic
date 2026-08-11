@@ -30,7 +30,7 @@ describe("renderMarkdownReport", () => {
     expect(out).toContain("## Risk");
     expect(out).not.toContain("─");
     // ANSI must never reach this channel; the TUI would render the escapes.
-    expect(out).not.toMatch(/\[/);
+    expect(out).not.toContain("\u001B[");
   });
 
   it("carries the verdict as the vocabulary's emoji glyph", () => {
