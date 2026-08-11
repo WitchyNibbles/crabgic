@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07",
-  "generatedAtSha": "cb450e3ef11610e2cd5d18ccf7da6cb7a3a65442",
+  "generatedAt": "2026-08-11",
+  "generatedAtSha": "dd604f2262a441984370e9189b755f9626886347",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
-    "fragments": 3931,
-    "anchored": 2682,
-    "seededStale": 640,
-    "outsideSpan": 772,
+    "fragments": 3932,
+    "anchored": 2687,
+    "seededStale": 636,
+    "outsideSpan": 767,
     "repeatText": 528,
     "crossFile": 20,
     "skipped": 609
@@ -3662,14 +3662,14 @@
       "ref": "OK",
       "pins": [
         "OK-pieces/collapsed@152,154-155!span",
-        "MOVED/collapsed@297!span"
+        "MOVED/collapsed@304!span"
       ]
     },
     "phase-09.json#c1#packages/cli/src/commands/cli.commands.schema.test.ts:230": {
       "qa": "76e4a14442a0",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@267-268!span",
+        "MOVED/collapsed@274-275!span",
         "SKIP-commentary"
       ]
     },
@@ -3934,11 +3934,11 @@
         "SKIP-commentary"
       ]
     },
-    "phase-09.json#c6#packages/cli/src/commands/cli.commands.schema.test.ts:169": {
-      "qa": "d9375b7353a7",
+    "phase-09.json#c6#packages/cli/src/commands/cli.commands.schema.test.ts:169-185": {
+      "qa": "9be6de4d5d08",
       "ref": "OK",
       "pins": [
-        "OK/code@178-182!span"
+        "OK/code@181-185"
       ]
     },
     "phase-09.json#c6#packages/cli/src/evidence/evidence.query.test.ts:28": {
@@ -4003,7 +4003,7 @@
       "qa": "beeb5f7aa019",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@63,68,536!span~repeat",
+        "MOVED-AMBIG/collapsed@63,68,570!span~repeat",
         "SKIP-short"
       ]
     },
@@ -10341,16 +10341,17 @@
       ],
       "frozen": true
     },
-    "phase-22.json#c4#packages/cli/src/learning/learn-command-backend.test.ts:133": {
-      "qa": "9a1c2b51dbe5",
+    "phase-22.json#c4#packages/cli/src/learning/learn-command-backend.test.ts:55-191": {
+      "qa": "ce07732ad6be",
       "ref": "OK",
       "pins": [
-        "ABSENT@-",
+        "OK/prose@137",
         "SKIP-short",
-        "MOVED/collapsed@149!span",
-        "MOVED/collapsed@155!span",
-        "MOVED/collapsed@172!span",
-        "OK/collapsed@129!span"
+        "OK/collapsed@55",
+        "OK/collapsed@153",
+        "OK/collapsed@159",
+        "OK/collapsed@176",
+        "OK/collapsed@129"
       ]
     },
     "phase-22.json#c4#packages/learning/src/pipeline.e2e.test.ts:114": {
@@ -10775,13 +10776,13 @@
         "OK/collapsed@197"
       ]
     },
-    "phase-23.json#c11#packages/cli/src/commands/real-handlers.ts:214-226": {
-      "qa": "5c79b673fa24",
+    "phase-23.json#c11#packages/cli/src/commands/real-handlers.ts:259-273": {
+      "qa": "4f784cd9a341",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@214",
-        "OK/collapsed@219",
-        "OK/collapsed@226"
+        "OK/collapsed@259",
+        "OK/collapsed@264",
+        "OK/collapsed@273"
       ]
     },
     "phase-23.json#c12#docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496-1509": {

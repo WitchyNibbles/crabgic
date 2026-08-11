@@ -322,8 +322,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:169",
-          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:174-178 — 'expect(result.exitCode).toBe(EXIT_OK); expect(JSON.parse(result.stdout!)).toEqual({ changeSetId: \"22222222-2222-4222-8222-222222222222\", records: [] });' through the real dispatchCommand, so the CLI command path (not just the query function) is exercised."
+          "ref": "packages/cli/src/commands/cli.commands.schema.test.ts:169-185",
+          "quotedAssertion": "packages/cli/src/commands/cli.commands.schema.test.ts:181-185 — 'expect(result.exitCode).toBe(EXIT_OK); expect(JSON.parse(result.stdout!)).toEqual({ changeSetId: \"22222222-2222-4222-8222-222222222222\", records: [] });' through the real dispatchCommand, so the CLI command path (not just the query function) is exercised. (Span corrected 2026-08-11 from :174-178 to :181-185. The citation was correct when written and drifted when this same change added seven lines earlier in the file — the grouped-help assertions and the glyph note on the empty-run-state case. The assertion quoted is unchanged, and `--json` output is untouched by that change.)"
         },
         {
           "kind": "artifact",

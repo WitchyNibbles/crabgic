@@ -27,6 +27,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-report-format-gate.mjs\""
+          }
+        ],
+        "description": "The manager report-format gate — the SECOND deliberately blocking manager hook (2026-08-11). Refuses to end a turn on a wall of prose, so `docs/presentation-policy.md`'s reporting rules are enforced for the manager channel rather than merely stated. Keys on `last_assistant_message` (docs/engine-baseline.md §19.3); exempts code fences, tables, quotes and bullets; blocks at most once per turn via `stop_hook_active` (§19.2); fails open on every error path."
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-reminder.mjs\""
           }
         ],

@@ -276,17 +276,52 @@ exists to prevent. `--json` remains the lossless channel in both cases.
 
 ## Enforcement, honestly
 
-Only part of this is enforceable.
-
 | Surface               | Enforcement                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | CLI stdout            | **Structural.** `renderHumanReport` heads every section by construction and enforces all six limits — see "Prose throws; data degrades" above. |
-| Manager session prose | **Instruction only.** The `CLAUDE.md` block states the rules; a model's prose cannot be linted mid-turn.                                       |
+| Manager session prose | **Instruction, plus a blocking `Stop` gate** — `hooks/stop-report-format-gate.mjs`. See below.                                                 |
 | Outbound artifacts    | **Blocking lint** — but under `CommunicationPolicy`, not this one.                                                                             |
 
-This is the same limitation `manager-protocol.ts` already records for the
-autonomy rules: _"Prose is not enforcement."_ There is no equivalent of the
-`stop-autonomy-gate.mjs` hook for formatting, because there is no deterministic
-signal to hang one on. The mitigation is that the rules are short, always in
-context, and quoted from a single constant rather than restated — so they
-cannot drift out of agreement with the code.
+### The manager channel, corrected (2026-08-11)
+
+This section used to end here, saying the manager channel was instruction-only
+because "there is no deterministic signal to hang one on". **That was wrong**,
+and the evidence disproving it was already in the repository when it was
+written: `docs/engine-baseline.md` §19.3 records that the `Stop` payload carries
+`last_assistant_message`, probe-verified at engine 2.1.220, and even flags it as
+"the field a regex-classifying gate would key on".
+
+The claim was right about the AUTONOMY gate and got over-generalised. Whether a
+run is in flight is something the supervisor knows authoritatively, so
+classifying it from prose would be guessing at an answer already available —
+which is exactly why `stop-autonomy-gate.mjs` asks the supervisor instead.
+Formatting is the opposite case: it is a property OF the text, so the text is
+not a proxy for the signal, it IS the signal.
+
+`hooks/stop-report-format-gate.mjs` is that gate. Two rules, both deliberately
+blunt: an over-long prose paragraph, and a long message carrying no heading,
+bullet or table at all. Code fences, tables, blockquotes and bullets are exempt,
+because each legitimately runs long and flagging one would be a false positive
+on a well-formed report.
+
+**It measures characters where the renderer measures lines, and that is not an
+inconsistency.** `proseBlockMaxLines` counts newlines, which is correct for CLI
+stdout because that stream is not re-wrapped. The manager writes into a
+markdown-rendering TUI that does re-wrap, where the commonest wall of all — one
+900-character paragraph — contains no newline and would pass a line count while
+filling the screen. Same limit, two channels, two correct spellings of it; the
+character budget is derived from the line budget rather than invented, and a
+parity test pins both to `HUMAN_REPORT_LIMITS`.
+
+**It blocks at most once per turn**, via `stop_hook_active` (§19.2). If the
+re-render is still over budget the turn ends anyway: the gate exists to catch
+the reflex wall, not to hold a session hostage to a formatter. It fails open on
+every error path, for the same reason the autonomy gate does — a false positive
+costs the owner a wasted round trip, and a hook that runs on every session end
+must never be able to trap one.
+
+What remains unenforceable is everything below the wall threshold: bullet word
+counts, section bullet counts, whether the first line is really the answer. For
+those the mitigation is unchanged — the rules are short, always in context, and
+quoted from a single constant rather than restated, so they cannot drift out of
+agreement with the code.

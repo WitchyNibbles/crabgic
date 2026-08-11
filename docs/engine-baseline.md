@@ -892,3 +892,36 @@ Both are **OWED and owner-gated**: each needs a live engine session, which no fr
 Neither is blocking. §16's consumer and §21's bound both degrade to already-recorded defaults, and
 both facts are currently binary-sourced rather than probe-verified — which is the evidentiary class
 each section already declares for itself.
+
+---
+
+## 22. `last_assistant_message` gains a consumer — an invalidation trigger for §19.3 (2026-08-11)
+
+**This section amends §19.4 and §10 without editing them.** Both are ahead of this point in a file
+carrying 22 line-numbered citations, so this is appended rather than inserted — the same discipline
+§20 applies, and for the same reason. No new probe was run and no engine fact changed here; what
+changed is who depends on one.
+
+**What happened.** §19.3 recorded the `Stop` payload's keys, `last_assistant_message` among them,
+and noted it as "the field a regex-classifying gate would key on ... recorded here only so a future
+reader knows the option exists". That option has now been taken:
+`packages/plugin/hooks/stop-report-format-gate.mjs` reads it to refuse a turn that would end on a
+wall of prose, making `docs/presentation-policy.md`'s reporting rules enforceable for the manager
+channel rather than merely stated.
+
+The distinction §19.3 draws still holds, and is the reason two `Stop` hooks key on different things.
+Run state is knowable from the supervisor, so `stop-autonomy-gate.mjs` asks it rather than
+pattern-matching prose for an answer already available. Formatting is a property OF the text, so
+there the text is the source rather than a proxy for one.
+
+### 22.1 Added invalidation trigger for §19.3
+
+- **The `Stop` payload losing `last_assistant_message`, or it ceasing to hold the message the turn
+  is about to end on.** The report-format gate silently becomes a no-op and the manager channel
+  reverts to instruction-only. **Not release-blocking** — the gate fails open by construction, so
+  the failure mode is a lost check rather than a trapped session, and `docs/presentation-policy.md`
+  states plainly what is lost.
+
+This is deliberately a weaker trigger than §19.2's `stop_hook_active` one, which stays
+release-blocking: losing the loop guard risks wedging a session, and both blocking `Stop` hooks now
+depend on it rather than one.

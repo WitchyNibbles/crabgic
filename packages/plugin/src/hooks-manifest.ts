@@ -28,8 +28,16 @@ import { z } from "zod";
  *
  * `PostToolUse` remains advisory-only by convention (see
  * `hooks/post-tool-use-format-warning.mjs`, which always exits 0). `Stop` is
- * the one event permitted to block, and only via the autonomy gate — see the
- * file-level amendment note.
+ * the one event permitted to block — see the file-level amendment note.
+ *
+ * TWO `Stop` hooks now block, not one (2026-08-11):
+ * `hooks/stop-autonomy-gate.mjs` (don't stop mid-run) and
+ * `hooks/stop-report-format-gate.mjs` (don't stop on a wall of prose). Both
+ * rest on the same §19 contract and both honour `stop_hook_active`, so the
+ * bounded-and-recoverable argument below covers them identically. The reason
+ * the second one is possible at all is `docs/engine-baseline.md` §19.3's
+ * `last_assistant_message`: formatting, unlike run state, is a property OF the
+ * text rather than something an external component knows better.
  */
 export const MANAGER_HOOK_EVENTS = ["PostToolUse", "Stop"] as const;
 
