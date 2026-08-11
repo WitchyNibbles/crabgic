@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-11",
-  "generatedAtSha": "dd604f2262a441984370e9189b755f9626886347",
+  "generatedAtSha": "b93b7cde07ba3c9008ee42d3b3f637b02385ce2f",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -10776,13 +10776,13 @@
         "OK/collapsed@197"
       ]
     },
-    "phase-23.json#c11#packages/cli/src/commands/real-handlers.ts:259-273": {
-      "qa": "4f784cd9a341",
+    "phase-23.json#c11#packages/cli/src/commands/real-handlers.ts:290-304": {
+      "qa": "e3658a5c6ff9",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@259",
-        "OK/collapsed@264",
-        "OK/collapsed@273"
+        "OK/collapsed@290",
+        "OK/collapsed@295",
+        "OK/collapsed@304"
       ]
     },
     "phase-23.json#c12#docs/evidence/phase-23/closeout/release-gate-report-final-6b9dd7b.json:1496-1509": {

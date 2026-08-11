@@ -91,9 +91,51 @@ describe("findWalls", () => {
    * blocking. Each is a construct that legitimately runs long and is NOT a
    * wall, and each would otherwise be a routine false positive.
    */
+  /**
+   * REGRESSION, found in review 2026-08-11. The `no-structure` rule counted
+   * every non-empty line, fenced content included, so an ordinary
+   * "here is the fix: <code>" answer with a five-line code block was BLOCKED.
+   * That is among the commonest shapes a coding assistant produces.
+   *
+   * The original test for this passed while the bug was live, because its
+   * fenced block was a single long line — 4 non-empty lines total, under the
+   * 5-line threshold. The assertion was right and the input too weak to
+   * discriminate. Every case below is therefore sized to exceed the threshold
+   * on its own, so it fails if the exclusion is removed.
+   */
   it("ignores fenced code, however long", () => {
     const code = ["Here is the fix.", "", "```ts", wall, "```"].join("\n");
     expect(findWalls(code)).toEqual([]);
+  });
+
+  it("does not count fenced lines toward the structure threshold", () => {
+    const many = Array.from({ length: HEADING_REQUIRED_ABOVE_LINES + 6 }, (_u, i) => `line${i}();`);
+    const answer = ["Here is the fix:", "", "```ts", ...many, "```", "", "Run the tests."].join(
+      "\n",
+    );
+    expect(findWalls(answer)).toEqual([]);
+  });
+
+  it("does not count a pasted log or diff toward the structure threshold", () => {
+    const log = [
+      "The failure:",
+      "",
+      "```",
+      "FAIL src/a.test.ts",
+      ...Array.from({ length: HEADING_REQUIRED_ABOVE_LINES + 3 }, (_u, i) => `  at line ${i}`),
+      "```",
+    ].join("\n");
+    expect(findWalls(log)).toEqual([]);
+  });
+
+  it("still flags genuinely unstructured prose of the same length", () => {
+    // The control for the three above: same line count, no fence. If this ever
+    // passes, the exclusions have been widened into an amnesty.
+    const prose = Array.from(
+      { length: HEADING_REQUIRED_ABOVE_LINES + 6 },
+      (_u, i) => `Sentence number ${String(i)} about the change.`,
+    ).join("\n");
+    expect(findWalls(prose)).toContainEqual(expect.objectContaining({ kind: "no-structure" }));
   });
 
   it("ignores tables", () => {

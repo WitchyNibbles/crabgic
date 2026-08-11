@@ -11,7 +11,11 @@ import { formatJson, type CommandResult } from "../output/format.js";
 import { renderStatusEvent } from "../output/status-renderer.js";
 import { renderHumanReport, renderStatusLine, type HumanReportSection } from "../output/human.js";
 import { CLI_TEXT, pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
-import type { PresentationContext, PresentationGlyphRole } from "@crabgic/contracts";
+import type {
+  PresentationContext,
+  PresentationGlyphRole,
+  RunLifecycleState,
+} from "@crabgic/contracts";
 import { renderRunProgress, summarizeRunProgress } from "../output/run-progress.js";
 import { buildRepairPlan, runDoctorChecks } from "../doctor/framework.js";
 import { buildDefaultDoctorChecks } from "../doctor/run-doctor.js";
@@ -46,18 +50,45 @@ interface RunRecordLike {
 }
 
 /**
- * One run, as a glyph line. The run's own lifecycle state picks the glyph, so
- * a parked or failed run is findable in a list without reading the words.
+ * One run's lifecycle state to its glyph, so a finished or waiting run is
+ * findable in a list without reading the words.
+ *
+ * EXHAUSTIVE OVER `RUN_LIFECYCLE_STATES`, and a test asserts it — the first
+ * version of this was written against invented names (`succeeded`,
+ * `completed`, a `parked` prefix that belongs to `WorkUnitAttemptStatus`, not
+ * to runs). Every one of those was a dead branch, and the states that actually
+ * exist fell through the default: `published_local` — a finished run — showed
+ * the RUNNING glyph, as did `awaiting_approval`, which is the one state that is
+ * waiting on the owner personally. A default-carrying map hid that, so there
+ * is no default now.
+ *
+ * `awaiting_approval` takes `blocked` rather than `question` deliberately:
+ * `docs/presentation-policy.md`'s vocabulary defines `blocked` as "halted at a
+ * stop condition or approval gate", which is exactly this, while `question` is
+ * for a decision being put to the owner inside a report.
  */
-function runGlyphRole(runState: string): PresentationGlyphRole {
-  if (runState.startsWith("parked")) return "parked";
-  if (runState === "failed") return "fail";
-  if (runState === "succeeded" || runState === "completed") return "ok";
-  if (runState === "cancelled") return "info";
-  return "running";
+export const RUN_STATE_ROLES: Readonly<Record<RunLifecycleState, PresentationGlyphRole>> = {
+  draft: "pending",
+  awaiting_approval: "blocked",
+  ready: "pending",
+  running: "running",
+  verifying: "running",
+  integrating: "running",
+  final_verifying: "running",
+  published_local: "ok",
+  failed: "fail",
+  blocked: "blocked",
+  cancelled: "info",
+};
+
+export function runGlyphRole(runState: string): PresentationGlyphRole {
+  // A state the daemon reports that this build does not know is `info`, never
+  // an invented verdict: reporting an unknown state as running or failed would
+  // be a confident wrong answer about the thing the reader is asking after.
+  return RUN_STATE_ROLES[runState as RunLifecycleState] ?? "info";
 }
 
-function renderRunRecord(run: RunRecordLike | undefined, runId: string): string {
+export function renderRunRecord(run: RunRecordLike | undefined, runId: string): string {
   if (run === undefined) {
     return renderResultLine("info", `run "${runId}" is unknown (not started, or never existed)`);
   }
@@ -362,7 +393,7 @@ export async function runDoctorCommand(
  * resolved an interactive terminal can pass a context and get the same layout
  * in colour — `renderHumanReport` guarantees the two strip back to each other.
  */
-function renderDoctorReport(
+export function renderDoctorReport(
   report: { readonly allPassed: boolean; readonly findings: readonly DoctorFindingLike[] },
   repairPlan: readonly string[] | undefined,
 ): string {

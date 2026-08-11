@@ -97,6 +97,30 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
   });
 
   /**
+   * `uninstall` reported "9 removedd" until review: the summary appended a `d`
+   * to every action name, which is right for `create`/`update` and wrong for
+   * actions that are already past participles. Its other outcomes are also
+   * distinct decisions, not no-ops — `preserved-drifted` is a file the operator
+   * edited and this deliberately did not delete — so they are named, not
+   * collapsed into "unchanged".
+   */
+  it("labels uninstall's outcomes correctly and never manufactures a double-d", async () => {
+    const targetDir = await makeTmpDir();
+    const deps: CliDependencies = {
+      ...baseDeps(),
+      installer: { targetDir, pluginSourceDir: PLUGIN_ROOT, confirmGitInit: async () => true },
+    };
+    await dispatchCommand({ command: "install", dryRun: false, json: true }, deps);
+    const result = await dispatchCommand(
+      { command: "uninstall", keepState: false, json: false },
+      deps,
+    );
+    expect(result.stdout).not.toMatch(/dd\b/);
+    expect(result.stdout).toMatch(/\d+ removed/);
+    expect(result.stdout).not.toContain("unchanged");
+  });
+
+  /**
    * The file section is capped at `sectionMaxBullets` like every other, so a
    * nine-artifact install lists seven. That is only honest if the reader can
    * tell it is a SAMPLE — hence the total in the lead. Without it, seven
@@ -114,7 +138,7 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
     const total = (JSON.parse(json.stdout!) as { diff: readonly unknown[] }).diff.length;
 
     expect(human.stdout).toContain(`${String(total)} created`);
-    const listed = (human.stdout!.match(/^ {2}• create: /gm) ?? []).length;
+    const listed = (human.stdout!.match(/^ {2}• created: /gm) ?? []).length;
     if (listed < total) {
       expect(human.stdout).toContain(`${String(total - listed)} more`);
     }
@@ -135,7 +159,7 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
     // The action is spelled out rather than carried by a `~`/`+`/`=` legend,
     // and the eight UNCHANGED files are now a count in the lead rather than
     // eight lines — an unchanged file is this command's passing doctor check.
-    expect(result.stdout).toContain("update: CLAUDE.md");
+    expect(result.stdout).toContain("updated: CLAUDE.md");
     expect(result.stdout).toMatch(/1 updated, \d+ unchanged/);
     expect(result.stdout).not.toContain("unchanged: ");
   });

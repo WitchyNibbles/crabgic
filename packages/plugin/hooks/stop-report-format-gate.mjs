@@ -127,6 +127,30 @@ export function proseParagraphs(message) {
 }
 
 /**
+ * The non-empty lines that are actually PROSE — fenced content, tables,
+ * headings, bullets and quotes all removed.
+ *
+ * Shares the fence/structure handling with `proseParagraphs` rather than
+ * re-deriving it, because the two rules disagreeing about what counts as prose
+ * is exactly how the code-block false positive got in.
+ */
+export function proseLines(message) {
+  const kept = [];
+  let inFence = false;
+  for (const line of message.split("\n")) {
+    if (FENCE.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    if (line.trim().length === 0) continue;
+    if (STRUCTURAL_LINE.test(line)) continue;
+    kept.push(line);
+  }
+  return kept;
+}
+
+/**
  * The rules. Two, both deliberately blunt.
  *
  * @returns an array of `{kind, detail}`; empty means the message is fine.
@@ -150,10 +174,17 @@ export function findWalls(message) {
   // A message can clear the paragraph rule and still be a wall by accumulation:
   // a dozen short prose lines, no heading, no bullet, nothing to land on after
   // a lapse in attention.
-  const lines = message.split("\n").filter((line) => line.trim().length > 0);
-  const hasStructure = lines.some(
-    (line) => HEADING.test(line) || BULLET.test(line) || TABLE_ROW.test(line),
-  );
+  //
+  // COUNTED OVER PROSE ONLY. Counting every non-empty line instead — which this
+  // did until review — meant a five-line code block pushed an ordinary "here is
+  // the fix: <code>" answer over the threshold and blocked it. That shape is
+  // among the commonest a coding assistant produces, and a blocking hook that
+  // reds it is worse than no hook at all. Fenced content is not prose the reader
+  // has to wade through; it is the thing they asked for.
+  const lines = proseLines(message);
+  const hasStructure = message
+    .split("\n")
+    .some((line) => HEADING.test(line) || BULLET.test(line) || TABLE_ROW.test(line));
   if (!hasStructure && lines.length > HEADING_REQUIRED_ABOVE_LINES) {
     walls.push({
       kind: "no-structure",

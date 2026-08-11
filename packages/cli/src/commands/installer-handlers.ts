@@ -77,23 +77,49 @@ function renderFileOutcome(
   changedActions: ReadonlySet<string>,
 ): { readonly summary: string; readonly section: HumanReportSection } {
   const changed = entries.filter((entry) => changedActions.has(entry.action));
-  const unchanged = entries.length - changed.length;
 
+  // Counted over EVERY action under its own name, not "changed vs unchanged".
+  // Lumping the rest together printed `uninstall`'s `restored` and
+  // `preserved-drifted` outcomes as "unchanged", which is not what either
+  // means: one put a file back, the other deliberately left an edited file
+  // alone. Only the genuine no-ops belong in a bare count, and they keep their
+  // own names so the count says which no-op it was.
   const byAction = new Map<string, number>();
-  for (const entry of changed) byAction.set(entry.action, (byAction.get(entry.action) ?? 0) + 1);
-  const parts = [...byAction].map(([action, count]) => `${String(count)} ${action}d`);
-  if (unchanged > 0) parts.push(`${String(unchanged)} unchanged`);
+  for (const entry of entries) byAction.set(entry.action, (byAction.get(entry.action) ?? 0) + 1);
+  const parts = [...byAction].map(([action, count]) => `${String(count)} ${actionLabel(action)}`);
 
   return {
     summary: parts.length > 0 ? parts.join(", ") : "no files touched",
     section: {
       title: "Files",
-      bullets: changed.map((entry) => `${entry.action}: ${entry.relPath}`),
+      bullets: changed.map((entry) => `${actionLabel(entry.action)}: ${entry.relPath}`),
       ...(changed.length === 0
         ? { body: "Nothing to change — every managed file already matches." }
         : {}),
     },
   };
+}
+
+/**
+ * An action's past-participle label.
+ *
+ * A table, not `${action}d`, which is what this was until review: `uninstall`'s
+ * actions are already past participles, so it rendered "9 removedd". An unknown
+ * action passes through verbatim rather than being mangled by a suffix rule
+ * that does not apply to it.
+ */
+const ACTION_LABELS: Readonly<Record<string, string>> = {
+  create: "created",
+  update: "updated",
+  unchanged: "unchanged",
+  removed: "removed",
+  restored: "restored",
+  "preserved-drifted": "preserved (drifted)",
+  "already-absent": "already absent",
+};
+
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action;
 }
 
 /**
@@ -207,10 +233,14 @@ export async function runUninstallCommand(
   if (cmd.json) {
     return { exitCode: EXIT_OK, stdout: formatJson(result) };
   }
-  // `removed` is uninstall's changed action; anything else it reports (a file
-  // already absent, one deliberately kept under --keep-state) is a no-op and
-  // belongs in the count, not the list.
-  const files = renderFileOutcome(result.outcomes, new Set(["removed"]));
+  // Three of uninstall's four actions changed something on disk or decided not
+  // to: `removed`, `restored`, and `preserved-drifted` — the last is a file the
+  // operator edited and this deliberately did not delete, which is exactly the
+  // outcome they need the path for. Only `already-absent` is a true no-op.
+  const files = renderFileOutcome(
+    result.outcomes,
+    new Set(["removed", "restored", "preserved-drifted"]),
+  );
   return {
     exitCode: EXIT_OK,
     stdout: renderHumanReport(

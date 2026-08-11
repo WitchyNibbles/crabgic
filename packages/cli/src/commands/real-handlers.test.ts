@@ -22,11 +22,26 @@ import {
   startSupervisorServer,
   type SupervisorServer,
 } from "@crabgic/supervisor";
-import { DEFAULT_PRESENTATION_POLICY } from "@crabgic/contracts";
+import { DEFAULT_PRESENTATION_POLICY, RUN_LIFECYCLE_STATES } from "@crabgic/contracts";
 import { EXIT_DOCTOR_FINDINGS, EXIT_OK } from "../exit-codes.js";
 import { connectUdsClient } from "../uds-client/client.js";
 import type { CliDependencies } from "./types.js";
-import { runDoctorCommand, runStatusCommand } from "./real-handlers.js";
+import {
+  RUN_STATE_ROLES,
+  renderDoctorReport,
+  renderRunRecord,
+  runDoctorCommand,
+  runGlyphRole,
+  runStatusCommand,
+} from "./real-handlers.js";
+
+/** A minimal run record — only the members the renderer reads. */
+const RUN = {
+  runId: "11111111-1111-4111-8111-111111111111",
+  changeSetId: "22222222-2222-4222-8222-222222222222",
+  runState: "running",
+  updatedAt: "2026-08-11T00:00:00.000Z",
+};
 
 let root: string;
 let journal: JournalStore;
@@ -106,6 +121,42 @@ describe("runStatusCommand --watch", () => {
   });
 });
 
+/**
+ * The glyph a run's state gets is the whole reason the list is scannable, and
+ * the first version of this mapping was written against state names that do not
+ * exist (`succeeded`, `completed`, a `parked` prefix belonging to
+ * `WorkUnitAttemptStatus`). Those were dead branches, and the real states fell
+ * through a default to `running` — so a FINISHED run and a run WAITING ON THE
+ * OWNER both rendered as in-flight.
+ *
+ * This is the same failure `stop-autonomy-gate.mjs` guards against with its own
+ * partition test, and it gets the same guard: the map must cover
+ * `RUN_LIFECYCLE_STATES` exactly, so adding a state to the contract without
+ * classifying it here fails rather than silently rendering wrong.
+ */
+describe("run-state glyph mapping", () => {
+  it("classifies every run lifecycle state, and invents none", () => {
+    expect(Object.keys(RUN_STATE_ROLES).sort()).toEqual([...RUN_LIFECYCLE_STATES].sort());
+  });
+
+  it("does not report a finished or owner-blocked run as still running", () => {
+    expect(RUN_STATE_ROLES.published_local).toBe("ok");
+    expect(RUN_STATE_ROLES.awaiting_approval).toBe("blocked");
+    expect(RUN_STATE_ROLES.blocked).toBe("blocked");
+    expect(RUN_STATE_ROLES.failed).toBe("fail");
+  });
+
+  it("uses a verdict-free glyph for a state this build does not know", () => {
+    // A confident wrong verdict about an unrecognised state is worse than none.
+    expect(runGlyphRole("some_future_state")).toBe("info");
+  });
+
+  it("renders a finished run with the ok glyph end to end", () => {
+    expect(renderRunRecord({ ...RUN, runState: "published_local" }, RUN.runId)).toMatch(/^✓ /);
+    expect(renderRunRecord({ ...RUN, runState: "awaiting_approval" }, RUN.runId)).toMatch(/^⊘ /);
+  });
+});
+
 describe("runDoctorCommand", () => {
   it("human mode renders a failing check with a ✗ marker and, with --repair-plan, an ordered repair plan", async () => {
     const result = await runDoctorCommand(
@@ -176,14 +227,40 @@ describe("runDoctorCommand", () => {
       expect(result.stdout).toContain("auth.probe");
     });
 
-    it("collapses a fully passing run to a single line", async () => {
-      const result = await runDoctorCommand(
-        { command: "doctor", repairPlan: false, json: false },
-        { ...deps, resolveAuthState: () => Promise.resolve("valid") },
+    /**
+     * Driven through `renderDoctorReport` with a synthetic report rather than
+     * through `runDoctorCommand`, deliberately. The first version of this test
+     * ran the REAL doctor and bailed with `if (result.exitCode !== EXIT_OK)
+     * return;` when the host had a failing check — which is every developer
+     * host here, since the engine version sits outside the pinned range. It
+     * therefore asserted nothing at all, on the one arm it existed to cover.
+     */
+    it("collapses a fully passing run to a single line", () => {
+      const findings = Array.from({ length: 10 }, (_u, i) => ({
+        id: `check.${String(i)}`,
+        passed: true,
+        severity: "error",
+        evidence: "fine",
+      }));
+      const stdout = renderDoctorReport({ allPassed: true, findings }, undefined);
+      expect(stdout.trimEnd().split("\n")).toHaveLength(1);
+      expect(stdout).toBe("✓ all 10 checks passed.\n");
+    });
+
+    it("names the failing checks and no passing one, on a synthetic mixed report", () => {
+      const stdout = renderDoctorReport(
+        {
+          allPassed: false,
+          findings: [
+            { id: "a.ok", passed: true, severity: "error", evidence: "fine" },
+            { id: "b.bad", passed: false, severity: "error", evidence: "broken" },
+          ],
+        },
+        undefined,
       );
-      if (result.exitCode !== EXIT_OK) return; // host-dependent: other checks may fail here
-      expect(result.stdout!.trimEnd().split("\n")).toHaveLength(1);
-      expect(result.stdout).toMatch(/^✓ all \d+ checks passed\.\n$/);
+      expect(stdout).toContain("b.bad");
+      expect(stdout).not.toContain("a.ok");
+      expect(stdout).toMatch(/^✗ 1 of 2 checks failed\./);
     });
 
     it("holds every human line within the policy's limits", async () => {
