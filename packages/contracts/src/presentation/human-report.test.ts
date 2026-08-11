@@ -1,20 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_PRESENTATION_POLICY,
-  ROLE_COLORS,
-  STRUCTURE_COLORS,
-  paint,
-  stripAnsi,
-  type PresentationContext,
-  type PresentationProfile,
-} from "@crabgic/contracts";
+import { DEFAULT_PRESENTATION_POLICY } from "./presentation-policy.js";
+import { ROLE_COLORS, STRUCTURE_COLORS, paint, stripAnsi } from "./colors.js";
+import type { PresentationProfile } from "./glyphs.js";
+import type { PresentationContext } from "./profile.js";
 import {
   renderBullets,
   renderHeading,
   renderHumanReport,
   renderKeyValues,
   renderStatusLine,
-} from "./human.js";
+} from "./human-report.js";
 
 /** Monochrome context — what a pipe, a snapshot or `NO_COLOR` resolves to. */
 const plain = (profile: PresentationProfile): PresentationContext => ({ profile, color: false });

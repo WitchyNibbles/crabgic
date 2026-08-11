@@ -8,7 +8,8 @@
  * the policy the default rather than something each handler has to remember.
  */
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PRESENTATION_POLICY, stripAnsi } from "@crabgic/contracts";
+import { DEFAULT_PRESENTATION_POLICY } from "./presentation-policy.js";
+import { stripAnsi } from "./colors.js";
 import { CLI_TEXT, pluralize, renderItemListReport, renderResultLine } from "./reports.js";
 
 describe("pluralize", () => {
