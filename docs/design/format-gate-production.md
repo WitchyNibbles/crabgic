@@ -1,7 +1,7 @@
 # Design proposal — a production-ready manager report-format gate
 
 **Status: PROPOSAL, not authority.** Nothing here is settled. `docs/presentation-policy.md`
-remains the authority on the policy itself; this document proposes how the *manager channel's*
+remains the authority on the policy itself; this document proposes how the _manager channel's_
 enforcement should look beyond the tactical gate shipped 2026-08-11.
 
 ## 1. What exists, and what is wrong with it
@@ -13,13 +13,13 @@ turn if either fires.
 It was the right thing to ship — it converted "instruction only" into real enforcement. It is not
 what this should look like in a year, for five reasons:
 
-| # | Weakness                     | Why it matters                                                                                     |
-| - | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 1 | **Thresholds are guessed**   | `ASSUMED_WRAP_COLUMNS = 80`, `>5 prose lines`. No corpus, no measurement. Nobody knows the error rate. |
-| 2 | **Line regexes, not a parser** | Review already found one false-positive class (fenced code). Others remain — see §3.2.               |
-| 3 | **No observability**         | If it fires wrongly, nothing records it. The owner experiences a bad turn and has no way to report it. |
-| 4 | **No escape hatch**          | `PresentationPolicy` is a zod schema nothing ever loads. There is no way to tune or disable per project. |
-| 5 | **It polices, it does not prevent** | The CLI channel is correct *by construction* because output goes through a renderer. The manager channel is free text checked afterwards. |
+| #   | Weakness                            | Why it matters                                                                                                                            |
+| --- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Thresholds are guessed**          | `ASSUMED_WRAP_COLUMNS = 80`, `>5 prose lines`. No corpus, no measurement. Nobody knows the error rate.                                    |
+| 2   | **Line regexes, not a parser**      | Review already found one false-positive class (fenced code). Others remain — see §3.2.                                                    |
+| 3   | **No observability**                | If it fires wrongly, nothing records it. The owner experiences a bad turn and has no way to report it.                                    |
+| 4   | **No escape hatch**                 | `PresentationPolicy` is a zod schema nothing ever loads. There is no way to tune or disable per project.                                  |
+| 5   | **It polices, it does not prevent** | The CLI channel is correct _by construction_ because output goes through a renderer. The manager channel is free text checked afterwards. |
 
 Weakness 5 is the important one. The others are quality; that one is architecture.
 
@@ -29,11 +29,26 @@ Weakness 5 is the important one. The others are quality; that one is architectur
 
 CLI stdout needs no gate because `renderHumanReport` will not emit a wall. The manager channel has
 a gate precisely because nothing structures its output. Every layer below is an attempt to move
-work *leftward*, from detection toward prevention.
+work _leftward_, from detection toward prevention.
 
 ## 3. Proposed architecture — four layers
 
-### L0. Prevention: an output style ⚠️ UNVERIFIED
+### L0. Prevention: an output style — ❌ **DISPROVEN as specified (2026-08-11)**
+
+> **Measured, and the answer is no.** `spikes/11-output-style.mjs`, recorded as
+> `docs/engine-baseline.md` §23, at engine 2.1.224 and at zero live-model cost: output styles are
+> **not a plugin component**. A plugin carrying one lists no such category in its inventory (which
+> does print zero-count categories) and reports `~0 tok` always-on. crabgic cannot ship one.
+>
+> **The remaining path is the installer**, writing `.claude/output-styles/` plus the `outputStyle`
+> setting into the consuming project — which is already how `CLAUDE.md`, `.claude/settings.json`,
+> the agents and the statusline get there. That is NOT a drop-in substitute: it modifies files in
+> the operator's repository, so it needs the managed-artifact treatment, drift detection and
+> uninstall path the installer gives everything else, and its own owner-consent story. It deserves
+> its own design pass rather than inheriting this one.
+>
+> Everything below is the original proposal, kept because it records what was expected and why the
+> probe was worth running.
 
 An output style replaces the assistant's base communication prompt. If a plugin can ship one, the
 reporting rules stop being an instruction the model may drift from and become the model's default
@@ -59,7 +74,7 @@ resolving PASS** — that is deliberate, and mirrors how §19 was scoped.
 Today the manager writes prose and hopes. Give it the same affordance the CLI has:
 
 - A `report` skill (or gateway tool) that accepts `{lead, sections[]}` and renders through
-  `renderHumanReport` — the *same* function, so the two channels cannot drift.
+  `renderHumanReport` — the _same_ function, so the two channels cannot drift.
 - The protocol instructs: compose long reports through it; short answers stay prose.
 
 This does not force compliance — the final assistant message is still free text — but it converts
@@ -73,18 +88,18 @@ sharply, and the ones that remain are the interesting ones.
 
 Classes the current regexes get wrong, all real CommonMark:
 
-| Construct                        | Current behaviour                    |
-| -------------------------------- | -------------------------------------- |
-| Indented code block (4 spaces)    | counted as prose → false positive      |
-| Nested/tilde fences of differing lengths | fence toggling desynchronises   |
-| Lazy list continuation lines      | counted as prose                       |
-| Setext headings (`===` underline) | not recognised as structure            |
-| HTML blocks                       | counted as prose                       |
-| Tables without a leading pipe     | not recognised as structure            |
-| Reference link definitions        | counted as prose                       |
+| Construct                                | Current behaviour                 |
+| ---------------------------------------- | --------------------------------- |
+| Indented code block (4 spaces)           | counted as prose → false positive |
+| Nested/tilde fences of differing lengths | fence toggling desynchronises     |
+| Lazy list continuation lines             | counted as prose                  |
+| Setext headings (`===` underline)        | not recognised as structure       |
+| HTML blocks                              | counted as prose                  |
+| Tables without a leading pipe            | not recognised as structure       |
+| Reference link definitions               | counted as prose                  |
 
 **Calibrate against a real corpus, not intuition.** The Stop payload carries `transcript_path`
-(§19.3) — *for offline harvesting only, never for a runtime decision.* Proposed method:
+(§19.3) — _for offline harvesting only, never for a runtime decision._ Proposed method:
 
 1. Harvest N≥300 real manager messages from transcripts.
 2. The owner labels a stratified sample wall / not-wall. This is the ground truth; the owner's
@@ -100,7 +115,7 @@ Only then do the numbers belong in `HUMAN_REPORT_LIMITS`.
 
 **Configuration.** `PresentationPolicySchema` exists and is loaded by nothing. Wire it:
 `.crabgic/presentation.json` (or the standing-policy file), validated by the existing schema,
-falling back to `DEFAULT_PRESENTATION_POLICY`. Gives per-project tuning *and* an off switch, which
+falling back to `DEFAULT_PRESENTATION_POLICY`. Gives per-project tuning _and_ an off switch, which
 a blocking hook shipped to other people's repositories should have had from the start.
 
 **Telemetry.** Append one line per firing to `$XDG_STATE_HOME/crabgic/format-gate.jsonl`:
@@ -115,11 +130,11 @@ no security claim attached to it is the honest home.
 
 The current gate blocks from day one on unmeasured thresholds. Invert that:
 
-| Phase | Behaviour                                        | Exit criterion                              |
-| ----- | -------------------------------------------------- | ------------------------------------------- |
-| 1     | **Advisory.** Records firings, never blocks.      | ≥200 real firings recorded                  |
-| 2     | Owner reviews the sample; thresholds re-fit.      | Measured FP ≤ 1% on held-out labels         |
-| 3     | **Blocking**, config-overridable.                 | —                                           |
+| Phase | Behaviour                                    | Exit criterion                      |
+| ----- | -------------------------------------------- | ----------------------------------- |
+| 1     | **Advisory.** Records firings, never blocks. | ≥200 real firings recorded          |
+| 2     | Owner reviews the sample; thresholds re-fit. | Measured FP ≤ 1% on held-out labels |
+| 3     | **Blocking**, config-overridable.            | —                                   |
 
 A Stop hook cannot "warn" — its reason only reaches the model on a block. So phase 1's channel is
 the L3 log plus `crabgic doctor`, not the model.
@@ -134,12 +149,12 @@ report. **Recommendation: do not.** State the limitation instead — which is wh
 
 ## 6. Risks
 
-| Risk                                             | Mitigation                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------------- |
+| Risk                                              | Mitigation                                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Corpus reflects one owner's taste                 | That is correct here — the policy exists for this owner's condition. Say so rather than implying generality. |
-| Tokenizer is new code with its own bugs           | Pure, no I/O, fixture-tested against CommonMark examples; fails open like everything else in the hook. |
-| L0 probe consumes live engine budget              | One spike, few turns, follows `spikes/README.md`'s cost discipline.  |
-| Config file becomes an "off switch everyone uses" | Telemetry records when the gate is disabled, so that is visible rather than silent. |
+| Tokenizer is new code with its own bugs           | Pure, no I/O, fixture-tested against CommonMark examples; fails open like everything else in the hook.       |
+| L0 probe consumes live engine budget              | One spike, few turns, follows `spikes/README.md`'s cost discipline.                                          |
+| Config file becomes an "off switch everyone uses" | Telemetry records when the gate is disabled, so that is visible rather than silent.                          |
 
 ## 7. Sequencing
 

@@ -925,3 +925,61 @@ there the text is the source rather than a proxy for one.
 This is deliberately a weaker trigger than §19.2's `stop_hook_active` one, which stays
 release-blocking: losing the loop guard risks wedging a session, and both blocking `Stop` hooks now
 depend on it rather than one.
+
+---
+
+## 23. Output styles are NOT a plugin component (2026-08-11)
+
+**Added 2026-08-11**, for `docs/design/format-gate-production.md` §L0. Producing script:
+`spikes/11-output-style.mjs`. Fixture: `spikes/fixtures/11-output-style.verdicts.json`. Measured at
+CLI engine **2.1.224**. **Zero live model invocations** — every verdict below comes from
+`claude plugin details`, whose job is to print a component inventory.
+
+**Why this needed a probe.** The design's highest-leverage layer proposed shipping an output style
+in the crabgic plugin, so the reporting rules would become the manager's default register rather
+than an instruction it can drift from. Neither this document nor
+`docs/claude-code-adaptation.md` said anything about output styles, and the ground rule forbids
+assuming an engine fact from memory.
+
+### 23.1 A plugin's component inventory has no output-style category — **FAIL**
+
+A scratch plugin carrying `output-styles/terse.md` plus one agent loads and prints its inventory as
+`Skills (0), Agents (1), Hooks (0), MCP servers (0), LSP servers (0)`. No output-style category
+appears. The inventory prints **zero-count categories**, so the absence is a positive signal rather
+than a display omission.
+
+### 23.2 An output style contributes no token cost — **FAIL**
+
+A plugin whose ONLY content is `output-styles/terse.md` reports `Always-on: ~0 tok`. A style that
+were loaded would have to occupy context. This is a second, independent signal.
+
+### 23.3 An `outputStyles` manifest key is neither honoured nor rejected — **UNRESOLVED**
+
+Declaring `"outputStyles": "./output-styles"` in `plugin.json` exits 0, prints nothing to stderr,
+and still yields no category. Silence discriminates nothing here, because §21 already records that
+`claude plugin details` is **warn-blind**. Recorded so that a future engine which DOES reject the
+key is recognisable as a change.
+
+### 23.4 Behavioural verification — **UNRESOLVED, deliberately not run**
+
+Whether a _project-level_ style changes the register, how it composes with a project `outputStyle`
+setting, and whether it survives `--resume` all need real turns. The probe implements them behind
+`--live` and does not run them by default. Tier A already answers the design's question, and the
+behavioural half is only worth spending budget on once a delivery path exists.
+
+### 23.5 What this means for the design
+
+**§L0 as written is unavailable at 2.1.224.** crabgic cannot ship an output style inside its
+plugin. The remaining path is the INSTALLER writing one into the consuming project
+(`.claude/output-styles/` plus the `outputStyle` setting), which crabgic's installer is already the
+mechanism for — it manages `CLAUDE.md`, `.claude/settings.json`, agents and the statusline the same
+way. That is a different proposition from a plugin component, and specifically a different
+owner-consent story: it modifies files in the operator's repository and would need the same
+managed-artifact treatment, drift detection and uninstall path as everything else the installer
+owns. It is not a drop-in substitute and should not be treated as one without its own design pass.
+
+### 23.6 Invalidation triggers
+
+- Output styles becoming a plugin component category (§23.1/§23.2 flipping to PASS) — §L0 becomes
+  available as originally designed, and this section should be re-run before relying on it.
+- `claude plugin details` gaining warn output (§23.3) — the silent-acceptance reading changes.

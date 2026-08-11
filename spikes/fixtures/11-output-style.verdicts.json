@@ -1,0 +1,30 @@
+[
+  {
+    "probe": "output-style.plugin-component-category",
+    "expectation": "`claude plugin details` enumerates an output style shipped in a plugin's output-styles/ directory, the way it enumerates skills, agents, hooks, MCP and LSP servers",
+    "observed": "plugin loaded and inventory printed, but NO output-style category appears; categories seen: Skills (0), Agents (1), Hooks (0), MCP servers (0), LSP servers (0)",
+    "verdict": "FAIL",
+    "note": "The inventory prints ZERO-count categories too, so absence is a positive signal rather than a display omission. `plugin details` is separately known to be warn-blind (engine-baseline §21), so this shows the style is not INVENTORIED; it does not by itself prove nothing loads it."
+  },
+  {
+    "probe": "output-style.contributes-token-cost",
+    "expectation": "a plugin whose only content is an output style reports a non-zero always-on token cost, since a style that is loaded must occupy context",
+    "observed": "always-on cost is ~0 tok for a plugin containing only output-styles/terse.md",
+    "verdict": "FAIL",
+    "note": "Zero always-on cost for a plugin whose only file is an output style is the second independent signal that the engine does not load it."
+  },
+  {
+    "probe": "output-style.manifest-key-recognised",
+    "expectation": "declaring `outputStyles` in plugin.json either registers the directory or is rejected as an unknown key — either answer identifies whether the key exists",
+    "observed": "exit 0; stderr (empty); output-style category present in inventory: no",
+    "verdict": "UNRESOLVED",
+    "note": "Neither outcome is a PASS or FAIL for the design question on its own. `plugin details` is warn-blind (engine-baseline §21), so silent acceptance discriminates nothing — it is recorded because a future engine that DOES reject the key would change this reading."
+  },
+  {
+    "probe": "output-style.changes-the-register",
+    "expectation": "a project-level output style measurably changes the assistant's default register, composes predictably with a project `outputStyle` setting, and survives --resume",
+    "observed": "NOT RUN — Tier B needs real turns and therefore real budget; re-run with --live to execute it",
+    "verdict": "UNRESOLVED",
+    "note": "Deliberately gated. Tier A is decisive for the plugin-shipping question and costs nothing; the behavioural half is only worth spending on once a delivery path exists."
+  }
+]
