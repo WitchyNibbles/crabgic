@@ -128,12 +128,57 @@ export function renderKeyValues(rows: readonly KeyValueRow[], ctx: PresentationC
     .join("\n");
 }
 
+/**
+ * Trims a bullet to the policy's word budget, marking the cut.
+ *
+ * Elision, not rejection: a bullet's text is DATA — a doctor finding's evidence,
+ * a path, an engine message — whose length is not knowable when the call site is
+ * written. Throwing would convert "this finding has a wordy message" into a
+ * crashed command. The `…` is what keeps the shortening honest; `--json` remains
+ * the lossless channel, and the overflow line below points at it.
+ */
+function elideToWordBudget(text: string, maxWords: number): string {
+  const words = text.split(/\s+/).filter((word) => word.length > 0);
+  return words.length <= maxWords ? text : `${words.slice(0, maxWords).join(" ")} …`;
+}
+
 export interface HumanReportSection {
   /** Plain, single-width text — see `renderHeading`. */
   readonly title: string;
-  /** Optional prose, rendered before the bullets. */
+  /** Optional prose, rendered before the bullets. Capped at `proseBlockMaxLines`. */
   readonly body?: string;
+  /**
+   * Capped at `sectionMaxBullets`, each elided to `bulletMaxWords`. Overflow is
+   * announced rather than dropped silently.
+   */
   readonly bullets?: readonly string[];
+  /**
+   * A two-column table, for the case `tableMinRows` names: three-plus items
+   * each carrying two-plus attributes. Same budget as `bullets` — capped at
+   * `sectionMaxBullets`, values elided at `bulletMaxWords`, overflow announced.
+   *
+   * Rendered AFTER `bullets` when a section carries both, though no caller
+   * does today; a section that needs a list and a table is usually two
+   * sections.
+   */
+  readonly rows?: readonly KeyValueRow[];
+}
+
+/**
+ * The line that owns up to a cap having fired, or `undefined` when nothing was
+ * dropped.
+ *
+ * Announced, never silent. A truncated list that does not say it was truncated
+ * reads as a complete one — the precise failure mode this policy exists to
+ * prevent — so the count and the lossless channel (`--json`) both appear.
+ */
+function renderOverflow(dropped: number, ctx: PresentationContext): string | undefined {
+  if (dropped <= 0) return undefined;
+  return `${BULLET_INDENT}${paint(
+    STRUCTURE_COLORS.bullet,
+    `… ${String(dropped)} more (--json for all)`,
+    ctx.color,
+  )}`;
 }
 
 export interface HumanReport {
@@ -153,7 +198,8 @@ export interface HumanReport {
  * never user input, so this is a programming error and should surface as one.
  */
 export function renderHumanReport(report: HumanReport, ctx: PresentationContext): string {
-  const { leadAnswerMaxLines } = DEFAULT_PRESENTATION_POLICY.limits;
+  const { leadAnswerMaxLines, proseBlockMaxLines, bulletMaxWords, sectionMaxBullets } =
+    DEFAULT_PRESENTATION_POLICY.limits;
   const leadLines = report.lead.split("\n").length;
   if (leadLines > leadAnswerMaxLines) {
     throw new Error(
@@ -164,9 +210,52 @@ export function renderHumanReport(report: HumanReport, ctx: PresentationContext)
   const blocks = [paint(STRUCTURE_COLORS.lead, report.lead, ctx.color)];
   for (const section of report.sections) {
     const parts = [renderHeading(section.title, ctx)];
-    if (section.body !== undefined && section.body.length > 0) parts.push(section.body);
-    const bullets = renderBullets(section.bullets ?? [], ctx);
+    if (section.body !== undefined && section.body.length > 0) {
+      // Prose is author-typed, so a wall here is a programming error and throws
+      // at the call site that can fix it — unlike the bullets below, whose
+      // length is a property of the data and cannot be fixed by the author.
+      const bodyLines = section.body.split("\n").length;
+      if (bodyLines > proseBlockMaxLines) {
+        throw new Error(
+          `renderHumanReport: section "${section.title}" has a ${bodyLines}-line prose block, over the ${proseBlockMaxLines}-line budget — split it into bullets or another section`,
+        );
+      }
+      parts.push(section.body);
+    }
+
+    const allBullets = section.bullets ?? [];
+    const keptBullets = allBullets.slice(0, sectionMaxBullets);
+    const bullets = renderBullets(
+      keptBullets.map((item) => elideToWordBudget(item, bulletMaxWords)),
+      ctx,
+    );
     if (bullets.length > 0) parts.push(bullets);
+    const bulletOverflow = renderOverflow(allBullets.length - keptBullets.length, ctx);
+    if (bulletOverflow !== undefined) parts.push(bulletOverflow);
+
+    const allRows = section.rows ?? [];
+    const keptRows = allRows.slice(0, sectionMaxBullets);
+    if (keptRows.length > 0) {
+      // Indented to sit under its heading exactly as the bullets do. The
+      // alignment itself is `renderKeyValues`' job, and it measures the PLAIN
+      // text before painting — see its own note on why that ordering matters.
+      const table = renderKeyValues(
+        keptRows.map((row) => ({
+          key: row.key,
+          value: elideToWordBudget(row.value, bulletMaxWords),
+        })),
+        ctx,
+      );
+      parts.push(
+        table
+          .split("\n")
+          .map((line) => `${BULLET_INDENT}${line}`)
+          .join("\n"),
+      );
+    }
+    const rowOverflow = renderOverflow(allRows.length - keptRows.length, ctx);
+    if (rowOverflow !== undefined) parts.push(rowOverflow);
+
     blocks.push(parts.join("\n"));
   }
   return `${blocks.join("\n\n")}\n`;

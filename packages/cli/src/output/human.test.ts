@@ -225,6 +225,191 @@ describe("renderHumanReport", () => {
 });
 
 /**
+ * `docs/presentation-policy.md` declares six structural limits and calls going
+ * over one "a bug". Until 2026-08-11 exactly ONE of the six (`leadAnswerMaxLines`)
+ * was enforced anywhere in code; the other five existed only as prose in the
+ * manager protocol's instruction block, which that same document concedes is
+ * "instruction only". So the one channel the document claims is **structurally**
+ * enforced would happily emit a forty-bullet section of sixty-word bullets.
+ *
+ * WHY THE TWO HALVES ARE ENFORCED DIFFERENTLY. `lead` and `body` are prose an
+ * author typed, so exceeding them is a programming error and throws — loudly,
+ * at the call site that can fix it. `bullets` are DATA (doctor findings, evidence
+ * rows, work units) whose count and length are not known when the code is
+ * written; throwing there would turn "the host has eleven findings" into a
+ * crashed command, which is a strictly worse outcome than a capped list. Those
+ * degrade structurally instead, and say what they dropped.
+ */
+describe("the structural limits are enforced, not merely declared", () => {
+  const { proseBlockMaxLines, bulletMaxWords, sectionMaxBullets } =
+    DEFAULT_PRESENTATION_POLICY.limits;
+
+  it("rejects a prose body longer than the policy's block budget", () => {
+    const wall = Array.from({ length: proseBlockMaxLines + 1 }, (_u, i) => `line ${i}`).join("\n");
+    expect(() =>
+      renderHumanReport({ lead: "x", sections: [{ title: "S", body: wall }] }, plain("text")),
+    ).toThrow(/prose/i);
+  });
+
+  it("accepts a prose body exactly at the budget — a limit is a floor, not a target", () => {
+    const atBudget = Array.from({ length: proseBlockMaxLines }, (_u, i) => `line ${i}`).join("\n");
+    expect(() =>
+      renderHumanReport({ lead: "x", sections: [{ title: "S", body: atBudget }] }, plain("text")),
+    ).not.toThrow();
+  });
+
+  it("elides a bullet past the word budget rather than emitting an unscannable line", () => {
+    const longBullet = Array.from({ length: bulletMaxWords + 5 }, (_u, i) => `w${i}`).join(" ");
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: [longBullet] }] },
+      plain("text"),
+    );
+    const bulletLine = rendered.split("\n").find((l) => l.includes("w0")) ?? "";
+    expect(bulletLine).toContain("…");
+    expect(bulletLine).toContain(`w${String(bulletMaxWords - 1)}`);
+    expect(bulletLine).not.toContain(`w${String(bulletMaxWords)}`);
+  });
+
+  it("leaves a bullet at or under the word budget byte-identical", () => {
+    const exact = Array.from({ length: bulletMaxWords }, (_u, i) => `w${i}`).join(" ");
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: [exact] }] },
+      plain("text"),
+    );
+    expect(rendered).toContain(`• ${exact}\n`);
+    expect(rendered).not.toContain("…");
+  });
+
+  it("caps a section at the bullet budget and says how many it dropped", () => {
+    const many = Array.from({ length: sectionMaxBullets + 3 }, (_u, i) => `item ${i}`);
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: many }] },
+      plain("text"),
+    );
+    expect(rendered).toContain(`item ${String(sectionMaxBullets - 1)}`);
+    expect(rendered).not.toContain(`item ${String(sectionMaxBullets)}`);
+    // The dropped items are ANNOUNCED. A silently truncated list reads as a
+    // complete one, which is the exact failure this policy exists to prevent.
+    expect(rendered).toContain("3 more");
+    expect(rendered).toContain("--json");
+  });
+
+  it("adds no overflow line when the section is exactly at the budget", () => {
+    const exact = Array.from({ length: sectionMaxBullets }, (_u, i) => `item ${i}`);
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", bullets: exact }] },
+      plain("text"),
+    );
+    expect(rendered).toContain(`item ${String(sectionMaxBullets - 1)}`);
+    expect(rendered).not.toContain("more");
+  });
+
+  it("keeps colour additive across both degradations", () => {
+    const report = {
+      lead: "x",
+      sections: [
+        {
+          title: "S",
+          bullets: Array.from(
+            { length: sectionMaxBullets + 2 },
+            (_u, i) => `${String(i)} ${"word ".repeat(bulletMaxWords + 4)}`,
+          ),
+        },
+      ],
+    };
+    for (const profile of ["emoji", "text", "ascii"] as const) {
+      expect(stripAnsi(renderHumanReport(report, lit(profile)))).toBe(
+        renderHumanReport(report, plain(profile)),
+      );
+    }
+  });
+
+  /**
+   * `tableMinRows` says three-plus items each carrying two-plus attributes is a
+   * TABLE, not a bullet list — but until 2026-08-11 `HumanReportSection` had no
+   * way to express one, so the only limit in the policy with no representation
+   * in the renderer was the one the policy names as mandatory. `rows` is that
+   * representation, over `renderKeyValues` (which, like `renderHumanReport`
+   * itself, had been written and then left with no production caller).
+   */
+  it("renders rows as an aligned two-column block", () => {
+    const rendered = renderHumanReport(
+      {
+        lead: "x",
+        sections: [
+          {
+            title: "Commands",
+            rows: [
+              { key: "run", value: "Dispatch a new run." },
+              { key: "status", value: "Show a run's status." },
+            ],
+          },
+        ],
+      },
+      plain("text"),
+    );
+    expect(rendered).toContain("  run     Dispatch a new run.");
+    expect(rendered).toContain("  status  Show a run's status.");
+  });
+
+  it("caps rows at the section budget and announces the shortfall", () => {
+    const rows = Array.from({ length: sectionMaxBullets + 2 }, (_u, i) => ({
+      key: `k${String(i)}`,
+      value: "v",
+    }));
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", rows }] },
+      plain("text"),
+    );
+    expect(rendered).not.toContain(`k${String(sectionMaxBullets)}`);
+    expect(rendered).toContain("2 more");
+  });
+
+  it("elides an over-long row value, exactly as it does a bullet", () => {
+    const long = Array.from({ length: bulletMaxWords + 4 }, (_u, i) => `w${String(i)}`).join(" ");
+    const rendered = renderHumanReport(
+      { lead: "x", sections: [{ title: "S", rows: [{ key: "k", value: long }] }] },
+      plain("text"),
+    );
+    expect(rendered).toContain("…");
+    expect(rendered).not.toContain(`w${String(bulletMaxWords)}`);
+  });
+
+  it("keeps row alignment and colour additive together", () => {
+    const report = {
+      lead: "x",
+      sections: [
+        {
+          title: "S",
+          rows: [
+            { key: "a", value: "one" },
+            { key: "bbbb", value: "two" },
+          ],
+        },
+      ],
+    };
+    expect(stripAnsi(renderHumanReport(report, lit("text")))).toBe(
+      renderHumanReport(report, plain("text")),
+    );
+  });
+
+  it("emits no trailing whitespace on a capped, elided section", () => {
+    const rendered = renderHumanReport(
+      {
+        lead: "x",
+        sections: [
+          { title: "S", bullets: Array.from({ length: sectionMaxBullets + 2 }, () => "a b c") },
+        ],
+      },
+      plain("emoji"),
+    );
+    for (const line of rendered.split("\n")) {
+      expect(line).toBe(line.replace(/\s+$/, ""));
+    }
+  });
+});
+
+/**
  * The load-bearing accessibility invariant: colour is a SECOND channel layered
  * on the glyphs and words, never the carrier of meaning and never a change to
  * layout. If stripping the escapes from a coloured render did not reproduce the
