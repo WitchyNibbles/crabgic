@@ -28,5 +28,6 @@ export * from "./colors.js";
 export * from "./profile.js";
 export * from "./presentation-policy.js";
 export * from "./policy-loader.js";
+export * from "./markdown-report.js";
 export * from "./human-report.js";
 export * from "./reports.js";

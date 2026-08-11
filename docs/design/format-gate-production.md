@@ -69,13 +69,38 @@ convention). Per CLAUDE.md's non-negotiable, this must not be assumed from memor
 If (1) is NO, L0 is unavailable and the design rests on L1–L3. **Nothing below depends on this
 resolving PASS** — that is deliberate, and mirrors how §19 was scoped.
 
-### L1. Structure: give reports a rendering path
+### L1. Structure: give reports a rendering path — renderer LANDED, delivery UNDECIDED
+
+> **Correction, 2026-08-11.** This section originally said the manager should render through
+> `renderHumanReport`, "the _same_ function, so the two channels cannot drift". **That was wrong,
+> and this document's own §"three channels" table said why**: the two channels have opposite
+> contrast mechanisms. CLI stdout owns a real terminal and paints SGR codes and box-drawing rules;
+> the manager writes into a markdown TUI that cannot emit ANSI, where the controls are `**bold**`
+> and `##`. Sharing the renderer would have emitted `────────` underlines into a surface that
+> renders headings properly — worse output, bought with a tidier dependency graph.
+>
+> `renderMarkdownReport` (`contracts/presentation/markdown-report.ts`) is the corrected form. What
+> is shared is the part that matters — the limits and their enforcement, read from the same
+> `HUMAN_REPORT_LIMITS`, with the same prose-throws/data-degrades split and the same announced
+> overflow. Only the spelling differs per channel.
 
 Today the manager writes prose and hopes. Give it the same affordance the CLI has:
 
-- A `report` skill (or gateway tool) that accepts `{lead, sections[]}` and renders through
-  `renderHumanReport` — the _same_ function, so the two channels cannot drift.
+- `renderMarkdownReport` accepts `{role, lead, sections[], nextAction}` and emits conforming
+  markdown. **Landed.**
+- A way for the manager to CALL it. **Not decided** — see below.
 - The protocol instructs: compose long reports through it; short answers stay prose.
+
+**The delivery mechanism is an open decision, deliberately not made in haste:**
+
+| Option                       | Cost                                                                                                                      | Objection                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Gateway MCP tool             | High — `build-tool-registry.ts` is a governed composition root; a new family needs CapabilityManifest and trust treatment | Heaviest, but the only one the manager calls natively                                                                 |
+| `crabgic report` CLI command | Medium — argv, dispatch, help, snapshots                                                                                  | Manager shells out to format its own message; works, reads oddly                                                      |
+| Skill                        | Low                                                                                                                       | A skill is instructions, not execution — it cannot run the renderer, so it reduces to the instruction we already have |
+
+The third is not a real option for a STRUCTURAL fix and is listed to record why. Choosing between
+the first two is an owner call about how much surface the manager channel is worth.
 
 This does not force compliance — the final assistant message is still free text — but it converts
 "format it correctly from memory" into "call the thing that formats it". Gate firings should fall
