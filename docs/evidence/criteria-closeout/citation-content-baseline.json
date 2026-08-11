@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-11",
-  "generatedAtSha": "ef5be70e9a060ed7da625417b6e45462f551d000",
+  "generatedAtSha": "a2da3d8c5978964d0483160ffb736f7c7df69947",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3932,
     "anchored": 2687,
     "seededStale": 636,
-    "outsideSpan": 767,
+    "outsideSpan": 766,
     "repeatText": 528,
     "crossFile": 20,
     "skipped": 609
@@ -3713,11 +3713,11 @@
         "OK/collapsed@128-129,146-147!span~repeat"
       ]
     },
-    "phase-09.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138": {
-      "qa": "d9eed148d124",
+    "phase-09.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142": {
+      "qa": "6c5ecda6129e",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@138"
+        "OK/collapsed@142"
       ]
     },
     "phase-09.json#c2#packages/cli/src/installer/mcp-entry.golden.test.ts:37": {
@@ -4635,12 +4635,12 @@
         "OK/collapsed@171!span"
       ]
     },
-    "phase-11.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:171": {
-      "qa": "24f25367726d",
+    "phase-11.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:175-185": {
+      "qa": "d9ba18c6492f",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@171",
-        "OK/collapsed@180-181!span"
+        "OK/collapsed@175",
+        "OK/collapsed@184-185"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:128": {
@@ -4808,11 +4808,11 @@
       ],
       "frozen": true
     },
-    "phase-11.json#c5#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:138": {
-      "qa": "524684eaf943",
+    "phase-11.json#c5#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142": {
+      "qa": "7480fe12b34e",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@138"
+        "OK/collapsed@142"
       ]
     },
     "phase-11.json#c5#packages/cli/src/intake/project-inspect-handler.test.ts:23": {

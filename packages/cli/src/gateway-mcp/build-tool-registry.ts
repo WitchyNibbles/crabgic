@@ -64,6 +64,12 @@ import type {
   WorkUnit,
 } from "@crabgic/contracts";
 import { CONTRACT_APPROVE_TOOL, PROJECT_INSPECT_TOOL } from "../intake/tool-definitions.js";
+import {
+  REPORT_RENDER_SHAPE,
+  REPORT_RENDER_TOOL,
+  runReportRenderTool,
+  type ReportRenderArgs,
+} from "./report-tool-definition.js";
 import { REVIEW_CALIBRATE_TOOL, REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
@@ -468,6 +474,27 @@ export function buildProductionGatewayToolRegistry(
     journal: deps.journal,
     supervisorSocketPath: deps.supervisorSocketPath,
   });
+
+  // `report.render` (design §L1). Registered unconditionally and without deps:
+  // it is a pure function of its arguments — no I/O, no state, no authority —
+  // so unlike every other family here it is gated on nothing.
+  const reportRender: GatewayToolDefinition<typeof REPORT_RENDER_SHAPE> = {
+    name: REPORT_RENDER_TOOL.name,
+    description: REPORT_RENDER_TOOL.description,
+    inputSchema: REPORT_RENDER_SHAPE,
+    // Async to satisfy the handler seam; this one has nothing to await, because
+    // it is a pure function of its arguments.
+    handler: async (args) => {
+      const result = runReportRenderTool(args as ReportRenderArgs);
+      // The markdown goes back as TEXT, not JSON-wrapped: the caller's job is to
+      // emit it verbatim, and a JSON envelope would make it re-serialise the
+      // very thing this rendered for it.
+      return "markdown" in result
+        ? { content: [{ type: "text" as const, text: result.markdown }] }
+        : errorResult(result.error);
+    },
+  };
+  registry.register(reportRender);
 
   for (const tool of buildIntakeTools(deps)) registry.register(tool);
   for (const tool of buildCapabilityTools(deps)) registry.register(tool);

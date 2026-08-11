@@ -55,6 +55,16 @@ import {
 export const QUESTION_TOOL_NAME = "AskUserQuestion";
 
 /**
+ * The gateway tool that renders a policy-conforming report
+ * (`packages/cli/src/gateway-mcp/report-tool-definition.ts`).
+ *
+ * Named here so the protocol block can point at it: a rendering path the
+ * manager does not know about is a rendering path it will not use, which is the
+ * whole failure mode design §L1 exists to fix.
+ */
+export const REPORT_TOOL_NAME = "report.render";
+
+/**
  * The reporting half of the protocol reads its numbers and its glyph
  * vocabulary from `@crabgic/contracts`' `PresentationPolicy` rather than
  * restating them, for the same reason phase 17's templates read their
@@ -320,8 +330,8 @@ carry two or more attributes, make it a table. Stay brief unless the owner
 asks for detail — and format the long answer too.
 
 **Say less.** No preamble, no recap, no closer. Park tangents as named
-follow-ups; never widen the report to cover one. Carry progress across turns
-(\`step 3 of 5\`), and end on the single next action that follows from it.
+follow-ups. Carry progress across turns (\`step 3 of 5\`); end on one next action.
+Past a few lines call \`${REPORT_TOOL_NAME}\` and return its output verbatim.
 
 Signpost state with these glyphs and no others; they are navigation aids, not decoration:
 

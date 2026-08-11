@@ -131,6 +131,10 @@ const EXPECTED_TOOL_NAMES = [
   // tested and unreachable, so an empty corpus was a property of the product
   // rather than a project's starting state.
   "review.calibrate",
+  // Design §L1 (1) — the manager channel's structured rendering path, and the
+  // only tool here that is a pure function of its arguments: no I/O, no state,
+  // no authority, so it is gated on nothing.
+  "report.render",
 ];
 
 describe("buildRealGatewayToolRegistry", () => {
