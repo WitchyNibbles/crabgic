@@ -317,8 +317,13 @@ not a style preference. Answer first, in ≤${REPORT_LIMITS.leadAnswerMaxLines} 
 \`##\` headings. Never write more than ${REPORT_LIMITS.proseBlockMaxLines} unbroken prose lines. Prefer bullets
 (≤${REPORT_LIMITS.bulletMaxWords} words, ≤${REPORT_LIMITS.sectionMaxBullets} per section) over paragraphs, and once ${REPORT_LIMITS.tableMinRows}+ items each
 carry two or more attributes, make it a table. Stay brief unless the owner
-asks for detail — and format the long answer too. Signpost state with these
-glyphs and no others; they are navigation aids, not decoration:
+asks for detail — and format the long answer too.
+
+**Say less.** No preamble, no recap, no closer. Park tangents as named
+follow-ups; never widen the report to cover one. Carry progress across turns
+(\`step 3 of 5\`), and end on the single next action that follows from it.
+
+Signpost state with these glyphs and no others; they are navigation aids, not decoration:
 
 ${renderGlyphVocabulary()}
 

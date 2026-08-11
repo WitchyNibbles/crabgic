@@ -148,10 +148,26 @@ describe("buildManagerProtocolBlock", () => {
     // falsifiability stopped being the termination rule, and what twelve
     // non-converging rounds measured, live in skills/protocol/SKILL.md.
     //
-    // The cost is real and worth stating: ~78 lines is roughly 900 tokens on
+    // Raised 78 -> 81 (2026-08-11) for the four VOLUME rules — no preamble/
+    // recap/closer, park tangents, carry progress across turns, end on one next
+    // action. Same test as every prior raise: is this instruction or rationale?
+    // It is instruction, and it is not reachable from the on-demand skill,
+    // because a manager that opens with a paragraph of preamble has already
+    // emitted it before any skill could be consulted.
+    //
+    // It is also a DIFFERENT rule class from the six limits above it, which is
+    // why the existing lines did not already cover it: those bound a report's
+    // SHAPE, and a report can satisfy every one of them while still restating
+    // the request, answering an unasked question and closing with an offer of
+    // further help. Shape rules cannot express "less of it".
+    //
+    // Three lines, drafted at eight and compressed. No headroom is being
+    // banked here — the next addition compresses or goes to the skill.
+    //
+    // The cost is real and worth stating: ~81 lines is roughly 930 tokens on
     // every manager turn.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(78);
+    expect(lines.length).toBeLessThanOrEqual(81);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -203,6 +219,36 @@ describe("buildManagerProtocolBlock — reporting format", () => {
 
   it("frames emoji as navigation aids rather than decoration", () => {
     expect(block).toMatch(/not decoration|never decoration/i);
+  });
+
+  /**
+   * The limits above bound the SHAPE of a report; they say nothing about how
+   * much of it should exist. A block that obeys every one of them can still
+   * open with a paragraph restating the request, close with an offer to help
+   * further, and carry two paragraphs about something the owner did not ask
+   * about — all of it structurally legal and all of it reading the owner does
+   * not need to do. These four rules bound the VOLUME, and they are the ones
+   * `docs/presentation-policy.md`'s limit table cannot express.
+   */
+  it("forbids preamble, recap and closing pleasantries", () => {
+    expect(block).toMatch(/no preamble/i);
+    expect(block).toMatch(/recap/i);
+  });
+
+  it("requires the report to end on a single next action", () => {
+    expect(block).toMatch(/next action/i);
+  });
+
+  it("tells the manager to park tangents rather than widen the report", () => {
+    expect(block).toMatch(/tangent/i);
+  });
+
+  it("requires progress to be restated across turns, so a lost thread is recoverable", () => {
+    // Deliberately matches the CONCRETE form, not the word "progress" — the
+    // block already used that word twice for the autonomy rule ("Progress is
+    // the default"), so a looser pattern here passed while the reporting rule
+    // it was meant to pin did not exist at all.
+    expect(block).toMatch(/step \d+ of \d+/i);
   });
 
   it("carves out the outbound artifacts, which stay neutral and emoji-free", () => {

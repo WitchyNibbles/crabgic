@@ -21,6 +21,28 @@ any work here:
 6. `docs/evidence/criteria-closeout/defects/INDEX.md` — 45 filed defects with sized remedies.
    Bookkeeping inside the claim-space: **never cite it as evidence**, cite a record's own evidence.
 
+## Reporting to the owner
+
+`docs/presentation-policy.md` governs everything said to this repo's owner — by
+crabgic, and by anyone working on crabgic. The owner has a condition that makes
+long unordered prose very hard to read, so this is an **accessibility
+requirement, not a style preference**: an answer buried inside an
+undifferentiated block has not been delivered, and "it was in there" is not a
+defence. The short form:
+
+- **Answer first**, in ≤2 lines. Never build up to it.
+- Past 5 lines use headings; never more than 3 unbroken prose lines.
+- Bullets (≤15 words, ≤7 per section) over paragraphs. Once 3+ items each carry
+  2+ attributes, make it a table.
+- **No preamble, no recap, no closer.** Park tangents as named follow-ups.
+- End on the single next action.
+- Signpost state with that document's closed glyph vocabulary — never
+  decorative emoji, which destroy the affordance they appear to add.
+
+Brevity is the default; a request for detail makes the answer longer, not
+looser. The limits live in `PresentationPolicy` (`@crabgic/contracts`) and are
+enforced structurally for CLI stdout — cite them from there, never retype them.
+
 ## Non-negotiables
 
 - `docs/claude-code-adaptation.md` §0's decisions are owner-approved and settled. Do not
