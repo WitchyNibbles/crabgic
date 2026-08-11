@@ -11,6 +11,7 @@
 import {
   EXIT_OK,
   formatJson,
+  renderResultLine,
   type CommandResult,
   type TrustApproveCommand,
 } from "@crabgic/contracts";
@@ -27,6 +28,12 @@ export async function runTrustApproveCommand(
     exitCode: EXIT_OK,
     stdout: cmd.json
       ? formatJson(minted)
-      : `minted approval token ${minted.tokenId} for digest ${cmd.digest} (expires ${minted.expiresAt})\n`,
+      : // `pending`, not `ok`: minting is not approval. Only `capability.approve`,
+        // verifying this token, flips a stored decision — and a success glyph
+        // here would report a grant that has not happened.
+        renderResultLine(
+          "pending",
+          `minted approval token ${minted.tokenId} for digest ${cmd.digest} (expires ${minted.expiresAt})`,
+        ),
   };
 }

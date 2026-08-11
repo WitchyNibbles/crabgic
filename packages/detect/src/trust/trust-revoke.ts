@@ -16,6 +16,7 @@ import {
   EXIT_GENERAL_ERROR,
   EXIT_OK,
   formatJson,
+  renderResultLine,
   type CommandResult,
   type TrustRevokeCommand,
 } from "@crabgic/contracts";
@@ -52,6 +53,6 @@ export async function runTrustRevokeCommand(
     exitCode: EXIT_OK,
     stdout: cmd.json
       ? formatJson({ revoked: true, digest })
-      : `revoked approval for "${entry.report.candidateName}" (${digest})\n`,
+      : renderResultLine("ok", `revoked approval for "${entry.report.candidateName}" (${digest})`),
   };
 }

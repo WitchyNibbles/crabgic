@@ -62,21 +62,36 @@ contracts.
 | `colors.ts`              | `ROLE_COLORS`, `STRUCTURE_COLORS`, `paint()`, `paintRole()`, `stripAnsi()`       |
 | `presentation-policy.ts` | `HUMAN_REPORT_LIMITS`, the zod schema, `DEFAULT_PRESENTATION_POLICY`             |
 | `profile.ts`             | `resolvePresentationProfile()`, `resolveColorEnabled()`, `resolvePresentation()` |
+| `human-report.ts`        | the stdout primitives, and the enforcement of all six limits                     |
+| `reports.ts`             | `renderResultLine`, `renderItemListReport`, `CLI_TEXT`, `pluralize`              |
+
+The last two were relocated here from `packages/cli/src/output/` (2026-08-11)
+when `trust review|approve|revoke`, whose backend is `packages/detect`, needed
+them. `packages/cli` depends on `packages/detect`, so the renderers were
+unreachable from there without inverting that edge; the alternative was a second
+copy, and the `crabgic-statusline.mjs` note below is what a second copy costs.
+It is the move `cli-surface` already made for `formatJson`/`CommandResult`, and
+`packages/cli/src/output/{human,reports}.ts` re-export from here verbatim so
+every existing import path still resolves.
+
+`reports.ts` splits by CARDINALITY, not by command: `renderResultLine` for a
+single-fact result, `renderItemListReport` for a list whose length is unknown
+when the code is written. A headed report over one line is scaffolding with
+nothing to hold up, and would add reading rather than remove it.
 
 Consumers:
 
-- `packages/cli/src/output/human.ts` — the human-mode stdout primitives.
-- `packages/cli/src/output/reports.ts` — the two shapes every command reduces
-  to: `renderResultLine` for a single-fact result, `renderItemListReport` for a
-  list whose length is unknown when the code is written. Split by CARDINALITY,
-  not by command: a headed report over one line is scaffolding with nothing to
-  hold up, and would add reading rather than remove it.
 - `packages/cli/src/output/status-renderer.ts` — `status --watch`.
 - `packages/cli/src/commands/real-handlers.ts` — `doctor`, `status`, `evidence`,
   `cancel`, `resume`.
+- `packages/cli/src/commands/installer-handlers.ts` — `install`, `upgrade`,
+  `uninstall`.
+- `packages/cli/src/commands/approve.ts` — `approve`.
+- `packages/cli/src/commands/help.ts` — the grouped command table.
 - `packages/cli/src/learning/learn-command-backend.ts` — `learn *`.
 - `packages/cli/src/connection/connection-commands.ts` and
   `connection-capabilities.ts` — `connection *`.
+- `packages/detect/src/trust/` — `trust review|approve|revoke`.
 - `packages/plugin/src/manager-protocol.ts` — the always-loaded `CLAUDE.md`
   operating protocol, which quotes the limits and the vocabulary rather than
   restating them.

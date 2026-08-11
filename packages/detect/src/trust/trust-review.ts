@@ -9,6 +9,9 @@
 import {
   EXIT_OK,
   formatJson,
+  pluralize,
+  renderItemListReport,
+  renderResultLine,
   type CommandResult,
   type TrustReviewCommand,
 } from "@crabgic/contracts";
@@ -38,7 +41,23 @@ export function runTrustReviewCommand(
     return { exitCode: EXIT_OK, stdout: formatJson({ entries: entries.map((e) => e.report) }) };
   }
   if (entries.length === 0) {
-    return { exitCode: EXIT_OK, stdout: "no capability audits recorded yet\n" };
+    return { exitCode: EXIT_OK, stdout: renderResultLine("info", "no capability audits recorded") };
   }
-  return { exitCode: EXIT_OK, stdout: `${entries.map(renderEntryLine).join("\n")}\n` };
+  // The store grows without bound and every entry carries a digest, so this is
+  // the unbounded-list shape — see `docs/presentation-policy.md`. The lead
+  // answers the question `trust review` is actually run to answer ("is anything
+  // waiting on me?") rather than leaving it to be counted off a column.
+  const pending = entries.filter((e) => e.report.decision === "pending").length;
+  return {
+    exitCode: EXIT_OK,
+    stdout: renderItemListReport({
+      role: pending > 0 ? "question" : "info",
+      lead:
+        pending > 0
+          ? `${pluralize(entries.length, "audit")}, ${String(pending)} awaiting approval.`
+          : `${pluralize(entries.length, "audit")}, none pending.`,
+      title: "Audits",
+      items: entries.map(renderEntryLine),
+    }),
+  };
 }

@@ -96,7 +96,31 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
     expect(result.stdout).toContain("CLAUDE.md");
   });
 
-  it("upgrade (non-json) renders a human-readable diff summary, including an updated (~) entry", async () => {
+  /**
+   * The file section is capped at `sectionMaxBullets` like every other, so a
+   * nine-artifact install lists seven. That is only honest if the reader can
+   * tell it is a SAMPLE — hence the total in the lead. Without it, seven
+   * bullets under a heading read as the complete set, which is the failure mode
+   * `docs/presentation-policy.md` exists to prevent.
+   */
+  it("states the file total in the lead, so a capped list reads as a sample", async () => {
+    const targetDir = await makeTmpDir();
+    const deps: CliDependencies = {
+      ...baseDeps(),
+      installer: { targetDir, pluginSourceDir: PLUGIN_ROOT, confirmGitInit: async () => true },
+    };
+    const human = await dispatchCommand({ command: "install", dryRun: false, json: false }, deps);
+    const json = await dispatchCommand({ command: "install", dryRun: false, json: true }, deps);
+    const total = (JSON.parse(json.stdout!) as { diff: readonly unknown[] }).diff.length;
+
+    expect(human.stdout).toContain(`${String(total)} created`);
+    const listed = (human.stdout!.match(/^ {2}• create: /gm) ?? []).length;
+    if (listed < total) {
+      expect(human.stdout).toContain(`${String(total - listed)} more`);
+    }
+  });
+
+  it("upgrade (non-json) lists what changed and counts what did not", async () => {
     const targetDir = await makeTmpDir();
     const deps: CliDependencies = {
       ...baseDeps(),
@@ -108,7 +132,12 @@ describe("dispatchCommand — install/upgrade/uninstall, real backend when deps.
 
     const result = await dispatchCommand({ command: "upgrade", dryRun: false, json: false }, deps);
     expect(result.stdout).toContain("upgrade:");
-    expect(result.stdout).toContain("~ CLAUDE.md");
+    // The action is spelled out rather than carried by a `~`/`+`/`=` legend,
+    // and the eight UNCHANGED files are now a count in the lead rather than
+    // eight lines — an unchanged file is this command's passing doctor check.
+    expect(result.stdout).toContain("update: CLAUDE.md");
+    expect(result.stdout).toMatch(/1 updated, \d+ unchanged/);
+    expect(result.stdout).not.toContain("unchanged: ");
   });
 
   it("upgrade (non-json) mentions recovery when a prior interrupted upgrade is reconciled", async () => {
@@ -218,7 +247,10 @@ describe("dispatchCommand — install renders the existing-policy outcomes", () 
       },
     };
     const result = await dispatchCommand({ command: "install", dryRun: false, json: false }, deps);
-    expect(result.stdout).toContain("standing policy already exists and was kept untouched");
+    // "standing policy" is now the section HEADING rather than a prefix
+    // repeated on the line — asserted here so the subject is still stated.
+    expect(result.stdout).toContain("Standing policy");
+    expect(result.stdout).toContain("already exists and was kept untouched");
     expect(result.stdout).toContain("delete it and re-run `crabgic install` to re-author");
   });
 

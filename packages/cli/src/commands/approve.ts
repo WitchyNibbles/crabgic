@@ -36,6 +36,7 @@ import { resolveApprovalTerminal } from "../approval/interactive-terminal.js";
 import { sanitizeForTerminal } from "../output/sanitize.js";
 import { completeEnvelopeApproval } from "../intake/complete-envelope-approval.js";
 import { formatJson, type CommandResult } from "../output/format.js";
+import { renderResultLine } from "../output/reports.js";
 import { notImplementedResult } from "./not-implemented.js";
 import { dispatchReadyChangeSet } from "./real-handlers.js";
 import type { CliDependencies } from "./types.js";
@@ -164,7 +165,10 @@ export async function runApproveCommand(
         ? { exitCode: EXIT_OK, stdout: formatJson({ approved: false, declined: true }) }
         : {
             exitCode: EXIT_OK,
-            stdout: `approval declined — ChangeSet ${sanitizeForTerminal(changeSet.id)} remains awaiting_approval\n`,
+            stdout: renderResultLine(
+              "blocked",
+              `approval declined — ChangeSet ${sanitizeForTerminal(changeSet.id)} remains awaiting_approval`,
+            ),
           };
     }
     throw err;
@@ -211,7 +215,10 @@ export async function runApproveCommand(
   return dispatch.accepted
     ? {
         exitCode: EXIT_OK,
-        stdout: `ChangeSet ${safeId} approved and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}\n`,
+        stdout: renderResultLine(
+          "ok",
+          `ChangeSet ${safeId} approved and dispatched as run ${sanitizeForTerminal(dispatch.runId ?? "(unknown)")}`,
+        ),
       }
     : {
         // Approved and durably `ready`; only the start failed. Said plainly:
