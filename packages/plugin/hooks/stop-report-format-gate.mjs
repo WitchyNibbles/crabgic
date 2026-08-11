@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { proseLinesOf, proseParagraphsOf, hasStructure } from "./lib/block-tokenizer.mjs";
 
 /**
  * Mirrors `HUMAN_REPORT_LIMITS` in `@crabgic/contracts`
@@ -77,81 +78,6 @@ export const HEADING_REQUIRED_ABOVE_LINES = 5;
 export const ASSUMED_WRAP_COLUMNS = 80;
 export const PROSE_BLOCK_MAX_CHARS = PROSE_BLOCK_MAX_LINES * ASSUMED_WRAP_COLUMNS;
 
-/** Lines that are structure, not prose — none of them can start a wall. */
-const STRUCTURAL_LINE = /^\s*(?:[-*+•]\s|\d+[.)]\s|#{1,6}\s|>|\||```|~~~)/;
-const FENCE = /^\s*(?:```|~~~)/;
-const TABLE_ROW = /^\s*\|/;
-const BULLET = /^\s*(?:[-*+•]\s|\d+[.)]\s)/;
-const HEADING = /^\s*#{1,6}\s/;
-
-/**
- * Splits a message into the paragraphs a reader actually has to wade through,
- * dropping everything that legitimately runs long.
- *
- * The exclusions are what make this safe to block on. A fenced code block, a
- * table, a blockquote and a bullet can each be arbitrarily long WITHOUT being
- * the defect this gate exists to catch — bullets and tables are the policy's
- * own preferred shapes, quoted text is not the author's prose at all, and code
- * is not prose in any sense. Flagging any of them would be a false positive on
- * a well-formed report, which is the one outcome worth engineering against.
- */
-export function proseParagraphs(message) {
-  const paragraphs = [];
-  let current = [];
-  let inFence = false;
-
-  const flush = () => {
-    if (current.length > 0) paragraphs.push(current.join(" "));
-    current = [];
-  };
-
-  for (const line of message.split("\n")) {
-    if (FENCE.test(line)) {
-      inFence = !inFence;
-      flush();
-      continue;
-    }
-    if (inFence) continue;
-    if (line.trim().length === 0) {
-      flush();
-      continue;
-    }
-    // A structural line both ends the preceding paragraph and is not itself
-    // prose — a paragraph that CONTINUES under a bullet belongs to the bullet.
-    if (STRUCTURAL_LINE.test(line)) {
-      flush();
-      continue;
-    }
-    current.push(line.trim());
-  }
-  flush();
-  return paragraphs;
-}
-
-/**
- * The non-empty lines that are actually PROSE — fenced content, tables,
- * headings, bullets and quotes all removed.
- *
- * Shares the fence/structure handling with `proseParagraphs` rather than
- * re-deriving it, because the two rules disagreeing about what counts as prose
- * is exactly how the code-block false positive got in.
- */
-export function proseLines(message) {
-  const kept = [];
-  let inFence = false;
-  for (const line of message.split("\n")) {
-    if (FENCE.test(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-    if (line.trim().length === 0) continue;
-    if (STRUCTURAL_LINE.test(line)) continue;
-    kept.push(line);
-  }
-  return kept;
-}
-
 /**
  * The rules. Two, both deliberately blunt.
  *
@@ -161,7 +87,7 @@ export function findWalls(message) {
   if (typeof message !== "string" || message.trim().length === 0) return [];
   const walls = [];
 
-  for (const paragraph of proseParagraphs(message)) {
+  for (const paragraph of proseParagraphsOf(message)) {
     if (paragraph.length > PROSE_BLOCK_MAX_CHARS) {
       walls.push({
         kind: "prose-block",
@@ -183,11 +109,8 @@ export function findWalls(message) {
   // among the commonest a coding assistant produces, and a blocking hook that
   // reds it is worse than no hook at all. Fenced content is not prose the reader
   // has to wade through; it is the thing they asked for.
-  const lines = proseLines(message);
-  const hasStructure = message
-    .split("\n")
-    .some((line) => HEADING.test(line) || BULLET.test(line) || TABLE_ROW.test(line));
-  if (!hasStructure && lines.length > HEADING_REQUIRED_ABOVE_LINES) {
+  const lines = proseLinesOf(message);
+  if (!hasStructure(message) && lines.length > HEADING_REQUIRED_ABOVE_LINES) {
     walls.push({
       kind: "no-structure",
       detail:
