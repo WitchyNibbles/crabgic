@@ -292,8 +292,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/doctor/run-doctor.ts:121-123",
-          "quotedAssertion": "packages/cli/src/doctor/run-doctor.ts:121-123 — 'createChecksumDriftCheck({ targetDir: options.installer.targetDir }),' / 'createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),' / 'createCapabilityManifestFreshnessCheck({' — the three checks are registered into `buildDefaultDoctorChecks`, so the criterion's \"Doctor reports\" is the shipped doctor and not a test-only assembly"
+          "ref": "packages/cli/src/doctor/run-doctor.ts:124-126",
+          "quotedAssertion": "packages/cli/src/doctor/run-doctor.ts:124-126 — 'createChecksumDriftCheck({ targetDir: options.installer.targetDir }),' / 'createPluginTrustPinCheck({ pluginSourceDir: options.installer.pluginSourceDir }),' / 'createCapabilityManifestFreshnessCheck({' — the three checks are registered into `buildDefaultDoctorChecks`, so the criterion's \"Doctor reports\" is the shipped doctor and not a test-only assembly (Ref and marker corrected 2026-08-11, from `:121-123`. Pure line drift: this change added one import — the `presentation.config` check, which reports a rejected `.crabgic/presentation.json` — three lines above. The three quoted registrations are unchanged in text and in meaning, and the criterion's claim that they are registered into the SHIPPED `buildDefaultDoctorChecks` is unaffected.)"
         },
         {
           "kind": "artifact",

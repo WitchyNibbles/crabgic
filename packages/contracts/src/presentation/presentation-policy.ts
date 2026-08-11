@@ -68,6 +68,16 @@ export const HUMAN_REPORT_LIMITS = {
   titleMaxColumns: 40,
 } as const;
 
+/**
+ * Ships ENABLED and BLOCKING, which is the state the gate merged in. The
+ * design's rollout moves the default to `advisory` once telemetry exists to
+ * calibrate against; until then this records honestly what is running.
+ */
+export const DEFAULT_FORMAT_GATE = {
+  enabled: true,
+  mode: "blocking",
+} as const;
+
 const HumanReportLimitsSchema = z
   .object({
     leadAnswerMaxLines: z.number().int().positive(),
@@ -108,11 +118,32 @@ const GlyphTableSchema = z
  * `CommunicationPolicySchema`'s precedent, so a future variant (a
  * lower-signposting profile, say) is a data change and not a shape change.
  */
+/**
+ * The manager report-format gate's own controls
+ * (`packages/plugin/hooks/stop-report-format-gate.mjs`).
+ *
+ * `mode` exists because that gate shipped BLOCKING on thresholds nobody had
+ * measured. `docs/design/format-gate-production.md` §4 inverts that: observe
+ * first, calibrate against real firings, block only once the false-positive
+ * rate is known. `advisory` is what makes the observing phase possible without
+ * a second code path.
+ *
+ * `enabled` is the off switch a blocking hook shipped into other people's
+ * repositories should always have had.
+ */
+const FormatGateSchema = z
+  .object({
+    enabled: z.boolean(),
+    mode: z.enum(["advisory", "blocking"]),
+  })
+  .strict();
+
 export const PresentationPolicySchema = z
   .object({
     schemaVersion: SchemaVersionField,
     limits: HumanReportLimitsSchema,
     glyphs: GlyphTableSchema,
+    formatGate: FormatGateSchema,
   })
   .strict();
 
@@ -128,4 +159,5 @@ export const DEFAULT_PRESENTATION_POLICY: PresentationPolicy = PresentationPolic
   schemaVersion: CURRENT_SCHEMA_VERSION,
   limits: HUMAN_REPORT_LIMITS,
   glyphs: PRESENTATION_GLYPHS,
+  formatGate: DEFAULT_FORMAT_GATE,
 });

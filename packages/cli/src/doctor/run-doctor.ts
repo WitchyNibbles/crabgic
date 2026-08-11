@@ -30,6 +30,7 @@ import { createJournalChainCheck } from "./checks/journal-chain.js";
 import { createJournalHeadAnchorCheck } from "./checks/journal-head-anchor.js";
 import { createJournalWriterSeparationCheck } from "./checks/journal-writer-separation.js";
 import { createWsl2WarningsCheck } from "./checks/wsl2-warnings.js";
+import { createPresentationConfigCheck } from "./checks/presentation-config.js";
 import { buildStandingPolicyCheck } from "./checks/standing-policy.js";
 import { createChecksumDriftCheck } from "./checks/checksum-drift.js";
 import { createPluginTrustPinCheck } from "./checks/plugin-trust-pin.js";
@@ -64,6 +65,8 @@ export interface RunDoctorOptions {
    * keeps observing the exact same default check set.
    */
   readonly standingPolicyPath?: string;
+  /** Project root for `.crabgic/presentation.json`. Omitted → the check is not registered. */
+  readonly presentationRoot?: string;
 }
 
 async function detectWsl2(): Promise<boolean> {
@@ -131,6 +134,12 @@ export function buildDefaultDoctorChecks(options: RunDoctorOptions): readonly Do
     // a check that asserts the policy GRANTS something.
     ...(options.standingPolicyPath !== undefined
       ? [buildStandingPolicyCheck({ path: options.standingPolicyPath })]
+      : []),
+    // A rejected `.crabgic/presentation.json` degrades silently by design, so
+    // this is the one place an operator can find out their edit was ignored —
+    // and the one place a DISABLED report-format gate is visible.
+    ...(options.presentationRoot !== undefined
+      ? [createPresentationConfigCheck({ projectRoot: options.presentationRoot })]
       : []),
   ];
 }

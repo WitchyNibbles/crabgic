@@ -44,7 +44,9 @@
  * to hold the model hostage to a formatter.
  */
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 /**
  * Mirrors `HUMAN_REPORT_LIMITS` in `@crabgic/contracts`
@@ -203,11 +205,12 @@ export function findWalls(message) {
  *
  * @returns `null` to allow the turn to end, or a block decision object.
  */
-export function decideFormatAction(payload) {
+export function decideFormatAction(payload, config = DEFAULT_GATE_CONFIG) {
   // §19.2 loop guard, checked FIRST and before the message is even read: if we
   // already blocked once, the model has had its instruction and the turn ends
   // regardless of whether the re-render satisfied us.
   if (payload?.stop_hook_active === true) return null;
+  if (config?.enabled === false) return null;
 
   const message = payload?.last_assistant_message;
   if (typeof message !== "string" || message.trim().length === 0) return null;
@@ -215,7 +218,41 @@ export function decideFormatAction(payload) {
   const walls = findWalls(message);
   if (walls.length === 0) return null;
 
+  // ADVISORY records and lets the turn end. `docs/design/format-gate-production.md`
+  // §4: this gate shipped blocking on thresholds nobody had measured, and the
+  // rollout that should have happened is observe → calibrate → block. Advisory
+  // is what lets a project run the observing phase without a second code path.
+  if (config?.mode === "advisory") return { advisory: true, walls };
+
   return { decision: "block", reason: buildBlockReason(walls) };
+}
+
+/** What the gate does when no project config is found. Mirrors `DEFAULT_FORMAT_GATE`. */
+export const DEFAULT_GATE_CONFIG = Object.freeze({ enabled: true, mode: "blocking" });
+
+/**
+ * Reads `.crabgic/presentation.json`'s `formatGate` member.
+ *
+ * A trimmed re-implementation of `loadPresentationPolicy`, for the same reason
+ * the limits are restated here: this is a plain `.mjs` the engine loads
+ * directly and it cannot import the workspace package. It reads ONLY the two
+ * switches — an unreadable or malformed file yields the default, never a
+ * throw, and never a half-applied config.
+ */
+export function readGateConfig(projectRoot, read = readFileSync) {
+  try {
+    const raw = read(join(projectRoot, ".crabgic", "presentation.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    const gate = parsed?.formatGate;
+    if (typeof gate !== "object" || gate === null) return DEFAULT_GATE_CONFIG;
+    return {
+      enabled: typeof gate.enabled === "boolean" ? gate.enabled : DEFAULT_GATE_CONFIG.enabled,
+      mode:
+        gate.mode === "advisory" || gate.mode === "blocking" ? gate.mode : DEFAULT_GATE_CONFIG.mode,
+    };
+  } catch {
+    return DEFAULT_GATE_CONFIG;
+  }
 }
 
 /**
@@ -249,15 +286,79 @@ export function readPayload(readFd = () => readFileSync(0, "utf8")) {
   }
 }
 
-export function main({ read = readPayload, write = (s) => process.stdout.write(s) } = {}) {
+/**
+ * Appends one firing to the telemetry log, or does nothing it cannot do.
+ *
+ * WHY A DIGEST AND NOT THE TEXT. This records that a rule fired and how far
+ * over budget it was — never what the owner's session said. A gate that quietly
+ * accumulated transcript prose on disk would be a worse problem than the one it
+ * solves.
+ *
+ * DELIBERATELY NOT THE JOURNAL. The journal has no writer identity, so anything
+ * appended there carries an integrity claim this file cannot honour. A plain
+ * append-only counter file with no security claim attached is the honest home;
+ * `docs/design/format-gate-production.md` §L3 records the reasoning.
+ */
+export function recordFiring(entry, deps = {}) {
+  const {
+    stateHome = process.env.XDG_STATE_HOME || join(process.env.HOME ?? ".", ".local", "state"),
+    append = appendFileSync,
+    mkdir = mkdirSync,
+  } = deps;
+  try {
+    const dir = join(stateHome, "crabgic");
+    mkdir(dir, { recursive: true });
+    append(join(dir, "format-gate.jsonl"), `${JSON.stringify(entry)}\n`, "utf8");
+  } catch {
+    /* telemetry must never affect the turn */
+  }
+}
+
+/** A stable, non-reversing fingerprint of the message — for de-duplicating firings, not for reading. */
+function digestOf(message) {
+  return createHash("sha256").update(message).digest("hex").slice(0, 16);
+}
+
+export function main({
+  read = readPayload,
+  write = (s) => process.stdout.write(s),
+  config = undefined,
+  record = recordFiring,
+  now = () => new Date().toISOString(),
+} = {}) {
   let payload;
   try {
     payload = read();
   } catch {
     return; // fail open
   }
-  const decision = decideFormatAction(payload);
-  if (decision !== null) write(JSON.stringify(decision));
+
+  const cwd =
+    typeof payload?.cwd === "string" && payload.cwd.length > 0 ? payload.cwd : process.cwd();
+  const gate = config ?? readGateConfig(cwd);
+  const decision = decideFormatAction(payload, gate);
+  if (decision === null) return;
+
+  // Guarded HERE as well as inside `recordFiring`. The production sink catches
+  // its own I/O errors, but the decision must survive any sink — a telemetry
+  // failure that swallowed a block, or threw past the caller, would let
+  // observability change behaviour, which is exactly backwards.
+  const message = payload?.last_assistant_message ?? "";
+  try {
+    record({
+      at: now(),
+      mode: gate.mode,
+      rules: decision.walls?.map((w) => w.kind) ?? findWalls(message).map((w) => w.kind),
+      details: decision.walls?.map((w) => w.detail) ?? undefined,
+      messageDigest: digestOf(message),
+    });
+  } catch {
+    /* never let observability affect the turn */
+  }
+
+  // Advisory records and stays silent, so the turn ends normally.
+  if (decision.advisory === true) return;
+  write(JSON.stringify({ decision: decision.decision, reason: decision.reason }));
 }
 
 // Only run when executed as the hook, not when imported by tests.

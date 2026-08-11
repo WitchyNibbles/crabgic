@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-11",
-  "generatedAtSha": "b93b7cde07ba3c9008ee42d3b3f637b02385ce2f",
+  "generatedAtSha": "bb94a7fdf0beac63d6447427c8253a775a0ff41e",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -4353,13 +4353,13 @@
         "OK/collapsed@61!span"
       ]
     },
-    "phase-10.json#c5#packages/cli/src/doctor/run-doctor.ts:121-123": {
-      "qa": "ce357d2c9683",
+    "phase-10.json#c5#packages/cli/src/doctor/run-doctor.ts:124-126": {
+      "qa": "3a85e629efec",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@121",
-        "OK/collapsed@122",
-        "OK/collapsed@123"
+        "OK/collapsed@124",
+        "OK/collapsed@125",
+        "OK/collapsed@126"
       ]
     },
     "phase-10.json#c6#docs/evidence/phase-10/closeout-c6-marketplace-vendored-digest.txt": {

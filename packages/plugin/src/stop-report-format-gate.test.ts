@@ -7,6 +7,8 @@ import {
   ASSUMED_WRAP_COLUMNS,
   findWalls,
   decideFormatAction,
+  DEFAULT_GATE_CONFIG,
+  readGateConfig,
   main,
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore -- plain .mjs hook, loaded directly by the engine; no .d.ts by design.
@@ -200,6 +202,131 @@ describe("decideFormatAction", () => {
         last_assistant_message: "Done.\n\n## Next\n\n- run the gate",
       }),
     ).toBeNull();
+  });
+});
+
+/**
+ * The gate merged BLOCKING, on thresholds nobody had measured, into a plugin
+ * installed in other people's repositories — with no way to tune it and no way
+ * to switch it off. `docs/design/format-gate-production.md` §L3 and §4 close
+ * both: a project config, and an advisory mode that observes instead of
+ * blocking so the thresholds can be calibrated against real firings first.
+ */
+describe("gate configuration", () => {
+  const wall = "word ".repeat(120).trim();
+
+  it("does nothing at all when disabled", () => {
+    expect(decideFormatAction({ last_assistant_message: wall }, { enabled: false })).toBeNull();
+  });
+
+  it("in advisory mode reports the walls but does not block", () => {
+    const decision = decideFormatAction(
+      { last_assistant_message: wall },
+      { enabled: true, mode: "advisory" },
+    );
+    expect(decision?.advisory).toBe(true);
+    expect(decision?.decision).toBeUndefined();
+    expect(decision?.walls?.length).toBeGreaterThan(0);
+  });
+
+  it("blocks in blocking mode, which is the default", () => {
+    expect(decideFormatAction({ last_assistant_message: wall })?.decision).toBe("block");
+    expect(DEFAULT_GATE_CONFIG).toEqual({ enabled: true, mode: "blocking" });
+  });
+
+  it("keeps the engine's loop guard ahead of the config — a re-entry never blocks", () => {
+    expect(
+      decideFormatAction(
+        { last_assistant_message: wall, stop_hook_active: true },
+        { enabled: true, mode: "blocking" },
+      ),
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      "no file",
+      () => {
+        throw new Error("ENOENT");
+      },
+    ],
+    ["malformed JSON", () => "{ not json"],
+    ["no formatGate member", () => JSON.stringify({ limits: {} })],
+    ["a wrong-typed switch", () => JSON.stringify({ formatGate: { enabled: "yes" } })],
+    ["an unknown mode", () => JSON.stringify({ formatGate: { mode: "shout" } })],
+  ])("falls back to the default config on %s", (_label, read) => {
+    expect(readGateConfig("/anywhere", read as () => string)).toEqual(DEFAULT_GATE_CONFIG);
+  });
+
+  it("reads a real override", () => {
+    const read = () => JSON.stringify({ formatGate: { enabled: false, mode: "advisory" } });
+    expect(readGateConfig("/anywhere", read)).toEqual({ enabled: false, mode: "advisory" });
+  });
+});
+
+describe("telemetry", () => {
+  const wall = "word ".repeat(120).trim();
+
+  it("records a firing without ever recording the message text", () => {
+    const entries: Record<string, unknown>[] = [];
+    main({
+      read: () => ({ last_assistant_message: wall }),
+      write: () => undefined,
+      config: { enabled: true, mode: "blocking" },
+      record: (e: Record<string, unknown>) => entries.push(e),
+      now: () => "2026-08-11T00:00:00.000Z",
+    });
+    expect(entries).toHaveLength(1);
+    const entry = entries[0]!;
+    expect(entry["rules"]).toEqual(["prose-block"]);
+    expect(entry["mode"]).toBe("blocking");
+    expect(typeof entry["messageDigest"]).toBe("string");
+    // The load-bearing property: the owner's prose must never land on disk.
+    expect(JSON.stringify(entry)).not.toContain("word word");
+  });
+
+  it("records in advisory mode too, and writes no decision", () => {
+    const entries: unknown[] = [];
+    const written: string[] = [];
+    main({
+      read: () => ({ last_assistant_message: wall }),
+      write: (s: string) => written.push(s),
+      config: { enabled: true, mode: "advisory" },
+      record: (e: unknown) => entries.push(e),
+      now: () => "t",
+    });
+    expect(entries).toHaveLength(1);
+    expect(written).toEqual([]);
+  });
+
+  it("records nothing for a well-formed report", () => {
+    const entries: unknown[] = [];
+    main({
+      read: () => ({ last_assistant_message: "Done.\n\n## Next\n\n- run the gate" }),
+      write: () => undefined,
+      config: { enabled: true, mode: "blocking" },
+      record: (e: unknown) => entries.push(e),
+      now: () => "t",
+    });
+    expect(entries).toEqual([]);
+  });
+
+  it("a failing telemetry sink never affects the turn — the block still lands", () => {
+    const written: string[] = [];
+    expect(() =>
+      main({
+        read: () => ({ last_assistant_message: wall }),
+        write: (s: string) => written.push(s),
+        config: { enabled: true, mode: "blocking" },
+        record: () => {
+          throw new Error("disk full");
+        },
+        now: () => "t",
+      }),
+    ).not.toThrow();
+    // Observability failing must not swallow the decision either.
+    expect(written).toHaveLength(1);
+    expect(JSON.parse(written[0]!).decision).toBe("block");
   });
 });
 
