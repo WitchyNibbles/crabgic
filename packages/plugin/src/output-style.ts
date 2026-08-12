@@ -16,16 +16,11 @@
  * exists only in `settings.json`, with no plugin-manifest key): a wholly-owned
  * project artifact, plus an ADD-ONLY `settings.json` key.
  *
- * ⚠️ THE MECHANISM IS NOT YET PROBE-VERIFIED. §23.4 records that the
- * behavioural check — does a project-level style actually reach the model —
- * was attempted on 2026-08-11 and could not run, because the engine's OAuth
- * session had expired. No turn happened, so nothing was observed either way.
- * Re-run `node spikes/11-output-style.mjs --live` after logging in.
- *
- * Until that resolves, this is a file written into a project and a settings key
- * set add-only. If the engine ignores both, nothing breaks and nothing is
- * clobbered — but it also does nothing, and this comment is the honest record
- * of that rather than an implied guarantee.
+ * THE MECHANISM IS PROBE-VERIFIED (§23.4, 2026-08-12, engine 2.1.224): a
+ * project-level style selected by the `outputStyle` setting reaches the model —
+ * a styled arm returned the probe's sentinel where an identical control arm
+ * without the style did not. So writing it into the project is not merely the
+ * remaining option, it is an effective one.
  *
  * SINGLE SOURCE OF TRUTH FOR THE NUMBERS. Every limit below is interpolated
  * from `HUMAN_REPORT_LIMITS`, exactly as `./manager-protocol.ts` does, so the

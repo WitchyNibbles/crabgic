@@ -13,8 +13,8 @@
  * manager protocol block. The limits it quotes therefore come from
  * `HUMAN_REPORT_LIMITS` at build time and cannot drift from the policy.
  *
- * ⚠️ The mechanism this delivers is NOT probe-verified — see §23.4, and
- * `@crabgic/plugin`'s `output-style.ts` for the full note.
+ * The mechanism this delivers IS probe-verified — §23.4, engine 2.1.224: a
+ * project-level style reaches the model, measured against a control arm.
  */
 import { join } from "node:path";
 import { buildOutputStyle, OUTPUT_STYLE_NAME } from "@crabgic/plugin";

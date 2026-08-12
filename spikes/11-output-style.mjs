@@ -37,6 +37,33 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runClaude } from "./lib/cli.mjs";
 import { verdict, writeVerdicts } from "./lib/verdict.mjs";
+import { homedir } from "node:os";
+import { readFileSync } from "node:fs";
+
+/**
+ * The child environment for a live arm, carrying an OAuth token if one is
+ * available.
+ *
+ * `spikes/README.md` documents the handoff convention — export
+ * `CLAUDE_CODE_OAUTH_TOKEN`, or write the token to `~/.claude/.eo-oauth-token`
+ * (mode 0600) — and says every script "falls back to that file when no OAuth
+ * token is available". This script did NOT, which is why its first two attempts
+ * reported "not authenticated" on a host that had a handoff token sitting in
+ * the documented place. The SDK-transport spikes implement the fallback; the
+ * CLI-transport ones inherited `process.env` and nothing else.
+ *
+ * The token is never logged, never echoed, and never written anywhere.
+ */
+function liveEnv() {
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) return process.env;
+  try {
+    const token = readFileSync(join(homedir(), ".claude", ".eo-oauth-token"), "utf8").trim();
+    if (token.length > 0) return { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: token };
+  } catch {
+    /* no handoff file — fall through to whatever the CLI can resolve itself */
+  }
+  return process.env;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LIVE = process.argv.includes("--live");
@@ -199,8 +226,9 @@ try {
     writeFileSync(join(controlRoot, ".claude", "settings.json"), "{}\n", "utf8");
 
     const PROMPT = "Say the word ready.";
-    const styled = await runClaude(["-p", PROMPT], { cwd: projectRoot, timeoutMs: 120000 });
-    const control = await runClaude(["-p", PROMPT], { cwd: controlRoot, timeoutMs: 120000 });
+    const env = liveEnv();
+    const styled = await runClaude(["-p", PROMPT], { cwd: projectRoot, env, timeoutMs: 120000 });
+    const control = await runClaude(["-p", PROMPT], { cwd: controlRoot, env, timeoutMs: 120000 });
 
     const inStyled = styled.stdout.includes(SENTINEL);
     const inControl = control.stdout.includes(SENTINEL);

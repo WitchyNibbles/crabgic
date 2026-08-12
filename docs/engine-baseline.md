@@ -960,37 +960,38 @@ and still yields no category. Silence discriminates nothing here, because §21 a
 `claude plugin details` is **warn-blind**. Recorded so that a future engine which DOES reject the
 key is recognisable as a change.
 
-### 23.4 Behavioural verification — **UNRESOLVED, attempted twice, blocked twice**
+### 23.4 A project-level output style DOES reach the model — **PASS** (2026-08-12)
 
-Whether a _project-level_ style changes the register needs a real turn. The probe implements it
-behind `--live`, with a CONTROL ARM in an identical project without the style, because a missing
-sentinel is otherwise ambiguous between "the style was ignored", "print mode ignores styles" and
-"the model did not comply".
+Verified at engine 2.1.224, two live turns, with a CONTROL ARM in an identical project carrying no
+style — a missing sentinel is otherwise ambiguous between "the style was ignored", "print mode
+ignores styles" and "the model did not comply".
 
-**Attempted 2026-08-11 and it did not run**: both arms returned
-`Failed to authenticate: OAuth session expired and could not be refreshed`.
+| Arm     | `.claude/output-styles/` + `outputStyle` setting | Reply            |
+| ------- | ------------------------------------------------ | ---------------- |
+| styled  | present, selecting a style demanding a sentinel  | `OKAPI42 ready.` |
+| control | absent                                           | `ready`          |
 
-**Re-attempted 2026-08-12 on the same engine build (2.1.224), and it still did not run** — both
-arms returned that identical string, so the fixture is byte-identical to the 08-11 one. The cause
-was then isolated with two checks that cost no turns: `claude auth status` prints
-`{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}` — both under the inherited
-environment and under a scrubbed `env -i PATH HOME` — and `~/.claude/.credentials.json` carries
-`"expiresAt": 0`. The host was logged out. That is a fact about the host, **not** an observation
-about output styles, and not a probe defect.
+The sentinel appears in the styled arm and not the control arm, so the style reached the model and
+the effect is attributable to it. Verdict **PASS**
+(`output-style.project-level-reaches-the-model`).
 
-**No turn happened on either date, and no budget was spent.** Before re-running, confirm
-`claude auth status` reports `"loggedIn": true`; otherwise the run only re-derives Tier A and
-returns this same UNRESOLVED:
+**This is the fact the installer-written path depends on, and it is now established.** Combined with
+§23.1/§23.2 — output styles are NOT a plugin component — the delivery route is settled: crabgic
+cannot ship one, and writing it into the project is both possible and effective.
 
-```
-claude auth status && node spikes/11-output-style.mjs --live
-```
+**Two earlier attempts reported "not authenticated" and both were a defect in the PROBE, not the
+host.** `spikes/README.md` documents a handoff convention — export `CLAUDE_CODE_OAUTH_TOKEN`, or
+write the token to `~/.claude/.eo-oauth-token` (mode 0600) — and states that scripts fall back to
+that file. The SDK-transport spikes implement it; this CLI-transport one inherited `process.env` and
+nothing else, so a host with a valid handoff token in the documented place still failed to
+authenticate. Fixed by reading the file into the child environment. The token is never logged.
 
-**This is the one fact the installer-written path depends on, and it is STILL NOT established.**
-Anything built on it must say so. The probe distinguishes "ran and the effect was absent" (FAIL)
-from "never ran" (UNRESOLVED) explicitly — an earlier draft reported the auth failure as a FAIL,
-which would have recorded as an engine fact that project-level styles do not work, on evidence that
-no turn had occurred.
+The blocked-detection logic added after the first attempt did its job: both failures were reported
+UNRESOLVED with the reason, never as a FAIL. Had they been recorded as FAIL, this baseline would now
+assert that project-level output styles do not work — on evidence that no turn had occurred.
+
+**Still not probed** (each needs further live turns, and none blocks the delivery path): how a
+project style composes with a USER-level `outputStyle`, and whether it survives `--resume`.
 
 ### 23.5 What this means for the design
 

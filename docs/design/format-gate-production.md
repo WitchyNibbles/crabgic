@@ -33,22 +33,26 @@ work _leftward_, from detection toward prevention.
 
 ## 3. Proposed architecture — four layers
 
-### L0. Prevention: an output style — ❌ **DISPROVEN as specified (2026-08-11)**
+### L0. Prevention: an output style — ✅ **DELIVERED, verified 2026-08-12**
 
-> **Measured, and the answer is no.** `spikes/11-output-style.mjs`, recorded as
-> `docs/engine-baseline.md` §23, at engine 2.1.224 and at zero live-model cost: output styles are
-> **not a plugin component**. A plugin carrying one lists no such category in its inventory (which
-> does print zero-count categories) and reports `~0 tok` always-on. crabgic cannot ship one.
+> **Both halves are now measured.** `spikes/11-output-style.mjs`, recorded as `docs/engine-baseline.md`
+> §23, engine 2.1.224:
 >
-> **The remaining path is the installer**, writing `.claude/output-styles/` plus the `outputStyle`
-> setting into the consuming project — which is already how `CLAUDE.md`, `.claude/settings.json`,
-> the agents and the statusline get there. That is NOT a drop-in substitute: it modifies files in
-> the operator's repository, so it needs the managed-artifact treatment, drift detection and
-> uninstall path the installer gives everything else, and its own owner-consent story. It deserves
-> its own design pass rather than inheriting this one.
+> - **§23.1/§23.2 — a plugin CANNOT ship one.** No such component category, `~0 tok` always-on. The
+>   route this section originally proposed is dead.
+> - **§23.4 — a PROJECT-level one DOES reach the model.** PASS, against a control arm: the styled
+>   arm returned the probe's sentinel, the identical unstyled arm did not.
 >
-> Everything below is the original proposal, kept because it records what was expected and why the
-> probe was worth running.
+> So the delivery path is the INSTALLER, writing `.claude/output-styles/crabgic.md` plus an add-only
+> `outputStyle` key — the shape `statusline-writer.ts` already uses, adopted because §17 recorded
+> exactly the same constraint for `statusLine`. Shipped.
+>
+> Two earlier "not authenticated" results were a defect in the PROBE, not the host: it ignored the
+> handoff-token convention `spikes/README.md` documents. Its blocked-detection reported those
+> UNRESOLVED rather than FAIL, which is the only reason this baseline does not now assert the
+> opposite of what is true.
+>
+> Everything below is the original proposal, kept because it records what was expected.
 
 An output style replaces the assistant's base communication prompt. If a plugin can ship one, the
 reporting rules stop being an instruction the model may drift from and become the model's default

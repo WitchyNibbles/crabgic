@@ -23,8 +23,7 @@
   {
     "probe": "output-style.project-level-reaches-the-model",
     "expectation": "a project-level .claude/output-styles/ entry selected by the outputStyle setting reaches the model: the sentinel OKAPI42 appears in the styled arm and not in the control arm",
-    "observed": "probe could not run (not authenticated): styled \"Failed to authenticate: OAuth session expired and could not be refreshed\" / control \"Failed to authenticate: OAuth session expired and could not be refreshed\"",
-    "verdict": "UNRESOLVED",
-    "note": "No turn happened, so nothing about output styles was observed. Re-run after `claude setup-token` (or an interactive login) to obtain a verdict."
+    "observed": "styled arm CONTAINS the sentinel (OKAPI42 ready.); control arm lacks it (ready)",
+    "verdict": "PASS"
   }
 ]
