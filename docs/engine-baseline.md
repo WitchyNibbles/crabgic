@@ -960,7 +960,7 @@ and still yields no category. Silence discriminates nothing here, because §21 a
 `claude plugin details` is **warn-blind**. Recorded so that a future engine which DOES reject the
 key is recognisable as a change.
 
-### 23.4 Behavioural verification — **UNRESOLVED, attempted and blocked**
+### 23.4 Behavioural verification — **UNRESOLVED, attempted twice, blocked twice**
 
 Whether a _project-level_ style changes the register needs a real turn. The probe implements it
 behind `--live`, with a CONTROL ARM in an identical project without the style, because a missing
@@ -968,15 +968,25 @@ sentinel is otherwise ambiguous between "the style was ignored", "print mode ign
 "the model did not comply".
 
 **Attempted 2026-08-11 and it did not run**: both arms returned
-`Failed to authenticate: OAuth session expired and could not be refreshed`. **No turn happened, so
-nothing about output styles was observed, and no budget was spent.** Re-run after
-`claude setup-token` or an interactive login:
+`Failed to authenticate: OAuth session expired and could not be refreshed`.
+
+**Re-attempted 2026-08-12 on the same engine build (2.1.224), and it still did not run** — both
+arms returned that identical string, so the fixture is byte-identical to the 08-11 one. The cause
+was then isolated with two checks that cost no turns: `claude auth status` prints
+`{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}` — both under the inherited
+environment and under a scrubbed `env -i PATH HOME` — and `~/.claude/.credentials.json` carries
+`"expiresAt": 0`. The host was logged out. That is a fact about the host, **not** an observation
+about output styles, and not a probe defect.
+
+**No turn happened on either date, and no budget was spent.** Before re-running, confirm
+`claude auth status` reports `"loggedIn": true`; otherwise the run only re-derives Tier A and
+returns this same UNRESOLVED:
 
 ```
-node spikes/11-output-style.mjs --live
+claude auth status && node spikes/11-output-style.mjs --live
 ```
 
-**This is the one fact the installer-written path depends on, and it is NOT yet established.**
+**This is the one fact the installer-written path depends on, and it is STILL NOT established.**
 Anything built on it must say so. The probe distinguishes "ran and the effect was absent" (FAIL)
 from "never ran" (UNRESOLVED) explicitly — an earlier draft reported the auth failure as a FAIL,
 which would have recorded as an engine fact that project-level styles do not work, on evidence that
