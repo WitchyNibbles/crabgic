@@ -4,7 +4,6 @@ import {
   PROSE_BLOCK_MAX_CHARS,
   PROSE_BLOCK_MAX_LINES,
   HEADING_REQUIRED_ABOVE_LINES,
-  ASSUMED_WRAP_COLUMNS,
   findWalls,
   decideFormatAction,
   DEFAULT_GATE_CONFIG,
@@ -44,8 +43,16 @@ describe("limits stay in parity with the policy", () => {
     );
   });
 
-  it("derives the character budget from the line budget, not from a magic number", () => {
-    expect(PROSE_BLOCK_MAX_CHARS).toBe(PROSE_BLOCK_MAX_LINES * ASSUMED_WRAP_COLUMNS);
+  /**
+   * This used to assert the budget was DERIVED (`3 lines x 80 columns` = 240).
+   * That derivation was a guess in a lab coat, and measurement destroyed it: at
+   * 240 the gate would have refused 69% of 1,878 real messages, because the
+   * owner's median paragraph is 228. The budget is now calibrated against the
+   * owner's own judgement, so what has to hold is parity with the policy — not
+   * an arithmetic identity that made a made-up number look principled.
+   */
+  it("takes the calibrated prose budget from the policy, not from arithmetic", () => {
+    expect(PROSE_BLOCK_MAX_CHARS).toBe(DEFAULT_PRESENTATION_POLICY.limits.proseBlockMaxChars);
   });
 });
 
@@ -168,7 +175,10 @@ describe("decideFormatAction", () => {
   const wall = "word ".repeat(120).trim();
 
   it("blocks a wall, and the reason names the rule and the remedy", () => {
-    const decision = decideFormatAction({ last_assistant_message: wall });
+    const decision = decideFormatAction(
+      { last_assistant_message: wall },
+      { enabled: true, mode: "blocking" },
+    );
     expect(decision?.decision).toBe("block");
     expect(decision?.reason).toMatch(/answer first|headings|bullets/i);
   });
@@ -229,9 +239,28 @@ describe("gate configuration", () => {
     expect(decision?.walls?.length).toBeGreaterThan(0);
   });
 
-  it("blocks in blocking mode, which is the default", () => {
-    expect(decideFormatAction({ last_assistant_message: wall })?.decision).toBe("block");
-    expect(DEFAULT_GATE_CONFIG).toEqual({ enabled: true, mode: "blocking" });
+  it("blocks when configured to block", () => {
+    expect(
+      decideFormatAction({ last_assistant_message: wall }, { enabled: true, mode: "blocking" })
+        ?.decision,
+    ).toBe("block");
+  });
+
+  /**
+   * Parity with the policy, NOT a hardcoded literal. This asserted
+   * `{enabled: true, mode: "blocking"}` by hand, so when the policy's default
+   * moved to `advisory` the hook silently disagreed with it and the test still
+   * passed — the exact drift the parity discipline exists to catch, defeated by
+   * writing the expectation out longhand.
+   */
+  it("defaults to whatever the policy defaults to", () => {
+    expect(DEFAULT_GATE_CONFIG).toEqual(DEFAULT_PRESENTATION_POLICY.formatGate);
+  });
+
+  it("observes instead of blocking by default, until the post-style rate is known", () => {
+    const decision = decideFormatAction({ last_assistant_message: wall });
+    expect(decision?.advisory).toBe(true);
+    expect(decision?.decision).toBeUndefined();
   });
 
   it("keeps the engine's loop guard ahead of the config — a re-entry never blocks", () => {
@@ -342,11 +371,13 @@ describe("main — fails open", () => {
     expect(written).toEqual([]);
   });
 
-  it("writes a block decision for a wall", () => {
+  it("writes a block decision for a wall when configured to block", () => {
     const written: string[] = [];
     main({
       read: () => ({ last_assistant_message: "word ".repeat(120).trim() }),
       write: (s: string) => written.push(s),
+      config: { enabled: true, mode: "blocking" },
+      record: () => undefined,
     });
     expect(written).toHaveLength(1);
     expect(JSON.parse(written[0]!).decision).toBe("block");

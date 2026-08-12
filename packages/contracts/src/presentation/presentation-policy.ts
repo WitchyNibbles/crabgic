@@ -56,6 +56,14 @@ import {
  * - `titleMaxColumns` — a section title's display width. Turns the standing
  *   claim that "section titles are plain single-width text by contract" into
  *   something checked rather than asserted in a comment.
+ * - `proseBlockMaxChars` — the longest single paragraph in the MANAGER channel,
+ *   which re-wraps and so cannot use `proseBlockMaxLines`. **The only limit
+ *   here that is calibrated rather than reasoned**: the owner judged four real
+ *   paragraphs drawn from their own transcripts and put the wall between 230
+ *   and 330 characters. Set just under the first one they called a wall.
+ *   Measured in characters, not columns, which under-counts wide scripts — the
+ *   channel it governs is prose the owner reads, and the approximation is
+ *   deliberate rather than overlooked.
  */
 export const HUMAN_REPORT_LIMITS = {
   leadAnswerMaxLines: 2,
@@ -66,16 +74,30 @@ export const HUMAN_REPORT_LIMITS = {
   tableMinRows: 3,
   bulletMaxColumns: 100,
   titleMaxColumns: 40,
+  proseBlockMaxChars: 320,
 } as const;
 
 /**
- * Ships ENABLED and BLOCKING, which is the state the gate merged in. The
- * design's rollout moves the default to `advisory` once telemetry exists to
- * calibrate against; until then this records honestly what is running.
+ * Ships ENABLED and ADVISORY.
+ *
+ * It merged as `blocking` on a guessed budget. Measured against 1,878 real
+ * assistant messages from this owner's own transcripts, that budget would have
+ * refused **69%** of them; even at the owner-calibrated `proseBlockMaxChars` it
+ * refuses **44%**. A gate that stops four turns in ten is not a gate, and the
+ * owner would have switched it off inside a day — which protects nothing.
+ *
+ * The high rate is NOT necessarily mis-calibration: it may be an accurate
+ * measure of how often the manager wrote walls. But that measurement is from
+ * BEFORE the output style landed (engine-baseline §23.4), whose entire purpose
+ * is to lower it at the source. Blocking on the pre-prevention rate would
+ * repeat the original mistake — shipping a blocker on a number nobody has
+ * checked against the world it will actually run in.
+ *
+ * So: observe, let the telemetry accumulate a post-§23.4 rate, then decide.
  */
 export const DEFAULT_FORMAT_GATE = {
   enabled: true,
-  mode: "blocking",
+  mode: "advisory",
 } as const;
 
 const HumanReportLimitsSchema = z
@@ -88,6 +110,7 @@ const HumanReportLimitsSchema = z
     tableMinRows: z.number().int().positive(),
     bulletMaxColumns: z.number().int().positive(),
     titleMaxColumns: z.number().int().positive(),
+    proseBlockMaxChars: z.number().int().positive(),
   })
   .strict();
 

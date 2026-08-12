@@ -61,22 +61,26 @@ export const PROSE_BLOCK_MAX_LINES = 3;
 export const HEADING_REQUIRED_ABOVE_LINES = 5;
 
 /**
- * The width a wrapped manager report is assumed to occupy.
+ * The longest single paragraph, in characters — mirrors `proseBlockMaxChars` in
+ * `@crabgic/contracts`, and the parity test fails on drift.
  *
  * WHY A CHARACTER BUDGET EXISTS AT ALL. `renderHumanReport` enforces
- * `proseBlockMaxLines` by counting newlines, which is exactly right for CLI
- * stdout: that stream is not re-wrapped, so a source line is a screen line. The
- * manager writes into a markdown-rendering TUI that DOES re-wrap, where the
- * commonest wall of all — one 900-character paragraph — contains no newline and
- * would sail past a line count while filling the screen.
+ * `proseBlockMaxLines` by counting newlines, which is right for CLI stdout: that
+ * stream is not re-wrapped, so a source line is a screen line. The manager
+ * writes into a markdown TUI that DOES re-wrap, where the commonest wall of all
+ * — one 900-character paragraph — holds no newline and would sail past a line
+ * count while filling the screen.
  *
- * So the same limit needs a second spelling for the second channel. 80 columns
- * is the conservative choice: assuming a narrower terminal would make the gate
- * fire on paragraphs that render short and wide, which is the false-positive
- * direction this hook must stay out of.
+ * WHY 320 AND NOT A DERIVATION. This was `3 lines x an assumed 80 columns` =
+ * 240, which is a guess wearing a derivation's clothes, and it was badly wrong:
+ * measured against 1,878 real messages from this owner's transcripts, 240 would
+ * have refused 69% of them — the median paragraph is 228, so the line ran
+ * straight through the middle of ordinary writing. 320 is CALIBRATED: the owner
+ * read four real paragraphs of increasing size from their own logs and put the
+ * wall between 230 and 330. It is set just under the first one they called a
+ * wall, which is the conservative side of their own judgement.
  */
-export const ASSUMED_WRAP_COLUMNS = 80;
-export const PROSE_BLOCK_MAX_CHARS = PROSE_BLOCK_MAX_LINES * ASSUMED_WRAP_COLUMNS;
+export const PROSE_BLOCK_MAX_CHARS = 320;
 
 /**
  * The rules. Two, both deliberately blunt.
@@ -150,8 +154,17 @@ export function decideFormatAction(payload, config = DEFAULT_GATE_CONFIG) {
   return { decision: "block", reason: buildBlockReason(walls) };
 }
 
-/** What the gate does when no project config is found. Mirrors `DEFAULT_FORMAT_GATE`. */
-export const DEFAULT_GATE_CONFIG = Object.freeze({ enabled: true, mode: "blocking" });
+/**
+ * What the gate does when no project config is found. Mirrors
+ * `DEFAULT_FORMAT_GATE` in `@crabgic/contracts`, and the parity test asserts it.
+ *
+ * ADVISORY, not blocking. It shipped blocking on a guessed budget that would
+ * have refused 69% of 1,878 real messages; even at the owner-calibrated budget
+ * it refuses 44%. Those are pre-prevention numbers — the output style
+ * (engine-baseline §23.4) exists to lower them at the source — so the honest
+ * order is observe, measure the post-style rate, then decide about blocking.
+ */
+export const DEFAULT_GATE_CONFIG = Object.freeze({ enabled: true, mode: "advisory" });
 
 /**
  * Reads `.crabgic/presentation.json`'s `formatGate` member.
