@@ -16,6 +16,62 @@ file — only `packages/cli/CHANGELOG.md` — so this section IS written by hand
 time, and a release that forgets it fails the gate (commit `a344105` is the precedent);
 and this file is the only one of the two the gate reads._
 
+## 1.7.0
+
+**⚠️ One behaviour change to read before upgrading: `crabgic install` now writes two more
+things into your project.** Everything else here is additive or a bug fix.
+
+1. **📝 `install` writes an output style, and points `settings.json` at it.** New files:
+   `.claude/output-styles/crabgic.md`, plus an `outputStyle` key in
+   `.claude/settings.json`. This changes the assistant's default register **for every
+   session in that project**, not only crabgic's own — which is the point: the reporting
+   rules become the model's default rather than an instruction it can drift from.
+
+   **It is add-only.** A project that already sets `outputStyle` — to another style, to
+   blank, or to anything at all — is left untouched, on the same monotonicity rule that
+   already protects `statusLine` and `enabledPlugins`. `uninstall` removes both. To opt out
+   permanently, set `outputStyle` yourself before installing.
+
+   Why the installer and not the plugin: output styles are **not** a plugin component at
+   engine 2.1.224 — a plugin carrying one registers no such category and adds `~0 tok`
+   (`docs/engine-baseline.md` §23.1–23.2). A project-level style **does** reach the model,
+   measured against a control arm (§23.4).
+
+2. **👀 A new `Stop` hook watches manager reports for walls of prose — and does NOT block.**
+   It ships **advisory**: it records what it would have caught and lets the turn end.
+
+   The reason it does not block is measurement. Its first budget was derived rather than
+   observed, and against 1,878 real assistant messages it would have refused **69%** of
+   them. Recalibrated against the owner's own judgement of real paragraphs it still fires on
+   **44%** — and that figure predates the output style above, whose whole purpose is to
+   lower it at the source. Blocking on a pre-prevention rate would be the same mistake in a
+   new costume, so the gate observes first.
+
+   Configure it — including switching it off — in `.crabgic/presentation.json`
+   (`formatGate.enabled`, `formatGate.mode`). A rejected config is reported by
+   `crabgic doctor` rather than silently ignored.
+
+3. **🧰 New gateway tool `report.render`.** Takes `{role, lead, sections, nextAction}` and
+   returns conforming markdown. It is the only tool in the registry gated on nothing: no
+   I/O, no state, no authority, a pure function of its arguments.
+
+4. **📐 Presentation width is measured in terminal columns, not code units.** This fixes
+   three real defects, all previously invisible because every caller passed ASCII: a heading
+   rule drawn at **half** the width of a CJK title, a key/value column that sheared by one
+   space per wide character in the one function whose entire job is alignment, and a single
+   long token — a `sha256:` digest, a URL — escaping the bullet budget because it counted
+   words rather than width.
+
+5. **🗒️ Every human-mode command reports answer-first.** `doctor`, `status`, `evidence`,
+   `help`, `install`, `upgrade`, `uninstall`, `learn *`, `connection *`, `trust *`,
+   `approve`, `cancel`, `resume`. A verdict on the first line, headed sections, and capped
+   lists that state what they held back. On a clean host `doctor` is now **one line**;
+   `upgrade` on an up-to-date install is four instead of ten; `help` is a grouped table
+   whose longest line is 78 characters instead of 250.
+
+   **`--json` output is unchanged** on every one of them, except `help`, which gains an
+   additive `detail` field.
+
 ## 1.6.0
 
 **⚠️ Read this before upgrading. Two behaviour changes in 1.6.0 can fail runs and refuse

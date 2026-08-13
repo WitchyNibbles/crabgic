@@ -1,5 +1,29 @@
 # crabgic
 
+## 1.7.0
+
+### Minor Changes
+
+- Answer-first reporting, enforced on both channels.
+
+  - `install` now writes `.claude/output-styles/crabgic.md` and sets `outputStyle`
+    in `.claude/settings.json`, **add-only** — a style you already chose is never
+    replaced. Probe-verified to reach the model (engine-baseline §23.4).
+  - New gateway tool `report.render` renders a policy-conforming markdown report
+    from `{role, lead, sections, nextAction}`.
+  - A `Stop` hook now watches manager reports for walls of prose. It ships
+    **advisory** (records, never blocks) on a budget calibrated against real
+    messages, and is configurable — including off — via
+    `.crabgic/presentation.json`.
+  - Presentation limits are measured in terminal **columns** rather than code
+    units. Fixes a heading rule drawn at half width under CJK titles, a
+    key/value column that sheared on any wide character, and a single long token
+    (a digest, a URL) escaping the bullet budget entirely.
+  - `doctor`, `status`, `evidence`, `help`, `install`, `upgrade`, `uninstall`,
+    `learn *`, `connection *`, `trust *`, `approve`, `cancel` and `resume` all
+    render answer-first: a verdict on the first line, headed sections, capped
+    lists that say what they held back. `--json` output is unchanged.
+
 ## 1.6.0
 
 ### Minor Changes

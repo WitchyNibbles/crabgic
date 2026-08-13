@@ -794,8 +794,8 @@
         },
         {
           "kind": "test",
-          "ref": "CHANGELOG.md:451",
-          "quotedAssertion": "The CHANGELOG clause, at the heading shape changelogEntryCheck.ts's own pattern requires (a level-1-to-3 heading whose version is not a prefix of a longer token): :451 '## 1.0.0'. Corrected 2026-08-07 at the 1.6.0 cut: the marker and the ref were `CHANGELOG.md:323`, then briefly `CHANGELOG.md:449` earlier on the same release branch. The assertion is unchanged throughout — the 1.6.0 release section was inserted above this heading, moving it down 128 lines in total. The claim it bears is unaffected; only the pointer moved."
+          "ref": "CHANGELOG.md:507",
+          "quotedAssertion": "The CHANGELOG clause, at the heading shape changelogEntryCheck.ts's own pattern requires (a level-1-to-3 heading whose version is not a prefix of a longer token): :507 '## 1.0.0'. Corrected 2026-08-07 at the 1.6.0 cut: the marker and the ref were `CHANGELOG.md:323`, then briefly `CHANGELOG.md:449` earlier on the same release branch. The assertion is unchanged throughout — the 1.6.0 release section was inserted above this heading, moving it down 128 lines in total. The claim it bears is unaffected; only the pointer moved. Corrected again 2026-08-13 at the 1.7.0 cut, from `CHANGELOG.md:451` to :507 — the hand-written 1.7.0 entry was inserted above 1.6.0, moving every earlier heading down 56 lines. The quoted heading and the claim are unchanged; only its distance from the top of a file that grows at the top has."
         },
         {
           "kind": "artifact",
