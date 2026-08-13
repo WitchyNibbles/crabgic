@@ -1,7 +1,7 @@
 # Design proposal — display width as a first-class budget
 
 **Status: PROPOSAL, not authority.** `docs/presentation-policy.md` remains the authority on the
-limits themselves. This proposes fixing how they are *measured*.
+limits themselves. This proposes fixing how they are _measured_.
 
 ## 1. The residual, and why it is bigger than it looks
 
@@ -11,12 +11,12 @@ digest, a URL, a stack frame — passes a 15-word budget untouched and renders a
 That is one symptom. The actual defect is that **the codebase has four different notions of
 "length" and uses them interchangeably**:
 
-| Notion               | Obtained by         | Where used today                                      |
-| -------------------- | ------------------- | ----------------------------------------------------- |
-| UTF-16 code units    | `text.length`       | `renderKeyValues` padding, `renderHeading` rule length, the format gate's char budget |
-| Code points          | `countChars()`      | `renderer-core`, for `CommunicationPolicy` limits      |
-| Grapheme clusters    | *nothing*           | —                                                      |
-| **Display columns**  | *nothing*           | — but this is what every one of the above is trying to approximate |
+| Notion              | Obtained by    | Where used today                                                                      |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------- |
+| UTF-16 code units   | `text.length`  | `renderKeyValues` padding, `renderHeading` rule length, the format gate's char budget |
+| Code points         | `countChars()` | `renderer-core`, for `CommunicationPolicy` limits                                     |
+| Grapheme clusters   | _nothing_      | —                                                                                     |
+| **Display columns** | _nothing_      | — but this is what every one of the above is trying to approximate                    |
 
 Every limit in `HUMAN_REPORT_LIMITS` is ultimately about **how much screen a thing occupies**. None
 of them measures that.
@@ -34,9 +34,9 @@ text by contract". **Nothing enforces that contract.**
 
 Measured 2026-08-11 against the shipped `renderHeading`:
 
-| Title      | Title columns | Rule columns | Result       |
-| ---------- | ------------- | ------------ | ------------ |
-| `Evidence` | 8             | 8            | correct      |
+| Title      | Title columns | Rule columns | Result              |
+| ---------- | ------------- | ------------ | ------------------- |
+| `Evidence` | 8             | 8            | correct             |
 | `評価結果` | 8             | 4            | **sheared by half** |
 
 Latent today because every caller passes ASCII — but it is a comment where a check should be.
@@ -48,7 +48,7 @@ it is easy to reproduce accidentally while trying to verify the bug.
 ### 2.2 `renderKeyValues` — alignment shears on any wide character
 
 Padding is computed with `padEnd` on `.length`. The module's own doc rightly explains that padding
-must be measured on the *plain* text rather than the painted one — correct, and insufficient: plain
+must be measured on the _plain_ text rather than the painted one — correct, and insufficient: plain
 text still mis-measures wide glyphs.
 
 Measured against the shipped `renderKeyValues`, keys `run` and `実行`:
@@ -70,7 +70,7 @@ Word count is uncorrelated with width. `"a b c … o"` (15 words) is ~29 columns
 ### 2.4 The format gate
 
 `PROSE_BLOCK_MAX_CHARS` counts code units. Emoji-dense prose over-counts (blocks too early); CJK
-prose under-counts (blocks too late — and CJK is exactly where a character *is* two columns).
+prose under-counts (blocks too late — and CJK is exactly where a character _is_ two columns).
 
 ## 3. Proposed design
 
@@ -110,10 +110,10 @@ aligned column is not, which is why §3.4 matters more than exactness.
 
 Add to `HUMAN_REPORT_LIMITS` (a contract change — schema, doc, and the hook's parity test):
 
-| Limit               | Proposed | Rationale                                                        |
-| ------------------- | -------- | ---------------------------------------------------------------- |
-| `bulletMaxColumns`  | 100      | bounds the reported residual; ~15 words of ordinary prose         |
-| `titleMaxColumns`   | 40       | turns `renderHeading`'s "by contract" comment into a check        |
+| Limit              | Proposed | Rationale                                                  |
+| ------------------ | -------- | ---------------------------------------------------------- |
+| `bulletMaxColumns` | 100      | bounds the reported residual; ~15 words of ordinary prose  |
+| `titleMaxColumns`  | 40       | turns `renderHeading`'s "by contract" comment into a check |
 
 **Keep `bulletMaxWords`.** The two bound different failure modes — many short words vs. one huge
 token — and whichever bites first should win. Removing the word budget would let 100 columns of
@@ -131,12 +131,12 @@ token — and whichever bites first should win. Removing the word budget would l
 
 ### 3.5 Call sites to migrate
 
-| Site                      | Change                                                       |
-| ------------------------- | ------------------------------------------------------------ |
-| `renderKeyValues`         | pad by `displayWidth`, not `.length`                          |
-| `renderHeading`           | rule length by `displayWidth`; throw past `titleMaxColumns`   |
-| `renderHumanReport`       | bullets and rows elide on both word and column budgets        |
-| `stop-report-format-gate` | `PROSE_BLOCK_MAX_CHARS` measured in columns                   |
+| Site                      | Change                                                      |
+| ------------------------- | ----------------------------------------------------------- |
+| `renderKeyValues`         | pad by `displayWidth`, not `.length`                        |
+| `renderHeading`           | rule length by `displayWidth`; throw past `titleMaxColumns` |
+| `renderHumanReport`       | bullets and rows elide on both word and column budgets      |
+| `stop-report-format-gate` | `PROSE_BLOCK_MAX_CHARS` measured in columns                 |
 
 The gate is a plain `.mjs` that cannot import the workspace package, so it restates the function —
 same arrangement as its limits, and it needs the **same parity test** so the two implementations
@@ -156,12 +156,12 @@ cannot drift.
 
 ## 5. Risks
 
-| Risk                                          | Mitigation                                                    |
-| --------------------------------------------- | -------------------------------------------------------------- |
-| `Intl.Segmenter` cost in a hot path            | Statusline is the only hot path and does not import this. Measure before use there; memoise if needed. |
-| Width tables drift with Unicode versions       | Derive from ranges, pin the Unicode version in the doc, fixture-test.  |
-| Contract change ripples into merged closeouts  | New optional limits, existing ones untouched → no criterion changes meaning. |
-| Two implementations (contracts + `.mjs` hook)  | Parity test, exactly as `IN_FLIGHT_STATES` and the limits already do.  |
+| Risk                                          | Mitigation                                                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `Intl.Segmenter` cost in a hot path           | Statusline is the only hot path and does not import this. Measure before use there; memoise if needed. |
+| Width tables drift with Unicode versions      | Derive from ranges, pin the Unicode version in the doc, fixture-test.                                  |
+| Contract change ripples into merged closeouts | New optional limits, existing ones untouched → no criterion changes meaning.                           |
+| Two implementations (contracts + `.mjs` hook) | Parity test, exactly as `IN_FLIGHT_STATES` and the limits already do.                                  |
 
 ## 6. Sequencing
 
