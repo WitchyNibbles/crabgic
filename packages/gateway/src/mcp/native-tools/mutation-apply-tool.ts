@@ -32,6 +32,7 @@ import {
 } from "../../provider-dispatch/provider-registry.js";
 import type { GatewayToolDefinition, GatewayToolResult } from "../tool-registry.js";
 import type { MutationApplyClient } from "./mutation-apply-client.js";
+import { mapUnknownErrorToConnectorError } from "../../mutation-pipeline/error-mapping.js";
 
 export interface MutationApplyToolDeps {
   readonly connections: ExternalConnectionRepository;
@@ -40,6 +41,8 @@ export interface MutationApplyToolDeps {
   readonly lock: IdempotencyKeyLock;
   /** Test-only seam (mirrors `../../connection-doctor/reachability-probe.js`'s own `buildClient` override) — production always omits this, defaulting to `buildHttpClientForConnection` (real DNS, real TLS). */
   readonly buildHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
+  /** Idempotent per-connection activation — see `ProviderDispatchDeps.activateConnection` for why it exists and why it is lazy. */
+  readonly activateConnection?: (connection: ExternalConnection) => Promise<void>;
 }
 
 const APPLY_INPUT_SHAPE = { plan: RemoteMutationPlanSchema };
@@ -78,6 +81,17 @@ export function buildMutationApplyTool(
             retryable: false,
           }),
         );
+      }
+
+      // Same lazy activation the read path performs — a mutation must not
+      // be the one call that finds the per-connection registry empty
+      // (issue #135, defect 3).
+      if (deps.activateConnection !== undefined) {
+        try {
+          await deps.activateConnection(connection);
+        } catch (err) {
+          return errorResult(mapUnknownErrorToConnectorError(err, connection.provider));
+        }
       }
 
       let applyClient: MutationApplyClient;

@@ -69,16 +69,23 @@ export class JiraConnectionRegistry {
     return this.#attachmentStaging;
   }
 
+  /**
+   * `tokenManager` is OPTIONAL since #135: a connection authenticating by
+   * HTTP Basic supplies `options.authHeaderProvider` instead and has no
+   * token to manage. Exactly one of the two must be present — a context
+   * with neither refuses at request time rather than sending an
+   * unauthenticated call (see `jiraAuthHeader`).
+   */
   async register(
     connection: ExternalConnection,
-    tokenManager: JiraTokenManager,
+    tokenManager: JiraTokenManager | undefined,
     options: RegisterJiraConnectionOptions = {},
   ): Promise<JiraConnectionEntry> {
     const httpClient = await (options.buildHttpClient ?? buildHttpClientForConnection)(connection);
     const ctx: JiraHttpContext = {
       connection,
       httpClient,
-      tokenManager,
+      ...(tokenManager !== undefined ? { tokenManager } : {}),
       ...(options.authHeaderProvider !== undefined
         ? { authHeaderProvider: options.authHeaderProvider }
         : {}),

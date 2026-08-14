@@ -59,6 +59,7 @@ import { resolveRequirements, type ProjectInspectDeps, type Registry } from "@cr
 import type {
   AuthorizationEnvelope,
   ChangeSet,
+  ExternalConnection,
   IntentContract,
   Requirement,
   WorkUnit,
@@ -87,6 +88,13 @@ import { runContractApprove } from "../intake/contract-approve-handler.js";
 export interface ProductionGatewayToolRegistryDeps {
   readonly journal: JournalStore;
   readonly connections: ExternalConnectionRepository;
+  /**
+   * Fills the per-connection registries behind the two provider-dispatch
+   * points above, lazily, on first dispatch for each connection. Without
+   * it those registries stay empty forever and every connector answers
+   * "was never registered" (issue #135, defect 3).
+   */
+  readonly activateConnection?: (connection: ExternalConnection) => Promise<void>;
   /**
    * 16's read/plan provider-dispatch point, ALREADY POPULATED by the
    * caller. Supplied rather than constructed here so that the same
@@ -473,6 +481,9 @@ export function buildProductionGatewayToolRegistry(
     mutationApplyClients: deps.mutationApplyClients,
     journal: deps.journal,
     supervisorSocketPath: deps.supervisorSocketPath,
+    ...(deps.activateConnection !== undefined
+      ? { activateConnection: deps.activateConnection }
+      : {}),
   });
 
   // `report.render` (design §L1). Registered unconditionally and without deps:

@@ -107,6 +107,10 @@ export {
 } from "./resource-client/jira-mutation-apply-client.js";
 
 export {
+  resolveJiraCloudAuthHeaderProvider,
+  type JiraCloudAuthOptions,
+} from "./auth/jira-cloud-auth.js";
+export {
   JIRA_CLOUD_REACHABILITY_PROBE_PATH,
   JIRA_REACHABILITY_PROBE_PATHS,
 } from "./auth/reachability-probe-path.js";

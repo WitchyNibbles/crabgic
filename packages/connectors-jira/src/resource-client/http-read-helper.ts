@@ -12,7 +12,14 @@ import type { JiraAuthHeaderProvider } from "../auth/jira-datacenter-auth.js";
 export interface JiraHttpContext {
   readonly connection: ExternalConnection;
   readonly httpClient: GatewayHttpClient;
-  readonly tokenManager: JiraTokenManager;
+  /**
+   * The OAuth client-credentials token manager. OPTIONAL since #135: a
+   * connection authenticating by HTTP Basic (Cloud's API-token path) has
+   * no token to manage, and manufacturing a never-called one just to
+   * satisfy a required field would be a sentinel that lies about what
+   * the connection does.
+   */
+  readonly tokenManager?: JiraTokenManager;
   /**
    * The connection's resolved authorization scheme. Supplied by
    * `../provider/jira-connection-registry.ts` in production, from the
@@ -40,6 +47,19 @@ export interface JiraHttpContext {
  */
 async function jiraAuthHeader(ctx: JiraHttpContext): Promise<Record<string, string>> {
   if (ctx.authHeaderProvider !== undefined) return { ...(await ctx.authHeaderProvider()) };
+  if (ctx.tokenManager === undefined) {
+    // Fail closed and loudly. An unauthenticated Jira request would come
+    // back 401 and read as a credential problem, sending whoever debugs
+    // it to look at the token rather than at the wiring that never
+    // supplied one.
+    throw ConnectorError.authentication({
+      message:
+        "Jira connection has neither an auth-header provider nor a token manager — " +
+        "nothing can authenticate this request",
+      provider: JIRA_PROVIDER_NAME,
+      retryable: false,
+    });
+  }
   const token = await ctx.tokenManager.getAccessToken();
   return { authorization: `Bearer ${token.accessToken}` };
 }

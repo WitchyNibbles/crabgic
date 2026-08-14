@@ -24,6 +24,7 @@ import {
   FileExternalConnectionStore,
   probeConnectionReachability,
   ProviderRegistry,
+  type GatewayHttpClient,
   type GatewayToolRegistry,
   type GenericProviderClient,
   type MutationApplyClient,
@@ -47,6 +48,7 @@ import {
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
+  type ExternalConnection,
   type IntentContract,
   type Requirement,
   type WorkUnit,
@@ -108,6 +110,7 @@ import type { ConnectionDependencies } from "./connection/connection-commands.js
 import { withProviderKeyNormalization } from "./connection/provider-keys.js";
 import { resolveProbePath } from "./connection/probe-paths.js";
 import { FileJiraConnectionConfigStore } from "./connection/jira-config-store.js";
+import { createConnectionActivator } from "./connection/connection-activation.js";
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
@@ -206,6 +209,13 @@ export interface BuildRealCliDependenciesOverrides {
     /** Explicit passive-mode override; when omitted, `CRABGIC_NO_SPAWN` in the process env decides. Tests set it directly so they never depend on ambient env. */
     readonly spawn?: boolean;
   };
+  /**
+   * Test-only seam for `buildRealGatewayToolRegistry`'s connection
+   * activator — the HTTP client a connector is wired with. Production
+   * omits it, defaulting to the real SSRF/DNS/TLS stack; tests supply a
+   * capture so a dispatch can be driven end to end without a network.
+   */
+  readonly activationHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
 }
 
 export function buildRealCliDependencies(
@@ -391,6 +401,18 @@ export function buildRealGatewayToolRegistry(
     connections: deps.connection!.repository,
     providers: dispatch.providers,
     mutationApplyClients: dispatch.mutationApplyClients,
+    // The call site issue #135's defect 3 was missing. `dispatch.jira`
+    // and `dispatch.grafana` had NO consumers outside their own
+    // construction, so the per-connection registries behind the two
+    // provider clients above stayed empty for the process's whole life
+    // and every connector answered "was never registered".
+    activateConnection: createConnectionActivator({
+      jira: dispatch.jira,
+      jiraConfigs: deps.connection!.jiraConfigs!,
+      ...(overrides.activationHttpClient !== undefined
+        ? { buildJiraHttpClient: overrides.activationHttpClient }
+        : {}),
+    }),
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
     // Resolved HERE, from the same xdgEnv/projectHash everything else in this
     // composition root uses — a second derivation elsewhere would be a second
