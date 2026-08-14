@@ -56,26 +56,28 @@ export interface ConnectionDependencies {
    * Discovers one connection's live `CapabilitySnapshot` — the injected
    * counterpart to `probe`, backing `./connection-capabilities.ts`.
    *
-   * OPTIONAL, and `../bootstrap.ts` does NOT supply one today. Both
-   * connectors are one concrete piece short, and neither piece can be
-   * supplied here without inventing something:
+   * OPTIONAL, and `../bootstrap.ts` still does NOT supply one.
    *
-   *  - Jira: `discoverJiraCapabilitySnapshot` is real and calls documented
-   *    endpoints (`/rest/api/3/serverInfo`, `/rest/api/3/mypermissions`),
-   *    and every part of its `JiraHttpContext` is constructible —
-   *    `buildHttpClientForConnection` plus the exported `JiraTokenManager`
-   *    over `buildJiraOAuthTokenFetcher`. What is missing is STORAGE for
-   *    the OAuth client-credentials PAIR: `JiraConnectionConfigSchema`
-   *    gained `oauthClientIdSecretRef`/`oauthClientSecretRef` in WP5, but
-   *    nothing persists a `JiraConnectionConfig`, and P02's
-   *    `ExternalConnection` carries exactly ONE `secretRef` by a
-   *    roadmap/19 ruling that must not be widened.
-   *  - Grafana: `GrafanaBuildInfoResponse` is documented in its own file
-   *    as "fixture data, not an assertion about Grafana's exact wire
-   *    format ... pending live verification". Writing `fetchBuildInfo`
-   *    against it would be guessing at an unverified engine fact, which
-   *    this repo's ground rules forbid; the containerized Grafana run is
-   *    where that gets settled.
+   * BOTH BLOCKERS THIS COMMENT USED TO RECORD ARE NOW GONE (2026-08-14,
+   * issue #135) — they are stated here as resolved rather than deleted,
+   * because they are the reason the command is still unwired and the
+   * next person needs to know the reason CHANGED:
+   *
+   *  - Jira needed STORAGE for a credential pair, since `ExternalConnection`
+   *    carries exactly one `secretRef` by a roadmap/19 ruling. That storage
+   *    now exists (`./jira-config-store.ts`), and `./connection-activation.ts`
+   *    already builds a full `JiraHttpContext` from it.
+   *  - Grafana needed a `fetchBuildInfo` that was not a guess at an
+   *    unverified engine fact. One now exists
+   *    (`@crabgic/connectors-grafana`'s `buildGrafanaDiscoveryDeps`), built
+   *    on an explicit owner ruling and marked unverified in
+   *    `docs/evidence/phase-20/UNVERIFIED-build-info-wire-format.md`.
+   *
+   * So wiring `connection capabilities` is now a matter of plumbing rather
+   * than of unblocking, and is deliberately left as its own change: it was
+   * out of scope for #135, which was about DISPATCH, and wiring it here
+   * silently would take it off `e2e/live`'s NOT_IMPLEMENTED sweep without
+   * anyone deciding to.
    *
    * Leaving it undefined keeps `connection capabilities` visible to
    * `e2e/live`'s NOT_IMPLEMENTED sweep instead of converting a tracked
