@@ -30,6 +30,7 @@ import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@cr
 import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@crabgic/contracts";
 import { CliUsageError } from "../errors.js";
 import { pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
+import { resolveDispatchProviderKey, resolveStoredDeploymentType } from "./provider-keys.js";
 import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@crabgic/gateway";
 import type {
   ConnectionAddCommand,
@@ -138,10 +139,19 @@ export async function runConnectionAddCommand(
   cmd: ConnectionAddCommand,
   deps: ConnectionDependencies,
 ): Promise<CommandResult> {
+  // The argv word (`jira`) is NOT the stored value: `provider` is the
+  // provider-dispatch key `ProviderRegistry.resolve` is called with, and
+  // storing the argv word raw is what made every Jira connection created
+  // by 1.7.0 and earlier undispatchable (issue #135, defect 2). Resolved
+  // BEFORE `create`, so an unknown `--deployment` refuses the command
+  // rather than persisting a record nothing can route.
+  const provider = resolveDispatchProviderKey(cmd.provider, cmd.deploymentType);
+  const deploymentType = resolveStoredDeploymentType(cmd.provider, cmd.deploymentType);
+
   const created = await deps.repository.create({
-    provider: cmd.provider,
+    provider,
     baseUrl: cmd.baseUrl,
-    ...(cmd.deploymentType !== undefined ? { deploymentType: cmd.deploymentType } : {}),
+    ...(deploymentType !== undefined ? { deploymentType } : {}),
     allowedRedirectOrigins: cmd.allowedRedirectOrigins,
     allowedResources: cmd.allowedResources,
     allowedActions: cmd.allowedActions,

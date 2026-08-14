@@ -105,6 +105,7 @@ import {
 import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
+import { withProviderKeyNormalization } from "./connection/provider-keys.js";
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
@@ -516,8 +517,15 @@ function buildRealConnectionDependencies(
   projectHash: string,
 ): ConnectionDependencies {
   return {
-    repository: new FileExternalConnectionStore(
-      join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
+    // Wrapped, never bare: a record written by 1.7.0 or earlier carries
+    // the un-dispatchable `provider: "jira"` (issue #135, defect 2), and
+    // this is the composition root — the one layer that knows both the
+    // store and the connectors whose keys it must speak. The store itself
+    // stays provider-agnostic.
+    repository: withProviderKeyNormalization(
+      new FileExternalConnectionStore(
+        join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
+      ),
     ),
     probe: (connection) => probeConnectionReachability(connection),
   };

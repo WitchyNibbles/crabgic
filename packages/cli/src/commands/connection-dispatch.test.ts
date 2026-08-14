@@ -21,6 +21,7 @@ import { FileExternalConnectionStore } from "@crabgic/gateway";
 import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { EXIT_GENERAL_ERROR, EXIT_NOT_IMPLEMENTED, EXIT_OK } from "../exit-codes.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
+import { withProviderKeyNormalization } from "../connection/provider-keys.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
 
@@ -74,7 +75,9 @@ describe("dispatchCommand — connection add|list|doctor, real backend when deps
     const added = await dispatchCommand(ADD, { ...baseDeps(), connection });
     expect(added.exitCode).toBe(EXIT_OK);
     const created = JSON.parse(added.stdout ?? "{}") as { id: string; provider: string };
-    expect(created.provider).toBe("jira");
+    // NOT the argv word "jira": issue #135 defect 2 — the stored `provider`
+    // IS the provider-dispatch key, and `"jira"` matches no registration.
+    expect(created.provider).toBe("jira-cloud");
 
     // A fresh repository over the same path — the real cross-process shape.
     const listed = await dispatchCommand(
@@ -228,5 +231,84 @@ describe("dispatchCommand — connection add|list|doctor, real backend when deps
 
     expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED);
     expect(JSON.parse(result.stdout!)).toMatchObject({ discovered: true, version: "13.1.0" });
+  });
+});
+
+/**
+ * Issue #135, defect 2 — end-to-end through the REAL file store, because
+ * the whole defect lived in the gap between what one process writes and
+ * what another process resolves. `../connection/provider-keys.test.ts`
+ * pins the mapping itself; these pin that `connection add` actually
+ * applies it, and that a record persisted by 1.7.0 becomes dispatchable
+ * without the operator re-adding it.
+ */
+describe("connection add — the stored provider is the provider-dispatch key", () => {
+  it("stores the Data Center key for --deployment datacenter", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(
+      { ...ADD, deploymentType: "datacenter" },
+      { ...baseDeps(), connection },
+    );
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({ provider: "jira-datacenter" });
+  });
+
+  it("stores grafana under its own key", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(
+      { ...ADD, provider: "grafana", baseUrl: "https://grafana.example.com" },
+      { ...baseDeps(), connection },
+    );
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({ provider: "grafana" });
+  });
+
+  it("records the deployment it resolved, so the record says which Jira it is", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(ADD, { ...baseDeps(), connection });
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({
+      provider: "jira-cloud",
+      deploymentType: "cloud",
+    });
+  });
+
+  it("refuses an unknown --deployment for jira instead of storing an un-dispatchable record", async () => {
+    const connection = await newConnectionDeps();
+    const result = await dispatchCommand(
+      { ...ADD, deploymentType: "server" },
+      { ...baseDeps(), connection },
+    );
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toMatch(/cloud\|datacenter/);
+    // The refusal happens BEFORE `create`, so nothing un-dispatchable lands.
+    expect(await connection.repository.list()).toEqual([]);
+  });
+
+  it("migrates a legacy 1.7.0 record on read, so `connection list` shows a dispatchable key", async () => {
+    const connection = await newConnectionDeps();
+    // Written the way 1.7.0 wrote it — straight through the inner store,
+    // bypassing the CLI's own mapping.
+    const legacy = await connection.repository.create({
+      provider: "jira",
+      baseUrl: "https://example.atlassian.net",
+      allowedRedirectOrigins: [],
+      allowedResources: ["issue"],
+      allowedActions: ["read"],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "JIRA_TOKEN" },
+    });
+    expect(legacy.provider).toBe("jira");
+
+    const migrating = withProviderKeyNormalization(
+      new FileExternalConnectionStore((connection.repository as FileExternalConnectionStore).path),
+    );
+    const listed = await dispatchCommand(
+      { command: "connection-list", json: true },
+      { ...baseDeps(), connection: { ...connection, repository: migrating } },
+    );
+    const { connections } = JSON.parse(listed.stdout ?? "{}") as {
+      connections: { id: string; provider: string }[];
+    };
+    expect(connections).toEqual([
+      expect.objectContaining({ id: legacy.id, provider: "jira-cloud" }),
+    ]);
   });
 });
