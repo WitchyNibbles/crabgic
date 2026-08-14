@@ -106,6 +106,7 @@ import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
 import { withProviderKeyNormalization } from "./connection/provider-keys.js";
+import { resolveProbePath } from "./connection/probe-paths.js";
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
@@ -527,7 +528,15 @@ function buildRealConnectionDependencies(
         join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
       ),
     ),
-    probe: (connection) => probeConnectionReachability(connection),
+    // The provider-specific probe path is supplied HERE, not inside the
+    // gateway: `probeConnectionReachability` stays provider-agnostic, and
+    // this is the layer that knows both it and the connectors. Without a
+    // caller for that seam, `connection doctor` GET the site root and
+    // refused every Atlassian Cloud connection (issue #135, defect 1).
+    probe: (connection) => {
+      const path = resolveProbePath(connection.provider);
+      return probeConnectionReachability(connection, path !== undefined ? { path } : {});
+    },
   };
 }
 

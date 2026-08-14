@@ -119,7 +119,11 @@ export {
 } from "./provider-dispatch/provider-registry.js";
 
 // ---- Connection-doctor reachability probe ----
-export { probeConnectionReachability } from "./connection-doctor/reachability-probe.js";
+export {
+  DEFAULT_PROBE_PATH,
+  buildDoctorProbeClient,
+  probeConnectionReachability,
+} from "./connection-doctor/reachability-probe.js";
 export type {
   ReachabilityProbeResult,
   ReachabilityProbeOptions,

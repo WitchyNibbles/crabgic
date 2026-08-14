@@ -472,3 +472,68 @@ describe("buildProviderDispatchWiring — durable Grafana stores", () => {
     expect(other.grafanaSnapshotStore.get("plan-4")).toBeUndefined();
   });
 });
+
+/**
+ * Issue #135, defects 1 and 2, asserted on the bag `bin.ts` actually
+ * builds — not on the pieces in isolation. Both defects were failures of
+ * WIRING: the pieces existed and were individually correct, and nothing
+ * pinned that the composition root joined them. Testing the pieces again
+ * would reproduce that gap.
+ *
+ * No network is reached. A loopback base URL is refused by the SSRF guard
+ * before DNS, and `SsrfRefusedError`'s message carries the full URL it
+ * refused — so the refusal detail is a faithful record of what the probe
+ * ASKED FOR, which is the thing under test.
+ */
+describe("buildRealCliDependencies — the connection bag (issue #135)", () => {
+  const XDG = () => ({ HOME: home }) as const;
+
+  async function probeDetailFor(
+    provider: string,
+    baseUrl = "https://127.0.0.1:9",
+  ): Promise<string> {
+    const deps = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "conn-hash" });
+    const created = await deps.connection!.repository.create({
+      provider,
+      baseUrl,
+      allowedRedirectOrigins: [],
+      allowedResources: ["issue"],
+      allowedActions: ["read"],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "CRABGIC_BOOTSTRAP_PROBE_SECRET" },
+    });
+    process.env.CRABGIC_BOOTSTRAP_PROBE_SECRET = "token";
+    try {
+      const result = await deps.connection!.probe(created);
+      expect(result.reachable).toBe(false); // loopback is refused, always
+      return result.detail;
+    } finally {
+      delete process.env.CRABGIC_BOOTSTRAP_PROBE_SECRET;
+    }
+  }
+
+  it("probes a Jira Cloud connection at the connector's own path, not the site root", async () => {
+    expect(await probeDetailFor("jira-cloud")).toContain("/status");
+  });
+
+  it("probes Grafana at the neutral default — it claims no provider-specific path", async () => {
+    const detail = await probeDetailFor("grafana", "https://127.0.0.1:9");
+    expect(detail).not.toContain("/status");
+    expect(detail).toContain("https://127.0.0.1:9/");
+  });
+
+  it('migrates a legacy `provider: "jira"` record on read, so it becomes dispatchable', async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "legacy-hash" });
+    const created = await deps.connection!.repository.create({
+      provider: "jira",
+      baseUrl: "https://example.atlassian.net",
+      allowedRedirectOrigins: [],
+      allowedResources: ["issue"],
+      allowedActions: ["read"],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "TOKEN" },
+    });
+    expect(created.provider).toBe("jira-cloud");
+    expect((await deps.connection!.repository.get(created.id))?.provider).toBe("jira-cloud");
+  });
+});

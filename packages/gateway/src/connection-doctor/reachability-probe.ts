@@ -15,8 +15,24 @@
  */
 
 import type { ExternalConnection } from "@crabgic/contracts";
-import { GatewayHttpClient, SsrfRefusedError } from "../transport/http-client.js";
+import {
+  GatewayHttpClient,
+  SsrfRefusedError,
+  type GatewayHttpClientOptions,
+} from "../transport/http-client.js";
+import { buildAllowlistForConnection } from "../connection-store/connection-http-client.js";
 import { resolveConnectionSecret } from "../connection-store/external-connection-store.js";
+
+/**
+ * The path probed when the caller names none. The SITE ROOT is the only
+ * provider-neutral choice this module can make — which is exactly why it
+ * cannot be the whole answer: on Atlassian Cloud an unauthenticated GET
+ * of `/` redirects off-origin to `id.atlassian.com`, and the SSRF guard
+ * refuses it before any credential could attach (issue #135, defect 1).
+ * Provider-appropriate paths are supplied by the composition root through
+ * `ReachabilityProbeOptions.path`; this package stays provider-agnostic.
+ */
+export const DEFAULT_PROBE_PATH = "/";
 
 export interface ReachabilityProbeResult {
   readonly reachable: boolean;
@@ -33,13 +49,34 @@ export interface ReachabilityProbeOptions {
   readonly path?: string; // probe path, default "/"
 }
 
-function defaultBuildClient(
+/**
+ * The client `probeConnectionReachability` builds when no `buildClient`
+ * override is supplied — EXPORTED so a test can exercise the production
+ * allowlist rather than hand-rolling one beside it, which is precisely how
+ * the defect below survived a green suite.
+ *
+ * The allowlist comes from `buildAllowlistForConnection`, the same
+ * function every real call on this connection goes through. It did not,
+ * once: this builder used `[new URL(connection.baseUrl).origin]` alone and
+ * silently ignored `connection.allowedRedirectOrigins`, so `connection
+ * add --allow-redirect` — the one knob the CLI exposes for a redirecting
+ * host — could not affect the check it most looks like it should affect,
+ * and `connection doctor` refused redirects the connector path allows
+ * (issue #135, defect 1b). A doctor that guards differently from the call
+ * path it is supposed to diagnose is worse than no doctor.
+ *
+ * `overrides` is a test-only escape hatch, mirroring
+ * `buildHttpClientForConnection`'s own; production passes nothing.
+ */
+export function buildDoctorProbeClient(
   connection: ExternalConnection,
   customCaPem: string | undefined,
+  overrides: Partial<GatewayHttpClientOptions> = {},
 ): GatewayHttpClient {
   return new GatewayHttpClient({
-    allowlist: { allowedSchemes: ["https:"], allowedOrigins: [new URL(connection.baseUrl).origin] },
+    allowlist: buildAllowlistForConnection(connection),
     ...(customCaPem !== undefined ? { customCaPem } : {}),
+    ...overrides,
   });
 }
 
@@ -79,8 +116,8 @@ export async function probeConnectionReachability(
     }
   }
 
-  const client = (options.buildClient ?? defaultBuildClient)(connection, customCaPem);
-  const path = options.path ?? "/";
+  const client = (options.buildClient ?? buildDoctorProbeClient)(connection, customCaPem);
+  const path = options.path ?? DEFAULT_PROBE_PATH;
 
   try {
     const response = await client.request({
@@ -90,6 +127,21 @@ export async function probeConnectionReachability(
       url: new URL(path, connection.baseUrl),
       method: "GET",
     });
+    // A 404 is NOT reachability. The probe requests a provider-chosen path
+    // now (issue #135, defect 1), so "that path is not here" means the base
+    // URL does not point at the service the operator said it does — a
+    // finding worth reporting, not one to round up to success. An auth
+    // challenge stays reachable: the probe deliberately attaches no
+    // credential, so 401/403 is the expected answer from a healthy host.
+    if (response.status === 404) {
+      return {
+        reachable: false,
+        status: 404,
+        detail:
+          `probe path "${path}" returned HTTP 404 — the base URL may not point at ` +
+          `this provider, or the provider's probe path has moved`,
+      };
+    }
     return {
       reachable: response.status < 500,
       status: response.status,

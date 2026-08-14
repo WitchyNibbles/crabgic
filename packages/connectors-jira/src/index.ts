@@ -106,6 +106,11 @@ export {
   type JiraMutationApplyDeps,
 } from "./resource-client/jira-mutation-apply-client.js";
 
+export {
+  JIRA_CLOUD_REACHABILITY_PROBE_PATH,
+  JIRA_REACHABILITY_PROBE_PATHS,
+} from "./auth/reachability-probe-path.js";
+
 // ---- Provider registration (the connectors-jira <-> @crabgic/gateway seam) ----
 export {
   JIRA_PROVIDER_NAME as JIRA_CLOUD_PROVIDER_KEY,
