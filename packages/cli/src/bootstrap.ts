@@ -107,9 +107,13 @@ import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
 import { withProviderKeyNormalization } from "./connection/provider-keys.js";
 import { resolveProbePath } from "./connection/probe-paths.js";
+import { FileJiraConnectionConfigStore } from "./connection/jira-config-store.js";
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
+
+/** The per-connection Jira auth/deployment config store, beside `connections.json` (issue #135 — the storage roadmap/19's `JiraConnectionConfig` never had). */
+const JIRA_CONNECTION_CONFIGS_FILE_NAME = "jira-connection-configs.json";
 
 /**
  * 20's plan-payload and rollback-snapshot stores, durable under the
@@ -527,6 +531,13 @@ function buildRealConnectionDependencies(
       new FileExternalConnectionStore(
         join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
       ),
+    ),
+    // Beside `connections.json`, under the same state root and the same
+    // 0600 posture: a Jira connection's credential SHAPE is state an
+    // operator configured, and without somewhere to record it a Jira
+    // Cloud connection cannot authenticate at all (issue #135).
+    jiraConfigs: new FileJiraConnectionConfigStore(
+      join(resolveStateRoot(xdgEnv, projectHash), JIRA_CONNECTION_CONFIGS_FILE_NAME),
     ),
     // The provider-specific probe path is supplied HERE, not inside the
     // gateway: `probeConnectionReachability` stays provider-agnostic, and

@@ -85,6 +85,7 @@ describe("parseCommand", () => {
       ]),
     ).toEqual({
       command: "connection-add",
+      allowBasicAuth: false,
       provider: "jira",
       reference: { raw: "env:JIRA_TOKEN" },
       baseUrl: "https://example.atlassian.net",
@@ -141,6 +142,7 @@ describe("parseCommand", () => {
       ]),
     ).toEqual({
       command: "connection-add",
+      allowBasicAuth: false,
       provider: "grafana",
       reference: { raw: "env:GRAFANA_TOKEN" },
       baseUrl: "https://grafana.test",

@@ -31,6 +31,16 @@ import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@c
 import { CliUsageError } from "../errors.js";
 import { pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
 import { resolveDispatchProviderKey, resolveStoredDeploymentType } from "./provider-keys.js";
+import { toStoredSecretRef } from "./stored-secret-ref.js";
+import { buildJiraConnectionConfig } from "./jira-config-from-command.js";
+import type { JiraConnectionConfigStore } from "./jira-config-store.js";
+
+/**
+ * Stand-in id used only to VALIDATE the credential flags before a
+ * connection exists to key them to. Never persisted: the draft is
+ * re-keyed to the real id the moment `create` returns one.
+ */
+const PENDING_CONNECTION_ID = "pending";
 import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@crabgic/gateway";
 import type {
   ConnectionAddCommand,
@@ -72,35 +82,14 @@ export interface ConnectionDependencies {
    * deferral into an always-failing command that merely looks wired.
    */
   readonly discoverCapabilities?: (connection: ExternalConnection) => Promise<CapabilitySnapshot>;
-}
-
-/**
- * The CLI's argv-level reference forms (`../argv/secret-reference.ts`:
- * `env:NAME`, `op://…`, `vault://…`, `file:///abs/path`, `ref:id`) are a
- * DIFFERENT, wider vocabulary than the stored contract's
- * `SecretReferenceSchema` (02), which has exactly three backends —
- * `env`/`file`/`exec`. This converts the two that have a faithful
- * representation and refuses the rest loudly.
- *
- * Refusing is the correct behavior, not a shortcoming: silently coercing
- * `op://vault/item` into, say, an `exec` backend would invent a resolution
- * mechanism the operator never asked for. Widening
- * `SecretReferenceSchema` to carry secret-manager URIs is a 02 contract
- * change and belongs to whoever adds real support for those backends.
- * (`exec` is unreachable from argv today for the mirror-image reason: the
- * CLI's own reference pattern has no `exec:` form.)
- */
-function toStoredSecretRef(raw: string): SecretReference {
-  if (raw.startsWith("env:")) {
-    return { backend: "env", variable: raw.slice("env:".length) };
-  }
-  if (raw.startsWith("file://")) {
-    return { backend: "file", path: raw.slice("file://".length) };
-  }
-  throw new CliUsageError(
-    `secret reference "${raw.split(":")[0]}:…" is not storable on a connection ` +
-      `(supported: env:NAME, file:///abs/path)`,
-  );
+  /**
+   * Persists the `JiraConnectionConfig` that says HOW a Jira connection
+   * authenticates — the storage whose absence is recorded above, and the
+   * reason a Jira Cloud connection could not authenticate at all (issue
+   * #135). Optional so a caller that never adds a Jira connection need
+   * not supply one; `../bootstrap.ts` always does.
+   */
+  readonly jiraConfigs?: JiraConnectionConfigStore;
 }
 
 /**
@@ -148,6 +137,13 @@ export async function runConnectionAddCommand(
   const provider = resolveDispatchProviderKey(cmd.provider, cmd.deploymentType);
   const deploymentType = resolveStoredDeploymentType(cmd.provider, cmd.deploymentType);
 
+  // Validated BEFORE the connection is created, with a placeholder id: a
+  // bad `--auth-mode`/`--username-ref` combination must refuse the whole
+  // command, never leave a stored connection whose credentials are
+  // unusable — the exact "stores fine, 401s on first use" shape this
+  // issue is about. The real id is filled in once `create` assigns one.
+  const configDraft = buildJiraConnectionConfig(cmd, PENDING_CONNECTION_ID);
+
   const created = await deps.repository.create({
     provider,
     baseUrl: cmd.baseUrl,
@@ -158,6 +154,20 @@ export async function runConnectionAddCommand(
     discoveryTtlSeconds: cmd.discoveryTtlSeconds,
     secretRef: toStoredSecretRef(cmd.reference.raw),
   });
+
+  if (configDraft !== undefined) {
+    if (deps.jiraConfigs === undefined) {
+      // Refused rather than skipped: a Jira connection with no stored
+      // config cannot authenticate, and a silent skip would produce
+      // exactly the "added successfully, fails on first dispatch"
+      // outcome this whole change exists to end.
+      throw new CliUsageError(
+        "cannot add a Jira connection without a configured Jira config store " +
+          "(the credential shape would have nowhere to be recorded)",
+      );
+    }
+    await deps.jiraConfigs.put({ ...configDraft, externalConnectionId: created.id });
+  }
 
   const summary = toSummary(created);
   return {

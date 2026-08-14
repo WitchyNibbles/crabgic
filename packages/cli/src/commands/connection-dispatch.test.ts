@@ -22,6 +22,7 @@ import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { EXIT_GENERAL_ERROR, EXIT_NOT_IMPLEMENTED, EXIT_OK } from "../exit-codes.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
 import { withProviderKeyNormalization } from "../connection/provider-keys.js";
+import { FileJiraConnectionConfigStore } from "../connection/jira-config-store.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
 
@@ -52,6 +53,7 @@ async function newConnectionDeps(
   dirs.push(dir);
   return {
     repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+    jiraConfigs: new FileJiraConnectionConfigStore(join(dir, "jira-connection-configs.json")),
     probe: () => Promise.resolve(probeResult),
   };
 }
@@ -60,11 +62,15 @@ const ADD = {
   command: "connection-add",
   provider: "jira",
   reference: { raw: "env:JIRA_TOKEN" },
+  // Cloud defaults to basic auth (Atlassian's API-token mechanism), which
+  // needs the account email as well as the token.
+  usernameReference: { raw: "env:JIRA_EMAIL" },
   baseUrl: "https://example.atlassian.net",
   allowedRedirectOrigins: ["https://example.atlassian.net"],
   allowedResources: ["issue"],
   allowedActions: ["read"],
   discoveryTtlSeconds: 900,
+  allowBasicAuth: false,
   json: true,
 } as const;
 

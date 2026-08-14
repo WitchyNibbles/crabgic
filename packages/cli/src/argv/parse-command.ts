@@ -78,6 +78,9 @@ function parseConnection(rest: readonly string[]): ParsedCommand {
       "allow-resource",
       "allow-action",
       "discovery-ttl",
+      "auth-mode",
+      "username-ref",
+      "client-id-ref",
     ]);
     const provider = requirePositional(t.positionals, 0, "provider (jira|grafana)");
     if (provider !== "jira" && provider !== "grafana") {
@@ -96,12 +99,27 @@ function parseConnection(rest: readonly string[]): ParsedCommand {
     const baseUrl = parseHttpsUrl(rawBaseUrl);
     const deploymentType = readValueFlag(t, "deployment");
 
+    // The second half of a credential, when the chosen mode needs one.
+    // Parsed through the same reference grammar as `--reference` so a
+    // username or client id cannot be smuggled in as a literal.
+    const rawUsernameRef = readValueFlag(t, "username-ref");
+    const rawClientIdRef = readValueFlag(t, "client-id-ref");
+    const authMode = readValueFlag(t, "auth-mode");
+
     return {
       command: "connection-add",
       provider: provider as ConnectionProvider,
       reference,
       baseUrl,
       ...(deploymentType !== undefined ? { deploymentType } : {}),
+      ...(authMode !== undefined ? { authMode } : {}),
+      ...(rawUsernameRef !== undefined
+        ? { usernameReference: parseSecretReference("--username-ref", rawUsernameRef) }
+        : {}),
+      ...(rawClientIdRef !== undefined
+        ? { clientIdReference: parseSecretReference("--client-id-ref", rawClientIdRef) }
+        : {}),
+      allowBasicAuth: readBooleanFlag(t, "allow-basic-auth"),
       // Defaults to the base URL's OWN origin: a connection that never
       // redirects off its own host is the safe default, and widening it is
       // an explicit operator act (roadmap/16's SSRF-guard allowlist).

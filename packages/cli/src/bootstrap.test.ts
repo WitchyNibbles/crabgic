@@ -537,3 +537,91 @@ describe("buildRealCliDependencies — the connection bag (issue #135)", () => {
     expect((await deps.connection!.repository.get(created.id))?.provider).toBe("jira-cloud");
   });
 });
+
+/**
+ * Issue #135, the credential half. A Jira Cloud connection had nowhere to
+ * record WHICH credential shape it uses, so the hardcoded OAuth Bearer
+ * was the only one expressible — and Atlassian rejects API tokens sent
+ * as Bearer. Asserted on the production bag, through the real durable
+ * stores, because "the config is written where the gateway process later
+ * reads it" is the property that matters.
+ */
+describe("buildRealCliDependencies — Jira connection configs (issue #135)", () => {
+  const XDG = () => ({ HOME: home }) as const;
+
+  it("persists the credential shape a Jira Cloud connection was added with", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "jira-cfg" });
+    const result = await dispatchCommand(
+      {
+        command: "connection-add",
+        provider: "jira",
+        reference: { raw: "env:JIRA_TOKEN" },
+        usernameReference: { raw: "env:JIRA_EMAIL" },
+        baseUrl: "https://example.atlassian.net",
+        allowedRedirectOrigins: [],
+        allowedResources: ["issue"],
+        allowedActions: ["read"],
+        discoveryTtlSeconds: 900,
+        allowBasicAuth: false,
+        json: true,
+      },
+      deps,
+    );
+    expect(result.exitCode).toBe(EXIT_OK);
+    const { id } = JSON.parse(result.stdout ?? "{}") as { id: string };
+
+    // A SECOND bag over the same project — the real cross-process shape,
+    // `connection add` here and `gateway mcp` there.
+    const reader = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "jira-cfg" });
+    const config = await reader.connection!.jiraConfigs!.get(id);
+    expect(config).toMatchObject({
+      externalConnectionId: id,
+      deploymentType: "cloud",
+      authMode: "basic",
+      basicAuthUsernameSecretRef: { backend: "env", variable: "JIRA_EMAIL" },
+      basicAuthPasswordSecretRef: { backend: "env", variable: "JIRA_TOKEN" },
+    });
+  });
+
+  it("refuses a Cloud connection that names no username, instead of storing one that will 401", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "jira-cfg-bad" });
+    const result = await dispatchCommand(
+      {
+        command: "connection-add",
+        provider: "jira",
+        reference: { raw: "env:JIRA_TOKEN" },
+        baseUrl: "https://example.atlassian.net",
+        allowedRedirectOrigins: [],
+        allowedResources: ["issue"],
+        allowedActions: ["read"],
+        discoveryTtlSeconds: 900,
+        allowBasicAuth: false,
+        json: true,
+      },
+      deps,
+    );
+    expect(result.exitCode).not.toBe(EXIT_OK);
+    expect(result.stderr).toMatch(/--username-ref/);
+  });
+
+  it("writes no Jira config for a Grafana connection", async () => {
+    const deps = buildRealCliDependencies({ xdgEnv: XDG(), projectHash: "grafana-cfg" });
+    const result = await dispatchCommand(
+      {
+        command: "connection-add",
+        provider: "grafana",
+        reference: { raw: "env:GRAFANA_TOKEN" },
+        baseUrl: "https://grafana.example.com",
+        allowedRedirectOrigins: [],
+        allowedResources: ["dashboard"],
+        allowedActions: ["list"],
+        discoveryTtlSeconds: 900,
+        allowBasicAuth: false,
+        json: true,
+      },
+      deps,
+    );
+    expect(result.exitCode).toBe(EXIT_OK);
+    expect(await deps.connection!.jiraConfigs!.list()).toEqual([]);
+  });
+});

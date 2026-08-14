@@ -248,6 +248,7 @@ describe("dispatchCommand — NOT_IMPLEMENTED stubs", () => {
     { command: "approve", digest: "sha256:abc", json: true } as const,
     {
       command: "connection-add",
+      allowBasicAuth: false,
       provider: "jira",
       reference: { raw: "env:X" },
       baseUrl: "https://example.atlassian.net",
