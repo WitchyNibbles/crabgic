@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@crabgic/contracts";
 import { JiraConnectionRegistry } from "@crabgic/connectors-jira";
+import { GrafanaConnectionRegistry } from "@crabgic/connectors-grafana";
 import type { GatewayHttpClient } from "@crabgic/gateway";
 import { createConnectionActivator } from "./connection-activation.js";
 import type { JiraConnectionConfigStore } from "./jira-config-store.js";
@@ -153,5 +154,121 @@ describe("createConnectionActivator", () => {
   it("does nothing for a provider it does not own, rather than failing the dispatch", async () => {
     const { activate } = build();
     await expect(activate(connection({ provider: "servicenow" }))).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * The Grafana half of defect 3. Registration needs a live
+ * `CapabilitySnapshot` — the route table is decoded from it — and nothing
+ * could produce one, so no Grafana connection was ever registered and
+ * every `observability.*` call answered "was never registered".
+ */
+describe("createConnectionActivator — Grafana", () => {
+  const SETTINGS = JSON.stringify({ buildInfo: { version: "11.3.0", edition: "Open Source" } });
+
+  function grafanaConnection(): ExternalConnection {
+    return connection({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      provider: "grafana",
+      baseUrl: "https://grafana.example.com",
+      allowedResources: ["dashboard"],
+      allowedActions: ["list"],
+      secretRef: { backend: "env", variable: "CRABGIC_ACT_GRAFANA_TOKEN" },
+    });
+  }
+
+  function grafanaDeps(respond: (url: string) => { status: number; bodyText?: string }) {
+    const grafana = new GrafanaConnectionRegistry();
+    const activate = createConnectionActivator({
+      jira: new JiraConnectionRegistry(),
+      jiraConfigs: configStore({}),
+      grafana,
+      grafanaPayloadStore: { get: () => undefined, set: () => undefined, delete: () => undefined },
+      grafanaSnapshotStore: {
+        get: () => undefined,
+        capture: () => undefined,
+        delete: () => undefined,
+      },
+      buildGrafanaHttpClient: async () =>
+        ({
+          request: async (req: { url: URL }) => {
+            const { status, bodyText } = respond(req.url.toString());
+            return { status, headers: {}, bodyText: bodyText ?? "" };
+          },
+        }) as never,
+    } as never);
+    return { grafana, activate };
+  }
+
+  it("registers a Grafana connection into the registry the routed client reads", async () => {
+    process.env.CRABGIC_ACT_GRAFANA_TOKEN = "glsa_token";
+    try {
+      const { grafana, activate } = grafanaDeps((url) =>
+        url.includes("/api/frontend/settings")
+          ? { status: 200, bodyText: SETTINGS }
+          : { status: 200, bodyText: "{}" },
+      );
+      const conn = grafanaConnection();
+      expect(grafana.isRegistered(conn.id)).toBe(false);
+
+      await activate(conn);
+
+      expect(grafana.isRegistered(conn.id)).toBe(true);
+      expect(() => grafana.get(conn.id)).not.toThrow();
+    } finally {
+      delete process.env.CRABGIC_ACT_GRAFANA_TOKEN;
+    }
+  });
+
+  it("pins a route table discovered from the live probe, not a hardcoded one", async () => {
+    process.env.CRABGIC_ACT_GRAFANA_TOKEN = "glsa_token";
+    try {
+      // Only the legacy dashboard route answers; everything else 404s.
+      const { grafana, activate } = grafanaDeps((url) => {
+        if (url.includes("/api/frontend/settings")) return { status: 200, bodyText: SETTINGS };
+        if (url.endsWith("/api/dashboards")) return { status: 200, bodyText: "{}" };
+        return { status: 404 };
+      });
+      const conn = grafanaConnection();
+      await activate(conn);
+
+      const table = grafana.get(conn.id).routeTable;
+      expect(table.dashboard).toMatchObject({ family: "legacy", basePath: "/api/dashboards" });
+      expect(table.folder).toBeUndefined();
+    } finally {
+      delete process.env.CRABGIC_ACT_GRAFANA_TOKEN;
+    }
+  });
+
+  it("fails activation on a rejected credential rather than registering a capability-less connection", async () => {
+    process.env.CRABGIC_ACT_GRAFANA_TOKEN = "bad";
+    try {
+      const { grafana, activate } = grafanaDeps(() => ({ status: 401 }));
+      const conn = grafanaConnection();
+      await expect(activate(conn)).rejects.toMatchObject({ kind: "authentication" });
+      // The dangerous alternative: a registered connection whose snapshot
+      // says "supports nothing", cached for the whole TTL.
+      expect(grafana.isRegistered(conn.id)).toBe(false);
+    } finally {
+      delete process.env.CRABGIC_ACT_GRAFANA_TOKEN;
+    }
+  });
+
+  it("is idempotent for Grafana too", async () => {
+    process.env.CRABGIC_ACT_GRAFANA_TOKEN = "glsa_token";
+    try {
+      const { grafana, activate } = grafanaDeps((url) =>
+        url.includes("/api/frontend/settings")
+          ? { status: 200, bodyText: SETTINGS }
+          : { status: 200, bodyText: "{}" },
+      );
+      const conn = grafanaConnection();
+      const spy = vi.spyOn(grafana, "register");
+      await activate(conn);
+      await activate(conn);
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      delete process.env.CRABGIC_ACT_GRAFANA_TOKEN;
+    }
   });
 });

@@ -143,17 +143,18 @@ const GRAFANA_ROLLBACK_SNAPSHOTS_FILE_NAME = "grafana-rollback-snapshots.json";
  * `UnknownProviderError` — "this build has no Jira connector" — which was
  * simply false.
  *
- * The two returned registries are handed back so a caller that DOES hold
- * resolved credentials can call `register(connection, ...)` on them. No
- * such caller exists yet; that is the genuinely-blocked half, tracked in
- * `e2e/live/src/knownDeferredAllowlist.ts` rather than faked here. The
- * same is true of the two Grafana stores below: they are CONSTRUCTED here,
- * durable and owner-only, and travel with the registry they belong to, but
- * nothing consumes them until that `register(connection, {payloadStore,
- * snapshotStore})` call site exists. Stated plainly rather than described
- * as "wired" — `./bootstrap.test.ts` pins what is actually true of them
- * (their exact paths, their mode, and that they survive a process
- * boundary), and nothing claims more.
+ * The two returned registries are handed back so a caller that holds
+ * resolved credentials can call `register(connection, ...)` on them.
+ *
+ * THAT CALLER NOW EXISTS (2026-08-14, issue #135 defect 3):
+ * `./connection/connection-activation.ts`, invoked lazily on first
+ * dispatch for each connection. Until then there was none, and the note
+ * here said so — which was accurate and also the whole bug: the
+ * registries stayed empty for the process's entire life, so every
+ * connector answered "was never registered" and none could serve a single
+ * request. The same was true of the two Grafana stores below; the
+ * `register(connection, {payloadStore, snapshotStore})` call site they
+ * were waiting for is that activator.
  */
 export interface ProviderDispatchWiring {
   readonly providers: ProviderRegistry<GenericProviderClient>;
@@ -409,8 +410,18 @@ export function buildRealGatewayToolRegistry(
     activateConnection: createConnectionActivator({
       jira: dispatch.jira,
       jiraConfigs: deps.connection!.jiraConfigs!,
+      grafana: dispatch.grafana,
+      // The two durable stores this wiring already builds. Until now they
+      // were constructed, documented, and consumed by nothing — the
+      // `register(connection, {payloadStore, snapshotStore})` call site
+      // they were waiting for is the one below.
+      grafanaPayloadStore: dispatch.grafanaPayloadStore,
+      grafanaSnapshotStore: dispatch.grafanaSnapshotStore,
       ...(overrides.activationHttpClient !== undefined
-        ? { buildJiraHttpClient: overrides.activationHttpClient }
+        ? {
+            buildJiraHttpClient: overrides.activationHttpClient,
+            buildGrafanaHttpClient: overrides.activationHttpClient,
+          }
         : {}),
     }),
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),

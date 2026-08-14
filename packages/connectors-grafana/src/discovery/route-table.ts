@@ -87,6 +87,20 @@ export function selectRouteFamily(
   return undefined;
 }
 
+/**
+ * The base path a (kind, family) pair resolves to, BEFORE any probing has
+ * decided whether that route exists on this build.
+ *
+ * Exported for the route PROBER (`./http-discovery.ts`), which must know
+ * the candidate path in order to ask whether it answers. Reading
+ * `FAMILY_BASE_PATHS` through this accessor keeps the table itself
+ * private, so the probe and the resolved route table cannot disagree
+ * about where a kind lives — they read one source.
+ */
+export function candidateBasePath(kind: GrafanaResourceKind, family: GrafanaRouteFamily): string {
+  return FAMILY_BASE_PATHS[kind][family];
+}
+
 /** Whether a resource definition for `kind` carries App Platform behaviour. */
 function connectorSpeaksApis(kind: GrafanaResourceKind): boolean {
   return supportsApisFamily(getResourceDefinition(kind));

@@ -335,8 +335,16 @@ describe("buildProductionGatewayToolRegistry — provider dispatch", () => {
       connectionId: grafana.id,
       params: { connectionId: grafana.id, resourceKind: "dashboard" },
     });
+    // Since issue #135 BOTH arms reach past the wiring and stop at the
+    // first thing genuinely missing for the connection. Here that is the
+    // credential: the record above was written straight to the
+    // repository and `GRAFANA_TOKEN` is not exported. The negative
+    // assertions keep the original meaning — the provider key IS
+    // registered, and the per-connection registry is no longer the thing
+    // that fails.
     expect(observability.isError).toBe(true);
-    expect(observability.content[0]!.text).toContain("never registered");
+    expect(observability.content[0]!.text).toMatch(/GRAFANA_TOKEN|unset or empty/);
+    expect(observability.content[0]!.text).not.toContain("never registered");
     expect(observability.content[0]!.text).not.toContain("no client registered for provider");
 
     // The Jira arm now reaches one step FURTHER than the Grafana one.
@@ -894,6 +902,66 @@ describe("issue #135 — a connection added by the CLI can be dispatched to", ()
     } finally {
       delete process.env.CRABGIC_E2E_EMAIL;
       delete process.env.CRABGIC_E2E_TOKEN;
+    }
+  });
+
+  /** The issue's step 4, which reproduced defect 3 directly on Grafana. */
+  it("carries an added Grafana connection through observability.search", async () => {
+    const overrides = { xdgEnv: { HOME: home }, projectHash: "e2e-135-grafana" } as const;
+    const deps = buildRealCliDependencies(overrides);
+
+    process.env.CRABGIC_E2E_GRAFANA = "glsa_token";
+    try {
+      const added = await dispatchCommand(
+        {
+          command: "connection-add",
+          provider: "grafana",
+          reference: { raw: "env:CRABGIC_E2E_GRAFANA" },
+          baseUrl: "https://grafana.example.com",
+          allowedRedirectOrigins: [],
+          allowedResources: ["dashboard"],
+          allowedActions: ["list"],
+          discoveryTtlSeconds: 900,
+          allowBasicAuth: false,
+          json: true,
+        },
+        deps,
+      );
+      expect(added.exitCode).toBe(EXIT_OK);
+      const { id } = JSON.parse(added.stdout ?? "{}") as { id: string };
+
+      const registry = buildRealGatewayToolRegistry({
+        ...overrides,
+        activationHttpClient: async () =>
+          ({
+            request: async (req: { url: URL }) => {
+              const url = req.url.toString();
+              if (url.includes("/api/frontend/settings")) {
+                return {
+                  status: 200,
+                  headers: {},
+                  bodyText: JSON.stringify({
+                    buildInfo: { version: "11.3.0", edition: "Open Source" },
+                  }),
+                };
+              }
+              return { status: 200, headers: {}, bodyText: JSON.stringify({ dashboards: [] }) };
+            },
+          }) as never,
+      });
+
+      const result = await registry.get("observability.search")!.handler({
+        connectionId: id,
+        params: { connectionId: id, resourceKind: "dashboard" },
+      });
+
+      // The exact call the issue reports as impossible. Whatever it
+      // returns, it must no longer be the wiring failure.
+      const text = result.content[0]!.text;
+      expect(text).not.toContain("never registered");
+      expect(text).not.toContain("no client registered for provider");
+    } finally {
+      delete process.env.CRABGIC_E2E_GRAFANA;
     }
   });
 });

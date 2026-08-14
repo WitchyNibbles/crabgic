@@ -28,13 +28,31 @@
  * remembered.
  */
 
-import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
+import { randomUUID } from "node:crypto";
+import {
+  ConnectorError,
+  CURRENT_SCHEMA_VERSION,
+  type ExternalConnection,
+} from "@crabgic/contracts";
 import {
   JIRA_CLOUD_PROVIDER_KEY,
   resolveJiraCloudAuthHeaderProvider,
   type JiraConnectionRegistry,
 } from "@crabgic/connectors-jira";
-import { buildHttpClientForConnection, type GatewayHttpClient } from "@crabgic/gateway";
+import {
+  buildHttpClientForConnection,
+  CapabilitySnapshotCache,
+  type GatewayHttpClient,
+} from "@crabgic/gateway";
+import {
+  buildGrafanaDiscoveryDeps,
+  buildGrafanaSender,
+  discoverGrafanaCapabilities,
+  GRAFANA_PROVIDER_NAME,
+  type GrafanaConnectionRegistry,
+  type GrafanaPlanPayloadStoreLike,
+  type GrafanaRollbackSnapshotStoreLike,
+} from "@crabgic/connectors-grafana";
 import type { JiraConnectionConfigStore } from "./jira-config-store.js";
 
 export interface ConnectionActivatorDeps {
@@ -42,6 +60,12 @@ export interface ConnectionActivatorDeps {
   readonly jiraConfigs: JiraConnectionConfigStore;
   /** Test-only seam — production defaults to the real SSRF/DNS/TLS stack. */
   readonly buildJiraHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
+  readonly grafana: GrafanaConnectionRegistry;
+  /** The durable stores `buildProviderDispatchWiring` already constructs — a plan built in one `gateway mcp` process must be appliable from the next. */
+  readonly grafanaPayloadStore: GrafanaPlanPayloadStoreLike;
+  readonly grafanaSnapshotStore: GrafanaRollbackSnapshotStoreLike;
+  /** Test-only seam, as `buildJiraHttpClient`. */
+  readonly buildGrafanaHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
 }
 
 /**
@@ -92,14 +116,56 @@ export function createConnectionActivator(
     });
   }
 
+  async function activateGrafana(connection: ExternalConnection): Promise<void> {
+    const httpClient = await (deps.buildGrafanaHttpClient ?? buildHttpClientForConnection)(
+      connection,
+    );
+    const { send, get } = buildGrafanaSender(connection, httpClient);
+
+    // The snapshot cache owns TTL and invalidation; discovery runs through
+    // it rather than beside it, so a mid-life refresh reaches the adapter
+    // (which re-resolves its route table from `getSnapshot` per call).
+    const cache = new CapabilitySnapshotCache(
+      async (connectionId) => {
+        const discovered = await discoverGrafanaCapabilities(buildGrafanaDiscoveryDeps(send));
+        return {
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          id: randomUUID(),
+          externalConnectionId: connectionId,
+          ...discovered,
+        };
+      },
+      connection.discoveryTtlSeconds > 0 ? { ttlSeconds: connection.discoveryTtlSeconds } : {},
+    );
+
+    await deps.grafana.register(connection, {
+      // The connection id, matching the pseudo-tenant convention the rest
+      // of the read path uses as its transport concurrency key. It is NOT
+      // an org identity claim — see `ExternalConnection.tenantAllowlist`
+      // for the scope of what tenant binding actually means here.
+      tenant: connection.id,
+      getSnapshot: () => cache.get(connection.id),
+      send,
+      get,
+      payloadStore: deps.grafanaPayloadStore,
+      snapshotStore: deps.grafanaSnapshotStore,
+    });
+  }
+
   return async function activateConnection(connection: ExternalConnection): Promise<void> {
-    if (connection.provider !== JIRA_CLOUD_PROVIDER_KEY) return;
-    if (deps.jira.isRegistered(connection.id)) return;
+    const activator =
+      connection.provider === JIRA_CLOUD_PROVIDER_KEY
+        ? { isRegistered: () => deps.jira.isRegistered(connection.id), run: activateJiraCloud }
+        : connection.provider === GRAFANA_PROVIDER_NAME
+          ? { isRegistered: () => deps.grafana.isRegistered(connection.id), run: activateGrafana }
+          : undefined;
+    if (activator === undefined) return;
+    if (activator.isRegistered()) return;
 
     const existing = inFlight.get(connection.id);
     if (existing !== undefined) return existing;
 
-    const attempt = activateJiraCloud(connection).finally(() => {
+    const attempt = activator.run(connection).finally(() => {
       // Evicted on BOTH paths: on success `isRegistered` short-circuits
       // future calls, and on failure the next call must get a fresh
       // attempt rather than a cached rejection.
