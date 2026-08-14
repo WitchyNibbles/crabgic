@@ -110,3 +110,43 @@ describe("FileJiraConnectionConfigStore", () => {
     expect(await store.list()).toEqual([]);
   });
 });
+
+/**
+ * The failure paths. A store that fails closed is only useful if it
+ * actually does — an unreadable or malformed file must propagate, never
+ * silently read as "no configs", which would present a connection with
+ * credentials as one without any.
+ */
+describe("FileJiraConnectionConfigStore — failing closed", () => {
+  it("propagates a read error that is not a missing file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eo-jira-config-err-"));
+    dirs.push(dir);
+    // A DIRECTORY where the store expects a file: readFile fails EISDIR,
+    // which must not be mistaken for "nothing configured yet".
+    const store = new FileJiraConnectionConfigStore(dir);
+    await expect(store.list()).rejects.toThrow();
+  });
+
+  it("refuses a file whose top level is not an array", async () => {
+    const store = await newStore();
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(join(store.path, ".."), { recursive: true });
+    await writeFile(store.path, JSON.stringify({ conn: "not-an-array" }), "utf8");
+    await expect(store.list()).rejects.toThrow(/not a JSON array/);
+  });
+
+  it("propagates a write failure instead of reporting a config that was never stored", async () => {
+    // An unwritable directory: `put` must reject, so `connection add` fails
+    // rather than reporting success for a credential shape that vanished.
+    const dir = await mkdtemp(join(tmpdir(), "eo-jira-config-ro-"));
+    dirs.push(dir);
+    const store = new FileJiraConnectionConfigStore(join(dir, "sub", "configs.json"));
+    const { chmod } = await import("node:fs/promises");
+    await chmod(dir, 0o500);
+    try {
+      await expect(store.put(config())).rejects.toThrow();
+    } finally {
+      await chmod(dir, 0o700);
+    }
+  });
+});

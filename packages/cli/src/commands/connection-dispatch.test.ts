@@ -318,3 +318,37 @@ describe("connection add — the stored provider is the provider-dispatch key", 
     ]);
   });
 });
+
+/**
+ * A Jira connection whose credential shape has nowhere to be recorded
+ * cannot authenticate, so `connection add` refuses rather than reporting
+ * success — the "added fine, fails on first dispatch" outcome is exactly
+ * what issue #135 was.
+ */
+describe("connection add — a Jira connection needs somewhere to record its credential shape", () => {
+  it("refuses when no Jira config store is wired, instead of silently skipping it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eo-conn-nocfg-"));
+    dirs.push(dir);
+    const connection: ConnectionDependencies = {
+      repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+      probe: () => Promise.resolve({ reachable: true, detail: "HTTP 200" }),
+    };
+    const result = await dispatchCommand(ADD, { ...baseDeps(), connection });
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toMatch(/config store/);
+  });
+
+  it("still adds a Grafana connection with no Jira config store wired", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eo-conn-nocfg-grafana-"));
+    dirs.push(dir);
+    const connection: ConnectionDependencies = {
+      repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+      probe: () => Promise.resolve({ reachable: true, detail: "HTTP 200" }),
+    };
+    const result = await dispatchCommand(
+      { ...ADD, provider: "grafana", baseUrl: "https://grafana.example.com" },
+      { ...baseDeps(), connection },
+    );
+    expect(result.exitCode).toBe(EXIT_OK);
+  });
+});
