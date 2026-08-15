@@ -539,6 +539,25 @@ contracts and the plugin (pre-existing, not widened — the guard is imported), 
 the **ledger Gap 19 amendment across phases 10, 11, 13 and 14 has not landed**.
 Criterion 6 stays unticked until it does.
 
+## Live-run status — 2026-08-15
+
+**Three rounds run under owner authorization** (small scoped run; the full
+pipeline was offered and declined). Nine blocking defects found in this phase's
+own code, every one verified independently before it was fixed. Evidence:
+`docs/evidence/phase-25/live-review-round-1.md`.
+
+**The measured result that matters more than the count:** each round found
+defects in the PREVIOUS round's fixes. The bounds did not converge on one
+400-line module in three rounds. That is the loop working, and it is the first
+real measurement against ledger Gap 19's disclosed residual — termination is
+reachable, not proved.
+
+**What an unattended run still needs, and what it would cost**, is written down
+at `docs/evidence/phase-25/unattended-run-gap.md` so that authorizing it is a
+decision about a known quantity. One gap in it is not a spend question at all:
+the `audit` stage cannot fire where no production run reaches, which is phase
+14's gate-registry composition and is why criterion 9 below stays unticked.
+
 ## Exit criteria
 
 - [ ] `DOMAIN_LENSES` enumerates all eight lenses; `lensesApplicableTo` is
