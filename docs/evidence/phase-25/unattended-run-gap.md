@@ -1,8 +1,16 @@
 # What an unattended run needs, and what it would cost
 
-**Status:** not run. The owner authorized a _small scoped run_ (2026-08-15) and
-declined the full pipeline. This document exists so that authorizing it later is
-a decision about a known quantity rather than an open-ended one.
+**Status:** ~~not run.~~ **Superseded in part, 2026-08-15 — a real run was
+dispatched.** See `first-real-dispatch.md`. The standing `EnvelopePolicy` this
+document lists as an owner prerequisite **already existed** (written by the
+owner's terminal `install` at 18:46); the run was approved, sealed and dispatched
+with no human in the sequence, and parked on the **account's rate limit**. The
+cost estimate and the convergence question below stand unchanged — the worker
+produced no code, so nothing here is measured that was not measured before.
+
+The owner authorized a _small scoped run_ (2026-08-15) and declined the full
+pipeline. This document exists so that authorizing it later is a decision about a
+known quantity rather than an open-ended one.
 
 ## What has been demonstrated
 
