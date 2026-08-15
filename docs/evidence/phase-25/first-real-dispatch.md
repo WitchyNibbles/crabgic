@@ -77,9 +77,40 @@ For the owner's condition this is the sharper finding of the two:
 - ❌ **surviving a rate limit does**, and a long run will meet one
 
 The remedy is a resume driver that reads `rate_limit_park_timer` and re-dispatches
-at `resetsAt` — a scheduler concern, small, and not a spend question. It is not
-implemented here because implementing it against a live parked run would have
-meant changing the code under test while it ran.
+at `resetsAt` — a scheduler concern, small, and not a spend question.
+
+### The remedy, landed the same day — and the bound it does not reach
+
+`packages/cli/src/daemon/park-resume-driver.ts` now derives the parked set from
+the journal (restart-safe, no interface change) and resumes each run whose window
+has closed, refusing to sweep early, to overlap its own ticks, to act during an
+account-wide pause, or to touch a unit that parked and then moved on. Eighteen
+tests, written RED first, with both guards falsified by deletion.
+
+Its read path was then run against **this run's real journal**, which is the part
+the unit tests fake — four `work_unit_transition` entries in, the parked unit
+correctly identified through two dispatch/park cycles, `[]` returned now and the
+run returned once the window is past. Positive and negative control both.
+
+**It does not rescue THIS run, and the reason generalises.** Resuming a parked
+session with full authority needs the same adapter instance that spawned it —
+only that instance holds the session's `{packet, profile}` context, and a fresh
+one gets a read-only fallback (`run-dispatcher.ts`, `retainedWorkers`). Those
+instances are per-process. So:
+
+- the driver rescues a run parked by **the daemon it runs in**
+- it **cannot** rescue one parked by a previous daemon
+- and loading it into the daemon currently holding run `08f1f1dd` requires the
+  restart that would strand exactly that run
+
+Which is why the daemon was **not** restarted: the live parked run keeps its
+retained adapter, and takes one `resume` after 02:50. Every run dispatched by a
+daemon started from this commit onward gets the driver.
+
+Closing the remaining bound needs durable session context a new process can pick
+up — a different change with a different risk surface. Recorded rather than
+papered over, because "runs now resume themselves" is true only for the daemon
+that parked them.
 
 ## Two smaller observations, recorded rather than fixed
 
