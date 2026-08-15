@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-15",
-  "generatedAtSha": "42aa8cc763c114ef12689892b8d860468ffaa4b3",
+  "generatedAtSha": "454639eca6063f8682cafb5750b3114bd73475d0",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2686,
-    "seededStale": 635,
-    "outsideSpan": 764,
+    "anchored": 2671,
+    "seededStale": 650,
+    "outsideSpan": 777,
     "repeatText": 528,
     "crossFile": 20,
     "skipped": 610
@@ -3717,7 +3717,7 @@
       "qa": "4af789d90759",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@144"
+        "MOVED/collapsed@154!span"
       ]
     },
     "phase-09.json#c2#packages/cli/src/installer/mcp-entry.golden.test.ts:37": {
@@ -3985,8 +3985,8 @@
       "qa": "044168028c52",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@174",
-        "OK/collapsed@165"
+        "MOVED/collapsed@194",
+        "MOVED/collapsed@185"
       ]
     },
     "phase-09.json#c7#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap": {
@@ -4495,13 +4495,13 @@
       "qa": "ebdb410c1b67",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@45",
-        "OK/collapsed@46",
-        "OK/collapsed@47",
-        "OK/collapsed@48",
-        "OK/collapsed@49",
-        "OK/collapsed@50",
-        "OK/collapsed@28,51~repeat"
+        "MOVED/collapsed@59!span",
+        "MOVED/collapsed@60!span",
+        "MOVED/collapsed@61!span",
+        "MOVED/collapsed@62!span",
+        "MOVED/collapsed@63!span",
+        "MOVED/collapsed@64!span",
+        "MOVED-AMBIG/collapsed@34,68!span~repeat"
       ]
     },
     "phase-10.json#c8#docs/claude-code-adaptation.md": {
@@ -4639,8 +4639,8 @@
       "qa": "6542832bc9d5",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@177",
-        "OK/collapsed@186-187"
+        "OK/collapsed@187",
+        "MOVED/collapsed@196-197!span"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:128": {
@@ -4812,7 +4812,7 @@
       "qa": "3dc52e822634",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@144"
+        "MOVED/collapsed@154!span"
       ]
     },
     "phase-11.json#c5#packages/cli/src/intake/project-inspect-handler.test.ts:23": {
@@ -11566,9 +11566,9 @@
       "qa": "d7055acc9ea8",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@509",
-        "OK/collapsed@510",
-        "OK/collapsed@511",
+        "MOVED/collapsed@515!span",
+        "MOVED/collapsed@516!span",
+        "MOVED/collapsed@517!span",
         "SKIP-short"
       ]
     },
