@@ -69,6 +69,16 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   findings has reached a judgement no amount of further reading decides. It is the only stop condition that
   asks the human rather than halting, which is the behaviour a stalled stage needs.
 
+  **AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19; and R3).** Two changes, both to WHEN this condition
+  fires rather than to what it is. First, the trigger is no longer "a round that closes no blocking finding,
+  or the fifth round": a stage closes on a round raising no admissible novel finding, so what escalates here
+  is a loop that reached the **runaway guard** without converging — a stall, reported as one. Second, under
+  ruling R3 an autonomous run may carry a **pre-declared default** for this condition and for
+  `exhausted_repairs`, journaling each firing instead of halting. `expanded_authority` is excluded
+  permanently and is unrepresentable in the autonomy document, which is what keeps it true that nothing
+  reachable from a session widens the model's own authority. The seven conditions are unchanged in number
+  and in meaning.
+
 ## Out of scope
 
 - Worker dispatch, DAG execution, task-packet construction/caching, model-routing defaults (→ 13).

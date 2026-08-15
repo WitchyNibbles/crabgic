@@ -56,11 +56,20 @@ hypothesis:
 | Severity trend                                | round 30 needed **no attacker foothold**; round 32 needed **write access to a 0700 directory the victim owns** |
 
 **The falsifiability test was applied strictly and the loop still did not
-converge.** That is the finding. Novelty and falsifiability successfully exclude
-_manufactured_ findings — Gap 19's rationale is correct on its own terms — but
-they do not bound the supply of _genuine_ ones. A non-trivial codebase contains
-an effectively inexhaustible number of true, novel, reproducible defects of
-declining severity.
+converge.** That is the finding.
+
+> **ANNOTATED 2026-08-15 (owner ruling R4).** This measurement stands and is not
+> revised. What was inferred FROM it was: the conclusion drawn below — that
+> reviewer exhaustion is the only available criterion — held only because the
+> search space was unbounded. The reviewer had a whole subsystem in scope, no
+> enumerated list of what it owed an answer about, and no key by which two
+> findings were the same finding. Bound those three and a zero-findings round
+> becomes reachable, which is what R4 ruled for. See
+> `docs/design/owner-pipeline-conformance.md` §4.3 and ledger Gap 19 as amended. Novelty and falsifiability successfully exclude
+> _manufactured_ findings — Gap 19's rationale is correct on its own terms — but
+> they do not bound the supply of _genuine_ ones. A non-trivial codebase contains
+> an effectively inexhaustible number of true, novel, reproducible defects of
+> declining severity.
 
 So the termination criterion measures **reviewer exhaustion**, not artifact
 quality. Those are different quantities, and only one of them is finite.

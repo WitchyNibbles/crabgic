@@ -30,7 +30,29 @@ taken after a live audit of the shipped `crabgic@1.3.0` binary and are binding o
 | Command surface | **The user types no Crabgic command.** A request in an ordinary session, answers to clarifying questions, and a finished change set out. Slash commands and the CLI remain, for operators and escalations — never as the required path | Manager UX |
 | Approval model | **Standing approval over an envelope class**, not per-ChangeSet consent. `crabgic install` writes an `EnvelopePolicy`; dispatch is a containment check; anything outside it halts on `expanded_authority`. Nothing reachable from a session may widen the policy | §5.5 (Gap 18) |
 | Execution model | **Always workers, never the manager.** The manager researches, clarifies, designs, roasts and reviews; every write goes through an envelope-bounded worker in its own worktree. The dispatch chain is on the critical path, not optional | §5.3 (unchanged in mechanism; promoted from one option to the only one) |
-| Quality loops | **A staged pipeline of specialised agents**: each stage has a producer, reviewer lenses, and written exit criteria. A review round is read-only and never spends a repair attempt. A stage advances when its criteria are met, no finding is `blocking`, and **every finding has a disposition**. Loops while a round closes a blocking finding; ceiling 5, then escalates. Advisory findings are journaled and become blocking when their code is next touched. `exhausted_repairs` untouched at initial + 2 | Amended 2026-07-29 (Gap 19; was "unbounded adversarial convergence, no severity floor" — measured non-terminating over 12 rounds) |
+| Quality loops | **A staged pipeline of specialised agents**: each stage has a producer, reviewer lenses, and written exit criteria. A review round is read-only and never spends a repair attempt. A stage advances when its criteria are met, no finding is `blocking`, and **every finding has a disposition**. Loops while a round closes a blocking finding; ceiling 5, then escalates. Advisory findings are journaled and become blocking when their code is next touched. `exhausted_repairs` untouched at initial + 2 | Amended 2026-07-29 (Gap 19; was "unbounded adversarial convergence, no severity floor" — measured non-terminating over 12 rounds). **Re-amended 2026-08-15 — see below** |
+
+### Amendment (owner ruling R4, 2026-08-15) — the zero-findings exit is re-opened
+
+Amendment 4's closure rule is superseded; the row above is left verbatim, per this repo's
+annotate-never-rewrite convention. The owner was shown the 12-round measurement and ruled against the rule
+it produced.
+
+**A stage closes on a round that raises no admissible novel finding.** Severity plays no part: a new
+`advisory` holds a stage open exactly as a `blocking` one does — the owner's "no issues, warnings, or buts",
+which the progress rule could not honour. "Loops while a round closes a blocking finding; ceiling 5" is
+replaced; the ceiling survives only as a runaway guard (20) that reports a **stall**, never a close.
+
+This is reachable rather than aspirational because the finding space is bounded — scope, obligation,
+identity, monotonicity — so a quiet round is a statement about a finite set instead of about a reviewer
+running out of ideas. Design: `docs/design/owner-pipeline-conformance.md` §4.3. Ledger: Gap 19, amended.
+Implementation: `roadmap/25-owner-pipeline-conformance.md`.
+
+Three further rulings were given the same day and are recorded in the same design document §6: **R1** grants
+`WebSearch`/`WebFetch` to a manager-side, read-only research agent (workers keep the default deny); **R2**
+adds a `design-gate` stage the owner alone can close, before dispatch; **R3** lets
+`irreducible_product_decision` and `exhausted_repairs` carry pre-declared defaults in an autonomous run,
+with `expanded_authority` excluded permanently and unrepresentably.
 
 ---
 
