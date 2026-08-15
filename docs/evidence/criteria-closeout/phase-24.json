@@ -39,8 +39,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/bootstrap.ts:470-473",
-          "quotedAssertion": "The production wiring the fixture reuses, so 'durable' means the shipped path and not a test-only one: 'requirements: createFileRegistry<Requirement>({' / 'path: join(stateRoot, REQUIREMENTS_FILE_NAME),' / 'schema: RequirementSchema,'. The test opens its registry through the same 'createFileRegistry' factory (test :78)."
+          "ref": "packages/cli/src/bootstrap.ts:509-512",
+          "quotedAssertion": "The production wiring the fixture reuses, so \"durable\" means the shipped path and not a test-only one: 'requirements: createFileRegistry<Requirement>({' / 'path: join(stateRoot, REQUIREMENTS_FILE_NAME),' / 'schema: RequirementSchema,'. The test opens its registry through the same `createFileRegistry` factory (test :78). (Notation corrected 2026-08-15: the factory NAME, and the criterion's own word \"durable\", were written in the '…' file-quote form, which asserts it is quoted from bootstrap.ts at the marker beside it — it is not; it names a symbol both files import. Pre-existing, surfaced when PR #136 moved this citation's ref.) Corrected 2026-08-15: was `bootstrap.ts:470-473`, now :509-512 — PR #136 added the Jira config store, the probe-path resolver and the connection activator above it."
         },
         {
           "kind": "artifact",

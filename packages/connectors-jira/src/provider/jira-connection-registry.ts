@@ -4,6 +4,7 @@ import { AttachmentStagingRegistry } from "../attachments/attachment-staging.js"
 import { buildFieldMetadataIndex, type FieldMetadataIndex } from "../capability/field-metadata.js";
 import { createJiraEntityPropertyMarkerReconciler } from "../reconciliation/entity-property-marker.js";
 import type { JiraTokenManager } from "../auth/token-manager.js";
+import type { JiraAuthHeaderProvider } from "../auth/jira-datacenter-auth.js";
 import type { JiraHttpContext } from "../resource-client/http-read-helper.js";
 import { createJiraResourceClient } from "../resource-client/jira-resource-client.js";
 import type { JiraMutationApplyDeps } from "../resource-client/jira-mutation-apply-client.js";
@@ -48,6 +49,14 @@ export interface JiraConnectionEntry {
 export interface RegisterJiraConnectionOptions {
   /** Test-only escape hatch — production omits this, defaulting to `@crabgic/gateway`'s `buildHttpClientForConnection` (real DNS/TLS/SSRF stack). */
   readonly buildHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
+  /**
+   * The connection's resolved authorization scheme, from its own
+   * `JiraConnectionConfig` (`../auth/jira-cloud-auth.ts` builds it).
+   * Omitted means the OAuth Bearer scheme carried by `tokenManager` —
+   * see `JiraHttpContext.authHeaderProvider` for why that default exists
+   * and why it is not a second auth path.
+   */
+  readonly authHeaderProvider?: JiraAuthHeaderProvider;
   /** Refreshed periodically by the caller via `../capability/discovery.ts`'s `discoverJiraFieldMetadata`; defaults to empty (every custom-field write refused until discovery has run at least once — fail-closed, never silently permissive). */
   readonly fieldMetadataIndex?: FieldMetadataIndex;
 }
@@ -60,13 +69,27 @@ export class JiraConnectionRegistry {
     return this.#attachmentStaging;
   }
 
+  /**
+   * `tokenManager` is OPTIONAL since #135: a connection authenticating by
+   * HTTP Basic supplies `options.authHeaderProvider` instead and has no
+   * token to manage. Exactly one of the two must be present — a context
+   * with neither refuses at request time rather than sending an
+   * unauthenticated call (see `jiraAuthHeader`).
+   */
   async register(
     connection: ExternalConnection,
-    tokenManager: JiraTokenManager,
+    tokenManager: JiraTokenManager | undefined,
     options: RegisterJiraConnectionOptions = {},
   ): Promise<JiraConnectionEntry> {
     const httpClient = await (options.buildHttpClient ?? buildHttpClientForConnection)(connection);
-    const ctx: JiraHttpContext = { connection, httpClient, tokenManager };
+    const ctx: JiraHttpContext = {
+      connection,
+      httpClient,
+      ...(tokenManager !== undefined ? { tokenManager } : {}),
+      ...(options.authHeaderProvider !== undefined
+        ? { authHeaderProvider: options.authHeaderProvider }
+        : {}),
+    };
     const payloadRegistry = new JiraPlanPayloadRegistry();
     const fieldMetadataIndex = options.fieldMetadataIndex ?? buildFieldMetadataIndex([]);
 

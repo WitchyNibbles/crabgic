@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-13",
-  "generatedAtSha": "9592244bd1cd62e8ae4daf792d1dd65705a5d89b",
+  "generatedAt": "2026-08-15",
+  "generatedAtSha": "42aa8cc763c114ef12689892b8d860468ffaa4b3",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
-    "fragments": 3932,
-    "anchored": 2687,
-    "seededStale": 636,
-    "outsideSpan": 766,
+    "fragments": 3931,
+    "anchored": 2686,
+    "seededStale": 635,
+    "outsideSpan": 764,
     "repeatText": 528,
     "crossFile": 20,
-    "skipped": 609
+    "skipped": 610
   },
   "citations": {
     "phase-00.json#c1#docs/engine-baseline.md:12": {
@@ -3650,11 +3650,11 @@
         "OK/collapsed@247!span"
       ]
     },
-    "phase-09.json#c1#packages/cli/src/argv/parse-command.test.ts:249": {
-      "qa": "eaa8f27a9837",
+    "phase-09.json#c1#packages/cli/src/argv/parse-command.test.ts:249-252": {
+      "qa": "8cc3dc51575c",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@250!span"
+        "OK/collapsed@252"
       ]
     },
     "phase-09.json#c1#packages/cli/src/commands/cli.commands.schema.test.ts:148": {
@@ -3662,14 +3662,14 @@
       "ref": "OK",
       "pins": [
         "OK-pieces/collapsed@152,154-155!span",
-        "MOVED/collapsed@304!span"
+        "MOVED/collapsed@305!span"
       ]
     },
     "phase-09.json#c1#packages/cli/src/commands/cli.commands.schema.test.ts:230": {
       "qa": "76e4a14442a0",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@274-275!span",
+        "MOVED/collapsed@275-276!span",
         "SKIP-commentary"
       ]
     },
@@ -3713,11 +3713,11 @@
         "OK/collapsed@128-129,146-147!span~repeat"
       ]
     },
-    "phase-09.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142": {
-      "qa": "6c5ecda6129e",
+    "phase-09.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144": {
+      "qa": "4af789d90759",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@142"
+        "OK/collapsed@144"
       ]
     },
     "phase-09.json#c2#packages/cli/src/installer/mcp-entry.golden.test.ts:37": {
@@ -3981,12 +3981,12 @@
       "pins": [],
       "frozen": true
     },
-    "phase-09.json#c7#packages/cli/src/argv/types.ts:146-179": {
-      "qa": "25b1c3544886",
+    "phase-09.json#c7#packages/cli/src/argv/types.ts:164-197": {
+      "qa": "044168028c52",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@156",
-        "OK/collapsed@147"
+        "OK/collapsed@174",
+        "OK/collapsed@165"
       ]
     },
     "phase-09.json#c7#packages/cli/src/commands/__snapshots__/cli.snapshots.test.ts.snap": {
@@ -4003,7 +4003,7 @@
       "qa": "beeb5f7aa019",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@63,68,570!span~repeat",
+        "MOVED-AMBIG/collapsed@64,69,571!span~repeat",
         "SKIP-short"
       ]
     },
@@ -4635,12 +4635,12 @@
         "OK/collapsed@171!span"
       ]
     },
-    "phase-11.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:175-185": {
-      "qa": "d9ba18c6492f",
+    "phase-11.json#c2#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:177-187": {
+      "qa": "6542832bc9d5",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@175",
-        "OK/collapsed@184-185"
+        "OK/collapsed@177",
+        "OK/collapsed@186-187"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:128": {
@@ -4808,11 +4808,11 @@
       ],
       "frozen": true
     },
-    "phase-11.json#c5#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142": {
-      "qa": "7480fe12b34e",
+    "phase-11.json#c5#packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144": {
+      "qa": "3dc52e822634",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@142"
+        "OK/collapsed@144"
       ]
     },
     "phase-11.json#c5#packages/cli/src/intake/project-inspect-handler.test.ts:23": {
@@ -6567,11 +6567,11 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@104",
-        "OK/collapsed@105,159,182~repeat",
-        "OK/collapsed@106,160,183~repeat",
-        "MOVED-AMBIG/collapsed@108,161,186~repeat",
-        "OK/collapsed@113",
-        "OK/collapsed@114"
+        "OK/collapsed@105,159,216,355~repeat",
+        "OK/collapsed@106,160,217,356~repeat",
+        "MOVED-AMBIG/collapsed@108,161,221,359~repeat",
+        "OK/collapsed@113,245,338~repeat",
+        "OK/collapsed@114,246~repeat"
       ]
     },
     "phase-16.json#c10#packages/gateway/src/connection-doctor/reachability-probe.test.ts:117-125": {
@@ -6581,7 +6581,7 @@
         "SKIP-commentary",
         "OK/collapsed@117",
         "MOVED/collapsed@120",
-        "OK/collapsed@123,138,146,153,163,170,201~repeat",
+        "OK/collapsed@123,138,146,153,163,170,239,330,374~repeat",
         "OK/collapsed@124,139~repeat"
       ]
     },
@@ -6591,7 +6591,7 @@
       "pins": [
         "SKIP-commentary",
         "OK/collapsed@128",
-        "OK/collapsed@123,138,146,153,163,170,201~repeat",
+        "OK/collapsed@123,138,146,153,163,170,239,330,374~repeat",
         "OK/collapsed@124,139~repeat"
       ]
     },
@@ -6604,7 +6604,7 @@
         "OK/collapsed@147",
         "OK/collapsed@167",
         "OK/collapsed@171",
-        "OK/collapsed@154,164~repeat"
+        "OK/collapsed@154,164,240~repeat"
       ]
     },
     "phase-16.json#c10#packages/gateway/src/connection-doctor/reachability-probe.test.ts:150-165": {
@@ -6616,16 +6616,16 @@
         "MOVED-AMBIG/collapsed@145,152,162,169!span~repeat"
       ]
     },
-    "phase-16.json#c10#packages/gateway/src/connection-doctor/reachability-probe.test.ts:174-206": {
-      "qa": "b48691eb03d2",
+    "phase-16.json#c10#packages/gateway/src/connection-doctor/reachability-probe.test.ts:347-375": {
+      "qa": "32ed60798b10",
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "OK/collapsed@174",
-        "OK/collapsed@175",
-        "OK/collapsed@176",
-        "OK/collapsed@123,138,146,153,163,170,201~repeat",
-        "OK/collapsed@202"
+        "OK/collapsed@347",
+        "OK/collapsed@348",
+        "OK/collapsed@349",
+        "OK/collapsed@123,138,146,153,163,170,239,330,374~repeat",
+        "OK/collapsed@375"
       ]
     },
     "phase-16.json#c11#docs/evidence/phase-16/closeout-c6-c11-mcp-dispatch-doctor.txt": {
@@ -7148,12 +7148,12 @@
         "OK/collapsed@180,203,229,269,298,446~repeat"
       ]
     },
-    "phase-16.json#c5#packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:39-41": {
-      "qa": "d31f26257562",
+    "phase-16.json#c5#packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:66-67": {
+      "qa": "55ebadb85233",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@40",
-        "OK/collapsed@41",
+        "OK/collapsed@66",
+        "OK/collapsed@67",
         "SKIP-short"
       ]
     },
@@ -7530,18 +7530,18 @@
         "OK/collapsed@104"
       ]
     },
-    "phase-16.json#c9#packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:56-95": {
-      "qa": "fcccac9156cf",
+    "phase-16.json#c9#packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:82-133": {
+      "qa": "0aa536fb3800",
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "OK/collapsed@56",
-        "OK/collapsed@69",
-        "OK/collapsed@83",
-        "OK/collapsed@95",
-        "OK/collapsed@71",
-        "OK/collapsed@58,72,85,101,109~repeat",
-        "OK/collapsed@73,86~repeat"
+        "OK/collapsed@82",
+        "OK/collapsed@107",
+        "OK/collapsed@121",
+        "OK/collapsed@133",
+        "OK/collapsed@109",
+        "OK/collapsed@84,101,110,123,139,147~repeat",
+        "OK/collapsed@111,124~repeat"
       ]
     },
     "phase-16.json#c9#packages/gateway/src/provider-dispatch/provider-registry.test.ts:13-22": {
@@ -8375,9 +8375,9 @@
       "qa": "a769e525b58e",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@331!span",
+        "MOVED/collapsed@365!span",
         "SKIP-commentary",
-        "MOVED/collapsed@335!span"
+        "MOVED/collapsed@369!span"
       ]
     },
     "phase-18.json#c5#docs/evidence/phase-18/closeout-c5-c6-never-guess-and-comparator.txt": {
@@ -10067,11 +10067,11 @@
         "MOVED/prose@19!span"
       ]
     },
-    "phase-21.json#c5#packages/connectors-grafana/src/index.ts:185": {
-      "qa": "766be3da7997",
+    "phase-21.json#c5#packages/connectors-grafana/src/index.ts:195": {
+      "qa": "7caebe1459db",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@185"
+        "OK/collapsed@195"
       ]
     },
     "phase-21.json#c5#packages/gates/src/security-fixture-manifest.test.ts:49-54": {
@@ -11562,15 +11562,14 @@
       ],
       "frozen": true
     },
-    "phase-24.json#c1#packages/cli/src/bootstrap.ts:470-473": {
-      "qa": "d42e9f627d01",
+    "phase-24.json#c1#packages/cli/src/bootstrap.ts:509-512": {
+      "qa": "d7055acc9ea8",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@109,113,142,222,328,358,511!span~repeat",
-        "OK/collapsed@470",
-        "OK/collapsed@471",
-        "OK/collapsed@472",
-        "OK/collapsed@63,339,446,450,454,462,470~repeat"
+        "OK/collapsed@509",
+        "OK/collapsed@510",
+        "OK/collapsed@511",
+        "SKIP-short"
       ]
     },
     "phase-24.json#c1#packages/supervisor/src/intake/requirement-durability.integration.test.ts:158-171": {

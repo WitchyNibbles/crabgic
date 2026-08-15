@@ -22,6 +22,7 @@ import {
 import { createApprovalLedger, createCapabilityStore } from "@crabgic/detect";
 import type { TrustCommandDependencies } from "@crabgic/detect";
 import { FileExternalConnectionStore } from "@crabgic/gateway";
+import { FileJiraConnectionConfigStore } from "../connection/jira-config-store.js";
 import {
   buildAuthorizationEnvelope,
   buildChangeSet,
@@ -767,8 +768,10 @@ describe("--json output schema snapshots — trust review / approve / revoke", (
 
 const CONNECTION_ADD = {
   command: "connection-add",
+  allowBasicAuth: false,
   provider: "jira",
   reference: { raw: "env:JIRA_TOKEN" },
+  usernameReference: { raw: "env:JIRA_EMAIL" },
   baseUrl: "https://example.atlassian.net",
   allowedRedirectOrigins: ["https://example.atlassian.net"],
   allowedResources: ["issue"],
@@ -783,6 +786,7 @@ describe("--json output schema snapshots — connection add / list / doctor / ca
     await mkdir(dir, { recursive: true });
     return {
       repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+      jiraConfigs: new FileJiraConnectionConfigStore(join(dir, "jira-connection-configs.json")),
       probe: () => Promise.resolve({ reachable: true, detail: "HTTP 200" }),
     };
   }

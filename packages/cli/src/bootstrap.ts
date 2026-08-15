@@ -24,6 +24,7 @@ import {
   FileExternalConnectionStore,
   probeConnectionReachability,
   ProviderRegistry,
+  type GatewayHttpClient,
   type GatewayToolRegistry,
   type GenericProviderClient,
   type MutationApplyClient,
@@ -47,6 +48,7 @@ import {
   WorkUnitSchema,
   type AuthorizationEnvelope,
   type ChangeSet,
+  type ExternalConnection,
   type IntentContract,
   type Requirement,
   type WorkUnit,
@@ -105,9 +107,16 @@ import {
 import { listTopLevelDirectories } from "./policy/list-directories.js";
 import type { InstallerDependencies } from "./installer/types.js";
 import type { ConnectionDependencies } from "./connection/connection-commands.js";
+import { withProviderKeyNormalization } from "./connection/provider-keys.js";
+import { resolveProbePath } from "./connection/probe-paths.js";
+import { FileJiraConnectionConfigStore } from "./connection/jira-config-store.js";
+import { createConnectionActivator } from "./connection/connection-activation.js";
 
 /** The durable connection store's file name under the project's XDG state root. */
 const CONNECTIONS_FILE_NAME = "connections.json";
+
+/** The per-connection Jira auth/deployment config store, beside `connections.json` (issue #135 — the storage roadmap/19's `JiraConnectionConfig` never had). */
+const JIRA_CONNECTION_CONFIGS_FILE_NAME = "jira-connection-configs.json";
 
 /**
  * 20's plan-payload and rollback-snapshot stores, durable under the
@@ -134,17 +143,18 @@ const GRAFANA_ROLLBACK_SNAPSHOTS_FILE_NAME = "grafana-rollback-snapshots.json";
  * `UnknownProviderError` — "this build has no Jira connector" — which was
  * simply false.
  *
- * The two returned registries are handed back so a caller that DOES hold
- * resolved credentials can call `register(connection, ...)` on them. No
- * such caller exists yet; that is the genuinely-blocked half, tracked in
- * `e2e/live/src/knownDeferredAllowlist.ts` rather than faked here. The
- * same is true of the two Grafana stores below: they are CONSTRUCTED here,
- * durable and owner-only, and travel with the registry they belong to, but
- * nothing consumes them until that `register(connection, {payloadStore,
- * snapshotStore})` call site exists. Stated plainly rather than described
- * as "wired" — `./bootstrap.test.ts` pins what is actually true of them
- * (their exact paths, their mode, and that they survive a process
- * boundary), and nothing claims more.
+ * The two returned registries are handed back so a caller that holds
+ * resolved credentials can call `register(connection, ...)` on them.
+ *
+ * THAT CALLER NOW EXISTS (2026-08-14, issue #135 defect 3):
+ * `./connection/connection-activation.ts`, invoked lazily on first
+ * dispatch for each connection. Until then there was none, and the note
+ * here said so — which was accurate and also the whole bug: the
+ * registries stayed empty for the process's entire life, so every
+ * connector answered "was never registered" and none could serve a single
+ * request. The same was true of the two Grafana stores below; the
+ * `register(connection, {payloadStore, snapshotStore})` call site they
+ * were waiting for is that activator.
  */
 export interface ProviderDispatchWiring {
   readonly providers: ProviderRegistry<GenericProviderClient>;
@@ -200,6 +210,13 @@ export interface BuildRealCliDependenciesOverrides {
     /** Explicit passive-mode override; when omitted, `CRABGIC_NO_SPAWN` in the process env decides. Tests set it directly so they never depend on ambient env. */
     readonly spawn?: boolean;
   };
+  /**
+   * Test-only seam for `buildRealGatewayToolRegistry`'s connection
+   * activator — the HTTP client a connector is wired with. Production
+   * omits it, defaulting to the real SSRF/DNS/TLS stack; tests supply a
+   * capture so a dispatch can be driven end to end without a network.
+   */
+  readonly activationHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
 }
 
 export function buildRealCliDependencies(
@@ -385,6 +402,28 @@ export function buildRealGatewayToolRegistry(
     connections: deps.connection!.repository,
     providers: dispatch.providers,
     mutationApplyClients: dispatch.mutationApplyClients,
+    // The call site issue #135's defect 3 was missing. `dispatch.jira`
+    // and `dispatch.grafana` had NO consumers outside their own
+    // construction, so the per-connection registries behind the two
+    // provider clients above stayed empty for the process's whole life
+    // and every connector answered "was never registered".
+    activateConnection: createConnectionActivator({
+      jira: dispatch.jira,
+      jiraConfigs: deps.connection!.jiraConfigs!,
+      grafana: dispatch.grafana,
+      // The two durable stores this wiring already builds. Until now they
+      // were constructed, documented, and consumed by nothing — the
+      // `register(connection, {payloadStore, snapshotStore})` call site
+      // they were waiting for is the one below.
+      grafanaPayloadStore: dispatch.grafanaPayloadStore,
+      grafanaSnapshotStore: dispatch.grafanaSnapshotStore,
+      ...(overrides.activationHttpClient !== undefined
+        ? {
+            buildJiraHttpClient: overrides.activationHttpClient,
+            buildGrafanaHttpClient: overrides.activationHttpClient,
+          }
+        : {}),
+    }),
     supervisorSocketPath: resolveSupervisorSocketPath(xdgEnv, projectHash),
     // Resolved HERE, from the same xdgEnv/projectHash everything else in this
     // composition root uses — a second derivation elsewhere would be a second
@@ -516,10 +555,32 @@ function buildRealConnectionDependencies(
   projectHash: string,
 ): ConnectionDependencies {
   return {
-    repository: new FileExternalConnectionStore(
-      join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
+    // Wrapped, never bare: a record written by 1.7.0 or earlier carries
+    // the un-dispatchable `provider: "jira"` (issue #135, defect 2), and
+    // this is the composition root — the one layer that knows both the
+    // store and the connectors whose keys it must speak. The store itself
+    // stays provider-agnostic.
+    repository: withProviderKeyNormalization(
+      new FileExternalConnectionStore(
+        join(resolveStateRoot(xdgEnv, projectHash), CONNECTIONS_FILE_NAME),
+      ),
     ),
-    probe: (connection) => probeConnectionReachability(connection),
+    // Beside `connections.json`, under the same state root and the same
+    // 0600 posture: a Jira connection's credential SHAPE is state an
+    // operator configured, and without somewhere to record it a Jira
+    // Cloud connection cannot authenticate at all (issue #135).
+    jiraConfigs: new FileJiraConnectionConfigStore(
+      join(resolveStateRoot(xdgEnv, projectHash), JIRA_CONNECTION_CONFIGS_FILE_NAME),
+    ),
+    // The provider-specific probe path is supplied HERE, not inside the
+    // gateway: `probeConnectionReachability` stays provider-agnostic, and
+    // this is the layer that knows both it and the connectors. Without a
+    // caller for that seam, `connection doctor` GET the site root and
+    // refused every Atlassian Cloud connection (issue #135, defect 1).
+    probe: (connection) => {
+      const path = resolveProbePath(connection.provider);
+      return probeConnectionReachability(connection, path !== undefined ? { path } : {});
+    },
   };
 }
 

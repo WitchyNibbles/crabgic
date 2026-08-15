@@ -88,6 +88,10 @@ function buildRoutedMutationApplyClient(
   registry: JiraDatacenterConnectionRegistry,
 ): MutationApplyClient {
   return {
+    // This connection's own PAT/basic scheme, resolved per write. Data
+    // Center writes were unauthenticated for the same reason Cloud's were
+    // — there was no hook to answer with (issue #135, defect 5).
+    authHeaders: async (plan) => registry.get(plan.externalConnectionId).ctx.authHeaderProvider(),
     buildRequest: (plan) =>
       createJiraDatacenterMutationApplyClient(
         registry.get(plan.externalConnectionId).applyDeps,

@@ -30,6 +30,17 @@ import { EXIT_GENERAL_ERROR, EXIT_OK, formatJson, type CommandResult } from "@cr
 import type { CapabilitySnapshot, ExternalConnection, SecretReference } from "@crabgic/contracts";
 import { CliUsageError } from "../errors.js";
 import { pluralize, renderItemListReport, renderResultLine } from "../output/reports.js";
+import { resolveDispatchProviderKey, resolveStoredDeploymentType } from "./provider-keys.js";
+import { toStoredSecretRef } from "./stored-secret-ref.js";
+import { buildJiraConnectionConfig } from "./jira-config-from-command.js";
+import type { JiraConnectionConfigStore } from "./jira-config-store.js";
+
+/**
+ * Stand-in id used only to VALIDATE the credential flags before a
+ * connection exists to key them to. Never persisted: the draft is
+ * re-keyed to the real id the moment `create` returns one.
+ */
+const PENDING_CONNECTION_ID = "pending";
 import type { ExternalConnectionRepository, ReachabilityProbeResult } from "@crabgic/gateway";
 import type {
   ConnectionAddCommand,
@@ -45,61 +56,42 @@ export interface ConnectionDependencies {
    * Discovers one connection's live `CapabilitySnapshot` — the injected
    * counterpart to `probe`, backing `./connection-capabilities.ts`.
    *
-   * OPTIONAL, and `../bootstrap.ts` does NOT supply one today. Both
-   * connectors are one concrete piece short, and neither piece can be
-   * supplied here without inventing something:
+   * OPTIONAL, and `../bootstrap.ts` still does NOT supply one.
    *
-   *  - Jira: `discoverJiraCapabilitySnapshot` is real and calls documented
-   *    endpoints (`/rest/api/3/serverInfo`, `/rest/api/3/mypermissions`),
-   *    and every part of its `JiraHttpContext` is constructible —
-   *    `buildHttpClientForConnection` plus the exported `JiraTokenManager`
-   *    over `buildJiraOAuthTokenFetcher`. What is missing is STORAGE for
-   *    the OAuth client-credentials PAIR: `JiraConnectionConfigSchema`
-   *    gained `oauthClientIdSecretRef`/`oauthClientSecretRef` in WP5, but
-   *    nothing persists a `JiraConnectionConfig`, and P02's
-   *    `ExternalConnection` carries exactly ONE `secretRef` by a
-   *    roadmap/19 ruling that must not be widened.
-   *  - Grafana: `GrafanaBuildInfoResponse` is documented in its own file
-   *    as "fixture data, not an assertion about Grafana's exact wire
-   *    format ... pending live verification". Writing `fetchBuildInfo`
-   *    against it would be guessing at an unverified engine fact, which
-   *    this repo's ground rules forbid; the containerized Grafana run is
-   *    where that gets settled.
+   * BOTH BLOCKERS THIS COMMENT USED TO RECORD ARE NOW GONE (2026-08-14,
+   * issue #135) — they are stated here as resolved rather than deleted,
+   * because they are the reason the command is still unwired and the
+   * next person needs to know the reason CHANGED:
+   *
+   *  - Jira needed STORAGE for a credential pair, since `ExternalConnection`
+   *    carries exactly one `secretRef` by a roadmap/19 ruling. That storage
+   *    now exists (`./jira-config-store.ts`), and `./connection-activation.ts`
+   *    already builds a full `JiraHttpContext` from it.
+   *  - Grafana needed a `fetchBuildInfo` that was not a guess at an
+   *    unverified engine fact. One now exists
+   *    (`@crabgic/connectors-grafana`'s `buildGrafanaDiscoveryDeps`), built
+   *    on an explicit owner ruling and marked unverified in
+   *    `docs/evidence/phase-20/UNVERIFIED-build-info-wire-format.md`.
+   *
+   * So wiring `connection capabilities` is now a matter of plumbing rather
+   * than of unblocking, and is deliberately left as its own change: it was
+   * out of scope for #135, which was about DISPATCH, and wiring it here
+   * silently would take it off `e2e/live`'s NOT_IMPLEMENTED sweep without
+   * anyone deciding to.
    *
    * Leaving it undefined keeps `connection capabilities` visible to
    * `e2e/live`'s NOT_IMPLEMENTED sweep instead of converting a tracked
    * deferral into an always-failing command that merely looks wired.
    */
   readonly discoverCapabilities?: (connection: ExternalConnection) => Promise<CapabilitySnapshot>;
-}
-
-/**
- * The CLI's argv-level reference forms (`../argv/secret-reference.ts`:
- * `env:NAME`, `op://…`, `vault://…`, `file:///abs/path`, `ref:id`) are a
- * DIFFERENT, wider vocabulary than the stored contract's
- * `SecretReferenceSchema` (02), which has exactly three backends —
- * `env`/`file`/`exec`. This converts the two that have a faithful
- * representation and refuses the rest loudly.
- *
- * Refusing is the correct behavior, not a shortcoming: silently coercing
- * `op://vault/item` into, say, an `exec` backend would invent a resolution
- * mechanism the operator never asked for. Widening
- * `SecretReferenceSchema` to carry secret-manager URIs is a 02 contract
- * change and belongs to whoever adds real support for those backends.
- * (`exec` is unreachable from argv today for the mirror-image reason: the
- * CLI's own reference pattern has no `exec:` form.)
- */
-function toStoredSecretRef(raw: string): SecretReference {
-  if (raw.startsWith("env:")) {
-    return { backend: "env", variable: raw.slice("env:".length) };
-  }
-  if (raw.startsWith("file://")) {
-    return { backend: "file", path: raw.slice("file://".length) };
-  }
-  throw new CliUsageError(
-    `secret reference "${raw.split(":")[0]}:…" is not storable on a connection ` +
-      `(supported: env:NAME, file:///abs/path)`,
-  );
+  /**
+   * Persists the `JiraConnectionConfig` that says HOW a Jira connection
+   * authenticates — the storage whose absence is recorded above, and the
+   * reason a Jira Cloud connection could not authenticate at all (issue
+   * #135). Optional so a caller that never adds a Jira connection need
+   * not supply one; `../bootstrap.ts` always does.
+   */
+  readonly jiraConfigs?: JiraConnectionConfigStore;
 }
 
 /**
@@ -138,16 +130,46 @@ export async function runConnectionAddCommand(
   cmd: ConnectionAddCommand,
   deps: ConnectionDependencies,
 ): Promise<CommandResult> {
+  // The argv word (`jira`) is NOT the stored value: `provider` is the
+  // provider-dispatch key `ProviderRegistry.resolve` is called with, and
+  // storing the argv word raw is what made every Jira connection created
+  // by 1.7.0 and earlier undispatchable (issue #135, defect 2). Resolved
+  // BEFORE `create`, so an unknown `--deployment` refuses the command
+  // rather than persisting a record nothing can route.
+  const provider = resolveDispatchProviderKey(cmd.provider, cmd.deploymentType);
+  const deploymentType = resolveStoredDeploymentType(cmd.provider, cmd.deploymentType);
+
+  // Validated BEFORE the connection is created, with a placeholder id: a
+  // bad `--auth-mode`/`--username-ref` combination must refuse the whole
+  // command, never leave a stored connection whose credentials are
+  // unusable — the exact "stores fine, 401s on first use" shape this
+  // issue is about. The real id is filled in once `create` assigns one.
+  const configDraft = buildJiraConnectionConfig(cmd, PENDING_CONNECTION_ID);
+
   const created = await deps.repository.create({
-    provider: cmd.provider,
+    provider,
     baseUrl: cmd.baseUrl,
-    ...(cmd.deploymentType !== undefined ? { deploymentType: cmd.deploymentType } : {}),
+    ...(deploymentType !== undefined ? { deploymentType } : {}),
     allowedRedirectOrigins: cmd.allowedRedirectOrigins,
     allowedResources: cmd.allowedResources,
     allowedActions: cmd.allowedActions,
     discoveryTtlSeconds: cmd.discoveryTtlSeconds,
     secretRef: toStoredSecretRef(cmd.reference.raw),
   });
+
+  if (configDraft !== undefined) {
+    if (deps.jiraConfigs === undefined) {
+      // Refused rather than skipped: a Jira connection with no stored
+      // config cannot authenticate, and a silent skip would produce
+      // exactly the "added successfully, fails on first dispatch"
+      // outcome this whole change exists to end.
+      throw new CliUsageError(
+        "cannot add a Jira connection without a configured Jira config store " +
+          "(the credential shape would have nowhere to be recorded)",
+      );
+    }
+    await deps.jiraConfigs.put({ ...configDraft, externalConnectionId: created.id });
+  }
 
   const summary = toSummary(created);
   return {

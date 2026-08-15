@@ -6,12 +6,65 @@ import {
   mapJiraStatusToConnectorErrorKind,
 } from "../errors/jira-error-mapping.js";
 import type { JiraTokenManager } from "../auth/token-manager.js";
+import type { JiraAuthHeaderProvider } from "../auth/jira-datacenter-auth.js";
 
 /** Shared context every `JiraResourceClient` read/apply builder closes over — one instance per `ExternalConnection`. */
 export interface JiraHttpContext {
   readonly connection: ExternalConnection;
   readonly httpClient: GatewayHttpClient;
-  readonly tokenManager: JiraTokenManager;
+  /**
+   * The OAuth client-credentials token manager. OPTIONAL since #135: a
+   * connection authenticating by HTTP Basic (Cloud's API-token path) has
+   * no token to manage, and manufacturing a never-called one just to
+   * satisfy a required field would be a sentinel that lies about what
+   * the connection does.
+   */
+  readonly tokenManager?: JiraTokenManager;
+  /**
+   * The connection's resolved authorization scheme. Supplied by
+   * `../provider/jira-connection-registry.ts` in production, from the
+   * connection's own `JiraConnectionConfig`.
+   *
+   * OPTIONAL for one reason only: this context has ~37 construction sites
+   * across fixtures and tests that predate a configurable scheme and mean
+   * "OAuth Bearer", which is exactly what omitting it still gives. It is
+   * NOT an alternative code path — `jiraAuthHeader` below is the single
+   * place either shape becomes a header, so there is one answer to "how
+   * does a Jira request authenticate", not two.
+   */
+  readonly authHeaderProvider?: JiraAuthHeaderProvider;
+}
+
+/**
+ * The ONE place a Jira Cloud request's authorization header is decided
+ * — for READS here, and for WRITES via `../provider/register.ts`'s
+ * `authHeaders` hook, which calls this same function (issue #135, defect
+ * 5: the write path used to attach no credential at all).
+ *
+ * It used to be a hardcoded `Bearer ${token.accessToken}` at the single
+ * call site below, which silently made OAuth the only expressible Cloud
+ * credential — and Atlassian rejects API tokens sent as Bearer, so the
+ * credential operators actually hold could not be used at all (issue
+ * #135). Routing both shapes through one function keeps that from
+ * becoming two divergent auth paths.
+ */
+export async function jiraAuthHeader(ctx: JiraHttpContext): Promise<Record<string, string>> {
+  if (ctx.authHeaderProvider !== undefined) return { ...(await ctx.authHeaderProvider()) };
+  if (ctx.tokenManager === undefined) {
+    // Fail closed and loudly. An unauthenticated Jira request would come
+    // back 401 and read as a credential problem, sending whoever debugs
+    // it to look at the token rather than at the wiring that never
+    // supplied one.
+    throw ConnectorError.authentication({
+      message:
+        "Jira connection has neither an auth-header provider nor a token manager — " +
+        "nothing can authenticate this request",
+      provider: JIRA_PROVIDER_NAME,
+      retryable: false,
+    });
+  }
+  const token = await ctx.tokenManager.getAccessToken();
+  return { authorization: `Bearer ${token.accessToken}` };
 }
 
 function safeParseJson(text: string): unknown {
@@ -39,7 +92,7 @@ export async function jiraGetJson<T>(
   schema: z.ZodType<T>,
   resourceLabel: string,
 ): Promise<T> {
-  const token = await ctx.tokenManager.getAccessToken();
+  const authorization = await jiraAuthHeader(ctx);
 
   const response = await ctx.httpClient.request({
     connectionId: ctx.connection.id,
@@ -47,7 +100,7 @@ export async function jiraGetJson<T>(
     resource: resourceLabel,
     url: new URL(path, ctx.connection.baseUrl),
     method: "GET",
-    headers: { authorization: `Bearer ${token.accessToken}`, accept: "application/json" },
+    headers: { ...authorization, accept: "application/json" },
   });
 
   const parsedBody = safeParseJson(response.bodyText);

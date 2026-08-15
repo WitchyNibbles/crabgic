@@ -39,8 +39,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/argv/parse-command.test.ts:249",
-          "quotedAssertion": "packages/cli/src/argv/parse-command.test.ts:250 — 'expect(parseCommand([\"gateway\", \"mcp\"])).toEqual({ command: \"gateway-mcp\" });'. The file carries one case per command §In scope names (install :6, doctor :14, status :22/:31, resume :35, cancel :44, evidence :52, approve :61, connection add/list/doctor/capabilities :75/:186, trust :203, learn :217, upgrade+uninstall :236, gateway mcp :249, help :257), and :269/:273 reject an unknown top-level command and a malformed flag so the union is closed."
+          "ref": "packages/cli/src/argv/parse-command.test.ts:249-252",
+          "quotedAssertion": "packages/cli/src/argv/parse-command.test.ts:252 — 'expect(parseCommand([\"gateway\", \"mcp\"])).toEqual({ command: \"gateway-mcp\" });'. The file carries one case per command §In scope names (install :6, doctor :14, status :22/:31, resume :35, cancel :44, evidence :52, approve :61, connection add/list/doctor/capabilities :75/:186, trust :203, learn :217, upgrade+uninstall :236, gateway mcp :249, help :257), and :269/:273 reject an unknown top-level command and a malformed flag so the union is closed. Corrected 2026-08-15: the walked quote was `parse-command.test.ts:250`, now :252 — PR #136 added three `connection add` credential flags to the tokenizer above it."
         },
         {
           "kind": "test",
@@ -105,8 +105,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142",
-          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' against buildRealGatewayToolRegistry, i.e. the RESOLVED set the shipped binary boots (24 names: 18 native + 11's two + 12's two + Gap 20's two); :141-146 additionally requires every one to carry a real invocable handler, never a descriptor-only stub. (Ref and marker corrected 2026-08-11, from `build-tool-registry.test.ts:138`. Pure line drift: this change added `report.render` — the manager channel's structured rendering path, design §L1 — to EXPECTED_TOOL_NAMES, four lines above. The quoted assertion is unchanged in text and in meaning; the inventory it checks simply names one more tool.)"
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' against buildRealGatewayToolRegistry, i.e. the RESOLVED set the shipped binary boots (24 names: 18 native + 11's two + 12's two + Gap 20's two); :143-148 additionally requires every one to carry a real invocable handler, never a descriptor-only stub. (Ref and marker corrected 2026-08-11, from `build-tool-registry.test.ts:138`. Pure line drift: this change added `report.render` — the manager channel's structured rendering path, design §L1 — to EXPECTED_TOOL_NAMES, four lines above. The quoted assertion is unchanged in text and in meaning; the inventory it checks simply names one more tool.) Corrected 2026-08-15: was `build-tool-registry.test.ts:142`, now :144 — PR #136 added two imports above it."
         },
         {
           "kind": "test",
@@ -362,8 +362,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/argv/types.ts:146-179",
-          "quotedAssertion": "packages/cli/src/argv/types.ts:156 — 'export type ParsedCommand =' — the union the strong quantifier ranges over, read out of the type rather than off the help table: exactly 23 members, 22 of which extend JsonFlag. The twenty-third is :147 — 'export interface GatewayMcpCommand {' — which declares no user-facing flags at all (interface-ledger Gap 2) and whose stdio tool-listing shapes were already snapshotted. Precision corrected 2026-08-07 after review, and measured: 19 of the 22 extend the local `JsonFlag`; the three `Trust*` members extend contracts' structurally identical `CommandJsonFlag` (`packages/contracts/src/cli-surface/trust-commands.ts:19-35`), because their shapes are owned by phase 12. \"22 of 23 carry a `json` flag\" is the accurate form; the count and the guarantee are unaffected, and the imprecision was inherited verbatim from the merged transcript rather than introduced here."
+          "ref": "packages/cli/src/argv/types.ts:164-197",
+          "quotedAssertion": "packages/cli/src/argv/types.ts:174 — 'export type ParsedCommand =' — the union the strong quantifier ranges over, read out of the type rather than off the help table: exactly 23 members, 22 of which extend JsonFlag. The twenty-third is :165 — 'export interface GatewayMcpCommand {' — which declares no user-facing flags at all (interface-ledger Gap 2) and whose stdio tool-listing shapes were already snapshotted. Precision corrected 2026-08-07 after review, and measured: 19 of the 22 extend the local `JsonFlag`; the three `Trust*` members extend contracts' structurally identical `CommandJsonFlag` (`packages/contracts/src/cli-surface/trust-commands.ts:19-35`), because their shapes are owned by phase 12. \"22 of 23 carry a `json` flag\" is the accurate form; the count and the guarantee are unaffected, and the imprecision was inherited verbatim from the merged transcript rather than introduced here. Corrected 2026-08-15: was `types.ts:146-179` (`:147` GatewayMcpCommand, `:156` ParsedCommand), now :164-197 (:165, :174) — PR #136 added the Jira credential members to ConnectionAddCommand above them."
         },
         {
           "kind": "artifact",

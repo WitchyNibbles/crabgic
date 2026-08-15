@@ -14,6 +14,7 @@ import { IdempotencyKeyLock } from "../../mutation-pipeline/mutation-pipeline.js
 import { GatewayHttpClient } from "../../transport/http-client.js";
 import { buildMutationApplyTool, type MutationApplyToolDeps } from "./mutation-apply-tool.js";
 import type { MutationApplyClient } from "./mutation-apply-client.js";
+import type { GatewayToolResult } from "../tool-registry.js";
 
 function buildPlan(
   connectionId: string,
@@ -599,5 +600,130 @@ describe("buildMutationApplyTool — folderAllowlist wiring (defect 16)", () => 
     expect(outcome.status).toBe("failed");
     expect(outcome.errorKind).toBe("policy_blocked");
     expect(fixture.transportCalls()).toBe(0);
+  });
+});
+
+/**
+ * ISSUE #135, DEFECT 5 (found while fixing the reported four, not in the
+ * report). The mutation path attached NO credential at all.
+ *
+ * `MutationApplyClient.buildRequest` is synchronous by this module's own
+ * contract, so a connector cannot resolve a secret inside it — and every
+ * connector's `buildRequest` accordingly returned `content-type` and
+ * nothing else. `executeMutationPlan` forwarded `spec.headers` verbatim,
+ * and nothing anywhere in `@crabgic/gateway` added an `authorization`
+ * header. So every `tracker.apply` / `observability.apply` went to the
+ * provider UNAUTHENTICATED, while the read path authenticated correctly.
+ *
+ * The failure this produced was also maximally misleading: a 401 on a
+ * write, from a connection whose reads work, sends whoever debugs it to
+ * look at the credential rather than at the write path.
+ */
+describe("buildMutationApplyTool — credentials on the write path", () => {
+  async function captureWriteHeaders(
+    client: Partial<MutationApplyClient>,
+  ): Promise<Record<string, string>> {
+    const connections = new InMemoryExternalConnectionStore();
+    const connection = await connections.create({
+      provider: "authed-provider",
+      baseUrl: "https://authed-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: [],
+      allowedActions: [],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "CRABGIC_WRITE_AUTH_TEST" },
+    });
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    mutationApplyClients.register("authed-provider", {
+      buildRequest: () => ({
+        url: new URL("https://authed-provider.invalid/rest/api/3/issue/EX-1/transitions"),
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      parseResponse: () => ({ externalId: "EX-1", appliedRevision: "2" }),
+      ...client,
+    } as MutationApplyClient);
+
+    let sentHeaders: Record<string, string> = {};
+    const buildHttpClient = async () =>
+      new GatewayHttpClient({
+        allowlist: {
+          allowedSchemes: ["https:"],
+          allowedOrigins: ["https://authed-provider.invalid"],
+        },
+        resolveHostAddresses: async () => ["203.0.113.7"],
+        sendRequest: async (req) => {
+          sentHeaders = { ...(req.headers ?? {}) };
+          return { status: 200, headers: {}, bodyText: "{}" };
+        },
+      });
+
+    const tool = buildMutationApplyTool(
+      "tracker.apply",
+      "test",
+      buildDeps({ connections, mutationApplyClients, buildHttpClient }),
+    );
+    const result = await tool.handler({ plan: buildPlan(connection.id) });
+    lastResult = result;
+    return sentHeaders;
+  }
+
+  let lastResult: GatewayToolResult | undefined;
+
+  it("sends the credential the provider client resolves for the plan", async () => {
+    const headers = await captureWriteHeaders({
+      authHeaders: async () => ({ authorization: "Bearer write-token" }),
+    });
+    expect(lastResult?.isError).toBeFalsy();
+    expect(headers["authorization"]).toBe("Bearer write-token");
+  });
+
+  it("keeps the request headers the provider built alongside the credential", async () => {
+    const headers = await captureWriteHeaders({
+      authHeaders: async () => ({ authorization: "Bearer write-token" }),
+    });
+    expect(headers["content-type"]).toBe("application/json");
+  });
+
+  it("does not let a provider's own spec headers overwrite the credential", async () => {
+    // Auth is applied LAST. A connector that sets its own `authorization`
+    // by accident must not be able to silently downgrade the real one.
+    const headers = await captureWriteHeaders({
+      buildRequest: () => ({
+        url: new URL("https://authed-provider.invalid/x"),
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer stale" },
+        body: "{}",
+      }),
+      authHeaders: async () => ({ authorization: "Bearer write-token" }),
+    });
+    expect(headers["authorization"]).toBe("Bearer write-token");
+  });
+
+  it("fails the write as a typed outcome when the credential cannot be resolved", async () => {
+    // The dangerous alternative is a mutation that reaches the provider
+    // with no credential and is refused there — a network call that
+    // should never have left this process.
+    const headers = await captureWriteHeaders({
+      authHeaders: async () => {
+        throw new Error("secret backend unavailable");
+      },
+    });
+    expect(headers).toEqual({}); // nothing was ever sent
+    expect(lastResult?.isError).toBe(true);
+    expect(JSON.parse(lastResult!.content[0]!.text)).toMatchObject({
+      status: "failed",
+      errorKind: "authentication",
+    });
+  });
+
+  it("never echoes the secret backend's own failure text, which can embed the credential", async () => {
+    await captureWriteHeaders({
+      authHeaders: async () => {
+        throw new Error("exec backend failed: `vault read -field=token secret/jira`");
+      },
+    });
+    expect(lastResult!.content[0]!.text).not.toContain("vault read");
   });
 });

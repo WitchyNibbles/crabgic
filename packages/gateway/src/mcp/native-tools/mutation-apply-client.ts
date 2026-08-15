@@ -23,6 +23,30 @@ import type { HttpTransportResponse } from "../../transport/http-transport.js";
 export interface MutationApplyClient {
   /** Builds the outbound HTTP request for this plan's mutation. Pure — no I/O of its own. */
   buildRequest(plan: RemoteMutationPlan): MutationHttpRequestSpec;
+  /**
+   * Resolves the authorization header(s) this plan's write must carry.
+   *
+   * SEPARATE FROM `buildRequest` BECAUSE `buildRequest` IS SYNCHRONOUS,
+   * and that is not incidental — it is why writes were unauthenticated.
+   * Resolving a secret reference is async, so no connector could attach a
+   * credential inside `buildRequest`; every connector accordingly
+   * returned `content-type` and nothing else, and nothing downstream
+   * added anything, so every `*.apply` call reached the provider with no
+   * credential at all while the read path authenticated correctly (issue
+   * #135, defect 5). An async hook is the smallest shape that lets a
+   * connector answer.
+   *
+   * Applied by `../../mutation-pipeline/mutation-pipeline.js` — the sole
+   * issuer of mutating network I/O — AFTER the spec's own headers, so a
+   * connector cannot accidentally downgrade its own credential.
+   *
+   * OPTIONAL only so a provider whose transport authenticates by other
+   * means (a client certificate, a pre-authenticated proxy) can say so by
+   * omission. Both shipped connectors implement it; a connector that
+   * omits it sends no credential, which is a decision its own code should
+   * make explicitly rather than inherit.
+   */
+  authHeaders?(plan: RemoteMutationPlan): Promise<Readonly<Record<string, string>>>;
   /** Parses a successful (status < 400) HTTP response into the applied result. */
   parseResponse(plan: RemoteMutationPlan, response: HttpTransportResponse): MutationApplyResult;
   /** Read-back compare + verify. Defaults to "always verified" when omitted — a provider without a cheap read-back check may rely on the HTTP status alone; a real connector should supply a genuine check. */

@@ -5,6 +5,7 @@ import type {
   MutationApplyClient,
   ProviderRegistry,
 } from "@crabgic/gateway";
+import { resolveConnectionSecret } from "@crabgic/gateway";
 import { GRAFANA_PROVIDER_NAME } from "../provider-registration.js";
 import { GRAFANA_RESOURCE_KINDS } from "../resource-kinds.js";
 import { processGrafanaQueryResult, type GrafanaQueryRow } from "../query/query-layer.js";
@@ -204,6 +205,16 @@ export const READ_ONLY_ENVELOPE = "grafana-read-no-envelope";
 
 function buildRoutedMutationApplyClient(registry: GrafanaConnectionRegistry): MutationApplyClient {
   return {
+    // Resolved per write from the connection's own secret reference, the
+    // same credential its authenticated reads use. Grafana writes went out
+    // bare until issue #135's defect 5: the apply path builds a request
+    // that the GATEWAY sends, so it never passed through this connector's
+    // own authenticated sender.
+    authHeaders: async (plan) => ({
+      authorization: `Bearer ${await resolveConnectionSecret(
+        registry.get(plan.externalConnectionId).connection,
+      )}`,
+    }),
     buildRequest: (plan) =>
       registry.get(plan.externalConnectionId).mutationApplyClient.buildRequest(plan),
     parseResponse: (plan, response) =>

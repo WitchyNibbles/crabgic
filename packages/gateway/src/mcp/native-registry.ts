@@ -30,6 +30,8 @@ export interface NativeRegistryDeps {
   readonly supervisorSocketPath: string;
   /** Test-only seam, forwarded verbatim to `./native-tools/mutation-apply-tool.js`'s `buildMutationApplyTool` — see that module's own doc comment. */
   readonly buildHttpClient?: MutationApplyToolDeps["buildHttpClient"];
+  /** Idempotent per-connection activation, forwarded to BOTH the read and mutate paths — see `./native-tools/provider-dispatch-tool.js`'s `activateConnection`. */
+  readonly activateConnection?: MutationApplyToolDeps["activateConnection"];
 }
 
 /**
@@ -48,12 +50,22 @@ export function buildNativeToolRegistry(deps: NativeRegistryDeps): GatewayToolRe
   // SAME lock instance, not a fresh one per call.
   const lock = new IdempotencyKeyLock();
 
-  const providerDispatchDeps = { connections: deps.connections, providers: deps.providers };
+  // Forwarded to BOTH dep bags: a connection must be activated whichever
+  // half of the surface reaches it first, and a read-only activation
+  // would leave `*.apply` finding an empty registry (issue #135).
+  const activation =
+    deps.activateConnection !== undefined ? { activateConnection: deps.activateConnection } : {};
+  const providerDispatchDeps = {
+    connections: deps.connections,
+    providers: deps.providers,
+    ...activation,
+  };
   const mutationApplyToolDeps: MutationApplyToolDeps = {
     connections: deps.connections,
     mutationApplyClients: deps.mutationApplyClients,
     journal: deps.journal,
     lock,
+    ...activation,
     ...(deps.buildHttpClient !== undefined ? { buildHttpClient: deps.buildHttpClient } : {}),
   };
   const trackerDeps = { ...providerDispatchDeps, ...mutationApplyToolDeps };

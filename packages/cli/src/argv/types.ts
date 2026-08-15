@@ -85,6 +85,24 @@ export interface ConnectionAddCommand extends JsonFlag {
   readonly baseUrl: string;
   /** Provider-interpreted opaque string (Jira cloud/datacenter, Grafana cloud/oss/enterprise). */
   readonly deploymentType?: string;
+  /**
+   * Jira only — the members of `JiraConnectionConfig` this command exposes,
+   * per roadmap/19 line 97: "whoever wires the CLI should read
+   * `JiraConnectionConfig` (this phase) as the contract to expose, not
+   * invent a parallel shape."
+   *
+   * `--reference` stays the PRIMARY credential in every mode (the OAuth
+   * client secret, the basic password / API token, or the PAT), so the
+   * flag an operator already knows keeps meaning "the secret". These name
+   * the second half a mode needs, never a duplicate of the first.
+   */
+  readonly authMode?: string;
+  /** `--username-ref`: basic auth's username — on Cloud, the account email that pairs with an API token. */
+  readonly usernameReference?: SecretReference;
+  /** `--client-id-ref`: OAuth's client id, whose secret is `--reference`. */
+  readonly clientIdReference?: SecretReference;
+  /** `--allow-basic-auth`: roadmap/19's Data Center opt-in. Has no effect on Cloud, where basic auth means a revocable API token rather than a directory password. */
+  readonly allowBasicAuth: boolean;
   readonly allowedRedirectOrigins: readonly string[];
   readonly allowedResources: readonly string[];
   readonly allowedActions: readonly string[];

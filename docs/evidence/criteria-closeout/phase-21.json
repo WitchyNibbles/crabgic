@@ -281,8 +281,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/connectors-grafana/src/index.ts:185",
-          "quotedAssertion": "packages/connectors-grafana/src/index.ts:185 — 'export { FAULT_INJECTION_MATRIX } from \"./fixtures/fault-injection-matrix.js\";'. The matrix is on 20's PUBLIC barrel, so nothing prevented phase 21 importing it. The gates manifest imports six symbols from that package and this is not one of them; a repo-wide grep for the constant at 30f931e finds only its own module, this barrel line and 20's own fault-injection test."
+          "ref": "packages/connectors-grafana/src/index.ts:195",
+          "quotedAssertion": "packages/connectors-grafana/src/index.ts:195 — 'export { FAULT_INJECTION_MATRIX } from \"./fixtures/fault-injection-matrix.js\";'. The matrix is on 20's PUBLIC barrel, so nothing prevented phase 21 importing it. The gates manifest imports six symbols from that package and this is not one of them; a repo-wide grep for the constant at 30f931e finds only its own module, this barrel line and 20's own fault-injection test. Corrected 2026-08-15: was `connectors-grafana/src/index.ts:185`, now :195 — PR #136 exported the http-discovery module above it."
         },
         {
           "kind": "test",

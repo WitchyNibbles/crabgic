@@ -39,6 +39,16 @@ export type {
   RouteAvailability,
 } from "./discovery/build-info-fixtures.js";
 export {
+  buildGrafanaDiscoveryDeps,
+  buildGrafanaSender,
+  GRAFANA_BUILD_INFO_PATH,
+  normalizeGrafanaEdition,
+  type GrafanaSend,
+  type GrafanaSendSpec,
+  type GrafanaSender,
+} from "./discovery/http-discovery.js";
+export {
+  candidateBasePath,
   buildRouteTable,
   capabilityFlag,
   decodeApiFamiliesToRouteTable,

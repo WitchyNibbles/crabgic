@@ -127,6 +127,14 @@ export interface MutationPipelineHandlers {
   readonly provider: string;
   /** Builds the outbound HTTP request for this plan's mutation. Pure — no I/O of its own. */
   buildRequest(plan: RemoteMutationPlan): MutationHttpRequestSpec;
+  /**
+   * Resolves the authorization header(s) this write must carry — see
+   * `../mcp/native-tools/mutation-apply-client.js`'s `authHeaders` for why
+   * this is separate from (and async, unlike) `buildRequest`, and why its
+   * absence meant every mutation left this process with no credential
+   * (issue #135, defect 5).
+   */
+  authHeaders?(plan: RemoteMutationPlan): Promise<Readonly<Record<string, string>>>;
   /** Parses a successful (status < 400) HTTP response into the applied result. */
   parseResponse(plan: RemoteMutationPlan, response: HttpTransportResponse): MutationApplyResult;
   /** Read-back compare + verify: confirms the applied change is actually reflected remotely. Returning `false` (rather than throwing) signals a verification mismatch, mapped to a `failed` outcome. */
@@ -326,6 +334,32 @@ async function performApplyOnce(
   // An empty array would leave the write unkeyed — fall back to identity.
   const primaryTarget = targets[0] ?? plan.canonicalTarget;
 
+  // Resolved BEFORE the request is issued, and never swallowed: a write
+  // whose credential cannot be resolved must not leave this process bare
+  // and be refused at the provider. Applied AFTER `spec.headers` so a
+  // connector cannot overwrite its own credential by accident.
+  //
+  // Wrapped as a canonical `authentication` ConnectorError so
+  // `mapCaughtErrorToOutcome` turns it into a `failed` outcome the caller
+  // can read, rather than an unexpected throw. The underlying message is
+  // NOT echoed: a secret-backend failure can embed the credential itself
+  // (an `exec` command line, a URL-encoded body), the same reason
+  // `JiraTokenManager` redacts its own fetch failures.
+  let authHeaders: Readonly<Record<string, string>> = {};
+  if (handlers.authHeaders !== undefined) {
+    try {
+      authHeaders = await handlers.authHeaders(plan);
+    } catch (authErr) {
+      if (authErr instanceof ConnectorError) throw authErr;
+      throw ConnectorError.authentication({
+        message: "could not resolve the credential for this mutation",
+        provider: handlers.provider,
+        retryable: true,
+      });
+    }
+  }
+  const requestHeaders = { ...spec.headers, ...authHeaders };
+
   let response: HttpTransportResponse;
   try {
     response = await deps.httpClient.request({
@@ -336,7 +370,7 @@ async function performApplyOnce(
       ...(targets.length > 1 ? { serializationResources: targets } : {}),
       url: spec.url,
       method: spec.method,
-      ...(spec.headers !== undefined ? { headers: spec.headers } : {}),
+      ...(Object.keys(requestHeaders).length > 0 ? { headers: requestHeaders } : {}),
       ...(spec.body !== undefined ? { body: spec.body } : {}),
       ...(spec.hasPrecondition !== undefined ? { hasPrecondition: spec.hasPrecondition } : {}),
     });

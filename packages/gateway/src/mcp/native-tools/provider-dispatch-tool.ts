@@ -11,7 +11,7 @@
  */
 
 import { z } from "zod";
-import { ConnectorError } from "@crabgic/contracts";
+import { ConnectorError, type ExternalConnection } from "@crabgic/contracts";
 import type { ExternalConnectionRepository } from "../../connection-store/external-connection-store.js";
 import {
   ProviderRegistry,
@@ -30,6 +30,32 @@ export type GenericProviderClient = Record<
 export interface ProviderDispatchDeps {
   readonly connections: ExternalConnectionRepository;
   readonly providers: ProviderRegistry<GenericProviderClient>;
+  /**
+   * Prepares a connection's per-connection wiring before it is dispatched
+   * to — idempotent, and called on EVERY dispatch so the first call for a
+   * connection wires it and later ones are a cheap no-op.
+   *
+   * WHY IT EXISTS (issue #135, defect 3). Each connector keeps a
+   * per-connection registry behind its single provider-keyed client
+   * (`JiraConnectionRegistry`, `GrafanaConnectionRegistry`), because one
+   * provider key serves many sites. NOTHING EVER CALLED `register()` on
+   * either: the registries were created at boot, returned, and dropped.
+   * So `registry.get(connectionId)` threw for every connection that ever
+   * existed — "was never registered" — and no connector could serve a
+   * single request. The provider clients resolved fine; the lookup behind
+   * them was permanently empty.
+   *
+   * Activation is LAZY rather than a boot-time sweep: it needs resolved
+   * credentials and (for Grafana) a live capability snapshot, so doing it
+   * for every stored connection at boot would turn one unreachable host
+   * into a gateway that will not start.
+   *
+   * Optional here because `@crabgic/gateway` must stay provider-agnostic
+   * — the composition root owns the activator, since it is the only layer
+   * that knows both the registries and the connectors. When absent,
+   * dispatch behaves exactly as before.
+   */
+  readonly activateConnection?: (connection: ExternalConnection) => Promise<void>;
 }
 
 const PROVIDER_DISPATCH_INPUT_SHAPE = {
@@ -62,6 +88,18 @@ export function buildProviderDispatchTool(
             retryable: false,
           }),
         );
+      }
+
+      // Before the client is resolved: a failure here is a wiring or
+      // credential problem for THIS connection, and reporting it as such
+      // beats the "was never registered" the routed client would throw
+      // several frames later.
+      if (deps.activateConnection !== undefined) {
+        try {
+          await deps.activateConnection(connection);
+        } catch (err) {
+          return errorResult(mapUnknownErrorToConnectorError(err, connection.provider));
+        }
       }
 
       let client: GenericProviderClient;

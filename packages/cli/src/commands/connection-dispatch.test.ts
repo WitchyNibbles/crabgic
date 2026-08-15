@@ -21,6 +21,8 @@ import { FileExternalConnectionStore } from "@crabgic/gateway";
 import { CURRENT_SCHEMA_VERSION } from "@crabgic/contracts";
 import { EXIT_GENERAL_ERROR, EXIT_NOT_IMPLEMENTED, EXIT_OK } from "../exit-codes.js";
 import type { ConnectionDependencies } from "../connection/connection-commands.js";
+import { withProviderKeyNormalization } from "../connection/provider-keys.js";
+import { FileJiraConnectionConfigStore } from "../connection/jira-config-store.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
 
@@ -51,6 +53,7 @@ async function newConnectionDeps(
   dirs.push(dir);
   return {
     repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+    jiraConfigs: new FileJiraConnectionConfigStore(join(dir, "jira-connection-configs.json")),
     probe: () => Promise.resolve(probeResult),
   };
 }
@@ -59,11 +62,15 @@ const ADD = {
   command: "connection-add",
   provider: "jira",
   reference: { raw: "env:JIRA_TOKEN" },
+  // Cloud defaults to basic auth (Atlassian's API-token mechanism), which
+  // needs the account email as well as the token.
+  usernameReference: { raw: "env:JIRA_EMAIL" },
   baseUrl: "https://example.atlassian.net",
   allowedRedirectOrigins: ["https://example.atlassian.net"],
   allowedResources: ["issue"],
   allowedActions: ["read"],
   discoveryTtlSeconds: 900,
+  allowBasicAuth: false,
   json: true,
 } as const;
 
@@ -74,7 +81,9 @@ describe("dispatchCommand — connection add|list|doctor, real backend when deps
     const added = await dispatchCommand(ADD, { ...baseDeps(), connection });
     expect(added.exitCode).toBe(EXIT_OK);
     const created = JSON.parse(added.stdout ?? "{}") as { id: string; provider: string };
-    expect(created.provider).toBe("jira");
+    // NOT the argv word "jira": issue #135 defect 2 — the stored `provider`
+    // IS the provider-dispatch key, and `"jira"` matches no registration.
+    expect(created.provider).toBe("jira-cloud");
 
     // A fresh repository over the same path — the real cross-process shape.
     const listed = await dispatchCommand(
@@ -228,5 +237,118 @@ describe("dispatchCommand — connection add|list|doctor, real backend when deps
 
     expect(result.exitCode).not.toBe(EXIT_NOT_IMPLEMENTED);
     expect(JSON.parse(result.stdout!)).toMatchObject({ discovered: true, version: "13.1.0" });
+  });
+});
+
+/**
+ * Issue #135, defect 2 — end-to-end through the REAL file store, because
+ * the whole defect lived in the gap between what one process writes and
+ * what another process resolves. `../connection/provider-keys.test.ts`
+ * pins the mapping itself; these pin that `connection add` actually
+ * applies it, and that a record persisted by 1.7.0 becomes dispatchable
+ * without the operator re-adding it.
+ */
+describe("connection add — the stored provider is the provider-dispatch key", () => {
+  it("stores the Data Center key for --deployment datacenter", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(
+      { ...ADD, deploymentType: "datacenter" },
+      { ...baseDeps(), connection },
+    );
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({ provider: "jira-datacenter" });
+  });
+
+  it("stores grafana under its own key", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(
+      { ...ADD, provider: "grafana", baseUrl: "https://grafana.example.com" },
+      { ...baseDeps(), connection },
+    );
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({ provider: "grafana" });
+  });
+
+  it("records the deployment it resolved, so the record says which Jira it is", async () => {
+    const connection = await newConnectionDeps();
+    const added = await dispatchCommand(ADD, { ...baseDeps(), connection });
+    expect(JSON.parse(added.stdout ?? "{}")).toMatchObject({
+      provider: "jira-cloud",
+      deploymentType: "cloud",
+    });
+  });
+
+  it("refuses an unknown --deployment for jira instead of storing an un-dispatchable record", async () => {
+    const connection = await newConnectionDeps();
+    const result = await dispatchCommand(
+      { ...ADD, deploymentType: "server" },
+      { ...baseDeps(), connection },
+    );
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toMatch(/cloud\|datacenter/);
+    // The refusal happens BEFORE `create`, so nothing un-dispatchable lands.
+    expect(await connection.repository.list()).toEqual([]);
+  });
+
+  it("migrates a legacy 1.7.0 record on read, so `connection list` shows a dispatchable key", async () => {
+    const connection = await newConnectionDeps();
+    // Written the way 1.7.0 wrote it — straight through the inner store,
+    // bypassing the CLI's own mapping.
+    const legacy = await connection.repository.create({
+      provider: "jira",
+      baseUrl: "https://example.atlassian.net",
+      allowedRedirectOrigins: [],
+      allowedResources: ["issue"],
+      allowedActions: ["read"],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "JIRA_TOKEN" },
+    });
+    expect(legacy.provider).toBe("jira");
+
+    const migrating = withProviderKeyNormalization(
+      new FileExternalConnectionStore((connection.repository as FileExternalConnectionStore).path),
+    );
+    const listed = await dispatchCommand(
+      { command: "connection-list", json: true },
+      { ...baseDeps(), connection: { ...connection, repository: migrating } },
+    );
+    const { connections } = JSON.parse(listed.stdout ?? "{}") as {
+      connections: { id: string; provider: string }[];
+    };
+    expect(connections).toEqual([
+      expect.objectContaining({ id: legacy.id, provider: "jira-cloud" }),
+    ]);
+  });
+});
+
+/**
+ * A Jira connection whose credential shape has nowhere to be recorded
+ * cannot authenticate, so `connection add` refuses rather than reporting
+ * success — the "added fine, fails on first dispatch" outcome is exactly
+ * what issue #135 was.
+ */
+describe("connection add — a Jira connection needs somewhere to record its credential shape", () => {
+  it("refuses when no Jira config store is wired, instead of silently skipping it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eo-conn-nocfg-"));
+    dirs.push(dir);
+    const connection: ConnectionDependencies = {
+      repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+      probe: () => Promise.resolve({ reachable: true, detail: "HTTP 200" }),
+    };
+    const result = await dispatchCommand(ADD, { ...baseDeps(), connection });
+    expect(result.exitCode).toBe(EXIT_GENERAL_ERROR);
+    expect(result.stderr).toMatch(/config store/);
+  });
+
+  it("still adds a Grafana connection with no Jira config store wired", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eo-conn-nocfg-grafana-"));
+    dirs.push(dir);
+    const connection: ConnectionDependencies = {
+      repository: new FileExternalConnectionStore(join(dir, "connections.json")),
+      probe: () => Promise.resolve({ reachable: true, detail: "HTTP 200" }),
+    };
+    const result = await dispatchCommand(
+      { ...ADD, provider: "grafana", baseUrl: "https://grafana.example.com" },
+      { ...baseDeps(), connection },
+    );
+    expect(result.exitCode).toBe(EXIT_OK);
   });
 });

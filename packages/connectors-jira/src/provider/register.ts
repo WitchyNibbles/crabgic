@@ -8,6 +8,7 @@ import { JIRA_PROVIDER_NAME } from "../errors/jira-error-mapping.js";
 import { createJiraMutationApplyClient } from "../resource-client/jira-mutation-apply-client.js";
 import { createJiraProviderClient } from "../resource-client/jira-provider-client.js";
 import { JiraConnectionRegistry } from "./jira-connection-registry.js";
+import { jiraAuthHeader } from "../resource-client/http-read-helper.js";
 
 /**
  * `../provider/register.ts` — the one call site that registers this
@@ -49,6 +50,12 @@ function buildRoutedGenericProviderClient(registry: JiraConnectionRegistry): Gen
 
 function buildRoutedMutationApplyClient(registry: JiraConnectionRegistry): MutationApplyClient {
   return {
+    // The SAME function the read path authenticates through
+    // (`jiraAuthHeader`), resolved per write against this connection's own
+    // context. Until issue #135's defect 5 there was no hook here at all,
+    // so every Jira write left the process with `content-type` and nothing
+    // else while reads authenticated correctly.
+    authHeaders: async (plan) => jiraAuthHeader(registry.get(plan.externalConnectionId).ctx),
     buildRequest: (plan) =>
       createJiraMutationApplyClient(registry.get(plan.externalConnectionId).applyDeps).buildRequest(
         plan,
