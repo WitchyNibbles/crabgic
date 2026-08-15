@@ -238,8 +238,8 @@
     },
     "25": {
       "roadmapFile": "roadmap/25-owner-pipeline-conformance.md",
-      "sourceRev": "68e5620fa090eb07f1b2e8d3b3e8c0ea67bb4633",
-      "sourceNote": "the commit that introduced roadmap/25; no closeout has touched it",
+      "sourceRev": "fc448fb018454ea6a964819ff433b5b5f3f0bed4",
+      "sourceNote": "the merge of PR #137, which introduced roadmap/25 to main; no closeout has touched it",
       "criteria": [
         "75cbf624befc3e9621af158406f7ab5ee5b96b5405820a2321a541eb63f29558",
         "7cf46f3108dd12783a4ce1d01baa473500073d0f92eff48e04623435ea8c79fc",
