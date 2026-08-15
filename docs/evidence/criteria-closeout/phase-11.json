@@ -96,8 +96,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:175-185",
-          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:175-185 — 'refuses contract.approve for an unknown ChangeSet without consulting the token', invoking the handler through the REAL production registry `buildRealGatewayToolRegistry()`: :184-185 'expect(result.isError).toBe(true); expect(result.content[0]!.text).toContain(\"unknown ChangeSet\");'. This is the same handler the gateway MCP server serves under `mcp__crabgic_gateway__contract.approve`. (Ref and markers corrected 2026-08-11, from `:171` and `:171-181`, and the ref widened to cover both fragments this assertion walks — the test title at :175 and its assertions at :184-185, which drifted by different amounts. Pure line drift: this change added `report.render` to EXPECTED_TOOL_NAMES above them. The quoted text is unchanged.)"
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:177-187",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:177-187 — 'refuses contract.approve for an unknown ChangeSet without consulting the token', invoking the handler through the REAL production registry `buildRealGatewayToolRegistry()`: :186-187 'expect(result.isError).toBe(true); expect(result.content[0]!.text).toContain(\"unknown ChangeSet\");'. This is the same handler the gateway MCP server serves under `mcp__crabgic_gateway__contract.approve`. (Ref and markers corrected 2026-08-11, from `:171` and `:171-181`, and the ref widened to cover both fragments this assertion walks — the test title at :175 and its assertions at :184-185, which drifted by different amounts. Pure line drift: this change added `report.render` to EXPECTED_TOOL_NAMES above them. The quoted text is unchanged.) Corrected 2026-08-15: was `build-tool-registry.test.ts:175-185` (assertions at `:184-185`), now :177-187 (:186-187) — PR #136 added two imports above it."
         },
         {
           "kind": "artifact",
@@ -256,8 +256,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142",
-          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:142 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' over the exact shipped tool set. This is the Gap 1 clause's negative control: `project.inspect` is present (:120) and no `change_set.*` tool exists anywhere in the list, asserted by exact set equality rather than by containment. :155-168 additionally INVOKES `project.inspect` against the real journal and ChangeSet registry through the production registry, asserting the degraded partial report. (Ref and marker corrected 2026-08-11, from `build-tool-registry.test.ts:138`. Pure line drift: this change added `report.render` — the manager channel's structured rendering path, design §L1 — to EXPECTED_TOOL_NAMES, four lines above. The quoted assertion is unchanged in text and in meaning; the inventory it checks simply names one more tool.)"
+          "ref": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144",
+          "quotedAssertion": "packages/cli/src/gateway-mcp/build-tool-registry.test.ts:144 — 'expect([...realRegistry().toolNames].sort()).toEqual([...EXPECTED_TOOL_NAMES].sort());' over the exact shipped tool set. This is the Gap 1 clause's negative control: `project.inspect` is present (:120) and no `change_set.*` tool exists anywhere in the list, asserted by exact set equality rather than by containment. :155-168 additionally INVOKES `project.inspect` against the real journal and ChangeSet registry through the production registry, asserting the degraded partial report. (Ref and marker corrected 2026-08-11, from `build-tool-registry.test.ts:138`. Pure line drift: this change added `report.render` — the manager channel's structured rendering path, design §L1 — to EXPECTED_TOOL_NAMES, four lines above. The quoted assertion is unchanged in text and in meaning; the inventory it checks simply names one more tool.) Corrected 2026-08-15: was `build-tool-registry.test.ts:142`, now :144 — PR #136 added two imports above it."
         },
         {
           "kind": "test",

@@ -307,8 +307,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:39-41",
-          "quotedAssertion": "Why the search is exhaustive over this package's error surface rather than a sample: there is exactly one error-emitting shape for every read tool. packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:39-41 — 'function errorResult(err: ConnectorError): GatewayToolResult {' / 'return { content: [{ type: \"text\", text: JSON.stringify(err.toData()) }], isError: true };' / '}'. Every failure branch in the file (:60, :73, :86, :100, :104) funnels through it, so proving `toData()` is clean proves every one of them is."
+          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:66-67",
+          "quotedAssertion": "Why the search is exhaustive over this package's error surface rather than a sample: there is exactly one error-emitting shape for every read tool. packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:66-67 — 'function errorResult(err: ConnectorError): GatewayToolResult {' / 'return { content: [{ type: \"text\", text: JSON.stringify(err.toData()) }], isError: true };' / '}'. Every failure branch in the file (:87, :101, :110, :124, :139, :147) funnels through it, so proving `toData()` is clean proves every one of them is. Corrected 2026-08-15: was `provider-dispatch-tool.ts:39-41`, now :66-67 — PR #136 documented the `activateConnection` dep above it (issue #135 defect 3)."
         },
         {
           "kind": "artifact",
@@ -530,8 +530,8 @@
         },
         {
           "kind": "artifact",
-          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:56-95",
-          "quotedAssertion": "The ordering inside the dispatch tool, which is where 'before any network call' has to hold for a real caller. In source order: :56 'const connection = await deps.connections.get(args.connectionId);' → :69 'client = deps.providers.resolve(connection.provider);' → :83 'const method = client[operation];' → :95 'const result = await method(args.params);'. The provider client is the only thing in this path that can issue I/O, and it is not even LOOKED UP until after `resolve` has returned; an unknown provider returns at :71-79 ('if (err instanceof UnknownProviderError) {' / 'return errorResult(' / 'ConnectorError.unsupported({') without ever reaching :83."
+          "ref": "packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:82-133",
+          "quotedAssertion": "The ordering inside the dispatch tool, which is where 'before any network call' has to hold for a real caller. In source order: :82 'const connection = await deps.connections.get(args.connectionId);' → :107 'client = deps.providers.resolve(connection.provider);' → :121 'const method = client[operation];' → :133 'const result = await method(args.params);'. The provider client is the only thing in this path that can issue I/O, and it is not even LOOKED UP until after `resolve` has returned; an unknown provider returns at :109-117 ('if (err instanceof UnknownProviderError) {' / 'return errorResult(' / 'ConnectorError.unsupported({') without ever reaching :121. Corrected 2026-08-15: was `provider-dispatch-tool.ts:56-95` (`:56` connection lookup, `:69` resolve, `:71` UnknownProviderError, `:83` method lookup, `:95` dispatch), now :82-133 (:82, :107, :109, :121, :133) — PR #136 inserted the `activateConnection` step between the lookup and the resolve."
         },
         {
           "kind": "test",
@@ -597,8 +597,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:174-206",
-          "quotedAssertion": "The 'without performing a mutating call' property of the primitive, and the last failure mode: :174 'reports reachable:false for a 5xx response' stands up a second real HTTPS server answering 503 (:175-176 'const errorServer = createServer({ key: cert.keyPem, cert: cert.certPem }, (_req, res) => {' / 'res.writeHead(503);') and asserts :201-202 'expect(result.reachable).toBe(false);' / 'expect(result.status).toBe(503);' — a reachable-but-unhealthy endpoint is distinguished from an unreachable one."
+          "ref": "packages/gateway/src/connection-doctor/reachability-probe.test.ts:347-375",
+          "quotedAssertion": "The 'without performing a mutating call' property of the primitive, and the last failure mode: :347 'reports reachable:false for a 5xx response' stands up a second real HTTPS server answering 503 (:348-349 'const errorServer = createServer({ key: cert.keyPem, cert: cert.certPem }, (_req, res) => {' / 'res.writeHead(503);') and asserts :374-375 'expect(result.reachable).toBe(false);' / 'expect(result.status).toBe(503);' — a reachable-but-unhealthy endpoint is distinguished from an unreachable one. Corrected 2026-08-15: was `reachability-probe.test.ts:174-206` (`:174` the 5xx case, `:201` its status assertion), now :347-375 (:347, :375) — PR #136 added the redirect-allowlist, probe-path and 404 suites above it."
         },
         {
           "kind": "artifact",
