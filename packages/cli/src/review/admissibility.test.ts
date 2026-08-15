@@ -401,3 +401,102 @@ describe("partitionByAdmissibility", () => {
     expect(split.deferred.map((f) => f.paths)).toContainEqual(outOfScope.paths);
   });
 });
+
+describe("findings from the first live review round (2026-08-15)", () => {
+  /**
+   * These are not hypotheticals. Four real reviewers ran against this module
+   * through `pipeline.plan`'s own obligation checklist, and each of these
+   * arrived with an executed reproduction. They are kept as tests because a
+   * finding that is fixed and not pinned is a finding that comes back.
+   */
+
+  it("refuses a path that escapes the write set through `..`", () => {
+    // SECURITY LENS, blocking. `normalizePlannedPath` deliberately does not
+    // resolve `..` (its own doc comment says so), and `touches` prefix-matches,
+    // so a write-set prefix plus traversal was admitted as in-scope. That
+    // restores the unbounded space this module exists to bound: any path at all
+    // becomes admissible by spelling it as a child of a written directory.
+    const escaped = finding({ paths: ["packages/cli/src/review/../../../../etc/passwd"] });
+    const verdict = admissibilityOf(escaped, ["packages/cli/src/review/"]);
+    expect(verdict.admissible).toBe(false);
+    expect(verdict.reason).toMatch(/traversal|escape/i);
+  });
+
+  it("still admits an ordinary path under a written directory", () => {
+    // The control the fix must not break: refusing traversal must not refuse
+    // legitimate nesting.
+    expect(
+      admissibilityOf(finding({ paths: ["packages/cli/src/review/finding-store.ts"] }), [
+        "packages/cli/src/review/",
+      ]).admissible,
+    ).toBe(true);
+  });
+
+  it("does not collide one comma-bearing path with two separate paths", () => {
+    // SECURITY LENS, blocking. Paths were comma-joined, so a single path
+    // containing a comma produced the same key as two paths. An attacker who
+    // lands one throwaway comma-spelled finding pre-seeds the key of a genuine
+    // multi-path finding, which is then silently non-novel and never counted.
+    const oneWeirdPath = finding({ paths: ["a.ts,b.ts"] });
+    const twoPaths = finding({ paths: ["a.ts", "b.ts"] });
+    expect(findingKey(oneWeirdPath, "security")).not.toBe(findingKey(twoPaths, "security"));
+  });
+
+  it("still treats path ORDER as immaterial after the fix", () => {
+    // The property the collision fix must preserve.
+    expect(findingKey(finding({ paths: ["a.ts", "b.ts"] }), "security")).toBe(
+      findingKey(finding({ paths: ["b.ts", "a.ts"] }), "security"),
+    );
+  });
+
+  it("tells a pathless finding the truth about where it goes", () => {
+    // COMPLIANCE LENS, blocking. The reason said "recorded as debt", and the
+    // debt index provably cannot hold it: `ReviewFindingSchema` refuses
+    // `accepted-debt` without paths, and `selectDebtTouchedBy` matches on paths.
+    // A stated obligation no code path fulfils is worse than an honest refusal.
+    const verdict = admissibilityOf(finding({ paths: [] }), ["packages/cli/src/review/"]);
+    expect(verdict.admissible).toBe(false);
+    // The defect was CLAIMING the finding is recorded as debt. Naming the debt
+    // index to explain why it cannot hold the finding is the fix, not the bug —
+    // so the assertion is on the claim, not on the words.
+    expect(verdict.reason).not.toMatch(/recorded as debt|recorded to the debt/i);
+    expect(verdict.reason).toMatch(/cannot hold it|name at least one path/i);
+  });
+});
+
+describe("the vacuous-closure defect the correctness lens found", () => {
+  it("REFUSES to close on an empty write set", () => {
+    // CORRECTNESS LENS, blocking, and the worst of the round: an empty write
+    // set makes every finding inadmissible, so the scope bound degenerates into
+    // "nothing can ever hold this stage open". Production reaches it —
+    // `build-tool-registry.ts` passes `envelope?.ownedPaths ?? []` — so a round
+    // with no authorization envelope closed vacuously while holding an
+    // undispositioned blocking finding. This is precisely the failure the
+    // module exists to prevent, arriving through its own front door.
+    const verdict = closureVerdict({
+      lens: "correctness",
+      findings: [finding({ classification: "blocking", violates: "implement-gates-pass" })],
+      seenKeys: new Set(),
+      plannedWritePaths: [],
+      obligationsIssued: ["o1"],
+      obligationsAnswered: ["o1"],
+      round: 1,
+      runawayGuard: 20,
+    });
+    expect(verdict.closed).toBe(false);
+    expect(verdict.reason).toMatch(/write set/i);
+  });
+
+  it("does not report an absolute path as pre-existing code", () => {
+    // The reviewer prompts in this repository ask for absolute paths, and
+    // `ReviewFindingSchema` accepts any non-empty string. `normalizePlannedPath`
+    // drops the leading slash, so an absolute path silently became a different
+    // path and the finding was deferred as "pre-existing" — a spelling problem
+    // reported as a scope verdict.
+    const absolute = finding({
+      paths: ["/home/eimi/projects/crabgic/packages/cli/src/review/x.ts"],
+    });
+    const verdict = admissibilityOf(absolute, ["packages/cli/src/review/"]);
+    expect(verdict.reason).not.toMatch(/pre-existing/i);
+  });
+});

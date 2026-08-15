@@ -49,6 +49,39 @@ const normalizePaths = (paths: readonly string[]): readonly string[] =>
   paths.map(normalizePlannedPath).filter((path) => path.length > 0);
 
 /**
+ * A path this module cannot bound, as distinct from one that is out of scope.
+ *
+ * FOUND BY THE FIRST LIVE REVIEW ROUND (2026-08-15), security and correctness
+ * lenses, both with executed reproductions:
+ *
+ *   - `normalizePlannedPath` deliberately does not resolve `..` — safe for the
+ *     overlap analyzer's exact-set membership test, UNSOUND here, where the same
+ *     string is used for prefix containment. `packages/cli/src/review/../../etc/passwd`
+ *     was admitted as in-scope, which restores the unbounded space this module
+ *     exists to bound: any path becomes admissible by spelling it as a child of
+ *     a written directory.
+ *   - An absolute path loses its leading slash to the same normalizer, becoming
+ *     a different path entirely, and was then reported as "pre-existing code" —
+ *     a SPELLING problem reported as a scope verdict. The reviewer prompts in
+ *     this repository ask for absolute paths, so this was not hypothetical.
+ *
+ * Both are refused rather than resolved. Resolving would require a repository
+ * root to resolve against, which this module does not have and should not
+ * acquire: a pure function that reads the filesystem to decide admissibility is
+ * a different kind of thing. Refusing with a reason that names the spelling
+ * tells the reviewer what to fix, which "out of scope" never did.
+ */
+function unboundablePath(raw: string): string | undefined {
+  if (raw.startsWith("/")) {
+    return `the path "${raw}" is absolute; give it relative to the repository root, or it cannot be compared with this change set's write set`;
+  }
+  if (normalizePlannedPath(raw).split("/").includes("..")) {
+    return `the path "${raw}" contains a ".." traversal segment; the write-set comparison is textual, so a traversal cannot be bounded — give the canonical path`;
+  }
+  return undefined;
+}
+
+/**
  * A finding path is in scope if the change set writes it, or writes a directory
  * above it.
  *
@@ -83,12 +116,30 @@ export function admissibilityOf(
   finding: ReviewFinding,
   plannedWritePaths: readonly string[],
 ): Admissibility {
+  for (const raw of finding.paths) {
+    const refusal = unboundablePath(raw);
+    if (refusal !== undefined) return { admissible: false, reason: refusal };
+  }
+
   const findingPaths = normalizePaths(finding.paths);
   if (findingPaths.length === 0) {
+    /**
+     * CORRECTED after the compliance lens's finding (2026-08-15, blocking).
+     *
+     * This reason used to say the finding was "recorded as debt". It is not, and
+     * cannot be: `ReviewFindingSchema` refuses `accepted-debt` without paths, and
+     * `selectDebtTouchedBy` matches on paths, so a pathless finding is
+     * unreachable by every debt query. It was merged into the store and retained
+     * indefinitely, undispositioned, with the caller told an obligation was being
+     * met that no code path fulfilled.
+     *
+     * Stating the refusal honestly is the fix. A stated obligation nothing
+     * fulfils is worse than an honest refusal, because the next reader trusts it.
+     */
     return {
       admissible: false,
       reason:
-        "the finding names no path, so no scope rule can bound it — recorded as debt instead of holding this stage open",
+        "the finding names no path, so it can neither be scoped nor deferred: the debt index is keyed by path and cannot hold it. Name at least one path — the file where the problem bites hardest is enough",
     };
   }
   const planned = normalizePaths(plannedWritePaths);
@@ -146,12 +197,18 @@ export function partitionByAdmissibility(
  * amplify it.
  *
  * Paths are sorted, so the same finding reported with its paths in a different
- * order is the same finding. A NUL separates the fields because it cannot occur
- * in a lens name, a path or a hex digest, so no combination of field values can
- * forge another key's preimage. Written as the ESCAPE `\u0000` rather than as a
- * raw byte: `check:hygiene` refuses a raw NUL in a tracked text source, and a
- * separator that makes the file binary to git is a separator that costs more
- * than it is worth.
+ * order is the same finding. A NUL separates the FIELDS because it cannot occur
+ * in a lens name or a hex digest. Written as the ESCAPE `\u0000` rather than as
+ * a raw byte: `check:hygiene` refuses a raw NUL in a tracked text source.
+ *
+ * CORRECTED 2026-08-15. This comment previously claimed that "no combination of
+ * field values can forge another key's preimage". That was false and was
+ * disproved by an executed reproduction in the first live review round: the
+ * paths field was comma-joined, and a comma is legal in a path. The separator
+ * only ever guaranteed cross-FIELD unambiguity; intra-field ambiguity was a
+ * separate problem and is now closed by hashing the path list. A false assurance
+ * in a file is worse than silence, because the next change set trusts it rather
+ * than re-deriving it.
  *
  * The lens is PASSED IN rather than read off the finding: it lives on the
  * `ReviewVerdict` that carries the findings, not on the finding itself. The
@@ -159,7 +216,24 @@ export function partitionByAdmissibility(
  * which is exactly the gap the typecheck job exists to close.
  */
 export function findingKey(finding: ReviewFinding, lens: string): string {
-  const paths = [...normalizePaths(finding.paths)].sort().join(",");
+  /**
+   * The path field is a DIGEST of the canonical path list, not a joined string.
+   *
+   * Found by the security and correctness lenses in the same round, both with
+   * executed reproductions: the list was comma-joined, and a comma is legal in a
+   * POSIX path, so one finding naming `"a.ts,b.ts"` produced the same key as a
+   * different finding naming `"a.ts"` and `"b.ts"`. An attacker who lands one
+   * throwaway comma-spelled finding pre-seeds the key of a genuine multi-path
+   * finding, which is then silently non-novel and never counted — the stage can
+   * close on a real finding nobody ever answered.
+   *
+   * Hashing the JSON-encoded sorted array removes the intra-field ambiguity the
+   * way the NUL removed the cross-field one. Order stays immaterial because the
+   * array is sorted before encoding.
+   */
+  const paths = createHash("sha256")
+    .update(JSON.stringify([...normalizePaths(finding.paths)].sort()), "utf8")
+    .digest("hex");
   const claim = finding.claim.trim().toLowerCase().replace(/\s+/g, " ");
   const digest = createHash("sha256").update(claim, "utf8").digest("hex");
   return `${lens}\u0000${paths}\u0000${digest}`;
@@ -266,6 +340,32 @@ export function closureVerdict(input: ClosureInput): ClosureVerdict {
   );
   const novel = novelFindings(admissible, input.seenKeys, input.lens);
   const unrun = unrunObligations(input.obligationsIssued, input.obligationsAnswered);
+
+  /**
+   * A DEGENERATE WRITE SET CANNOT CLOSE A STAGE.
+   *
+   * The worst finding of the first live round (correctness lens, blocking, with
+   * an executed reproduction). An empty `plannedWritePaths` makes every finding
+   * inadmissible, so the scope bound silently degenerates into "nothing can ever
+   * hold this stage open" — and production reaches it: the gateway passes
+   * `envelope?.ownedPaths ?? []`, so a round with no authorization envelope
+   * closed vacuously while holding an undispositioned BLOCKING finding.
+   *
+   * This is the exact failure the module exists to prevent, arriving through its
+   * own front door, and it is what ledger Gap 19's warning names: "a caller that
+   * widens them to make a round quiet has removed the only thing making a quiet
+   * round mean anything". An empty write set is the widest possible widening.
+   */
+  if (normalizePaths(input.plannedWritePaths).length === 0) {
+    return {
+      novel,
+      deferred: input.findings,
+      closed: false,
+      stalled: false,
+      reason:
+        "this change set has an empty planned write set, so no finding can be admissible and a quiet round would mean nothing — refusing to close rather than closing vacuously",
+    };
+  }
 
   /**
    * Scoped to ADMISSIBLE findings, and the scoping is load-bearing.

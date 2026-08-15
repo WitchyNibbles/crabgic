@@ -76,7 +76,17 @@ function deps(overrides: Partial<ReviewSubmitDeps> = {}): ReviewSubmitDeps {
       return Promise.resolve();
     },
     priorFindings: () => [],
-    plannedWrites: () => [],
+    /**
+     * A REAL write set, not an empty one.
+     *
+     * This defaulted to `[]`, and every test that took the default was
+     * exercising a path that `closureVerdict` now refuses: an empty write set
+     * makes every finding inadmissible, so a quiet round means nothing. The
+     * correctness lens found it in the first live review round, reachable from
+     * production. A fixture whose default is the degenerate case tests the
+     * degenerate case everywhere.
+     */
+    plannedWrites: () => ["packages/cli/src/doctor"],
     metCriteria: () => exitCriteriaFor("implement"),
     calibration: () => ({
       calibrated: false,

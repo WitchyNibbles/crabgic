@@ -600,6 +600,15 @@ describe("review.submit — server-derived exit criteria", () => {
   it("derives both from journaled gate evidence, and closes the stage on it", async () => {
     const deps = reviewDeps();
     const changeSetId = registerChangeSet(deps);
+    // An envelope with owned paths: the gateway passes `envelope?.ownedPaths ??
+    // []` as the write set, and `closureVerdict` now refuses to close on an
+    // empty one -- a stage that can admit no finding must not report a quiet
+    // round as a clean one.
+    deps.envelopes.put({
+      id: "77777777-7777-4777-8777-777777777777",
+      changeSetId,
+      ownedPaths: ["packages/cli/src/doctor"],
+    } as unknown as AuthorizationEnvelope);
 
     let evidenceSeq = 0;
     const evidence = (gateTag: string, capturedAt: string): EvidenceRecord => ({
