@@ -1,0 +1,17 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "sessionUrl": false,
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/crabgic-statusline.mjs\"",
+    "padding": 0,
+    "refreshInterval": 30
+  },
+  "outputStyle": "Crabgic",
+  "enabledPlugins": {
+    "crabgic@crabgic-marketplace": true
+  }
+}

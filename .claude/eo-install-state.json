@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "installedAt": "2026-08-15T18:25:38.657Z",
+  "sourceVersion": "0.0.0",
+  "sourceDigest": "965d1b3a8dc1a6474f35650c1d6de0e765a19947ac75ce99741fb98b03016807",
+  "artifacts": [
+    {
+      "relPath": "CLAUDE.md",
+      "kind": "merged",
+      "installedChecksum": "bc857b7857d0a13242cc8a1b0ea02a9d205e793514b39f4637e0cc007a7fc242",
+      "sourceVersion": "0.0.0",
+      "originalContent": "# CLAUDE.md\n\nThis repository is Crabgic: a harness that makes Claude operate as an\nautonomous engineering orchestrator, per the design in `docs/claude-code-adaptation.md`.\nImplementation is underway, under active development against the phased roadmap in\n`roadmap/README.md`; the roadmap phase files govern all implementation work here (TDD,\nevidence-based exit criteria — see the ground rules below). Read, in order, before doing\nany work here:\n\n1. `docs/claude-code-adaptation.md` §0 — confirmed product decisions.\n2. `roadmap/README.md` — ground rules and phase dependency graph.\n3. `roadmap/00-engine-spikes.md` and `roadmap/01-repo-bootstrap.md` — the two phases with\n   no unresolved dependencies, and the current starting point for implementation.\n4. **`docs/verification-playbook.md` — read this before verifying or closing out anything.**\n   63 rulings, each earned from a real defect a green test suite did not catch: the vacuity\n   patterns, the four-rule citation resolver, transcript and probe discipline, and the cost\n   rules for live runs. Skipping it means re-earning them.\n5. `docs/deploy-posture.md` — the sole authority on whether crabgic is certifiably deployable.\n   Currently **certified for the single-tenant, trusted-operator scope only** (owner ruling\n   2026-08-07); multi-tenant is NOT certified.\n6. `docs/evidence/criteria-closeout/defects/INDEX.md` — 45 filed defects with sized remedies.\n   Bookkeeping inside the claim-space: **never cite it as evidence**, cite a record's own evidence.\n\n## Reporting to the owner\n\n`docs/presentation-policy.md` governs everything said to this repo's owner — by\ncrabgic, and by anyone working on crabgic. The owner has a condition that makes\nlong unordered prose very hard to read, so this is an **accessibility\nrequirement, not a style preference**: an answer buried inside an\nundifferentiated block has not been delivered, and \"it was in there\" is not a\ndefence. The short form:\n\n- **Answer first**, in ≤2 lines. Never build up to it.\n- Past 5 lines use headings; never more than 3 unbroken prose lines.\n- Bullets (≤15 words, ≤7 per section) over paragraphs. Once 3+ items each carry\n  2+ attributes, make it a table.\n- **No preamble, no recap, no closer.** Park tangents as named follow-ups.\n- End on the single next action.\n- Signpost state with that document's closed glyph vocabulary — never\n  decorative emoji, which destroy the affordance they appear to add.\n\nBrevity is the default; a request for detail makes the answer longer, not\nlooser. The limits live in `PresentationPolicy` (`@crabgic/contracts`) and are\nenforced structurally for CLI stdout — cite them from there, never retype them.\n\n## Non-negotiables\n\n- `docs/claude-code-adaptation.md` §0's decisions are owner-approved and settled. Do not\n  re-ask or re-litigate them; treat them as fixed inputs.\n- `docs/interface-ledger.md` is the settled authority on cross-phase interface rulings\n  (tool names, schema members, constants, path conventions). Reconcile any new work with\n  it; never contradict it or edit it casually — a ruling change requires a coordinated\n  edit across every phase file the ledger lists as affected.\n- The five ground rules in `roadmap/README.md` (TDD mandatory, ≥80% line+branch coverage,\n  evidence-based exit criteria, the \"done\" definition, and the engine-fact-drift rule)\n  apply to every phase without exception.\n- Engine facts about Claude Code drift weekly. Anything engine-touching cites\n  `docs/engine-baseline.md` (produced by roadmap phase `00`) plus the pinned version\n  range it records — never memory, and never this file.\n- Commits use conventional-commit format (`feat|fix|refactor|docs|test|chore|perf|ci`).\n"
+    },
+    {
+      "relPath": ".claude/settings.json",
+      "kind": "merged",
+      "installedChecksum": "d7763992fa9cba10dfb7b0702541b2781f7cc71f6fd237d24b7a3c6912ca2cb0",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".mcp.json",
+      "kind": "merged",
+      "installedChecksum": "ac209106c2969dd209a260eb587863d05140d67965d0fa65dde31f52f78050d2",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-explore.md",
+      "kind": "full",
+      "installedChecksum": "56cdfa3f62e17b11387c549a401263bb2f81005bd25df31ccdb458f11b2ba1ed",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-reviewer.md",
+      "kind": "full",
+      "installedChecksum": "4735c81704d255d02233dbe0aaef375c108e259191535318686874beb4034826",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-roaster.md",
+      "kind": "full",
+      "installedChecksum": "f966af989f8e3fec13b055c38ad906ea0443ab2af32577a04e915996d0b4159b",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-architect.md",
+      "kind": "full",
+      "installedChecksum": "ec5f06d771fa1b81e1904b45355b514d39e4aeffdd92e3bf36f659325715eede",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-planner.md",
+      "kind": "full",
+      "installedChecksum": "4e2b7ea3d4a2e0d79f5f05301313267996fc07bb1f5ff8eed940c4281fba8de2",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-domain-reviewer.md",
+      "kind": "full",
+      "installedChecksum": "03b18218a1097f765e532c223cd459f15438927a045970824581ad65e4669386",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-researcher.md",
+      "kind": "full",
+      "installedChecksum": "8a49178b279690a9353784133cbf8c69ac3a172fbcceaeefea8d5f9b2c126c91",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/agents/eo-documenter.md",
+      "kind": "full",
+      "installedChecksum": "be3f4f2275162eac0b35dd1bc7e41f90a63f24356b003fea9d0f781fd13fbbea",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/crabgic-statusline.mjs",
+      "kind": "full",
+      "installedChecksum": "0de8a1ecbd9463a84e382c4182f1febcb6306450856c02cd0211d2f453514080",
+      "sourceVersion": "0.0.0"
+    },
+    {
+      "relPath": ".claude/output-styles/crabgic.md",
+      "kind": "full",
+      "installedChecksum": "a57621ddae26bd87eed1cddb86a72a8e3ea4dd3922e0e64f8477e26ffaae39a6",
+      "sourceVersion": "0.0.0"
+    }
+  ]
+}

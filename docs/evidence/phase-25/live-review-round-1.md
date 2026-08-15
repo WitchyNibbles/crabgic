@@ -142,3 +142,31 @@ That is the loop doing its job, and it is also the honest answer to whether the
 bounds converge: they had not, after three rounds, on a module of this size. The
 runaway guard exists for exactly that, and the residual disclosed in ledger Gap
 19 — that termination is reachable but not proved — is not theoretical.
+
+## Found by installing crabgic on crabgic (2026-08-15)
+
+The install was run at this branch tip. Two things it surfaced immediately:
+
+**1. The human-only gate held, and could not be talked around.** The standing
+`EnvelopePolicy` was REFUSED with:
+
+> "Skipping the standing authorization policy: this process has no interactive
+> terminal (stdin is a pipe, file or closed). The approval prompt is the
+> human-only gate; a scripted stdin cannot satisfy it."
+
+Everything else installed; dispatches will refuse until the owner writes the
+policy from a terminal they opened themselves. This is ledger Gap 18's guarantee
+observed rather than argued: the model could not grant itself authority even
+while holding a shell.
+
+**2. The installer writes a `.mcp.json` that fails `prettier --check`.** Minor,
+and NOT fixed by this repository adding it to `.prettierignore` — every consuming
+repo that uses prettier will see the same warning on its own `.mcp.json` the
+moment it installs. The file is drift-checked byte-for-byte by `crabgic doctor`,
+so reformatting it in place is not the remedy either; the installer would have to
+emit formatted JSON. Recorded here rather than fixed, because it touches the
+installer's byte-preservation contract and deserves its own change.
+
+The install also confirmed the agent roster reaches a consuming repo: all eight
+agents landed in `.claude/agents/`, including the three this phase added, which
+is the defect `REQUIRED_SUBAGENT_NAMES`' docblock records happening once before.
