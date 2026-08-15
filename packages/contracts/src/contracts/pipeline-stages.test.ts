@@ -158,3 +158,25 @@ describe("exitCriteriaFor", () => {
     expect(() => exitCriteriaFor("nonsense" as PipelineStageId)).toThrow(/unknown stage/i);
   });
 });
+
+describe("the implement stage's evaluator panel", () => {
+  it("runs FOUR evaluators, which is what the owner asked for", () => {
+    // "4 specialized skill charged agents evaluate the work (security, code
+    // reviewer, compliance)" plus best practice for the stack.
+    //
+    // This test exists twice over: the change it guards was made once, lost to
+    // a wholesale `git checkout` during an unrelated cleanup, and reported in a
+    // commit message as delivered while the source said otherwise. A claim in
+    // prose is not a claim anything checks.
+    expect(stageById("implement").lenses).toHaveLength(4);
+  });
+
+  it("takes compliance and clean-code from the DOMAIN roster, not a local list", () => {
+    // A second vocabulary would make `compliance` mean one thing at implement
+    // and another at audit, while a blocking finding identifies itself by lens.
+    for (const lens of ["compliance", "clean-code"]) {
+      expect(stageById("implement").lenses).toContain(lens);
+      expect(DOMAIN_LENS_IDS as readonly string[]).toContain(lens);
+    }
+  });
+});

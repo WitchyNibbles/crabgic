@@ -176,7 +176,17 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = [
   {
     id: "implement",
     label: "Implement",
-    lenses: ["correctness", "security"],
+    /**
+     * FOUR evaluators, not two (owner request 2026-08-15, roadmap/25).
+     *
+     * The owner asked for four specialised agents to evaluate the work:
+     * security, code review, compliance, and best practice for the stack. Two
+     * existed already as pipeline lenses; `compliance` and `clean-code` are the
+     * two the audit found missing, and they are taken from `DOMAIN_LENSES`
+     * rather than invented here so that "compliance" means one thing whether it
+     * is raised at the implement stage or at the audit.
+     */
+    lenses: ["correctness", "security", "compliance", "clean-code"],
     exitCriteria: [
       {
         id: "implement-gates-pass",
