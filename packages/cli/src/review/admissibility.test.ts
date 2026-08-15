@@ -500,3 +500,136 @@ describe("the vacuous-closure defect the correctness lens found", () => {
     expect(verdict.reason).not.toMatch(/pre-existing/i);
   });
 });
+
+describe("round 2 — defects the fixes themselves introduced (2026-08-15)", () => {
+  /**
+   * Round 2 reviewed the round-1 FIXES and found two blocking defects in them.
+   * That is the loop working: each round reviews what the last one changed, and
+   * a fix is not exempt from review just because it was a fix.
+   */
+
+  it("REFUSES to close on a write set no relative path can match", () => {
+    // The round-1 guard tested EMPTINESS, not matchability. An absolute,
+    // traversal-bearing or glob write set survives normalization as non-empty
+    // garbage, makes every finding inadmissible, and closes the stage — the
+    // round-1 vacuous-closure defect reached through a different input, with
+    // closure once again takeable from the caller.
+    //
+    // `AuthorizationEnvelopeSchema` and `TaskPacketSchema` both accept
+    // `z.array(NonEmptyStringSchema)` for owned paths, and this repository's own
+    // fixtures use glob and absolute spellings, so none of these is exotic.
+    for (const writeSet of [
+      ["/home/eimi/projects/crabgic/packages/cli/src/review/"],
+      ["packages/cli/src/review/../../nonexistent/"],
+    ]) {
+      const verdict = closureVerdict({
+        lens: "correctness",
+        findings: [finding({ classification: "blocking", violates: "implement-gates-pass" })],
+        seenKeys: new Set(),
+        plannedWritePaths: writeSet,
+        obligationsIssued: ["o1"],
+        obligationsAnswered: ["o1"],
+        round: 1,
+        runawayGuard: 20,
+      });
+      expect(verdict.closed, `write set ${JSON.stringify(writeSet)}`).toBe(false);
+      expect(verdict.reason).toMatch(/write set/i);
+    }
+  });
+
+  it("still closes on a write set that CAN match", () => {
+    // The control the fix must not break: a legitimate write set with a quiet,
+    // fully-dispositioned round still closes.
+    const verdict = closureVerdict({
+      lens: "correctness",
+      findings: [],
+      seenKeys: new Set(),
+      plannedWritePaths: ["packages/cli/src/review/"],
+      obligationsIssued: ["o1"],
+      obligationsAnswered: ["o1"],
+      round: 1,
+      runawayGuard: 20,
+    });
+    expect(verdict.closed).toBe(true);
+  });
+
+  it("gives one finding ONE key however many times a path is repeated", () => {
+    // The identity key sorted but did not deduplicate, so `['a.ts']`,
+    // `['a.ts','./a.ts']` and `['a.ts','a.ts']` were three different keys for
+    // one finding. A reviewer re-raising the same claim with one extra
+    // repetition each round is novel every round — which is exactly the
+    // twelve-round non-termination this module exists to bound, reachable by a
+    // reviewer that is not even trying to game it.
+    const once = findingKey(finding({ paths: ["a.ts"] }), "correctness");
+    expect(findingKey(finding({ paths: ["a.ts", "./a.ts"] }), "correctness")).toBe(once);
+    expect(findingKey(finding({ paths: ["a.ts", "a.ts", "a.ts"] }), "correctness")).toBe(once);
+  });
+
+  it("still separates two genuinely different path sets", () => {
+    // Deduplication must not collapse distinct findings.
+    expect(findingKey(finding({ paths: ["a.ts"] }), "correctness")).not.toBe(
+      findingKey(finding({ paths: ["a.ts", "b.ts"] }), "correctness"),
+    );
+  });
+});
+
+describe("round 2, security lens — the round-2 guard was itself incomplete", () => {
+  it("refuses EVERY glob metacharacter in a write set, not only `*`", () => {
+    // The guard recognised `*` and nothing else, while
+    // `packages/engine-core/src/compiler/owned-path.ts` already defined the full
+    // set for exactly this input. Reimplementing a weaker subset of an existing
+    // function is the "two functions answering one question diverge" failure
+    // this repository has paid for repeatedly — this time inside a fix written
+    // to close the previous round's version of the same defect.
+    for (const writeSet of [
+      ["packages/gateway/src/auth?.ts"],
+      ["packages/{gateway,cli}/src/"],
+      ["packages/gateway/src/[a-z]"],
+      ["packages/gateway/src/**"],
+    ]) {
+      const verdict = closureVerdict({
+        lens: "security",
+        findings: [],
+        seenKeys: new Set(),
+        plannedWritePaths: writeSet,
+        obligationsIssued: ["o1"],
+        obligationsAnswered: ["o1"],
+        round: 1,
+        runawayGuard: 20,
+      });
+      expect(verdict.closed, `write set ${JSON.stringify(writeSet)}`).toBe(false);
+    }
+  });
+
+  it("refuses a MIXED write set rather than silently dropping its bad entries", () => {
+    // One usable entry made the guard pass, and every authorized tree spelled as
+    // a glob fell out of scope silently: findings about it were misfiled as
+    // "pre-existing code, recorded as debt" and never reopened for this change
+    // set either. An actor who spells one owned path literally and the rest as
+    // globs keeps arbitrary authorized trees permanently out of review.
+    const verdict = closureVerdict({
+      lens: "security",
+      findings: [],
+      seenKeys: new Set(),
+      plannedWritePaths: ["packages/cli/src/review/", "packages/gateway/src/**"],
+      obligationsIssued: ["o1"],
+      obligationsAnswered: ["o1"],
+      round: 1,
+      runawayGuard: 20,
+    });
+    expect(verdict.closed).toBe(false);
+    expect(verdict.reason).toMatch(/packages\/gateway\/src/);
+  });
+
+  it("refuses a glob-bearing FINDING path", () => {
+    // A finding naming a pattern rather than a file evades the pathless refusal
+    // that exists to stop unscopeable findings, and cannot be matched by
+    // `selectDebtTouchedBy` if deferred. Each pattern spelling also mints a
+    // distinct identity key, so a reviewer can hold a stage open indefinitely.
+    const verdict = admissibilityOf(finding({ paths: ["packages/cli/src/review/*"] }), [
+      "packages/cli/src/review/",
+    ]);
+    expect(verdict.admissible).toBe(false);
+    expect(verdict.reason).toMatch(/glob|pattern/i);
+  });
+});

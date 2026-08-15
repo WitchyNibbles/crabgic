@@ -76,4 +76,11 @@ export function validateOwnedPath(rawPath: string): string {
   return trimmed.replace(/\/+$/, "");
 }
 
-const GLOB_METACHARACTER_PATTERN = /[*?[\]{}\\]/;
+/**
+ * Exported because `packages/cli/src/review/admissibility.ts` needs the same
+ * answer, and a second copy diverges. It already did once: that module shipped a
+ * guard recognising `*` alone, which a live security review broke with `?`,
+ * braces and brackets — a weaker subset of this very pattern, reimplemented a
+ * few metres away.
+ */
+export const GLOB_METACHARACTER_PATTERN = /[*?[\]{}\\]/;

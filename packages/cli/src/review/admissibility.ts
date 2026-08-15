@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { ReviewFinding } from "@crabgic/contracts";
 import { normalizePlannedPath } from "@crabgic/git-engine";
+import { GLOB_METACHARACTER_PATTERN } from "@crabgic/engine-core";
 
 /**
  * The four admissibility bounds that make a zero-findings round REACHABLE.
@@ -77,6 +78,21 @@ function unboundablePath(raw: string): string | undefined {
   }
   if (normalizePlannedPath(raw).split("/").includes("..")) {
     return `the path "${raw}" contains a ".." traversal segment; the write-set comparison is textual, so a traversal cannot be bounded — give the canonical path`;
+  }
+  if (GLOB_METACHARACTER_PATTERN.test(raw)) {
+    /**
+     * Added in round 2 after the security lens found glob-bearing paths
+     * admitted on the finding side. A pattern names no file: it evades the
+     * pathless refusal that exists to stop unscopeable findings, cannot be
+     * matched by `selectDebtTouchedBy` if deferred, and every spelling of it
+     * mints a distinct identity key — so a reviewer can hold a stage open
+     * indefinitely with findings that name no file at all.
+     *
+     * The metacharacter set is IMPORTED, not restated. This module already
+     * shipped a hand-rolled version recognising `*` alone, which is the
+     * two-definitions-diverge failure arriving inside a fix.
+     */
+    return `the path "${raw}" contains a glob metacharacter; a pattern names no file, so it can be neither scoped nor deferred — name the file the problem bites hardest in`;
   }
   return undefined;
 }
@@ -227,12 +243,20 @@ export function findingKey(finding: ReviewFinding, lens: string): string {
    * finding, which is then silently non-novel and never counted — the stage can
    * close on a real finding nobody ever answered.
    *
-   * Hashing the JSON-encoded sorted array removes the intra-field ambiguity the
-   * way the NUL removed the cross-field one. Order stays immaterial because the
-   * array is sorted before encoding.
+   * Hashing the JSON-encoded array removes the intra-field ambiguity the way the
+   * NUL removed the cross-field one. Order stays immaterial because the array is
+   * sorted; MULTIPLICITY is immaterial because it is deduplicated first.
+   *
+   * The dedup was added in round 2, after the correctness lens found that
+   * sorting alone left one finding with unboundedly many keys: `['a.ts']`,
+   * `['a.ts','./a.ts']` and `['a.ts','a.ts']` normalize to the same path and
+   * were three different keys. A reviewer re-raising the same claim with one
+   * extra repetition each round is novel every round — the twelve-round
+   * non-termination this module exists to bound, reachable by a reviewer that is
+   * not even trying to game it.
    */
   const paths = createHash("sha256")
-    .update(JSON.stringify([...normalizePaths(finding.paths)].sort()), "utf8")
+    .update(JSON.stringify([...new Set(normalizePaths(finding.paths))].sort()), "utf8")
     .digest("hex");
   const claim = finding.claim.trim().toLowerCase().replace(/\s+/g, " ");
   const digest = createHash("sha256").update(claim, "utf8").digest("hex");
@@ -333,6 +357,50 @@ export interface ClosureVerdict {
  * Under ruling R3 the caller takes its declared default and journals it rather
  * than halting for the owner.
  */
+/**
+ * Why no admissible finding path could ever match this write set.
+ *
+ * ROUND 2 CORRECTION. The first version of this guard tested EMPTINESS, which
+ * the correctness lens showed was the wrong question: an absolute,
+ * traversal-bearing or glob write set survives normalization as non-empty
+ * garbage, makes every finding inadmissible, and closes the stage — the same
+ * vacuous closure, through a different input, with closure once again takeable
+ * by the caller.
+ *
+ * `AuthorizationEnvelope` and `TaskPacket` both type owned paths as bare
+ * non-empty strings, and this repository's own fixtures use glob and absolute
+ * spellings, so none of these inputs is exotic.
+ *
+ * Symmetry is the rule: a spelling this module refuses on the FINDING side
+ * cannot be trusted on the WRITE-SET side either.
+ */
+function unmatchableWriteSet(plannedWritePaths: readonly string[]): string | undefined {
+  if (plannedWritePaths.length === 0) {
+    return "this change set has an empty planned write set, so no finding can be admissible and a quiet round would mean nothing — refusing to close rather than closing vacuously";
+  }
+
+  /**
+   * EVERY entry must be matchable, not merely one of them.
+   *
+   * The first version returned as soon as one entry was usable, and the security
+   * lens showed what that costs: an actor spelling one owned path literally and
+   * the rest as globs keeps arbitrary AUTHORIZED trees permanently out of review
+   * scope, with findings about them misfiled as "pre-existing code, recorded as
+   * debt" and never reopened for this change set either. The guard stayed
+   * silent throughout.
+   *
+   * This is the same rule the finding side already follows and the same one this
+   * function's docblock states: a spelling refused on one side cannot be trusted
+   * on the other. Naming the offending entries is what makes it actionable —
+   * "your write set is wrong" sends an operator through the whole list.
+   */
+  const unusable = plannedWritePaths.filter(
+    (raw) => unboundablePath(raw) !== undefined || normalizePlannedPath(raw).length === 0,
+  );
+  if (unusable.length === 0) return undefined;
+  return `this change set's planned write set contains ${String(unusable.length)} entr${unusable.length === 1 ? "y" : "ies"} a finding cannot be compared against (${unusable.join(", ")}) — absolute, traversal-bearing and glob spellings cannot be matched textually, so findings about those paths would be silently inadmissible`;
+}
+
 export function closureVerdict(input: ClosureInput): ClosureVerdict {
   const { admissible, deferred } = partitionByAdmissibility(
     input.findings,
@@ -356,15 +424,9 @@ export function closureVerdict(input: ClosureInput): ClosureVerdict {
    * widens them to make a round quiet has removed the only thing making a quiet
    * round mean anything". An empty write set is the widest possible widening.
    */
-  if (normalizePaths(input.plannedWritePaths).length === 0) {
-    return {
-      novel,
-      deferred: input.findings,
-      closed: false,
-      stalled: false,
-      reason:
-        "this change set has an empty planned write set, so no finding can be admissible and a quiet round would mean nothing — refusing to close rather than closing vacuously",
-    };
+  const unmatchable = unmatchableWriteSet(input.plannedWritePaths);
+  if (unmatchable !== undefined) {
+    return { novel, deferred: input.findings, closed: false, stalled: false, reason: unmatchable };
   }
 
   /**
