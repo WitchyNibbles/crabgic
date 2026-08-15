@@ -236,6 +236,31 @@
         "2d03c30a163f0c2f1cc3fd64647bdafbead4901d20264847ef919f2d18288508"
       ]
     },
+    "25": {
+      "roadmapFile": "roadmap/25-owner-pipeline-conformance.md",
+      "sourceRev": "68e5620fa090eb07f1b2e8d3b3e8c0ea67bb4633",
+      "sourceNote": "the commit that introduced roadmap/25; no closeout has touched it",
+      "criteria": [
+        "75cbf624befc3e9621af158406f7ab5ee5b96b5405820a2321a541eb63f29558",
+        "7cf46f3108dd12783a4ce1d01baa473500073d0f92eff48e04623435ea8c79fc",
+        "92f9e5390e0e88c8dc969a5676b90903ee37cb1891ee6b396234628af998486b",
+        "74e5a068ccea8bbac0eb30880f308d1d9461abac1d469773a991ba4d2692c24a",
+        "1377cd048abcdfc295fe4d3dce3c63aea5718c3bb9d31c4d33888bc6045fff3e",
+        "958f7fb3d59946de0c674a894e27746c452a97f2faf1888967628c04cd8b6026",
+        "1945d63d87ae7e88dc67aac02a6019df81cc9efaf590344f35a0af84dfd89695",
+        "c237bde29c062a477f6aa32967fa6e364cf68149d7ba584f0d9c1f16e4f2e959",
+        "e347679b5aba22cc18f726c3f5652808f214da3e443ec03da65551579c573840",
+        "3c1debd967d32648735c938532c9a7d20853bfdf936e74c93599d71bfc57273d",
+        "18ba12894b82cc1830ec216be981e6dbeb615747398ceb8b9a5efa882717ac0c",
+        "3409ccb01f51cb8a964f8df3f883b328654d840c3cde5dcd16a5aa1e7730a940",
+        "264c51d0928415ad7e22171caa2f021d9d2d06b932eec1459963d7a61dfb6c0a",
+        "f95d6cfcd23c3ca1aabf161e6ff9d5f0e9d25c5fccb6391a6420f75bd23824e9",
+        "f1989e3cced10fd7055dac1833aff71ecee7deffec6ae371f50504c029a0ae84",
+        "0bc2e9f8de0fa2bb61779ea8a1af7074c15d7e9fcfe89532f151f80ad0197447",
+        "5533af4753e15ea615106bb68f9b95b61ae4684af133b1cfff2ecd462462da71",
+        "e26d39e9a4574cde0a3d397a6ed482f258fad0504079571ec8a1b91d82c12b29"
+      ]
+    },
     "00": {
       "roadmapFile": "roadmap/00-engine-spikes.md",
       "sourceRev": "af46e007c1363d4838d74e2eea0d531e4d6bb4f3",
