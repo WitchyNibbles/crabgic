@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SchemaVersionField } from "../shared/schema-version.js";
+import { SpecRecordSchema } from "./spec-record.js";
 import { IdSchema, NonEmptyStringSchema } from "../shared/ids.js";
 
 /**
@@ -37,6 +38,27 @@ export const TaskPacketSchema = z
 
     /** Requirement ids this attempt is scoped to (13:19, "requirement IDs"). */
     requirementIds: z.array(IdSchema),
+
+    /**
+     * The acceptance criteria this attempt must satisfy, VERBATIM.
+     * roadmap/25 work item 3; `docs/design/owner-pipeline-conformance.md` §5.4.
+     *
+     * WHY THIS EXISTS ALONGSIDE `requirementIds`. The ids are a reference, and a
+     * reference resolves only where the registry is — the supervisor, not the
+     * worktree. So the one party obliged to satisfy the criteria was the one
+     * party that could not read them, and completion was judged against a
+     * document the doer never held.
+     *
+     * REQUIRED, not optional. An optional field is one a builder forgets, and
+     * the forgetting is invisible: the packet still validates, the worker still
+     * runs, and it works from the objective prose instead. That is the state
+     * this field exists to end.
+     *
+     * The copy is bound rather than trusted: phase 24's `criteriaHash` seal
+     * fails closed when the criteria in force are not the criteria that were
+     * approved.
+     */
+    spec: SpecRecordSchema,
 
     /** What the worker must accomplish (13:19, "objective"). */
     objective: NonEmptyStringSchema,

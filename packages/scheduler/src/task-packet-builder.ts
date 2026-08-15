@@ -27,6 +27,7 @@ import {
   TaskPacketSchema,
   type AuthorizationEnvelope,
   type TaskPacket,
+  type SpecRecord,
 } from "@crabgic/contracts";
 import { assertPacketWithinBudget, type PacketFieldBudgets } from "./budgets.js";
 import { PacketEnvelopeViolationError } from "./errors.js";
@@ -35,6 +36,14 @@ export interface BuildTaskPacketOptions {
   readonly id: string;
   readonly workUnitId: string;
   readonly requirementIds: readonly string[];
+  /**
+   * The acceptance criteria this attempt must satisfy, verbatim (roadmap/25 WI 3).
+   *
+   * REQUIRED. `requirementIds` is a reference the worker cannot resolve — the
+   * registry lives with the supervisor, not in the worktree — so the ids alone
+   * left the party doing the work as the only party without the criteria.
+   */
+  readonly spec: SpecRecord;
   readonly objective: string;
   readonly nonGoals?: readonly string[];
   /** The exact frozen base Git object id (07's freeze) — threaded verbatim, never re-derived here. */
@@ -107,6 +116,7 @@ export function buildTaskPacket(options: BuildTaskPacketOptions): BuildTaskPacke
     id: options.id,
     workUnitId: options.workUnitId,
     requirementIds: [...options.requirementIds],
+    spec: options.spec,
     objective: options.objective,
     nonGoals: [...(options.nonGoals ?? [])],
     baseObjectId: options.baseObjectId,

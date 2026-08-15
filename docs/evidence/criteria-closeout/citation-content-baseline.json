@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-15",
-  "generatedAtSha": "d33c8f1dbaca2fc78b2a90b2bd4053d4ca306059",
+  "generatedAtSha": "1bef2cca9b133f035ff444fb128785f202d70fd8",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2671,
-    "seededStale": 650,
-    "outsideSpan": 777,
+    "anchored": 2667,
+    "seededStale": 654,
+    "outsideSpan": 781,
     "repeatText": 528,
     "crossFile": 20,
     "skipped": 610
@@ -2809,10 +2809,10 @@
       "qa": "c3062777af15",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@426",
-        "OK/collapsed@427",
-        "OK/collapsed@428",
-        "OK/collapsed@429,453,481~repeat"
+        "MOVED/collapsed@445!span",
+        "MOVED/collapsed@446!span",
+        "MOVED/collapsed@447!span",
+        "MOVED-AMBIG/collapsed@448,472,500!span~repeat"
       ]
     },
     "phase-06.json#c9#packages/engine-claude/src/version-gate.test.ts:108-128": {
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@559!span",
-        "MOVED/collapsed@591!span"
+        "MOVED/collapsed@563!span",
+        "MOVED/collapsed@595!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -11889,8 +11889,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@671!span",
-        "MOVED-AMBIG/collapsed@677,779!span~repeat",
+        "MOVED/collapsed@675!span",
+        "MOVED-AMBIG/collapsed@681,824!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]

@@ -22,6 +22,17 @@ const TASK_PACKET_FIXTURE: TaskPacket = TaskPacketSchema.parse({
   id: "8f14e45f-ceea-467e-b4d3-8b5f8f5f8f5f",
   workUnitId: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
   requirementIds: [],
+  spec: {
+    schemaVersion: 1,
+    id: "aaaaaaaa-0000-4000-8000-00000000000f",
+    taskId: "fixture-task",
+    requirements: [
+      { requirementId: "fixture-requirement", acceptanceCriteria: ["Objective observably met."] },
+    ],
+    doneCriteria: ["A named test demonstrates it."],
+    testsFirst: true,
+    permittedInterfaces: [],
+  },
   objective: "Stub objective for EngineAdapter conformance testing.",
   nonGoals: [],
   baseObjectId: "deadbeefcafebabe0000000000000000000000",

@@ -24,6 +24,80 @@
         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
       }
     },
+    "spec": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "taskId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requirements": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requirementId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "acceptanceCriteria": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "requirementId",
+              "acceptanceCriteria"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "doneCriteria": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "testsFirst": {
+          "type": "boolean",
+          "const": true
+        },
+        "permittedInterfaces": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "taskId",
+        "requirements",
+        "doneCriteria",
+        "testsFirst",
+        "permittedInterfaces"
+      ],
+      "additionalProperties": false
+    },
     "objective": {
       "type": "string",
       "minLength": 1
@@ -98,6 +172,7 @@
     "id",
     "workUnitId",
     "requirementIds",
+    "spec",
     "objective",
     "nonGoals",
     "baseObjectId",
