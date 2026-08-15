@@ -36,7 +36,10 @@ export interface JiraHttpContext {
 }
 
 /**
- * The ONE place a Jira Cloud request's authorization header is decided.
+ * The ONE place a Jira Cloud request's authorization header is decided
+ * — for READS here, and for WRITES via `../provider/register.ts`'s
+ * `authHeaders` hook, which calls this same function (issue #135, defect
+ * 5: the write path used to attach no credential at all).
  *
  * It used to be a hardcoded `Bearer ${token.accessToken}` at the single
  * call site below, which silently made OAuth the only expressible Cloud
@@ -45,7 +48,7 @@ export interface JiraHttpContext {
  * #135). Routing both shapes through one function keeps that from
  * becoming two divergent auth paths.
  */
-async function jiraAuthHeader(ctx: JiraHttpContext): Promise<Record<string, string>> {
+export async function jiraAuthHeader(ctx: JiraHttpContext): Promise<Record<string, string>> {
   if (ctx.authHeaderProvider !== undefined) return { ...(await ctx.authHeaderProvider()) };
   if (ctx.tokenManager === undefined) {
     // Fail closed and loudly. An unauthenticated Jira request would come

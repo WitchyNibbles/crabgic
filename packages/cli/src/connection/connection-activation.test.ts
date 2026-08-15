@@ -3,8 +3,12 @@ import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@crabgic/contra
 import { JiraConnectionRegistry } from "@crabgic/connectors-jira";
 import { GrafanaConnectionRegistry } from "@crabgic/connectors-grafana";
 import type { GatewayHttpClient } from "@crabgic/gateway";
-import { createConnectionActivator } from "./connection-activation.js";
+import {
+  createConnectionActivator,
+  type ConnectionActivatorDeps,
+} from "./connection-activation.js";
 import type { JiraConnectionConfigStore } from "./jira-config-store.js";
+import type { JiraConnectionConfig } from "@crabgic/connectors-jira";
 
 function connection(overrides: Partial<ExternalConnection> = {}): ExternalConnection {
   return {
@@ -43,18 +47,27 @@ const BASIC_CONFIG = (id: string) => ({
 const fakeHttpClient = async (): Promise<GatewayHttpClient> =>
   ({ request: async () => ({ status: 200, headers: {}, bodyText: "{}" }) }) as never;
 
-function build(
-  overrides: Parameters<typeof createConnectionActivator>[0] extends infer T
-    ? Partial<T>
-    : never = {},
-) {
+/** The Grafana stores are irrelevant to the Jira arm but required by the real dep shape — supplied as no-ops rather than cast away, so these tests typecheck against the interface production uses. */
+const NOOP_STORES = {
+  grafanaPayloadStore: { get: () => undefined, set: () => undefined, clear: () => undefined },
+  grafanaSnapshotStore: {
+    get: () => undefined,
+    capture: () => undefined,
+    clear: () => undefined,
+    size: 0,
+  },
+} as const;
+
+function build(overrides: Partial<ConnectionActivatorDeps> = {}) {
   const jira = new JiraConnectionRegistry();
   const activate = createConnectionActivator({
     jira,
     jiraConfigs: configStore({ [connection().id]: BASIC_CONFIG(connection().id) }),
     buildJiraHttpClient: fakeHttpClient,
+    grafana: new GrafanaConnectionRegistry(),
+    ...NOOP_STORES,
     ...overrides,
-  } as never);
+  });
   return { jira, activate };
 }
 
@@ -128,11 +141,13 @@ describe("createConnectionActivator", () => {
       jiraConfigs: {
         get: async (id: string) => configs[id] as never,
         list: async () => [],
-        put: async (c: never) => c,
+        put: async (c: JiraConnectionConfig) => c,
         remove: async () => undefined,
       },
       buildJiraHttpClient: fakeHttpClient,
-    } as never);
+      grafana: new GrafanaConnectionRegistry(),
+      ...NOOP_STORES,
+    });
     const conn = connection();
 
     await expect(activate(conn)).rejects.toThrow();
@@ -147,7 +162,9 @@ describe("createConnectionActivator", () => {
       jira,
       jiraConfigs: configStore({}),
       buildJiraHttpClient: fakeHttpClient,
-    } as never);
+      grafana: new GrafanaConnectionRegistry(),
+      ...NOOP_STORES,
+    });
     await expect(activate(connection())).rejects.toThrow(/config/i);
   });
 
@@ -183,12 +200,7 @@ describe("createConnectionActivator — Grafana", () => {
       jira: new JiraConnectionRegistry(),
       jiraConfigs: configStore({}),
       grafana,
-      grafanaPayloadStore: { get: () => undefined, set: () => undefined, delete: () => undefined },
-      grafanaSnapshotStore: {
-        get: () => undefined,
-        capture: () => undefined,
-        delete: () => undefined,
-      },
+      ...NOOP_STORES,
       buildGrafanaHttpClient: async () =>
         ({
           request: async (req: { url: URL }) => {
@@ -196,7 +208,7 @@ describe("createConnectionActivator — Grafana", () => {
             return { status, headers: {}, bodyText: bodyText ?? "" };
           },
         }) as never,
-    } as never);
+    });
     return { grafana, activate };
   }
 
