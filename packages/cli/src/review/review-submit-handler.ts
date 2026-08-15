@@ -2,27 +2,35 @@ import {
   CriterionAttestationSchema,
   DEBT_REOPENED_CRITERION,
   DesignRecordSchema,
+  DocumentationRecordSchema,
+  deriveDocumentationCriteria,
+  documentationContradictions,
   PlanRecordSchema,
   deriveDesignCriteria,
   derivePlanCriteria,
   designContradictions,
   planContradictions,
   PIPELINE_STAGE_IDS,
-  REVIEW_ROUND_CEILING,
+  REVIEW_RUNAWAY_GUARD,
   ReviewVerdictSchema,
   exitCriteriaFor,
   isStageClosable,
   reclassifyDebtForWriteSet,
+  resolveDesignGate,
   selectDebtTouchedBy,
   type PipelineStageId,
   type ReviewFinding,
   type ReviewVerdict,
   type CriterionAttestation,
   type DesignRecord,
+  type DocumentationRecord,
+  type DocumentedSurface,
+  type OwnerDesignVerdict,
   type PlanRecord,
   type StoredAttestation,
 } from "@crabgic/contracts";
 import { GATE_DERIVED_CRITERIA } from "./gate-criteria.js";
+import { closureVerdict, findingKey } from "./admissibility.js";
 
 /**
  * `review.submit` — the wiring ledger Gap 20 recorded as missing.
@@ -73,6 +81,24 @@ export interface ReviewSubmitDeps {
    */
   readonly priorDesign?: () => DesignRecord | undefined;
   readonly priorPlan?: () => PlanRecord | undefined;
+  /**
+   * The owner's verdict on the design under review — the design gate's only key
+   * (owner ruling R2, roadmap/25 WI 5).
+   *
+   * Supplied by the SERVER from a store no session-reachable surface writes,
+   * exactly as the standing `EnvelopePolicy` is. If a gateway tool could record
+   * this, the model could approve its own design, and the gate would be a
+   * checkpoint rather than a gate.
+   */
+  readonly ownerDesignVerdict?: () => OwnerDesignVerdict | undefined;
+  /**
+   * What the product actually exposes — the commands and operational failure
+   * modes a guide's claims are checked against (roadmap/25 WI 8).
+   *
+   * Server-supplied for the same reason `priorDesign` is: a guide that declared
+   * its own coverage target could pass by shrinking it.
+   */
+  readonly documentedSurface?: () => DocumentedSurface | undefined;
   /**
    * How well the blocking/advisory classifier agrees with the owner, if anyone
    * has checked.
@@ -138,6 +164,8 @@ export interface ReviewSubmitInput {
    */
   readonly design?: unknown;
   readonly plan?: unknown;
+  /** The documentation stage's artifact — roadmap/25 WI 8. */
+  readonly documentation?: unknown;
 }
 
 /** A claim that could not be honoured, and the reason, returned rather than dropped. */
@@ -170,6 +198,15 @@ export interface ReviewSubmitResult {
   readonly reopenedDebt?: number;
   readonly escalate?: boolean;
   readonly escalationReason?: string;
+  /** Why the stage did not close. Absent exactly when it closed. */
+  readonly closureReason?: string;
+  /**
+   * Findings refused admission to THIS loop — out of the change set's write set,
+   * or naming no path at all (ruling R4's scope bound). Returned rather than
+   * dropped: they are owed to the debt index, which reopens them when their code
+   * is next touched.
+   */
+  readonly deferredFindings?: readonly ReviewFinding[];
   /**
    * The full finding set after merging this round and reopening touched debt.
    *
@@ -435,6 +472,25 @@ export async function runReviewSubmit(
     }
     submittedPlan = planParse.data;
   }
+  /**
+   * The documentation stage's artifact (roadmap/25 WI 8).
+   *
+   * Parsed and refused on the same terms as the design and plan records: a
+   * record the server could not read is not a record it may derive from.
+   */
+  let submittedDocumentation: DocumentationRecord | undefined;
+  if (input.documentation !== undefined) {
+    const docParse = DocumentationRecordSchema.safeParse(input.documentation);
+    if (!docParse.success) {
+      return {
+        ok: false,
+        error: `invalid documentation record: ${docParse.error.issues
+          .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+          .join("; ")}`,
+      };
+    }
+    submittedDocumentation = docParse.data;
+  }
 
   const prior = deps.priorFindings();
   const merged = mergeFindings(prior, verdict.findings);
@@ -455,9 +511,19 @@ export async function runReviewSubmit(
   // stage compares against.
   const design = submittedDesign ?? deps.priorDesign?.();
   const plan = submittedPlan ?? deps.priorPlan?.();
+  /**
+   * The documented surface comes from the SERVER, never from the record under
+   * review. A guide supplying its own list of what it must cover could omit the
+   * awkward commands — the same reason the design's acceptance coverage is
+   * scored against the `Requirement`s rather than against the design's own claims.
+   */
+  const surface = deps.documentedSurface?.();
   const artifactDerived = [
     ...(design !== undefined ? deriveDesignCriteria(design) : []),
     ...(plan !== undefined ? derivePlanCriteria(plan, design) : []),
+    ...(submittedDocumentation !== undefined && surface !== undefined
+      ? deriveDocumentationCriteria(submittedDocumentation, surface)
+      : []),
   ];
   /**
    * Criteria the ARTIFACT refutes, as distinct from ones it merely does not
@@ -473,6 +539,11 @@ export async function runReviewSubmit(
   if (design !== undefined) {
     for (const criterion of designContradictions(design)) {
       artifactContradictions.set(criterion, "design-record");
+    }
+  }
+  if (submittedDocumentation !== undefined && surface !== undefined) {
+    for (const criterion of documentationContradictions(submittedDocumentation, surface)) {
+      artifactContradictions.set(criterion, "documentation-record");
     }
   }
   if (plan !== undefined) {
@@ -527,28 +598,96 @@ export async function runReviewSubmit(
     .metCriteria()
     .filter((criterion) => !serverDecided.includes(criterion))
     .filter((criterion) => !metCriteria.includes(criterion));
-  const stageClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
+  const criteriaClosable = isStageClosable({ metCriteria, requiredCriteria, findings: afterDebt });
+
+  /**
+   * THE ZERO-FINDINGS EXIT (owner ruling R4, 2026-08-15).
+   *
+   * The superseded rule closed a stage on its criteria alone and escalated when
+   * a round closed no BLOCKING finding. Two things were wrong with it under R4.
+   * It let a stage close on the very round that raised new findings, provided
+   * none of them named an exit criterion; and it made severity decide whether a
+   * loop continued, which is the clause the owner's "no issues, warnings, or
+   * buts" does not permit.
+   *
+   * Closure is now the conjunction: the criteria must be met AND the round must
+   * be quiet. `closureVerdict` decides the second half from the bounded finding
+   * space — a finding counts only if it concerns a path this change set writes
+   * and has not been raised before, which is what makes a quiet round reachable
+   * at all rather than a statement about a reviewer running out of ideas.
+   *
+   * `seenKeys` comes from the PRIOR findings, not the merged set: a finding this
+   * round re-raises is already on record and is not novel, while one this round
+   * raises for the first time is. Keying against the merged set would include
+   * this round's own findings and make every round trivially quiet — the
+   * vacuous-closure failure, arriving through the novelty bound.
+   *
+   * Obligations are the stage's own exit criteria, answered by `metCriteria`.
+   * That is deliberately the same question `isStageClosable` asks: the
+   * obligation bound is what STOPS a silent lens looking like a satisfied one,
+   * and until the driver issues per-lens checklists (roadmap/25 WI 7) the
+   * criteria are the honest enumeration of what the stage owes an answer about.
+   */
+  const priorKeys = new Set(
+    deps.priorFindings().map((finding) => findingKey(finding, verdict.lens)),
+  );
+  const bounded = closureVerdict({
+    lens: verdict.lens,
+    findings: verdict.findings,
+    seenKeys: priorKeys,
+    plannedWritePaths: writes,
+    obligationsIssued: requiredCriteria,
+    obligationsAnswered: metCriteria,
+    round: verdict.round,
+    runawayGuard: REVIEW_RUNAWAY_GUARD,
+  });
+
+  /**
+   * THE DESIGN GATE (owner ruling R2, 2026-08-15).
+   *
+   * Closure for this one stage is taken from the owner's recorded verdict and
+   * from nothing else — not the criteria rule, not the bounded-closure rule, not
+   * an attestation. Those are all satisfiable by a caller, and a gate a caller
+   * can satisfy is a checkpoint.
+   *
+   * It is a REPLACEMENT rather than an additional conjunct, which is the
+   * stronger form: if it were `&&`-ed with the other two, a future change that
+   * made those two pass more easily would have had a route to closure here as
+   * well. This way the only input is the owner's answer.
+   */
+  const designGate =
+    input.stage === "design-gate"
+      ? resolveDesignGate({
+          /**
+           * `artifactRef` is the design under review. `DesignRecord` carries no
+           * id of its own, so the verdict document's own reference to what was
+           * reviewed is the revision — which is also the value the owner saw
+           * when they answered.
+           */
+          designRevision: verdict.artifactRef,
+          ...(deps.ownerDesignVerdict?.() !== undefined
+            ? { ownerVerdict: deps.ownerDesignVerdict() as OwnerDesignVerdict }
+            : {}),
+        })
+      : undefined;
+
+  const stageClosable =
+    designGate !== undefined ? designGate.closable : criteriaClosable && bounded.closed;
 
   const unmetCriteria = requiredCriteria.filter((criterion) => !metCriteria.includes(criterion));
   const openBlocking = afterDebt.filter(isUnresolvedBlocking).length;
   const undispositioned = afterDebt.filter((finding) => finding.disposition === undefined).length;
 
   /**
-   * The progress rule (owner ruling §7.1), derived rather than self-reported.
+   * Escalation is now the runaway guard, and only the runaway guard.
    *
-   * A round earns another round only by closing a blocking finding. The count
-   * comes from dispositions in the submitted document, never from the reviewer
-   * saying it made progress — a reviewer scoring its own progress is the
-   * sycophancy failure Gap 19 was written to exclude, inverted.
+   * The superseded `stalled` test — "this round closed no blocking finding" —
+   * escalated a stage that had simply raised nothing blocking, which under R4 is
+   * a stage doing well rather than a stage stuck. A loop escalates when it
+   * reaches the guard without converging, which `closureVerdict` reports as
+   * `stalled` and never as closed.
    */
-  const closedThisRound = verdict.findings.filter(
-    (finding) =>
-      finding.classification === "blocking" &&
-      (finding.disposition === "fixed" || finding.disposition === "refuted"),
-  ).length;
-  const stalled = !stageClosable && verdict.round > 1 && closedThisRound === 0;
-  const atCeiling = !stageClosable && verdict.round >= REVIEW_ROUND_CEILING;
-  const escalate = stalled || atCeiling;
+  const escalate = bounded.stalled;
 
   await deps.appendEvidence({
     kind: "review.verdict",
@@ -576,12 +715,24 @@ export async function runReviewSubmit(
     undispositioned,
     reopenedDebt,
     escalate,
-    ...(escalate
-      ? {
-          escalationReason: atCeiling
-            ? `round ${String(verdict.round)} reached the ceiling of ${String(REVIEW_ROUND_CEILING)} without closing the stage — raise irreducible_product_decision`
-            : "this round closed no blocking finding — raise irreducible_product_decision rather than looping",
-        }
-      : {}),
+    ...(escalate ? { escalationReason: bounded.reason } : {}),
+    /**
+     * Why the stage did not close, when it did not. Returned so a caller can act
+     * rather than guess — and so a quiet round that stayed open because of an
+     * unmet criterion is distinguishable from one that stayed open because a
+     * lens raised something new.
+     */
+    ...(stageClosable
+      ? {}
+      : {
+          closureReason:
+            designGate !== undefined
+              ? designGate.reason
+              : bounded.closed
+                ? "unmet criteria"
+                : bounded.reason,
+        }),
+    /** Findings refused admission to this loop, owed to the debt index. Never dropped. */
+    deferredFindings: bounded.deferred,
   };
 }

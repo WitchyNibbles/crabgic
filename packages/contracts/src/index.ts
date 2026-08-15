@@ -85,6 +85,18 @@ export * from "./contracts/design-record.js";
 export * from "./contracts/plan-record.js";
 export * from "./contracts/debt-index.js";
 export * from "./contracts/pipeline-stages.js";
+// The per-domain review roster (owner ruling 2026-08-15) and the research
+// stage's artifact — docs/design/owner-pipeline-conformance.md §5.2, §4.1.
+export * from "./contracts/domain-lenses.js";
+export * from "./contracts/research-record.js";
+// The SDD unit the worker actually receives — §5.4; roadmap/25 work item 3.
+export * from "./contracts/spec-record.js";
+// Autonomy defaults for the two stop conditions ruling R3 made defaultable.
+export * from "./contracts/autonomy-settings.js";
+// The design gate's only key — owner ruling R2, roadmap/25 WI 5.
+export * from "./contracts/owner-design-verdict.js";
+// The documentation stage's artifact — roadmap/25 WI 8.
+export * from "./contracts/documentation-record.js";
 export * from "./contracts/capability-manifest.js";
 export * from "./contracts/capability-snapshot.js";
 export * from "./contracts/change-set.js";

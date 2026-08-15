@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTRACT_SECTIONS } from "./intent-contract.js";
+import { DOMAIN_LENS_IDS } from "./domain-lenses.js";
 import {
   PIPELINE_STAGES,
   exitCriteriaFor,
@@ -19,13 +20,21 @@ import {
 
 describe("PIPELINE_STAGES", () => {
   it("covers the pipeline end to end, in order", () => {
+    // Nine stages as of the owner's rulings of 2026-08-15
+    // (`docs/design/owner-pipeline-conformance.md` §5.1). Three are new:
+    // `design-gate` (R2 -- the owner confirms the design before anything is
+    // dispatched), `audit` (the per-domain pass over the finished product), and
+    // `document` (the user and maintenance guides, which had no stage at all).
     expect(PIPELINE_STAGES.map((stage) => stage.id)).toEqual([
       "research",
       "clarify",
       "design",
+      "design-gate",
       "plan",
       "implement",
       "integrate",
+      "audit",
+      "document",
     ]);
   });
 
@@ -91,12 +100,49 @@ describe("the clarify stage reuses the contract sections", () => {
 });
 
 describe("stages that produce no reviewable artifact have no lenses", () => {
-  it("clarify and integrate are gated by a human or by tools, not by a reviewer", () => {
-    // Clarify closes on the owner's answers; integrate closes on the
-    // final-candidate gate. Neither is a judged artifact, and giving them a
-    // reviewer would invent review work with nothing to review.
+  it("clarify, design-gate and integrate are gated by a human or by tools, not by a reviewer", () => {
+    // Clarify closes on the owner's answers; `design-gate` closes on the
+    // owner's verdict and on nothing else; integrate closes on the
+    // final-candidate gate. None is a judged artifact, and giving them a
+    // reviewer would invent review work with nothing to review -- worse, at
+    // `design-gate` it would create a route to closure that is not the owner,
+    // which is exactly what makes it a gate rather than a checkpoint.
     expect(stageById("clarify").lenses).toEqual([]);
+    expect(stageById("design-gate").lenses).toEqual([]);
     expect(stageById("integrate").lenses).toEqual([]);
+  });
+});
+
+describe("the stages added by the 2026-08-15 rulings", () => {
+  it("gives design-gate exactly one criterion, and it names the owner", () => {
+    // R2. The stage exists so the owner can say "this is not what I meant"
+    // before a single worker is dispatched -- steps 6 and 7 of the owner's
+    // pipeline. A criterion that could be met by anyone else would defeat it.
+    const criteria = stageById("design-gate").exitCriteria;
+    expect(criteria).toHaveLength(1);
+    expect(criteria[0]?.statement.toLowerCase()).toContain("owner");
+  });
+
+  it("audits the end product through the domain lenses, not through a fresh vocabulary", () => {
+    // The owner asked for the audit to use the same per-domain specialists the
+    // design stage uses. Inventing a second roster for the audit would make
+    // "backend" mean two things, and a blocking finding names its lens.
+    const lenses = stageById("audit").lenses;
+    expect(lenses.length).toBeGreaterThanOrEqual(2);
+    for (const lens of lenses) {
+      expect(DOMAIN_LENS_IDS as readonly string[]).toContain(lens);
+    }
+  });
+
+  it("gives the document stage criteria about coverage, not about prose quality", () => {
+    // "Easy to read and detailed" is what the owner asked for, and readability
+    // is a lens. The CRITERIA are coverage claims, because those are the half a
+    // record can decide -- every command documented, every failure mode named,
+    // and no guide claiming a command that does not exist.
+    const ids = stageById("document").exitCriteria.map((criterion) => criterion.id);
+    expect(ids).toContain("document-user-guide-covers-every-command");
+    expect(ids).toContain("document-maintenance-guide-covers-every-failure-mode");
+    expect(ids).toContain("document-claims-resolve");
   });
 });
 

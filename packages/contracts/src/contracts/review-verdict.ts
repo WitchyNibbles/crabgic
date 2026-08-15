@@ -73,8 +73,33 @@ export type FindingDisposition = z.infer<typeof FindingDispositionSchema>;
  * one blocking finding. This exists only so a pathological stage cannot run
  * forever if progress is mis-measured; the literature's caution that a fixed
  * cap is a "syntactic kill-switch" is why it is the backstop and not the rule.
+ *
+ * **SUPERSEDED as the closure rule by owner ruling R4 (2026-08-15)**, and left
+ * here verbatim rather than rewritten, per this repository's
+ * annotate-never-rewrite convention. R4 re-opened the zero-findings exit: a
+ * stage now closes on a round producing no admissible novel finding, severity
+ * playing no part. The progress rule this constant served — "loops while each
+ * round closes at least one blocking finding" — is no longer what ends a loop.
+ * The value is retained because the manager protocol still renders it and
+ * because removing a published constant is a separate, coordinated change.
  */
 export const REVIEW_ROUND_CEILING = 5;
+
+/**
+ * The runaway guard — what bounds a stage's rounds under ruling R4.
+ *
+ * A loop reaching this value has **stalled**, not closed
+ * (`packages/cli/src/review/admissibility.ts` reports the distinction), and
+ * under ruling R3 the caller takes its declared default rather than halting for
+ * the owner.
+ *
+ * It exists for the one thing the admissibility bounds do not prove: a repair
+ * writes new code, new code carries new obligations, so termination rests on the
+ * repair rate exceeding the new-obligation rate — empirical, not proved. Set
+ * well above any healthy loop and deliberately not yet tuned; the first measured
+ * runs move it.
+ */
+export const REVIEW_RUNAWAY_GUARD = 20;
 
 /**
  * The falsifiability evidence. Required, and required non-empty: a finding
@@ -167,7 +192,16 @@ export const ReviewVerdictSchema = z
     /** The reviewer's lens. Rounds differ by lens rather than repeating one hostile pass. */
     lens: NonEmptyStringSchema,
     verdict: ReviewVerdictKindSchema,
-    round: z.number().int().min(1).max(REVIEW_ROUND_CEILING),
+    /**
+     * Bounded by the runaway guard, not by the superseded ceiling.
+     *
+     * Under R4 a healthy stage closes on the first quiet round, which is usually
+     * far below either number. Capping the SCHEMA at 5 would have made round 6
+     * unrepresentable — so a stalling stage could not even report the state that
+     * triggers its escalation, and the guard would be unreachable by
+     * construction.
+     */
+    round: z.number().int().min(1).max(REVIEW_RUNAWAY_GUARD),
     findings: z.array(ReviewFindingSchema).default([]),
   })
   .superRefine((verdict, ctx) => {

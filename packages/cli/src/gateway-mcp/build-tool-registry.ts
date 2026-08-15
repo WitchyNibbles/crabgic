@@ -71,12 +71,18 @@ import {
   runReportRenderTool,
   type ReportRenderArgs,
 } from "./report-tool-definition.js";
-import { REVIEW_CALIBRATE_TOOL, REVIEW_SUBMIT_TOOL } from "../review/tool-definitions.js";
+import {
+  PIPELINE_PLAN_TOOL,
+  REVIEW_CALIBRATE_TOOL,
+  REVIEW_SUBMIT_TOOL,
+} from "../review/tool-definitions.js";
+import { runPipelinePlan } from "../review/pipeline-plan-handler.js";
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
 import { loadArtifacts, saveArtifacts } from "../review/artifact-store.js";
+import { loadDesignVerdicts, verdictInForce } from "../review/design-verdict-store.js";
 import { GATE_DERIVED_CRITERIA, deriveGateCriteria } from "../review/gate-criteria.js";
 import { scoreCalibration } from "../review/calibration.js";
 import { loadCalibrationSamples, recordCalibrationSample } from "../review/calibration-store.js";
@@ -137,6 +143,18 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly reviewAttestationsPath: string;
   /** Where the structured design and plan records live, per ChangeSet. */
   readonly reviewArtifactsPath: string;
+  /**
+   * Where the OWNER's design verdicts live — the design gate's only key
+   * (owner ruling R2, roadmap/25 WI 5).
+   *
+   * The registry READS this path and never writes it. There is deliberately no
+   * gateway tool that records a verdict: if a tool the model can call could,
+   * the model could approve its own design and the gate would be a checkpoint.
+   * The CLI is the only writer, which is the owner typing on their own
+   * terminal — the same division ledger Gap 18 draws around the
+   * `EnvelopePolicy`.
+   */
+  readonly reviewDesignVerdictsPath: string;
 }
 
 /**
@@ -173,6 +191,12 @@ function buildReviewTools(
       // coverage criterion is scored against — supplied by the SERVER, never by the
       // plan being checked.
       const priorArtifacts = await loadArtifacts(deps.reviewArtifactsPath, args.changeSetId);
+      // Read-only, and the latest verdict wins: an earlier approval must not
+      // satisfy a gate the owner has since re-answered.
+      const ownerVerdict = verdictInForce(
+        await loadDesignVerdicts(deps.reviewDesignVerdictsPath),
+        args.changeSetId,
+      );
       // Scored from the owner's own corpus, and reported on the response. A
       // fresh project has none, which is normal — what would not be normal is
       // handing back a blocking/advisory verdict without saying whether anyone
@@ -221,6 +245,7 @@ function buildReviewTools(
           priorAttestations: () => priorAttestations,
           priorDesign: () => priorArtifacts.design,
           priorPlan: () => priorArtifacts.plan,
+          ownerDesignVerdict: () => ownerVerdict,
           calibration: () => ({
             calibrated: calibration.calibrated,
             kappa: calibration.kappa,
@@ -303,8 +328,44 @@ function buildReviewTools(
     },
   };
 
-  return [reviewSubmit, reviewCalibrate];
+  /**
+   * `pipeline.plan` — stage order, lens coverage and the round budget, decided
+   * by the server (roadmap/25 WI 7).
+   *
+   * Takes no `changeSetId` and reads no store: it is a pure function of the
+   * stage roster, the domain-lens roster and the project's detected stack, so it
+   * is registered here rather than threaded through `deps`. That purity is the
+   * point — the answer cannot vary with who is asking.
+   */
+  const pipelinePlan: GatewayToolDefinition<typeof PIPELINE_PLAN_SHAPE> = {
+    name: PIPELINE_PLAN_TOOL.name,
+    description: PIPELINE_PLAN_TOOL.description,
+    inputSchema: PIPELINE_PLAN_SHAPE,
+    handler: (args) =>
+      Promise.resolve(
+        jsonResult(
+          runPipelinePlan({
+            ...(args.completedStages !== undefined
+              ? { completedStages: args.completedStages }
+              : {}),
+            ...(args.stackEvidence !== undefined ? { stackEvidence: args.stackEvidence } : {}),
+          }),
+        ),
+      ),
+  };
+
+  return [reviewSubmit, reviewCalibrate, pipelinePlan];
 }
+
+const PIPELINE_PLAN_SHAPE = {
+  completedStages: z.array(z.string()).optional(),
+  /**
+   * `unknown`, deliberately: validated by `StackEvidenceSchema` inside the
+   * handler, which degrades a malformed value to EMPTY rather than throwing.
+   * Re-declaring the shape here would be a second schema for one document.
+   */
+  stackEvidence: z.unknown().optional(),
+};
 
 /** JSON-serialized tool output — every one of these tools answers with a single structured text block, matching 16's native families. */
 function jsonResult(payload: unknown): { content: [{ type: "text"; text: string }] } {

@@ -31,6 +31,7 @@ import {
   type ProductionGatewayToolRegistryDeps,
 } from "./build-tool-registry.js";
 import { loadArtifacts } from "../review/artifact-store.js";
+import { recordDesignVerdict } from "../review/design-verdict-store.js";
 
 let home: string;
 
@@ -85,6 +86,10 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
       mkdtempSync(join(tmpdir(), "eo-reg-artifacts-")),
       "review-artifacts.json",
     ),
+    reviewDesignVerdictsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-verdicts-")),
+      "design-verdicts.json",
+    ),
   };
 }
 
@@ -137,6 +142,11 @@ const EXPECTED_TOOL_NAMES = [
   // only tool here that is a pure function of its arguments: no I/O, no state,
   // no authority, so it is gated on nothing.
   "report.render",
+  // roadmap/25 WI 7 (1) — stage order, lens coverage and the round budget,
+  // decided by the server rather than by a paragraph in CLAUDE.md the model may
+  // skip. Also a pure function of its arguments, for the same reason
+  // `report.render` is: the answer must not vary with who is asking.
+  "pipeline.plan",
 ];
 
 describe("buildRealGatewayToolRegistry", () => {
@@ -432,8 +442,101 @@ describe("review.submit — server-derived exit criteria", () => {
       ok: boolean;
       unmetCriteria?: string[];
       stageClosable?: boolean;
+      closureReason?: string;
     };
   }
+
+  /**
+   * The design gate, end to end through the real stores — roadmap/25 WI 5.
+   *
+   * This is the claim the whole gate rests on, so it is exercised through the
+   * production registry rather than against the handler in isolation: the CLI
+   * writes a verdict, the gateway reads it, and the stage opens. Neither half
+   * proves anything alone — a store nobody reads and a reader with no store both
+   * look exactly like a gate that works.
+   */
+  it("refuses the design gate until the owner's verdict is on record, then opens it", async () => {
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+    const registry = () =>
+      buildProductionGatewayToolRegistry({
+        ...deps,
+        providers: new ProviderRegistry<GenericProviderClient>(),
+        mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+      });
+    const gateArgs = {
+      stage: "design-gate",
+      changeSetId,
+      verdict: { ...verdictDoc("design-gate"), artifactRef: "design-rev-1" },
+    };
+
+    // Before: a reviewer's own approving verdict does not open it.
+    const before = JSON.parse(
+      (await registry().get("review.submit")!.handler(gateArgs)).content[0]!.text,
+    ) as { stageClosable?: boolean; closureReason?: string };
+    expect(before.stageClosable).toBe(false);
+    expect(before.closureReason).toMatch(/owner/i);
+
+    // The owner records their verdict. This path is CLI-only: no gateway tool
+    // writes it, which is what stops the model approving its own design.
+    await recordDesignVerdict(
+      deps.reviewDesignVerdictsPath,
+      {
+        schemaVersion: 1,
+        changeSetId,
+        designRevision: "design-rev-1",
+        verdict: "approved",
+        recordedAt: "2026-08-15T00:00:00.000Z",
+      },
+      deps.reviewStateHome,
+    );
+
+    const after = JSON.parse(
+      (await registry().get("review.submit")!.handler(gateArgs)).content[0]!.text,
+    ) as { stageClosable?: boolean };
+    expect(after.stageClosable).toBe(true);
+  });
+
+  it("keeps refusing when the owner approved a DIFFERENT design revision", async () => {
+    // The design was edited after the owner said yes. Carrying that approval
+    // forward would approve something nobody read.
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+    await recordDesignVerdict(
+      deps.reviewDesignVerdictsPath,
+      {
+        schemaVersion: 1,
+        changeSetId,
+        designRevision: "design-rev-1",
+        verdict: "approved",
+        recordedAt: "2026-08-15T00:00:00.000Z",
+      },
+      deps.reviewStateHome,
+    );
+    const registry = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    });
+    const result = JSON.parse(
+      (
+        await registry.get("review.submit")!.handler({
+          stage: "design-gate",
+          changeSetId,
+          verdict: { ...verdictDoc("design-gate"), artifactRef: "design-rev-2-edited" },
+        })
+      ).content[0]!.text,
+    ) as { stageClosable?: boolean; closureReason?: string };
+    expect(result.stageClosable).toBe(false);
+    expect(result.closureReason).toMatch(/revision/i);
+  });
+
+  it("exposes NO gateway tool that records a design verdict", () => {
+    // The structural half of the gate. If any tool the model can call could
+    // write a verdict, every assertion above would be theatre.
+    const names = [...realRegistry().toolNames];
+    expect(names.filter((name) => /design.*(verdict|approve)/i.test(name))).toEqual([]);
+  });
 
   /**
    * `stubDeps` puts the finding store and the state root in two unrelated temp
@@ -453,6 +556,7 @@ describe("review.submit — server-derived exit criteria", () => {
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }
 
@@ -588,6 +692,7 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }
 
@@ -710,6 +815,7 @@ describe("review.submit — design and plan records across stages", () => {
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }
 

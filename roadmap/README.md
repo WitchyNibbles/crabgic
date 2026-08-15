@@ -220,6 +220,12 @@ never by editing checkboxes.
 | 22 | `22-learning-system.md` | Reviewed learning pipeline & local evals | 13, 14 |
 | 23 | `23-release-hardening.md` | E2E matrix, security review, packaging, publication | all |
 | 24 | `24-sealed-acceptance-criteria.md` | Sealed acceptance criteria & requirement persistence | 04, 11, 13, 14 |
+| 25 | `25-owner-pipeline-conformance.md` | Domain panel, spec records, program-driven stages | 10, 11, 13, 14, 24 |
+
+> **Phase 25 is specified and not started, and it is blocked on owner rulings R1–R4**
+> (`docs/design/owner-pipeline-conformance.md` §6). Its criteria are **not** part of the
+> 211-criterion closeout census above — that tally covers phases 00–24 and adding a phase does
+> not move it. Stated here so the two are never reconciled against each other.
 
 ## Dependency graph
 
@@ -246,6 +252,7 @@ graph LR
   P21 --> P23
   P08 & P15 & P19 & P22 --> P23
   P04 & P11 & P13 & P14 --> P24[24 sealed criteria]
+  P10 & P11 & P13 & P14 & P24 --> P25[25 pipeline conformance]
 ```
 
 Critical path: 01 → 02 → 03/04 → 05 → 06/09 → 10 → 11 → 13 → 14 → 15 → 23 (00 runs in parallel with 01 and gates 03 via its only edge, 00 → 03). The connector line (16 & 17 → 18/20 → 21) can proceed in parallel once 02/04/05 exist.

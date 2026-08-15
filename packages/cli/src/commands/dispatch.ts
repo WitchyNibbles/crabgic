@@ -26,6 +26,7 @@ import {
   runStatusCommand,
 } from "./real-handlers.js";
 import { runApproveCommand } from "./approve.js";
+import { runDesignVerdictCommand } from "./design-verdict-handler.js";
 import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
 import {
   runLearnApproveCommand,
@@ -100,6 +101,16 @@ export async function dispatchCommand(
       // since the DRIVER lives in the daemon (roadmap/05 owns worker
       // lifecycle; `driveRun` registers into the supervisor's own
       // `liveWorkers`), not in this process.
+      // roadmap/25 WI 5 — the design gate's ONLY write path. Deliberately a CLI
+      // command: no gateway tool records a verdict, so the model cannot approve
+      // its own design (the same division ledger Gap 18 draws around the
+      // standing EnvelopePolicy).
+      case "design-approve":
+      case "design-reject":
+        return deps.designVerdicts !== undefined
+          ? await runDesignVerdictCommand(command, deps.designVerdicts)
+          : notImplementedResult(command.command, command.json);
+
       case "resume":
         return await runResumeCommand(command, deps);
 

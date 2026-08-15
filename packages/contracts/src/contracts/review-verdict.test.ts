@@ -7,6 +7,7 @@ import {
   ReviewVerdictSchema,
   type ReviewFinding,
   REVIEW_ROUND_CEILING,
+  REVIEW_RUNAWAY_GUARD,
   REVIEW_VERDICTS,
   isStageClosable,
 } from "./review-verdict.js";
@@ -174,8 +175,20 @@ describe("ReviewVerdictSchema", () => {
     expect(clean.findings).toEqual([]);
   });
 
-  it("refuses a round past the ceiling", () => {
+  it("allows a round past the superseded ceiling", () => {
+    // AMENDED by owner ruling R4 (2026-08-15). The schema used to cap `round` at
+    // REVIEW_ROUND_CEILING, which made round 6 unrepresentable -- so a stalling
+    // stage could not report the state that triggers its own escalation, and the
+    // guard was unreachable by construction. Closure is now the zero-findings
+    // exit, and rounds are bounded by the runaway guard instead.
     const result = ReviewVerdictSchema.safeParse({ ...VERDICT, round: REVIEW_ROUND_CEILING + 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses a round past the runaway guard", () => {
+    // The guard is still a hard bound on what can be represented -- a round
+    // beyond it is not a review state the pipeline can reach.
+    const result = ReviewVerdictSchema.safeParse({ ...VERDICT, round: REVIEW_RUNAWAY_GUARD + 1 });
     expect(result.success).toBe(false);
   });
 });

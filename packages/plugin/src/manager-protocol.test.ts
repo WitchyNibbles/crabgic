@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PRESENTATION_POLICY, PRESENTATION_GLYPH_ROLES, glyph } from "@crabgic/contracts";
+import {
+  DEFAULT_PRESENTATION_POLICY,
+  PRESENTATION_GLYPH_ROLES,
+  REVIEW_RUNAWAY_GUARD,
+  glyph,
+} from "@crabgic/contracts";
 import {
   CONTRACT_SECTIONS,
   FINDING_DISPOSITIONS,
   REVIEW_ARTIFACTS,
-  REVIEW_ROUND_CEILING,
   REVIEW_VERDICTS,
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
@@ -351,9 +355,18 @@ describe("buildManagerProtocolBlock — the staged review pipeline", () => {
     expect(flat).toMatch(/never advance|cannot advance|may not advance/i);
   });
 
-  it("states the progress-based budget and its ceiling", () => {
-    expect(flat).toContain(String(REVIEW_ROUND_CEILING));
-    expect(flat).toMatch(/closes at least one|closes no blocking/i);
+  it("states the zero-findings exit and the runaway guard", () => {
+    // AMENDED by owner ruling R4 (2026-08-15). The superseded assertion looked
+    // for the progress rule -- "loops while each round closes at least one
+    // blocking finding" -- which is no longer what ends a loop. A stage closes
+    // on a round raising no admissible novel finding, and the old ceiling
+    // survives only as the runaway guard.
+    expect(flat).toContain(String(REVIEW_RUNAWAY_GUARD));
+    expect(flat).toMatch(/no admissible novel\s+finding/i);
+    expect(flat).toMatch(/runaway guard/i);
+    // Severity must be stated as irrelevant to closure, or a reader reconstructs
+    // the severity floor the owner ruled against.
+    expect(flat).toMatch(/severity plays no part/i);
   });
 
   it("makes deferred debt blocking when its code is next touched", () => {

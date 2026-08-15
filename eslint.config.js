@@ -27,5 +27,31 @@ export default tseslint.config(
     files: ["**/*.mjs", "**/*.cjs", "**/*.js"],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    /**
+     * Claude Code `Workflow` scripts (roadmap/25 WI 7).
+     *
+     * They run inside the harness against injected globals and cannot import —
+     * that is the constraint, not an oversight, and it is why the pipeline's
+     * decisions live in `src/pipeline-driver.ts` where they can be tested.
+     * Declaring the globals here is what lets the linter check these files at
+     * all; without it every one is 12 `no-undef` errors and the real defects
+     * hide among them.
+     */
+    files: ["packages/plugin/workflows/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        agent: "readonly",
+        args: "readonly",
+        budget: "readonly",
+        log: "readonly",
+        parallel: "readonly",
+        phase: "readonly",
+        pipeline: "readonly",
+        workflow: "readonly",
+      },
+      parserOptions: { ecmaFeatures: { globalReturn: true } },
+    },
+  },
   eslintConfigPrettier,
 );

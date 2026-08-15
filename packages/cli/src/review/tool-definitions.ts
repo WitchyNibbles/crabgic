@@ -12,6 +12,33 @@ import type { McpToolDefinition } from "../gateway-mcp/registry.js";
  * input, which is the whole point — a reviewer supplies findings, and the
  * server decides what they add up to.
  */
+/**
+ * `pipeline.plan` — what to run next, decided by the server.
+ *
+ * Wire name `mcp__${GATEWAY_MCP_SERVER_NAME}__pipeline.plan`. roadmap/25 work
+ * item 7, and the answer to the audit finding that stage order, lens coverage
+ * and the round budget existed only as prose in an always-loaded `CLAUDE.md`
+ * paragraph a model may skip.
+ *
+ * It is a gateway tool rather than a `Workflow` script because a workflow script
+ * has no imports: it could not read `PIPELINE_STAGES`, `DOMAIN_LENSES` or a
+ * stage's exit criteria without inlining copies of all three. A script is still
+ * the right vehicle for the fan-out, carrying this plan as its `args`.
+ */
+export const PIPELINE_PLAN_TOOL: McpToolDefinition = {
+  name: "pipeline.plan",
+  description:
+    "Returns the next pipeline stage to run and exactly what to dispatch for it: the reviewer lenses, the obligation checklist each lens owes an answer about, the round budget, and whether the stage closes on the owner. Stage order is enforced server-side — a completion set that skipped a stage is REFUSED, naming the stage that was jumped. At the audit stage the lenses are the domain lenses applicable to this project's detected stack, and every lens that does not apply is returned as skipped with its reason, so partial coverage cannot be mistaken for full coverage. Absent or malformed stackEvidence degrades to EMPTY (the unconditional lenses still run; stack-gated ones are reported skipped) rather than to 'everything applies', because claiming a frontend audit on a project with no frontend is worse than a stated skip. BOUND: completedStages is supplied by the caller — this refuses a skipped stage, it does not verify that a claimed stage was actually run.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      completedStages: { type: "array", items: { type: "string" } },
+      stackEvidence: { type: "object" },
+    },
+    required: [],
+  },
+};
+
 export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
   name: "review.submit",
   description:

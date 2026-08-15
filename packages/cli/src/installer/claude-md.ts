@@ -18,8 +18,11 @@ session in this repo has access to:
 
 - Slash commands: \`/eo:run\`, \`/eo:status\`, \`/eo:approve\`, \`/eo:evidence\`,
   \`/eo:connections\`, \`/eo:protocol\`.
-- Read-only subagents: \`eo-explore\` (research), \`eo-architect\` (design),
-  \`eo-planner\` (tasks), \`eo-reviewer\` (review, one lens per round), and
+- Read-only subagents: \`eo-explore\` (repository prior art), \`eo-researcher\`
+  (research, the only agent with web access), \`eo-architect\` (design),
+  \`eo-planner\` (tasks), \`eo-reviewer\` (review, one lens per round),
+  \`eo-domain-reviewer\` (one domain lens per round — the design panel and the
+  end-product audit), \`eo-documenter\` (user and maintenance guides), and
   \`eo-roaster\` (adversarial — one fresh instance per review round).
 - The \`${GATEWAY_MCP_SERVER_NAME}\` MCP server (registered in this project's \`.mcp.json\`).
 

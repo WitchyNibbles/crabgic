@@ -169,6 +169,46 @@ function parseTrust(rest: readonly string[]): ParsedCommand {
   );
 }
 
+/**
+ * `design approve|reject <change-set-id> --revision <rev> [--reason <why>]`.
+ *
+ * `--revision` is required on BOTH verbs rather than only on approve. An
+ * approval that does not name what it approved carries forward across an edit,
+ * and a rejection that does not name what it rejected leaves the design stage
+ * unable to tell whether it has already been answered.
+ */
+function parseDesign(rest: readonly string[]): ParsedCommand {
+  const [verb, ...remainder] = rest;
+  // Both flags take a value, so they must be declared here: an undeclared
+  // `--revision sha256:abc` tokenizes as a valueless flag plus a stray
+  // positional, and the positional would silently become the change-set id.
+  const t = tokenize(remainder, ["revision", "reason"]);
+  if (verb !== "approve" && verb !== "reject") {
+    throw new CliUsageError(
+      `unknown "design" sub-command "${verb ?? ""}" (expected approve|reject)`,
+    );
+  }
+  const changeSetId = requirePositional(t.positionals, 0, "change-set-id");
+  const revision = readValueFlag(t, "revision");
+  if (revision === undefined || revision.length === 0) {
+    throw new CliUsageError('"design" requires --revision <design-revision>');
+  }
+  const reason = readValueFlag(t, "reason");
+  if (verb === "reject" && (reason === undefined || reason.length === 0)) {
+    // Refused HERE as well as by the schema, so the operator is told at the
+    // point of typing rather than by a rejected write. The design stage loops
+    // on this reason; without it the next round has nothing to change.
+    throw new CliUsageError('"design reject" requires --reason <why>');
+  }
+  return {
+    command: verb === "approve" ? "design-approve" : "design-reject",
+    changeSetId,
+    revision,
+    ...(reason !== undefined ? { reason } : {}),
+    json: readBooleanFlag(t, "json"),
+  };
+}
+
 function parseLearn(rest: readonly string[]): ParsedCommand {
   const [verb, ...remainder] = rest;
   const t = tokenize(remainder);
@@ -259,6 +299,8 @@ export function parseCommand(argv: readonly string[]): ParsedCommand {
       return parseConnection(rest);
     case "trust":
       return parseTrust(rest);
+    case "design":
+      return parseDesign(rest);
     case "learn":
       return parseLearn(rest);
     case "upgrade": {

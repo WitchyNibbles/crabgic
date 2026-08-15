@@ -60,6 +60,12 @@ export const COMMAND_HELP: Readonly<Record<string, CommandHelpEntry>> = {
     summary: "Approve a pending authorization envelope at an interactive terminal.",
     detail: "Human-only; the escalation path for out-of-policy work.",
   },
+  design: {
+    usage: `${BINARY_NAME} design approve|reject <change-set-id> --revision <design-revision> [--reason <why>] [--json]`,
+    summary: "Record your verdict on a proposed design, before any work is dispatched.",
+    detail:
+      "Human-only, and the design gate's ONLY write path: no session-reachable tool records a verdict, so the model cannot approve its own design. --revision is required on both verbs, because an approval that does not name what it approved would carry forward across an edit. A rejection needs --reason; the design stage loops on it.",
+  },
   connection: {
     usage: `${BINARY_NAME} connection add jira|grafana --base-url <https-url> --reference <secret-ref> [--deployment <type>] [--allow-redirect <csv>] [--allow-resource <csv>] [--allow-action <csv>] [--discovery-ttl <seconds>] / list / doctor <id> / capabilities <id>`,
     summary: "Manage external connector connections.",
@@ -109,7 +115,7 @@ const COMMAND_GROUPS: readonly { readonly title: string; readonly commands: read
   [
     { title: "Setup", commands: ["install", "upgrade", "uninstall", "doctor"] },
     { title: "Runs", commands: ["run", "status", "resume", "cancel", "evidence"] },
-    { title: "Approvals", commands: ["approve", "trust", "learn"] },
+    { title: "Approvals", commands: ["approve", "design", "trust", "learn"] },
     { title: "Connectors", commands: ["connection", "gateway"] },
   ];
 

@@ -79,6 +79,18 @@ export interface CliDependencies {
   readonly connectClient: () => Promise<UdsClient>;
   readonly journal: Pick<JournalStore, "queryEntries" | "verifyJournal">;
   readonly projectHash: string;
+  /**
+   * The design gate's write path (owner ruling R2, roadmap/25 WI 5).
+   *
+   * Optional for the same reason `installer`/`intake`/`learning` are: every
+   * pre-existing roadmap/09 test builds a `CliDependencies` without it and must
+   * keep observing the same typed `NOT_IMPLEMENTED` shape. `../bootstrap.ts`
+   * always supplies it.
+   */
+  readonly designVerdicts?: {
+    readonly designVerdictsPath: string;
+    readonly stateHome: string;
+  };
   readonly resolveAuthState?: () => Promise<AuthState>;
   /**
    * roadmap/10-plugin-and-installer.md's `install`/`upgrade`/`uninstall`

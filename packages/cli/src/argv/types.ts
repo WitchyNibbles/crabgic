@@ -64,6 +64,26 @@ export interface ApproveCommand extends JsonFlag {
   readonly digest: string;
 }
 
+/**
+ * `crabgic design approve|reject <change-set-id> --revision <rev>` — the design
+ * gate's write path (owner ruling R2, roadmap/25 WI 5).
+ *
+ * A CLI command and deliberately NOT a gateway tool. Nothing reachable from a
+ * session may record this verdict, or the model could approve its own design
+ * and the gate would be a checkpoint — the same division ledger Gap 18 draws
+ * around the `EnvelopePolicy`.
+ *
+ * `revision` is required on both verbs: a verdict that does not say what it was
+ * given over carries forward across an edit. `reason` is required on `reject`
+ * and refused by the schema without it, because the design stage loops on it.
+ */
+export interface DesignVerdictCommand extends JsonFlag {
+  readonly command: "design-approve" | "design-reject";
+  readonly changeSetId: string;
+  readonly revision: string;
+  readonly reason?: string;
+}
+
 export type ConnectionProvider = "jira" | "grafana";
 
 /**
@@ -180,6 +200,7 @@ export type ParsedCommand =
   | CancelCommand
   | EvidenceCommand
   | ApproveCommand
+  | DesignVerdictCommand
   | ConnectionAddCommand
   | ConnectionListCommand
   | ConnectionDoctorCommand
