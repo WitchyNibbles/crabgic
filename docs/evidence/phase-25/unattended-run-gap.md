@@ -55,3 +55,39 @@ rate, which nothing has yet measured.
 **Authorizing an unattended run is therefore also a decision to fund finding out
 whether it converges.** That is the honest framing, and it is why this is the
 owner's call rather than an implementation detail.
+
+---
+
+## The prerequisite nobody had noticed: crabgic is not installed on crabgic
+
+Checked 2026-08-15, at the tip of this branch:
+
+- `.claude/` exists and is **empty** — no `agents/`, no `settings.json`
+- `.mcp.json` is **absent**, so the gateway MCP server is not registered
+- `CLAUDE.md` carries **no managed operating-protocol block**
+- `git ls-files` matches **nothing** under `.claude/` or `.mcp.json`
+
+So the plugin has never been installed into this repository. Every surface phase
+25 built — `/eo:pipeline`, the eight agents, `pipeline.plan`, `review.submit` —
+is **unreachable from an ordinary session in this checkout**. The three live
+rounds worked only because the operator dispatched agents directly and called the
+handlers through test harnesses.
+
+**This is the actual first step of any unattended run**, and it costs no engine
+spend: `crabgic install` writes `.claude/agents/*`, `.mcp.json`, the managed
+`CLAUDE.md` block and the `EnvelopePolicy`. Until it runs, "authorize a live
+pipeline run" has nothing to authorize — the manager session has no pipeline to
+invoke.
+
+It also explains something about the defects. Nine blocking defects were found in
+three rounds against a module written the same day, and none of them had been
+caught by this repository's own review machinery — because that machinery has
+never been pointed at this repository. The product is not dogfooded on itself,
+and the first time it was, it found nine.
+
+**Recommended order**, and the reason this document exists rather than a
+recommendation buried in a transcript:
+
+1. `crabgic install` in this checkout — no spend, makes the surfaces reachable
+2. confirm the `EnvelopePolicy` it writes is what the owner intends
+3. only then authorize a scoped unattended run, which now has something to run
