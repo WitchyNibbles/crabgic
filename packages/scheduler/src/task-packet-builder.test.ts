@@ -20,6 +20,20 @@ describe("buildTaskPacket", () => {
       id: "11111111-1111-4111-8111-111111111111",
       workUnitId: "22222222-2222-4222-8222-222222222222",
       requirementIds: [],
+      spec: {
+        schemaVersion: 1,
+        id: "aaaaaaaa-0000-4000-8000-00000000000f",
+        taskId: "fixture-task",
+        requirements: [
+          {
+            requirementId: "fixture-requirement",
+            acceptanceCriteria: ["Objective observably met."],
+          },
+        ],
+        doneCriteria: ["A named test demonstrates it."],
+        testsFirst: true,
+        permittedInterfaces: [],
+      },
       objective: "Implement the thing.",
       baseObjectId: BASE_OBJECT_ID,
       ownedPaths: ["packages/example/src/"],
@@ -42,6 +56,20 @@ describe("buildTaskPacket", () => {
       id: "11111111-1111-4111-8111-111111111111",
       workUnitId: "22222222-2222-4222-8222-222222222222",
       requirementIds: [],
+      spec: {
+        schemaVersion: 1,
+        id: "aaaaaaaa-0000-4000-8000-00000000000f",
+        taskId: "fixture-task",
+        requirements: [
+          {
+            requirementId: "fixture-requirement",
+            acceptanceCriteria: ["Objective observably met."],
+          },
+        ],
+        doneCriteria: ["A named test demonstrates it."],
+        testsFirst: true,
+        permittedInterfaces: [],
+      },
       objective: "Implement the thing.",
       baseObjectId: BASE_OBJECT_ID,
       ownedPaths: ["packages/example/src/"],
@@ -57,6 +85,20 @@ describe("buildTaskPacket", () => {
       id: "11111111-1111-4111-8111-111111111111",
       workUnitId: "22222222-2222-4222-8222-222222222222",
       requirementIds: [],
+      spec: {
+        schemaVersion: 1,
+        id: "aaaaaaaa-0000-4000-8000-00000000000f",
+        taskId: "fixture-task",
+        requirements: [
+          {
+            requirementId: "fixture-requirement",
+            acceptanceCriteria: ["Objective observably met."],
+          },
+        ],
+        doneCriteria: ["A named test demonstrates it."],
+        testsFirst: true,
+        permittedInterfaces: [],
+      },
       objective: "Implement the thing.",
       baseObjectId: BASE_OBJECT_ID,
       ownedPaths: ["packages/example/src/"],
@@ -74,6 +116,20 @@ describe("buildTaskPacket", () => {
         id: "11111111-1111-4111-8111-111111111111",
         workUnitId: "22222222-2222-4222-8222-222222222222",
         requirementIds: [],
+        spec: {
+          schemaVersion: 1,
+          id: "aaaaaaaa-0000-4000-8000-00000000000f",
+          taskId: "fixture-task",
+          requirements: [
+            {
+              requirementId: "fixture-requirement",
+              acceptanceCriteria: ["Objective observably met."],
+            },
+          ],
+          doneCriteria: ["A named test demonstrates it."],
+          testsFirst: true,
+          permittedInterfaces: [],
+        },
         objective: "Implement the thing.",
         baseObjectId: BASE_OBJECT_ID,
         ownedPaths: ["packages/OTHER/src/"],
@@ -90,6 +146,20 @@ describe("buildTaskPacket", () => {
         id: "11111111-1111-4111-8111-111111111111",
         workUnitId: "22222222-2222-4222-8222-222222222222",
         requirementIds: [],
+        spec: {
+          schemaVersion: 1,
+          id: "aaaaaaaa-0000-4000-8000-00000000000f",
+          taskId: "fixture-task",
+          requirements: [
+            {
+              requirementId: "fixture-requirement",
+              acceptanceCriteria: ["Objective observably met."],
+            },
+          ],
+          doneCriteria: ["A named test demonstrates it."],
+          testsFirst: true,
+          permittedInterfaces: [],
+        },
         objective: "Implement the thing.",
         baseObjectId: BASE_OBJECT_ID,
         ownedPaths: ["packages/example/src/"],
@@ -107,6 +177,20 @@ describe("buildTaskPacket", () => {
         id: "11111111-1111-4111-8111-111111111111",
         workUnitId: "22222222-2222-4222-8222-222222222222",
         requirementIds: [],
+        spec: {
+          schemaVersion: 1,
+          id: "aaaaaaaa-0000-4000-8000-00000000000f",
+          taskId: "fixture-task",
+          requirements: [
+            {
+              requirementId: "fixture-requirement",
+              acceptanceCriteria: ["Objective observably met."],
+            },
+          ],
+          doneCriteria: ["A named test demonstrates it."],
+          testsFirst: true,
+          permittedInterfaces: [],
+        },
         objective: "x".repeat(DEFAULT_PACKET_FIELD_BUDGETS.objective + 1),
         baseObjectId: BASE_OBJECT_ID,
         ownedPaths: ["packages/example/src/"],
@@ -125,6 +209,20 @@ describe("buildTaskPacket", () => {
         id: "11111111-1111-4111-8111-111111111111",
         workUnitId: "22222222-2222-4222-8222-222222222222",
         requirementIds: [],
+        spec: {
+          schemaVersion: 1,
+          id: "aaaaaaaa-0000-4000-8000-00000000000f",
+          taskId: "fixture-task",
+          requirements: [
+            {
+              requirementId: "fixture-requirement",
+              acceptanceCriteria: ["Objective observably met."],
+            },
+          ],
+          doneCriteria: ["A named test demonstrates it."],
+          testsFirst: true,
+          permittedInterfaces: [],
+        },
         objective: "x".repeat(DEFAULT_PACKET_FIELD_BUDGETS.objective + 1),
         baseObjectId: BASE_OBJECT_ID,
         ownedPaths: ["packages/OTHER/src/"],
@@ -133,5 +231,46 @@ describe("buildTaskPacket", () => {
         envelope: envelope(),
       }),
     ).toThrow(PacketEnvelopeViolationError);
+  });
+});
+
+describe("the spec reaches the packet", () => {
+  it("passes the CALLER's spec through, never a substitute", () => {
+    // This test exists because the opposite nearly shipped. A scripted edit
+    // inserted a hardcoded fixture spec into the builder's parse object, above
+    // `spec: options.spec`, so every packet would have carried placeholder
+    // acceptance criteria to a real worker. `tsc` was happy, every existing test
+    // was happy, and it was caught by reading the diff rather than by running
+    // anything -- so the property is asserted here now.
+    const distinctive = {
+      schemaVersion: 1 as const,
+      id: "aaaaaaaa-0000-4000-8000-00000000000e",
+      taskId: "caller-supplied-task",
+      requirements: [
+        {
+          requirementId: "caller-supplied-requirement",
+          acceptanceCriteria: ["This exact sentence must survive into the packet."],
+        },
+      ],
+      doneCriteria: ["A named test demonstrates it."],
+      testsFirst: true as const,
+      permittedInterfaces: [],
+    };
+    const { packet } = buildTaskPacket({
+      id: "aaaaaaaa-0000-4000-8000-000000000001",
+      workUnitId: "aaaaaaaa-0000-4000-8000-000000000002",
+      requirementIds: [],
+      spec: distinctive,
+      objective: "Check the spec survives the builder.",
+      baseObjectId: BASE_OBJECT_ID,
+      ownedPaths: ["packages/example/src/"],
+      resourceLimits: { maxTurns: 20 },
+      resultSchema: {},
+      envelope: envelope(),
+    });
+    expect(packet.spec.taskId).toBe("caller-supplied-task");
+    expect(packet.spec.requirements[0]?.acceptanceCriteria).toEqual([
+      "This exact sentence must survive into the packet.",
+    ]);
   });
 });

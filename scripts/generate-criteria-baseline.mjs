@@ -82,6 +82,17 @@ const PRE_CLOSEOUT_REVISIONS = {
     rev: "97ef18cdaaf78ee3c6154e4c4f74f1ac05c1c6b2",
     note: "parent of af46e00, the phase-03 closeout",
   },
+  /**
+   * Phase 25 postdates `DEFAULT_REVISION` — it did not exist at af46e00, so
+   * there is no tree there to hash. It is pinned at the commit that introduced
+   * it, which is pre-closeout by construction: no closeout pass has run, and
+   * `baselineEntryFor` asserts that by refusing any checkbox already carrying
+   * the annotation lead.
+   */
+  25: {
+    rev: "68e5620fa090eb07f1b2e8d3b3e8c0ea67bb4633",
+    note: "the commit that introduced roadmap/25; no closeout has touched it",
+  },
 };
 
 const DEFAULT_NOTE = "main at baseline creation; no closeout had touched this phase file";
@@ -147,6 +158,33 @@ export function deriveBaseline() {
   for (const file of phaseFiles(DEFAULT_REVISION)) {
     const phase = /^roadmap\/(\d{2})-/.exec(file)[1];
     const pin = PRE_CLOSEOUT_REVISIONS[phase] ?? { rev: DEFAULT_REVISION, note: DEFAULT_NOTE };
+    phases[phase] = baselineEntryFor(file, pin, showBlob(pin.rev, file));
+  }
+
+  /**
+   * Phases that POSTDATE `DEFAULT_REVISION`.
+   *
+   * The loop above enumerates the roadmap as it stood at the baseline's
+   * creation, so a phase added later has no tree there to hash and would be
+   * silently absent — while `check-criteria-closeout.mjs` walks the WORKING
+   * TREE and demands every phase file be pinned. The two would disagree
+   * permanently, and the only way to satisfy both would be to re-pin all
+   * twenty-five phases at a fresh revision, which is exactly the laundering
+   * this whole anchor exists to prevent.
+   *
+   * So a phase named in `PRE_CLOSEOUT_REVISIONS` but absent at the default
+   * revision is resolved from its OWN pinned commit. It is still an anchor
+   * outside the commit under review: forging it means rewriting published
+   * history, not editing this file.
+   */
+  for (const [phase, pin] of Object.entries(PRE_CLOSEOUT_REVISIONS)) {
+    if (phases[phase] !== undefined) continue;
+    const [file] = phaseFiles(pin.rev).filter((candidate) =>
+      new RegExp(`^roadmap/${phase}-`).test(candidate),
+    );
+    if (file === undefined) {
+      throw new Error(`phase ${phase} is pinned at ${pin.rev} but no roadmap file exists there`);
+    }
     phases[phase] = baselineEntryFor(file, pin, showBlob(pin.rev, file));
   }
   return {

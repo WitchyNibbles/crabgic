@@ -11,6 +11,17 @@ function validTaskPacket(overrides: Record<string, unknown> = {}): Record<string
     id: ID,
     workUnitId: WORK_UNIT_ID,
     requirementIds: [REQUIREMENT_ID],
+    spec: {
+      schemaVersion: 1,
+      id: "aaaaaaaa-0000-4000-8000-00000000000f",
+      taskId: "fixture-task",
+      requirements: [
+        { requirementId: "fixture-requirement", acceptanceCriteria: ["Objective observably met."] },
+      ],
+      doneCriteria: ["A named test demonstrates it."],
+      testsFirst: true,
+      permittedInterfaces: [],
+    },
     objective: "Implement the gateway MCP tool registry.",
     nonGoals: ["Do not implement provider-specific connectors."],
     baseObjectId: "a1b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d",

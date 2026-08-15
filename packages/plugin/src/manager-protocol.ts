@@ -2,6 +2,7 @@ import {
   CONTRACT_SECTIONS,
   DEFAULT_PRESENTATION_POLICY,
   PRESENTATION_GLYPH_ROLES,
+  REVIEW_RUNAWAY_GUARD,
   glyph,
 } from "@crabgic/contracts";
 
@@ -204,6 +205,17 @@ export const FINDING_DISPOSITIONS = ["fixed", "refuted", "accepted-debt"] as con
  */
 export const REVIEW_ROUND_CEILING = 5;
 
+/**
+ * The runaway guard is IMPORTED from `@crabgic/contracts` rather than restated
+ * here, unlike `REVIEW_ROUND_CEILING` above.
+ *
+ * The ceiling's duplication is a pre-existing wart this ruling does not widen:
+ * two copies of a number that decides when a loop stops is exactly the drift
+ * `normalizePlannedPath` was centralized to avoid, and adding a second copy of
+ * the guard while amending the rule would have been the same mistake made
+ * knowingly. The protocol text below renders the imported value.
+ */
+
 export interface ManagerApprovalGate {
   /** The exact command a human types. */
   readonly trigger: string;
@@ -294,15 +306,15 @@ none of \`exhausted_repairs\`' three. A finding is admissible only if **novel**
 and **falsifiable**: these inputs, that wrong result. Taste is not.
 
 **A reviewer returns \`${REVIEW_VERDICTS.join("` or `")}\`.** Close a stage when its
-written **exit criteria** are met and nothing is still \`blocking\` — and only a
-finding that **names the exit criterion it violates** may block. Never re-decide
-what a **gate** decides. Every finding gets a disposition
-(\`${FINDING_DISPOSITIONS.join("`, `")}\`) whatever its severity, and a stage may
-not advance holding one without: \`advisory\` defers, it never disposes. Journal
-\`accepted-debt\` against the paths it concerns; it turns \`blocking\` when a later
-change set **touches** that code. Loop only while each round closes at least one
-blocking finding — the first that closes none, or round ${String(REVIEW_ROUND_CEILING)}, is
-an irreducible product decision: ask.
+written **exit criteria** are met and the round raises **no admissible novel
+finding** — severity plays no part, so a new \`advisory\` holds it open like a
+blocker. Admissible: concerns a path this change set **writes**, and not raised
+before; anything else is debt. Only a finding that **names the exit criterion it
+violates** may block. Never re-decide what a **gate** decides. Every finding gets
+a disposition (\`${FINDING_DISPOSITIONS.join("`, `")}\`) whatever its severity, and a
+stage **may not advance** holding one without; \`advisory\` defers, never disposes. Journal \`accepted-debt\` against the paths
+it concerns; it turns \`blocking\` when a later change set **touches** that code.
+Round ${String(REVIEW_RUNAWAY_GUARD)} is a runaway guard: reaching it means the loop **stalled**; escalate.
 
 **Stop for exactly these, and nothing else:**
 

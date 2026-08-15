@@ -110,6 +110,14 @@ measured over twelve rounds: a review loop with no bound of its own does not sto
 **Ledger:** Gap 19. **Coordinated with:** `roadmap/11-intake-contract-approval.md`,
 `roadmap/13-scheduler-packets-context.md`, `roadmap/14-quality-security-gates.md`.
 
+**AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19).** The sentence above — "a review loop with no bound
+of its own does not stop at all" — stays, because the measurement behind it stands. What it produced, the
+progress bound, does not. A stage now closes on a round raising **no admissible novel finding**, severity
+playing no part, which is reachable because the finding space is bounded rather than because rounds are
+capped. The manager protocol block renders the new rule (`buildManagerProtocolBlock`), and the round ceiling
+it used to interpolate is now the runaway guard `REVIEW_RUNAWAY_GUARD`. **Also coordinated with:**
+`roadmap/25-owner-pipeline-conformance.md`, which implements it.
+
 
 ## Out of scope
 

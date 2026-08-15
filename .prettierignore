@@ -85,3 +85,17 @@ docs/evidence/phase-06/edit-input-stability-determination.json
 # ratchet, so that conflict would be hit on the very PRs least able to absorb it.
 # Scoped to this one file, not to docs/evidence/criteria-closeout/.
 docs/evidence/criteria-closeout/citation-content-baseline.json
+
+# Installer-generated, and byte-preserving by design.
+#
+# `crabgic install` writes `.mcp.json`, `.claude/settings.json` and
+# `.claude/agents/*` and then DRIFT-CHECKS them: `crabgic doctor` compares the
+# bytes it wrote against what is on disk, so reformatting them would report as
+# drift in every consuming repo that also runs prettier. They are ignored here
+# for the same reason a lockfile is.
+#
+# The underlying papercut is real and is NOT fixed by this ignore: a consuming
+# repo with prettier will see the same warning on its own `.mcp.json` the moment
+# it installs. Recorded at docs/evidence/phase-25/live-review-round-1.md.
+.mcp.json
+.claude/

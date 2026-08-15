@@ -257,6 +257,25 @@ const FALLBACK_TASK_PACKET: TaskPacket = TaskPacketSchema.parse({
   id: "00000000-0000-4000-8000-000000000001",
   workUnitId: "00000000-0000-4000-8000-000000000000",
   requirementIds: [],
+  /**
+   * EMPTY on purpose, and it is the one place an empty spec is honest.
+   *
+   * This packet is the cross-process resume fallback: the adapter has no cached
+   * spawn context, so it has no requirements to state. Putting plausible-looking
+   * criteria here would be worse than stating none — the worker would be handed
+   * a bar nobody set. `deriveSpecCriteria` refuses to derive anything from an
+   * empty requirement list, so the emptiness is visible downstream rather than
+   * passing as coverage.
+   */
+  spec: {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    id: "00000000-0000-4000-8000-000000000002",
+    taskId: "resume-fallback",
+    requirements: [],
+    doneCriteria: [],
+    testsFirst: true,
+    permittedInterfaces: [],
+  },
   objective:
     "Resume a session with no cached spawn context on this adapter instance (cross-process " +
     "resume fallback — see ClaudeEngineAdapter's top-of-file doc comment).",

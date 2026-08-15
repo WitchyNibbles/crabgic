@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "crabgic_gateway": {
+      "command": "crabgic",
+      "args": [
+        "gateway",
+        "mcp"
+      ]
+    }
+  }
+}

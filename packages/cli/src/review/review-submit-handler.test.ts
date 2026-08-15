@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  REVIEW_RUNAWAY_GUARD,
   DesignRecordSchema,
   exitCriteriaFor,
   type CriterionAttestation,
@@ -75,7 +76,17 @@ function deps(overrides: Partial<ReviewSubmitDeps> = {}): ReviewSubmitDeps {
       return Promise.resolve();
     },
     priorFindings: () => [],
-    plannedWrites: () => [],
+    /**
+     * A REAL write set, not an empty one.
+     *
+     * This defaulted to `[]`, and every test that took the default was
+     * exercising a path that `closureVerdict` now refuses: an empty write set
+     * makes every finding inadmissible, so a quiet round means nothing. The
+     * correctness lens found it in the first live review round, reachable from
+     * production. A fixture whose default is the degenerate case tests the
+     * degenerate case everywhere.
+     */
+    plannedWrites: () => ["packages/cli/src/doctor"],
     metCriteria: () => exitCriteriaFor("implement"),
     calibration: () => ({
       calibrated: false,
@@ -220,10 +231,12 @@ describe("runReviewSubmit — debt reopens against planned writes", () => {
 });
 
 describe("runReviewSubmit — the round budget", () => {
-  it("says to escalate when a round closes no blocking finding", async () => {
-    // The progress rule (owner ruling §7.1). Derived from dispositions, never
-    // from the reviewer's own account of its progress -- a reviewer scoring
-    // itself is the sycophancy failure inverted.
+  it("does NOT escalate merely because a round closed no blocking finding", async () => {
+    // AMENDED by owner ruling R4 (2026-08-15). The superseded progress rule
+    // (§7.1) escalated any round that closed no blocking finding, which under
+    // the zero-findings exit describes a stage doing WELL as often as a stage
+    // stuck: severity no longer decides whether a loop continues. What ends a
+    // loop is a quiet round; what escalates one is the runaway guard.
     const open = finding({
       classification: "blocking",
       violates: "implement-gates-pass",
@@ -234,8 +247,69 @@ describe("runReviewSubmit — the round budget", () => {
       { stage: "implement", verdict: verdict({ round: 2, findings: [] }) },
       deps({ priorFindings: () => [open] }),
     );
+    expect(result.escalate).toBe(false);
+    // The stage still cannot close -- the open blocker holds it, as it always did.
+    expect(result.stageClosable).toBe(false);
+  });
+
+  it("escalates at the runaway guard, and says the loop did not converge", async () => {
+    // The replacement escalation. A run that ends here has STALLED, and the
+    // reason has to say so: reporting a stall as a close is the syntactic
+    // kill-switch wearing a verdict's clothes.
+    const open = finding({
+      classification: "blocking",
+      violates: "implement-gates-pass",
+      disposition: undefined,
+      dispositionEvidence: undefined,
+    });
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ round: REVIEW_RUNAWAY_GUARD, findings: [open] }),
+      },
+      deps(),
+    );
     expect(result.escalate).toBe(true);
-    expect(result.escalationReason).toMatch(/irreducible_product_decision/);
+    expect(result.escalationReason).toMatch(/did not converge/i);
+  });
+
+  it("holds a stage open for a NEW advisory finding, severity playing no part", async () => {
+    // The owner's exit, in the production path: "loop ends when the agents don't
+    // find any issues/warnings/buts". An advisory names no exit criterion and so
+    // never blocked under the superseded rule -- it holds the stage open now.
+    const advisory = finding({
+      classification: "advisory",
+      violates: undefined,
+      disposition: "fixed",
+      dispositionEvidence: "answered in the same round",
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict({ round: 1, findings: [advisory] }) },
+      // The write set must cover the finding's paths, or the SCOPE bound defers
+      // it and this test would pass for the wrong reason -- proving the scope
+      // bound works rather than that an advisory holds a stage open.
+      deps({ plannedWrites: () => ["packages/cli/src/doctor"] }),
+    );
+    expect(result.stageClosable).toBe(false);
+    // The reason lists every blocker; this asserts the NOVELTY one is among them.
+    expect(result.closureReason).toMatch(/novel/i);
+  });
+
+  it("defers a finding about code this change set does not write", async () => {
+    // The scope bound, end to end. The finding is real and is returned -- it is
+    // owed to the debt index -- but it does not hold THIS stage open.
+    const elsewhere = finding({
+      classification: "advisory",
+      violates: undefined,
+      disposition: "fixed",
+      dispositionEvidence: "answered",
+      paths: ["packages/journal/src/chain.ts"],
+    });
+    const result = await runReviewSubmit(
+      { stage: "implement", verdict: verdict({ round: 1, findings: [elsewhere] }) },
+      deps({ plannedWrites: () => ["packages/cli/src/review/"] }),
+    );
+    expect(result.deferredFindings?.map((f) => f.id)).toContain(elsewhere.id);
   });
 
   it("does not escalate on a round that closed something", async () => {
@@ -897,5 +971,197 @@ describe("runReviewSubmit — unattestedCriteria means exactly one thing", () =>
     expect(result.attestations?.map((entry) => entry.criterion)).not.toContain(
       "design-risks-have-mitigations",
     );
+  });
+});
+
+describe("the design gate — owner ruling R2, roadmap/25 WI 5", () => {
+  const APPROVED = {
+    schemaVersion: 1 as const,
+    changeSetId: "22222222-2222-4222-8222-222222222222",
+    designRevision: "design-under-review",
+    verdict: "approved" as const,
+    recordedAt: "2026-08-15T00:00:00.000Z",
+  };
+
+  it("does NOT close on a reviewer's approve verdict alone", async () => {
+    // The whole point of a gate. Every other stage closes on criteria plus a
+    // quiet round; this one does not, because both are satisfiable by the
+    // caller and a gate a caller can satisfy is a checkpoint.
+    const result = await runReviewSubmit(
+      {
+        stage: "design-gate",
+        verdict: verdict({ verdict: "approve", findings: [], artifactRef: "design-under-review" }),
+      },
+      deps(),
+    );
+    expect(result.stageClosable).toBe(false);
+    expect(result.closureReason).toMatch(/owner/i);
+  });
+
+  it("does NOT close on an attestation claiming the criterion", async () => {
+    // An attestation is a signed claim, and a signed claim from the model is
+    // still the model closing its own gate.
+    const result = await runReviewSubmit(
+      {
+        stage: "design-gate",
+        verdict: verdict({ verdict: "approve", findings: [], artifactRef: "design-under-review" }),
+        attestations: [
+          {
+            criterion: "design-gate-owner-verdict-recorded",
+            asserter: "eo-architect",
+            rationale: "the owner said yes in chat",
+            artifactAnchor: "docs/design/whatever.md",
+            assertedAt: "2026-08-15T00:00:00.000Z",
+            round: 1,
+          },
+        ],
+      },
+      deps(),
+    );
+    expect(result.stageClosable).toBe(false);
+  });
+
+  it("closes on the owner's recorded approval of this exact design", async () => {
+    // The positive control. Without it every assertion above would pass for a
+    // gate that can never be opened at all.
+    const result = await runReviewSubmit(
+      {
+        stage: "design-gate",
+        verdict: verdict({ verdict: "approve", findings: [], artifactRef: "design-under-review" }),
+      },
+      deps({ ownerDesignVerdict: () => APPROVED }),
+    );
+    expect(result.stageClosable).toBe(true);
+  });
+
+  it("does NOT close when the owner approved a different revision", async () => {
+    // The design was edited after the owner said yes. Carrying the approval
+    // forward approves something nobody read.
+    const result = await runReviewSubmit(
+      {
+        stage: "design-gate",
+        verdict: verdict({ verdict: "approve", findings: [], artifactRef: "design-edited-since" }),
+      },
+      deps({ ownerDesignVerdict: () => APPROVED }),
+    );
+    expect(result.stageClosable).toBe(false);
+    expect(result.closureReason).toMatch(/revision/i);
+  });
+
+  it("returns the owner's own words on a rejection, so the loop has something to act on", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "design-gate",
+        verdict: verdict({ verdict: "approve", findings: [], artifactRef: "design-under-review" }),
+      },
+      deps({
+        ownerDesignVerdict: () => ({
+          ...APPROVED,
+          verdict: "rejected" as const,
+          reason: "the queue is the wrong shape",
+        }),
+      }),
+    );
+    expect(result.stageClosable).toBe(false);
+    expect(result.closureReason).toMatch(/the queue is the wrong shape/);
+  });
+});
+
+describe("the documentation stage — roadmap/25 WI 8", () => {
+  const SURFACE = { commands: ["crabgic run"], failureModes: ["gateway-unreachable"] };
+  const documentation = {
+    schemaVersion: 1 as const,
+    changeSetId: "22222222-2222-4222-8222-222222222222",
+    userGuide: { path: "docs/user-guide.md", documentsCommands: ["crabgic run"] },
+    maintenanceGuide: {
+      path: "docs/maintenance-guide.md",
+      documentsFailureModes: ["gateway-unreachable"],
+    },
+  };
+
+  it("derives the coverage criteria from the record and the SERVER's surface", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "document",
+        verdict: verdict({ stage: "document", verdict: "approve", findings: [] }),
+        documentation,
+      },
+      deps({ documentedSurface: () => SURFACE }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.unmetCriteria).not.toContain("document-user-guide-covers-every-command");
+    expect(result.unmetCriteria).not.toContain("document-claims-resolve");
+  });
+
+  it("leaves a criterion unmet when a command went undocumented", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "document",
+        verdict: verdict({ stage: "document", verdict: "approve", findings: [] }),
+        documentation,
+      },
+      deps({
+        documentedSurface: () => ({ ...SURFACE, commands: ["crabgic run", "crabgic doctor"] }),
+      }),
+    );
+    expect(result.unmetCriteria).toContain("document-user-guide-covers-every-command");
+  });
+
+  it("leaves document-claims-resolve unmet when the guide invented a command", async () => {
+    // The check that separates a guide from a plausible guide. A reader does not
+    // notice a thin guide the way they notice a command that does not exist.
+    const invented = {
+      ...documentation,
+      userGuide: { path: "docs/user-guide.md", documentsCommands: ["crabgic teleport"] },
+    };
+    const result = await runReviewSubmit(
+      {
+        stage: "document",
+        verdict: verdict({ stage: "document", verdict: "approve", findings: [] }),
+        documentation: invented,
+      },
+      deps({ documentedSurface: () => SURFACE }),
+    );
+    expect(result.unmetCriteria).toContain("document-claims-resolve");
+  });
+
+  it("VOIDS an attestation claiming a criterion the guide contradicts", async () => {
+    // A claim cannot outvote the artifact it describes.
+    const invented = {
+      ...documentation,
+      userGuide: { path: "docs/user-guide.md", documentsCommands: ["crabgic teleport"] },
+    };
+    const result = await runReviewSubmit(
+      {
+        stage: "document",
+        verdict: verdict({ stage: "document", verdict: "approve", findings: [] }),
+        documentation: invented,
+        attestations: [
+          {
+            criterion: "document-claims-resolve",
+            asserter: "eo-reviewer:completeness",
+            rationale: "every command in the guide exists",
+            artifactAnchor: "docs/user-guide.md",
+            assertedAt: "2026-08-15T00:00:00.000Z",
+            round: 1,
+          },
+        ],
+      },
+      deps({ documentedSurface: () => SURFACE }),
+    );
+    expect(result.voidedAttestations?.map((v) => v.criterion)).toContain("document-claims-resolve");
+  });
+
+  it("refuses a malformed documentation record rather than ignoring it", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "document",
+        verdict: verdict({ stage: "document", verdict: "approve", findings: [] }),
+        documentation: { schemaVersion: 1, changeSetId: "not-a-uuid" },
+      },
+      deps({ documentedSurface: () => SURFACE }),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/documentation record/i);
   });
 });

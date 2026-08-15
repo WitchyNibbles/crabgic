@@ -9,6 +9,17 @@ export function buildTaskPacket(overrides: Partial<TaskPacket> = {}): TaskPacket
     id: ctx.ids.next(),
     workUnitId: ctx.ids.next(),
     requirementIds: [],
+    spec: {
+      schemaVersion: 1,
+      id: "aaaaaaaa-0000-4000-8000-00000000000f",
+      taskId: "fixture-task",
+      requirements: [
+        { requirementId: "fixture-requirement", acceptanceCriteria: ["Objective observably met."] },
+      ],
+      doneCriteria: ["A named test demonstrates it."],
+      testsFirst: true,
+      permittedInterfaces: [],
+    },
     objective: "Implement the deterministic fixture's stated objective.",
     nonGoals: [],
     baseObjectId: "0000000000000000000000000000000000000a",

@@ -1,4 +1,5 @@
 import { CONTRACT_SECTIONS } from "./intent-contract.js";
+import { DOMAIN_LENS_IDS } from "./domain-lenses.js";
 
 /**
  * The staged review pipeline's stages and their exit criteria —
@@ -23,9 +24,12 @@ export const PIPELINE_STAGE_IDS = [
   "research",
   "clarify",
   "design",
+  "design-gate",
   "plan",
   "implement",
   "integrate",
+  "audit",
+  "document",
 ] as const;
 export type PipelineStageId = (typeof PIPELINE_STAGE_IDS)[number];
 
@@ -130,6 +134,25 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = [
     ],
   },
   {
+    id: "design-gate",
+    label: "Owner confirms the design",
+    /**
+     * No lenses, by construction. Ruling R2 (2026-08-15) added this stage so the
+     * owner can say "this is not what I meant" BEFORE any worker is dispatched —
+     * steps 6 and 7 of the owner's pipeline. A reviewer lens here would create a
+     * second route to closure that is not the owner, which is the difference
+     * between a gate and a checkpoint the model can satisfy for itself.
+     */
+    lenses: [],
+    exitCriteria: [
+      {
+        id: "design-gate-owner-verdict-recorded",
+        statement:
+          "The owner has recorded a verdict on this exact design revision. No reviewer verdict, attestation or server-side derivation closes this stage — only the owner does, and a rejection returns to the design stage carrying their reason.",
+      },
+    ],
+  },
+  {
     id: "plan",
     label: "Plan",
     lenses: ["coverage-of-design", "sequencing"],
@@ -153,7 +176,17 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = [
   {
     id: "implement",
     label: "Implement",
-    lenses: ["correctness", "security"],
+    /**
+     * FOUR evaluators, not two (owner request 2026-08-15, roadmap/25).
+     *
+     * The owner asked for four specialised agents to evaluate the work:
+     * security, code review, compliance, and best practice for the stack. Two
+     * existed already as pipeline lenses; `compliance` and `clean-code` are the
+     * two the audit found missing, and they are taken from `DOMAIN_LENSES`
+     * rather than invented here so that "compliance" means one thing whether it
+     * is raised at the implement stage or at the audit.
+     */
+    lenses: ["correctness", "security", "compliance", "clean-code"],
     exitCriteria: [
       {
         id: "implement-gates-pass",
@@ -185,6 +218,60 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = [
         id: "integrate-final-candidate-gate",
         statement:
           "The final-candidate gate passes on the exact merge candidate, not on an earlier commit.",
+      },
+    ],
+  },
+  {
+    id: "audit",
+    label: "Audit the end product",
+    /**
+     * The audit reuses `DOMAIN_LENS_IDS` rather than declaring a vocabulary of
+     * its own. A second roster would make "backend" name two different
+     * questions depending on which stage raised the finding, and a blocking
+     * finding identifies itself by lens — so the two rosters would have to be
+     * kept in step by hand, which is the drift this repository has paid for
+     * more than once.
+     */
+    lenses: DOMAIN_LENS_IDS,
+    exitCriteria: [
+      {
+        id: "audit-every-applicable-lens-ran",
+        statement:
+          "Every domain lens applicable to this project's detected stack has returned a verdict, and every lens that did not run is recorded as skipped with its reason.",
+      },
+      {
+        id: "audit-no-admissible-novel-findings",
+        statement:
+          "The final round produced no admissible novel finding under any applicable lens, where admissible means the finding concerns a path this change set writes and has not been raised before.",
+      },
+    ],
+  },
+  {
+    id: "document",
+    label: "Document",
+    /**
+     * "Easy to read and detailed" was the owner's phrasing, and readability is
+     * genuinely a judgement — so it is a LENS. The exit criteria below are
+     * coverage claims instead, because coverage is the half a record can
+     * decide, and a stage that closed on "the prose is good" would be the
+     * taste-based closure §4.3 of the design doc rules out everywhere else.
+     */
+    lenses: ["completeness", "readability"],
+    exitCriteria: [
+      {
+        id: "document-user-guide-covers-every-command",
+        statement:
+          "Every public command and gateway tool this change set adds or changes appears in the user guide.",
+      },
+      {
+        id: "document-maintenance-guide-covers-every-failure-mode",
+        statement:
+          "Every operational failure mode the design records appears in the maintenance guide, with what an operator sees and what they do about it.",
+      },
+      {
+        id: "document-claims-resolve",
+        statement:
+          "Every command, path and flag a guide names actually exists. This is what separates a guide from a plausible guide.",
       },
     ],
   },

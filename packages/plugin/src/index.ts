@@ -52,3 +52,18 @@ export {
   type ManagerApprovalGate,
 } from "./manager-protocol.js";
 export * from "./output-style.js";
+/**
+ * The pipeline driver's decisions — stage order, lens coverage, round budgets.
+ * Exported because `packages/cli` serves them to the manager as the
+ * `pipeline.plan` gateway tool: a workflow script cannot import them (no imports
+ * are available inside one), so the gateway is the channel. roadmap/25 WI 7.
+ */
+export {
+  STAGE_ORDER,
+  isOwnerGated,
+  nextStage,
+  planStageRound,
+  roundBudgetFor,
+  type PlannedLens,
+  type StageRoundPlan,
+} from "./pipeline-driver.js";

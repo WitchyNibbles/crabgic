@@ -41,6 +41,20 @@ describe("buildTaskPacket — property: packet is never constructed wider than i
               id: "11111111-1111-4111-8111-111111111111",
               workUnitId: "22222222-2222-4222-8222-222222222222",
               requirementIds: [],
+              spec: {
+                schemaVersion: 1,
+                id: "aaaaaaaa-0000-4000-8000-00000000000f",
+                taskId: "fixture-task",
+                requirements: [
+                  {
+                    requirementId: "fixture-requirement",
+                    acceptanceCriteria: ["Objective observably met."],
+                  },
+                ],
+                doneCriteria: ["A named test demonstrates it."],
+                testsFirst: true,
+                permittedInterfaces: [],
+              },
               objective: "Implement the thing.",
               baseObjectId: BASE_OBJECT_ID,
               ownedPaths: requestedPaths,
@@ -77,6 +91,20 @@ describe("buildTaskPacket — property: packet is never constructed wider than i
               id: "11111111-1111-4111-8111-111111111111",
               workUnitId: "22222222-2222-4222-8222-222222222222",
               requirementIds: [],
+              spec: {
+                schemaVersion: 1,
+                id: "aaaaaaaa-0000-4000-8000-00000000000f",
+                taskId: "fixture-task",
+                requirements: [
+                  {
+                    requirementId: "fixture-requirement",
+                    acceptanceCriteria: ["Objective observably met."],
+                  },
+                ],
+                doneCriteria: ["A named test demonstrates it."],
+                testsFirst: true,
+                permittedInterfaces: [],
+              },
               objective: "Implement the thing.",
               baseObjectId: BASE_OBJECT_ID,
               ownedPaths: [],

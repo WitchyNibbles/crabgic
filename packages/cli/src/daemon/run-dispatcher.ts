@@ -40,7 +40,11 @@
  */
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { isRunLifecycleAbsorbing, IllegalTransitionError } from "@crabgic/contracts";
+import {
+  isRunLifecycleAbsorbing,
+  IllegalTransitionError,
+  CURRENT_SCHEMA_VERSION,
+} from "@crabgic/contracts";
 import type { RunLifecycleState } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
@@ -676,12 +680,52 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           ),
           approvalSeal: await findLatestCriteriaSeal(deps.journal, changeSet.id),
         }),
-        buildPacket: (ctx) =>
-          Promise.resolve(
+        buildPacket: (ctx) => {
+          /**
+           * THE LAST HOP (roadmap/25 WI 3). The requirements are resolved from
+           * the same strict registry `resolveCriteriaSeal` uses, and their
+           * acceptance criteria are copied onto the packet VERBATIM.
+           *
+           * Before this the worker received `requirementIds` and nothing else —
+           * a reference it could not resolve, because the registry lives with
+           * the supervisor and not in the worktree. The party obliged to satisfy
+           * the criteria was the only party that could not read them.
+           *
+           * `resolveRequirementsStrict` throws for an unresolvable declared id
+           * rather than dropping it: phase 24's ruling is that an unresolvable
+           * id means the run's acceptance basis is incoherent, which is an
+           * integrity failure of the run's inputs rather than a verdict on any
+           * one unit's output.
+           */
+          const requirements = resolveRequirementsStrict(
+            deps.requirements,
+            ctx.workUnit.requirementIds,
+            ctx.workUnit.id,
+          );
+          return Promise.resolve(
             buildTaskPacket({
               id: randomUUID(),
               workUnitId: ctx.workUnit.id,
               requirementIds: [...ctx.workUnit.requirementIds],
+              spec: {
+                schemaVersion: CURRENT_SCHEMA_VERSION,
+                id: randomUUID(),
+                taskId: ctx.workUnit.id,
+                requirements: requirements.map((requirement) => ({
+                  requirementId: requirement.id,
+                  acceptanceCriteria: [...requirement.acceptanceCriteria],
+                })),
+                /**
+                 * `WorkUnit` carries no done-criteria of its own, so the
+                 * acceptance criteria ARE the bar here. Inventing a separate
+                 * list would be the packet asserting a bar nobody set.
+                 */
+                doneCriteria: requirements.flatMap((requirement) => [
+                  ...requirement.acceptanceCriteria,
+                ]),
+                testsFirst: true,
+                permittedInterfaces: [...ctx.workUnit.ownedPaths],
+              },
               objective: ctx.workUnit.title,
               baseObjectId,
               ownedPaths: [...ctx.workUnit.ownedPaths],
@@ -689,7 +733,8 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
               resultSchema: WORKER_RESULT_SCHEMA,
               envelope,
             }).packet,
-          ),
+          );
+        },
         createAdapter: async (ctx) => {
           const worktreePath =
             options.createAttemptWorktree !== undefined

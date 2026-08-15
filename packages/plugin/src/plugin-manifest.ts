@@ -18,6 +18,12 @@ export const REQUIRED_SKILL_NAMES = [
   "approve",
   "evidence",
   "connections",
+  // roadmap/25 WI 7, added 2026-08-15. The callable surface that DRIVES the
+  // pipeline: ask `pipeline.plan` what runs next, dispatch it through the
+  // `crabgic-stage-round` workflow, submit the verdicts, repeat. Every other
+  // piece of phase 25 decides something; this is the one that acts, and
+  // without it every lens the plan named was a review nobody performed.
+  "pipeline",
   // Added 2026-07-27 alongside the manager operating protocol (roadmap/10
   // amendment). Carries the long-form rationale the always-loaded `CLAUDE.md`
   // block is deliberately too small to hold; both render from
@@ -37,10 +43,18 @@ export const REQUIRED_SKILL_NAMES = [
  * digest enumerates the DIRECTORY, this list is enumerated by the manifest
  * validator and the installer, and the two disagreed in silence.
  *
- * The first three are roadmap/10 §Interfaces' own names, verbatim. The last two
+ * The first three are roadmap/10 §Interfaces' own names, verbatim. The next two
  * are the staged review pipeline's producers (`docs/staged-review-pipeline.md`
  * §4.4): a design stage and a plan stage need an agent that makes the artifact,
  * not only agents that review it.
+ *
+ * The last three are roadmap/25's producers, added 2026-08-15 — and they are the
+ * reason the paragraph above is worth re-reading rather than skimming. Three
+ * stages of the owner's pipeline (design panel, audit, document) plus the
+ * research stage had criteria, a plan and no agent that could produce anything,
+ * and `pipeline.plan` would have returned lens names nobody could run. Adding
+ * the files without adding them here would have reproduced the 2026-07-29 defect
+ * exactly: copied by nothing, unreachable from any consuming repo, silent.
  */
 export const REQUIRED_SUBAGENT_NAMES = [
   "eo-explore",
@@ -48,6 +62,9 @@ export const REQUIRED_SUBAGENT_NAMES = [
   "eo-roaster",
   "eo-architect",
   "eo-planner",
+  "eo-domain-reviewer",
+  "eo-researcher",
+  "eo-documenter",
 ] as const;
 
 /** Adaptation §5.5: "the model must not be able to satisfy its own approval gate" — `/eo:approve` MUST set this. */

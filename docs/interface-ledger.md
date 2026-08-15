@@ -1242,7 +1242,64 @@ exactly the posture the original's own residual-risk note refused to accept for 
 **Phases affected:** `roadmap/11-intake-contract-approval.md` (owns the seven stop conditions and thus the
 boundary being drawn), `roadmap/13-scheduler-packets-context.md` (owns the repair-attempt path),
 `roadmap/14-quality-security-gates.md` (owns the gate verdicts a repair attempt answers),
-`roadmap/10-plugin-and-installer.md` (the manager operating protocol renders the distinction).
+`roadmap/10-plugin-and-installer.md` (the manager operating protocol renders the distinction), and
+`roadmap/25-owner-pipeline-conformance.md` (implements the 2026-08-15 amendment below).
+
+---
+
+### AMENDED 2026-08-15 by owner ruling R4 — parts 3 and 4's termination rule is replaced
+
+**This is a change to an owner-approved ruling, not a clarification of one.** The owner was shown the
+measurement that produced parts 3 and 4 — rounds 21–32, twelve rounds on one subsystem, every finding real
+and reproducible, zero rounds that found nothing — and ruled against the closure rule it produced. The
+measurement is NOT deleted: `docs/staged-review-pipeline.md` §2 stays verbatim, and so does everything above
+this line. The design and the reasoning are in `docs/design/owner-pipeline-conformance.md` §4.3.
+
+**Part 3 is superseded.** "A stage keeps looping while each round closes at least one `blocking` finding"
+is no longer what ends a loop. **A stage closes on a round that raises no admissible novel finding**, with
+severity playing no part: a new `advisory` holds a stage open exactly as a `blocking` one does. That is the
+owner's own clause — "no issues, warnings, or buts" — and it is the clause the progress rule could not
+honour. The ceiling of five becomes a **runaway guard** at `REVIEW_RUNAWAY_GUARD` (20), which is not a
+closure rule: reaching it means the loop **stalled**, and `closureVerdict` reports it as such rather than as
+a stage that finished.
+
+**Part 4 stands, with its termination sentence re-read.** "Termination is the artifact against its written
+exit criteria, never reviewer exhaustion" is unchanged and is now the weaker of two conjuncts: closure
+requires the criteria AND a quiet round. Everything else in part 4 — a `blocking` finding naming the
+criterion it violates, novelty and falsifiability as admissibility tests, the
+`raised → verified → classified → dispositioned → reported` walk, `advisory` as a deferral and never a
+disposal route — is untouched.
+
+**Why the original rule did not terminate, corrected.** The 12-round result is real; what it measured was
+an unbounded SEARCH SPACE, not an infinitely defective artifact. The reviewer had a whole subsystem in
+scope, no enumerated list of what it owed an answer about, and no key by which two findings were the same
+finding. A zero-findings round was never reachable under those conditions. Four bounds make it reachable
+(`packages/cli/src/review/admissibility.ts`):
+
+1. **Scope** — a finding must concern a path this change set writes. Code nobody is changing is
+   pre-existing and goes to the debt index, which part 4's own reopen-on-touch rule already governs.
+2. **Obligation** — each lens is issued a checklist derived from the artifact, and an empty checklist reads
+   as UNMET, never as satisfied. A silent lens and a satisfied lens are otherwise identical.
+3. **Identity** — findings are keyed `(lens, normalized path, claim hash)`, so a rewording is the same
+   finding. Path normalization uses `normalizePlannedPath`, the same function the overlap analyzer uses.
+4. **Monotonicity** — a repair may not enlarge the `PlannedWriteSet`; widening it means re-entering the
+   plan stage in the open.
+
+**Disclosed, and NOT proved:** a repair writes new code inside the write set, and new code carries new
+obligations. The space is non-increasing per element but not globally, so termination rests on the repair
+rate exceeding the new-obligation rate. That is empirical. The runaway guard exists because of that gap.
+
+**Second residual, stated because it is a real loss:** the scope bound sends out-of-write-set findings to
+the debt index rather than the loop. Rounds 30 and 32 of the original experiment found two
+arbitrary-file-overwrite primitives, and whether either would have been in scope under this rule is
+**unknown and not claimed either way**.
+
+**Part 3's calibration residual is discharged in one respect and not the other.** `review.calibrate` and the
+four-tier verdict exist; the corpus still needs the owner's own calls. What changed is that the
+`blocking`/`advisory` split no longer decides whether a loop continues — only whether a finding names a
+criterion — so an uncalibrated judge is a smaller exposure than it was when it gated termination.
+
+---
 
 **Where this ruling could be got wrong later:** treating a review round as a repair attempt (or the reverse),
 which either caps quality convergence or makes gate failures unbounded; letting `advisory` become a disposal
@@ -1253,6 +1310,12 @@ sycophancy part 4 was written to exclude; letting a reviewer raise findings a de
 decides, which re-litigates settled verdicts in prose; or reintroducing an unbounded round count on the
 argument that quality demands it — the measured evidence is that it does not terminate, and an
 unbounded loop that never closes ships nothing at all.
+
+**And, since the 2026-08-15 amendment:** reading "no admissible novel finding" as "no finding" — the bounds
+decide admissibility, and a caller that widens them to make a round quiet has removed the only thing making
+a quiet round mean anything; reporting a run that reached the runaway guard as a stage that CLOSED, which is
+the syntactic kill-switch wearing a verdict's clothes; or letting severity back into the closure test, which
+is the severity floor the owner ruled against arriving through the door marked convenience.
 
 ---
 

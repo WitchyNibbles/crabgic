@@ -3,6 +3,24 @@
   "id": "bbbbbbbb-0000-4000-8000-000000000001",
   "workUnitId": "bbbbbbbb-0000-4000-8000-000000000002",
   "requirementIds": [],
+  "spec": {
+    "schemaVersion": 1,
+    "id": "aaaaaaaa-0000-4000-8000-00000000000f",
+    "taskId": "fixture-task",
+    "requirements": [
+      {
+        "requirementId": "fixture-requirement",
+        "acceptanceCriteria": [
+          "Objective observably met."
+        ]
+      }
+    ],
+    "doneCriteria": [
+      "A named test demonstrates it."
+    ],
+    "testsFirst": true,
+    "permittedInterfaces": []
+  },
   "objective": "Implement the deterministic golden fixture's minimal case.",
   "nonGoals": [],
   "baseObjectId": "0123456789abcdef0123456789abcdef01234567",
