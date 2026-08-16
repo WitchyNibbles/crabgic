@@ -149,7 +149,8 @@ result record that the test suite never ran. So the system still publishes on an
 unverified claim; it now publishes on an unverified claim that _says so_, which
 is strictly better evidence and exactly the same guarantee.
 
-Two follow-ons, both open:
+Two follow-ons, ~~both open~~ **both RULED 2026-08-16 — see the section at the
+end of this document.**
 
 - **The publish refusal** (this document's original recommendation) is still the
   fix, and it is now clearly worth building: the material to refuse on is sitting
@@ -187,3 +188,46 @@ usable **as configured** by a worker verifying a small change. That is the next
 thing standing between "a worker can run commands" and "a gate can verify work",
 and it is a decision about what commands an envelope should grant — a scoped
 test invocation, or a per-change coverage bound — rather than a defect to patch.
+
+---
+
+## RULED 2026-08-16 — both follow-ons answered
+
+The two open items above were put to the owner together with the spend question.
+Full wording and the reasoning at `docs/design/owner-pipeline-conformance.md` §6b.
+
+**R5 — the publish refusal is GRANTED.** A run whose acceptance criteria were
+never evaluated must not reach `published_local`, and the refusal must **name
+what was not verified** rather than failing bare. This document's original
+recommendation stands as written; what the ruling adds is the naming obligation,
+because a false pass traded for an unactionable failure is not obviously the
+better of the two.
+
+The cost was stated before the ruling and accepted with it: **both completed runs
+become refused ones**, and on a host where the test path does not work, nothing
+publishes. That is the ruling's point rather than a side effect — it converts a
+host limitation into a stated refusal, and it holds on every host, including the
+ones where the sandbox works and a worker simply never ran the tests.
+
+**R6 — the `EBUSY`/coverage follow-on is answered by changing the GATE, not the
+grant.** The obvious repair was a new member of `GRANTABLE_COMMAND_PREFIXES` — a
+scoped test command that runs without the global threshold. It was offered first
+and **declined**, and the rejection is recorded with its reason because the
+declined option was the cheaper one:
+
+- the emitted permission rule is a `:*` **prefix** rule, so every new member of
+  that union widens more than it appears to — the constant's own docblock says
+  so in as many words;
+- a vocabulary widened to work around a coverage threshold is a **permanent
+  grant** bought to fix a **configuration**.
+
+So the four grantable prefixes stand unchanged and coverage is bound to the
+change instead: the gate scores **changed instrumentable code** rather than
+enforcing a global floor that a filtered run can never satisfy. This is closer to
+what phase 14's ratchet already promises, and it fixes the problem for every
+granted command rather than for one.
+
+**Disclosed, because it makes R6 the more expensive answer:** the work lands in
+phase 14's gate territory rather than phase 25's, and it touches the tranche
+`docs/deploy-posture.md` records as having no production registration. A
+constant edit would have been a one-line change; this is not one.

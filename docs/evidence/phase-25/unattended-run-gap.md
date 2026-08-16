@@ -133,3 +133,35 @@ recommendation buried in a transcript:
 1. `crabgic install` in this checkout — no spend, makes the surfaces reachable
 2. confirm the `EnvelopePolicy` it writes is what the owner intends
 3. only then authorize a scoped unattended run, which now has something to run
+
+---
+
+## RULED 2026-08-16 (R7) — one full staged run is authorized
+
+This document exists so that authorizing the run is a decision about a known
+quantity. It has been made. Full wording at
+`docs/design/owner-pipeline-conformance.md` §6b.
+
+**Granted: ONE full staged run on a small change set**, driven through every
+stage — research, design, design-gate, plan, implement, integrate, audit,
+document. It is a grant of engine spend for that run, and **not** a standing
+authorization for unattended runs. It touches neither the standing
+`EnvelopePolicy` nor ledger Gap 18's argument.
+
+Three of the four rows in the table above are covered by it: reviewers dispatched
+by the pipeline rather than by an operator, findings repaired by a dispatched
+worker, and the audit stage firing where a run reaches. The fourth — guides
+written by a worker — is the `document` stage, and it is in scope too.
+
+**The design gate will stop and wait**, by construction rather than by
+convention: `crabgic design approve|reject` is the sole writer of an
+`OwnerDesignVerdict` and no gateway tool can record one, so this run cannot
+complete without the owner answering exactly once. That is the single human act
+inside an otherwise autonomous run, and it is ruling R2 working as ruled.
+
+**What this run is NOT authorized to establish.** Per R5, ruled the same day, a
+run whose acceptance criteria were never evaluated must not reach
+`published_local`. Until that refusal is built, a `published_local` from this run
+carries the same weak guarantee both earlier runs did — see
+`published-unverified.md`. Reading this run's terminal state as verification
+would be the exact error R5 was ruled to stop.

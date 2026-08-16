@@ -413,6 +413,76 @@ work item 6 is written so the amendment lands with the mechanism rather than
 ahead of it. The measurement is not deleted — §4.3 keeps it verbatim and explains
 what it did and did not establish.
 
+### 6b. Owner rulings — given 2026-08-16
+
+Three more, put to the owner after the first two runs completed and the
+`published_local` result was measured. R5 and R6 answer
+`docs/evidence/phase-25/published-unverified.md`'s two open follow-ons; R7
+answers the spend question `unattended-run-gap.md` was written to make decidable.
+
+| #   | Ruling                         | Answer                                                      | Obliges                                                                                                   |
+| --- | ------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| R5  | Publish unverified work        | **REFUSED** — a run must not publish what it never verified | a terminal state that says so, naming the criteria not evaluated; both completed runs become refused ones |
+| R6  | How a worker verifies          | **Per-change coverage bound**, not a new grantable command  | the coverage gate scores changed instrumentable code; `GRANTABLE_COMMAND_PREFIXES` stays at four members  |
+| R7  | Spend for the nine unrun steps | **GRANTED** — one full staged run on a small change set     | research → design → design-gate → plan → implement → integrate → audit → document, end to end             |
+
+> **RULED 2026-08-16 (R5): a run whose acceptance criteria were never evaluated
+> must not reach `published_local`.** The terminal state is the strongest thing
+> this system can say, and today it is earned by a worker asserting success about
+> work it may not have been able to check — measured twice, once with the worker
+> self-reporting `"summary": "test"` after twelve failed `Bash` calls, and once
+> with the worker stating in its own result record that the suite never ran. A
+> guard that admits a self-report unconditionally is worse than no guard, because
+> the state reads as a verdict.
+>
+> **The refusal must NAME what was not verified**, and the run holds the material
+> to do it precisely: criteria are sealed at approval, the worker's attempted
+> commands are on the transcript, and the executed ones are not. A bare refusal
+> would trade a false pass for an unactionable failure.
+>
+> **The owner accepted the cost when it was stated**: both of today's successful
+> runs become refused ones, and on a host where the test path does not work,
+> nothing publishes. That is the ruling's point rather than a side effect — it
+> converts a host limitation into a stated refusal, and it holds on every host,
+> including the ones where a worker simply never ran the tests.
+
+> **RULED 2026-08-16 (R6): bound coverage to the change, not to the repository.**
+> The alternative — adding a scoped test command to `GRANTABLE_COMMAND_PREFIXES` —
+> was offered first and **declined**. The rejection is worth recording with its
+> reason, because the declined option was the cheaper one: the emitted permission
+> rule is a `:*` PREFIX rule, so every new member of that union widens more than
+> it appears to (the constant's own docblock says so), and a vocabulary widened to
+> work around a coverage threshold is a permanent grant bought to fix a temporary
+> configuration.
+>
+> So the four grantable prefixes stand unchanged, and the gate changes instead:
+> coverage scores **changed instrumentable code** rather than enforcing a global
+> floor a filtered run can never satisfy. This is closer to what phase 14's
+> ratchet already promises, and it fixes the problem for every command rather than
+> for one.
+>
+> **Disclosed, because it makes this the more expensive answer:** it touches the
+> gate tranche `docs/deploy-posture.md` records as having no production
+> registration, so the work is larger than a constant edit and lands in phase 14's
+> territory rather than phase 25's.
+
+> **RULED 2026-08-16 (R7): one full staged run on a small change set is
+> authorized.** The full pipeline was offered on 2026-08-15 and declined in favour
+> of a small scoped run; with the surface now installed and reachable
+> (`pipeline-surface-unreachable.md`) and the spine measured end to end
+> (`first-completed-run.md`), it is granted.
+>
+> **Scope, stated so the grant is not read wider than it is:** ONE change set,
+> small, driven through every stage — research, design, design-gate, plan,
+> implement, integrate, audit, document. It is a grant of engine spend for that
+> run, not a standing authorization for unattended runs, and it does not touch the
+> standing `EnvelopePolicy` or Gap 18's argument.
+>
+> **The design gate will stop and wait**, by construction: `crabgic design
+approve|reject` is the sole writer and no gateway tool can record a verdict, so
+> this run cannot complete without the owner answering once. That is the one human
+> act inside an otherwise autonomous run, and it is R2 working as ruled.
+
 ## 7. Reconciliation with settled authorities
 
 | authority                          | this document                                                                                                            |
