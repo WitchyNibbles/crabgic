@@ -86,6 +86,10 @@ function stubDeps(): Omit<ProductionGatewayToolRegistryDeps, "providers" | "muta
       mkdtempSync(join(tmpdir(), "eo-reg-artifacts-")),
       "review-artifacts.json",
     ),
+    reviewStageCompletionsPath: join(
+      mkdtempSync(join(tmpdir(), "eo-reg-completions-")),
+      "stage-completions.json",
+    ),
     reviewDesignVerdictsPath: join(
       mkdtempSync(join(tmpdir(), "eo-reg-verdicts-")),
       "design-verdicts.json",
@@ -556,6 +560,7 @@ describe("review.submit — server-derived exit criteria", () => {
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewStageCompletionsPath: join(stateHome, "stage-completions.json"),
       reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }
@@ -701,6 +706,7 @@ describe("review.calibrate — the corpus is fillable through the shipped surfac
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewStageCompletionsPath: join(stateHome, "stage-completions.json"),
       reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }
@@ -824,6 +830,7 @@ describe("review.submit — design and plan records across stages", () => {
       reviewCalibrationPath: join(stateHome, "review-calibration.json"),
       reviewAttestationsPath: join(stateHome, "review-attestations.json"),
       reviewArtifactsPath: join(stateHome, "review-artifacts.json"),
+      reviewStageCompletionsPath: join(stateHome, "stage-completions.json"),
       reviewDesignVerdictsPath: join(stateHome, "design-verdicts.json"),
     };
   }

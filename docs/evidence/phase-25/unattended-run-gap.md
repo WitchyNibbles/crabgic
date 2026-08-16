@@ -153,11 +153,31 @@ by the pipeline rather than by an operator, findings repaired by a dispatched
 worker, and the audit stage firing where a run reaches. The fourth — guides
 written by a worker — is the `document` stage, and it is in scope too.
 
-**The design gate will stop and wait**, by construction rather than by
+~~**The design gate will stop and wait**, by construction rather than by
 convention: `crabgic design approve|reject` is the sole writer of an
 `OwnerDesignVerdict` and no gateway tool can record one, so this run cannot
 complete without the owner answering exactly once. That is the single human act
-inside an otherwise autonomous run, and it is ruling R2 working as ruled.
+inside an otherwise autonomous run, and it is ruling R2 working as ruled.~~
+
+**CORRECTED the same day, by measurement.** The paragraph above is **false** and
+is struck rather than deleted, per this repository's annotate-never-rewrite
+convention. What is true of the gate is only what its own tests prove: the CLI is
+the sole writer, no gateway tool can record a verdict, and `resolveDesignGate`
+replaces rather than conjoins the closure rule **for the `design-gate` review
+stage**.
+
+What does not follow — and what the struck paragraph asserted — is that a RUN
+cannot complete without it. `resolveDesignGate` and `OwnerDesignVerdict` appear
+**nowhere** in `packages/cli/src/daemon/` or `packages/supervisor/src/`; the only
+production reference is `review-submit-handler.ts:659`. Nothing in
+`crabgic run` → intake → standing-policy containment → dispatch consults the
+verdict store or requires that stage to have closed.
+
+So this run will **not** stop for the owner unless the staged pipeline is
+deliberately driven, and driving it is not what starting a run does. The error
+was writing the claim from the gate's tests, which are sound about stage closure,
+without checking the dispatch path. Measured and recorded at
+`first-staged-round-live.md`, structural finding 2.
 
 **What this run is NOT authorized to establish.** Per R5, ruled the same day, a
 run whose acceptance criteria were never evaluated must not reach

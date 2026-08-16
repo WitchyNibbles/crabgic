@@ -94,6 +94,7 @@ import { resolveFindingStorePath } from "./review/finding-store.js";
 import { resolveCalibrationStorePath } from "./review/calibration-store.js";
 import { resolveAttestationStorePath } from "./review/attestation-store.js";
 import { resolveArtifactStorePath } from "./review/artifact-store.js";
+import { resolveStageCompletionStorePath } from "./review/stage-completion-store.js";
 import { resolveDesignVerdictStorePath } from "./review/design-verdict-store.js";
 import {
   buildRealInstallerDependencies,
@@ -438,6 +439,7 @@ export function buildRealGatewayToolRegistry(
     reviewAttestationsPath: resolveAttestationStorePath(xdgEnv, projectHash),
     reviewArtifactsPath: resolveArtifactStorePath(xdgEnv, projectHash),
     reviewDesignVerdictsPath: resolveDesignVerdictStorePath(xdgEnv, projectHash),
+    reviewStageCompletionsPath: resolveStageCompletionStorePath(xdgEnv, projectHash),
     reviewStateHome: resolveXdgStateHome(xdgEnv),
     approvalSigningKey: loadOrCreateApprovalSigningKey(
       resolveApprovalSigningKeyPath(xdgEnv, projectHash),

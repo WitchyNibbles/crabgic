@@ -56,6 +56,22 @@ import { closureVerdict, findingKey } from "./admissibility.js";
 export interface ReviewSubmitDeps {
   /** Journals the verdict. Never called for a document that failed validation. */
   readonly appendEvidence: (record: ReviewEvidence) => Promise<void>;
+  /**
+   * Durably records that a stage CLOSED — owner ruling R8 (2026-08-16), and
+   * ledger Gap 23's disclosed residual 2.
+   *
+   * Called only when this handler's own `stageClosable` computation is true, and
+   * never from any field on the input: `StageCompletionRecord` deliberately has
+   * no member a caller could use to assert closure. This is the one place in the
+   * product that decides whether a stage may close, so it is the only honest
+   * place to write down that it did.
+   *
+   * OPTIONAL on purpose. An embedder that has not wired the store keeps working
+   * and simply records nothing — the absence is a missing record, not a throw at
+   * the moment a stage closes. Under R8 a missing record means dispatch refuses,
+   * which is the fail-safe direction.
+   */
+  readonly recordStageCompletion?: (closure: StageClosure) => Promise<void>;
   /** Findings already on record for this artifact and stage. */
   readonly priorFindings: () => readonly ReviewFinding[];
   /** The paths this change set intends to write, for reopening debt. */
@@ -140,6 +156,27 @@ export interface ReviewEvidence {
   readonly verdict: string;
   readonly findingCount: number;
   readonly stageClosable: boolean;
+}
+
+/**
+ * What this handler knows about a stage that just closed — owner ruling R8.
+ *
+ * Deliberately NOT a whole `StageCompletionRecord`. Two of that record's fields
+ * are not this handler's to supply, and letting it supply them would be wrong in
+ * both cases:
+ *
+ * - `changeSetId` is not on `ReviewSubmitInput` at all; the gateway wrapper is
+ *   the layer that has it, and inventing one here would key a completion to
+ *   nothing.
+ * - `closedAt` is stamped by the writer, never accepted from further up. That is
+ *   the rule WI 5c earned on `crabgic design approve`: a caller-supplied
+ *   timestamp can be backdated, and telling a later reader when a stage actually
+ *   closed is the only thing the field is for.
+ */
+export interface StageClosure {
+  readonly stage: PipelineStageId;
+  readonly round: number;
+  readonly artifactRef: string;
 }
 
 export interface ReviewSubmitInput {
@@ -688,6 +725,28 @@ export async function runReviewSubmit(
    * `stalled` and never as closed.
    */
   const escalate = bounded.stalled;
+
+  /**
+   * The durable record that this stage closed — owner ruling R8.
+   *
+   * Guarded on `stageClosable` and on nothing else, because that variable IS the
+   * decision. A record written for a stage that did not close would let dispatch
+   * proceed on work nobody finished, which is a worse failure than no record at
+   * all: the whole point of the record is that dispatch may trust it.
+   *
+   * Written BEFORE `appendEvidence` deliberately. Both are side effects of the
+   * same decision, and if only one can land it should be the one something else
+   * depends on — evidence that is missing is a gap in the trail, whereas a
+   * completion that is missing merely leaves dispatch refusing, which is the
+   * fail-safe direction.
+   */
+  if (stageClosable) {
+    await deps.recordStageCompletion?.({
+      stage: input.stage as PipelineStageId,
+      round: verdict.round,
+      artifactRef: verdict.artifactRef,
+    });
+  }
 
   await deps.appendEvidence({
     kind: "review.verdict",

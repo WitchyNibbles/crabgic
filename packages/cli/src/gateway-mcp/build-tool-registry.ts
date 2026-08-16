@@ -56,6 +56,7 @@ import {
   type CapabilityAuditDeps,
 } from "@crabgic/detect";
 import { resolveRequirements, type ProjectInspectDeps, type Registry } from "@crabgic/supervisor";
+import { completedStageIds } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
@@ -80,6 +81,7 @@ import { runPipelinePlan } from "../review/pipeline-plan-handler.js";
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
+import { loadStageCompletions, recordStageCompletion } from "../review/stage-completion-store.js";
 import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
 import { loadArtifacts, saveArtifacts } from "../review/artifact-store.js";
 import { loadDesignVerdicts, verdictInForce } from "../review/design-verdict-store.js";
@@ -143,6 +145,18 @@ export interface ProductionGatewayToolRegistryDeps {
   readonly reviewAttestationsPath: string;
   /** Where the structured design and plan records live, per ChangeSet. */
   readonly reviewArtifactsPath: string;
+  /**
+   * Where the record of which stages have CLOSED lives — owner ruling R8
+   * (2026-08-16), ledger Gap 23's disclosed residual 2.
+   *
+   * The registry WRITES this one, and that is the difference from
+   * `reviewDesignVerdictsPath` directly above. A design verdict is the owner's
+   * answer and nothing session-reachable may record it; a stage completion is
+   * the SERVER's own closure computation, and `review.submit` is the one place
+   * in the product that computes it. Writing it anywhere else would be a second
+   * answer to a question that already has one.
+   */
+  readonly reviewStageCompletionsPath: string;
   /**
    * Where the OWNER's design verdicts live — the design gate's only key
    * (owner ruling R2, roadmap/25 WI 5).
@@ -246,6 +260,30 @@ function buildReviewTools(
           priorDesign: () => priorArtifacts.design,
           priorPlan: () => priorArtifacts.plan,
           ownerDesignVerdict: () => ownerVerdict,
+          /**
+           * Appended only when `runReviewSubmit`'s own `stageClosable` is true —
+           * the handler guards the call, and this closure supplies only what the
+           * handler could not know: the ChangeSet it was scoped to, and the
+           * moment it closed.
+           *
+           * `closedAt` is stamped HERE and never accepted from the caller, the
+           * same rule `crabgic design approve` earned: a supplied timestamp can
+           * be backdated, and when a stage actually closed is the only thing the
+           * field is for.
+           */
+          recordStageCompletion: (closure) =>
+            recordStageCompletion(
+              deps.reviewStageCompletionsPath,
+              {
+                schemaVersion: 1,
+                changeSetId: args.changeSetId,
+                stage: closure.stage,
+                round: closure.round,
+                artifactRef: closure.artifactRef,
+                closedAt: new Date().toISOString(),
+              },
+              deps.reviewStateHome,
+            ),
           calibration: () => ({
             calibrated: calibration.calibrated,
             kappa: calibration.kappa,
@@ -341,23 +379,50 @@ function buildReviewTools(
     name: PIPELINE_PLAN_TOOL.name,
     description: PIPELINE_PLAN_TOOL.description,
     inputSchema: PIPELINE_PLAN_SHAPE,
-    handler: (args) =>
-      Promise.resolve(
-        jsonResult(
-          runPipelinePlan({
-            ...(args.completedStages !== undefined
-              ? { completedStages: args.completedStages }
-              : {}),
-            ...(args.stackEvidence !== undefined ? { stackEvidence: args.stackEvidence } : {}),
-          }),
-        ),
-      ),
+    handler: async (args) => {
+      /**
+       * Read only when the caller named a change set. Absent is not empty: an
+       * embedder that has not wired the store keeps the pre-R8 behaviour, while
+       * an empty recorded set means nothing has closed, which is the fail-safe
+       * direction R8 depends on.
+       */
+      const recordedStages =
+        args.changeSetId === undefined
+          ? undefined
+          : completedStageIds(
+              await loadStageCompletions(deps.reviewStageCompletionsPath),
+              args.changeSetId,
+            );
+      return jsonResult(
+        runPipelinePlan({
+          ...(args.completedStages !== undefined ? { completedStages: args.completedStages } : {}),
+          ...(recordedStages !== undefined ? { recordedStages } : {}),
+          ...(args.stackEvidence !== undefined ? { stackEvidence: args.stackEvidence } : {}),
+        }),
+      );
+    },
   };
 
   return [reviewSubmit, reviewCalibrate, pipelinePlan];
 }
 
 const PIPELINE_PLAN_SHAPE = {
+  /**
+   * The change set this plan is for — owner ruling R8.
+   *
+   * Optional so an embedder that has not wired the stage-completion store keeps
+   * working. When supplied, the server READS what has actually closed for this
+   * change set and plans from that, using `completedStages` below only to tell
+   * the caller which of its claims the record does not support.
+   */
+  changeSetId: z.string().optional(),
+  /**
+   * What the CALLER believes has closed.
+   *
+   * No longer authoritative when `changeSetId` is supplied. Kept because a
+   * caller's own view is worth reporting a disagreement about, and removing the
+   * field would break every existing caller for no gain.
+   */
   completedStages: z.array(z.string()).optional(),
   /**
    * `unknown`, deliberately: validated by `StackEvidenceSchema` inside the
