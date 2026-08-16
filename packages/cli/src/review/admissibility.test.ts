@@ -71,6 +71,19 @@ describe("bound 1 — scope", () => {
     expect(admissibilityOf(messy, ["packages/gateway/src/auth.ts"]).admissible).toBe(true);
   });
 
+  it("refuses a finding naming a directory ABOVE a path the change set writes", () => {
+    // CLEAN-CODE ADVISORY (round 1): `touches` containment is one-directional
+    // by design, not oversight. Only the write set follows the
+    // `PlannedWriteSet` directory-naming convention; a finding naming a
+    // shallow ancestor of a written file does not match. Symmetric matching
+    // would let a finding naming `packages/` or the repo root become in-scope
+    // for nearly any change set, which reopens the unbounded space this bound
+    // exists to close.
+    const directoryFinding = finding({ paths: ["packages/gateway/src"] });
+    const verdict = admissibilityOf(directoryFinding, ["packages/gateway/src/auth.ts"]);
+    expect(verdict.admissible).toBe(false);
+  });
+
   it("refuses a finding that names no path at all", () => {
     // DISCLOSED TRADE-OFF, tested so it is a decision rather than an accident.
     // A pathless finding can never be excluded by a scope bound, so admitting
@@ -163,6 +176,16 @@ describe("bound 2 — obligation", () => {
     // as coverage is the vacuity failure this repository has now paid for at
     // five separate criteria.
     expect(unrunObligations([], [])).toEqual(["<no obligations were issued to this lens>"]);
+  });
+
+  it("does not let an unissued answer forge coverage for a real obligation", () => {
+    // CLEAN-CODE ADVISORY (round 1): an answer naming an obligation that was
+    // never issued is dropped, not flagged -- and this pins why that is safe.
+    // A stray answer for "o-extra" cannot satisfy "o2", because coverage is
+    // computed by filtering `issued`, not by counting `answered`; the two ids
+    // would have to collide to interfere, and a collision would mean it was
+    // the real obligation all along.
+    expect(unrunObligations(["o1", "o2"], ["o1", "o-extra"])).toEqual(["o2"]);
   });
 });
 
