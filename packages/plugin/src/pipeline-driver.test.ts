@@ -169,3 +169,61 @@ describe("roundBudgetFor", () => {
     expect(roundBudgetFor("clarify")).toBe(1);
   });
 });
+
+describe("planStageRound — which reviewer each lens is dispatched to", () => {
+  // WHY THIS EXISTS. `workflows/stage-round.mjs` hardcoded
+  // `agentType: "eo-domain-reviewer"` for EVERY lens it dispatched. Only the
+  // audit stage plans domain lenses; every other stage plans PIPELINE lenses,
+  // which are `eo-reviewer`'s charter. The shipped workflow therefore sent
+  // `completeness`, `source-quality`, `assumption-audit`, `contract-fit`,
+  // `operability`, `coverage-of-design`, `sequencing`, `correctness` and
+  // `readability` to a reviewer whose own definition lists eight lens names,
+  // none of which are those — and never dispatched `eo-reviewer` at all.
+  //
+  // The script cannot fix this itself: a workflow script has no imports, so it
+  // cannot read `DOMAIN_LENS_IDS` to tell the two families apart. So the plan
+  // carries the answer, for the same reason it already carries the lens list.
+
+  it("routes a domain lens to eo-domain-reviewer", () => {
+    const plan = planStageRound("audit", EMPTY_STACK);
+    for (const lens of plan.lenses) {
+      expect(DOMAIN_LENS_IDS).toContain(lens.lens);
+      expect(lens.reviewer).toBe("eo-domain-reviewer");
+    }
+  });
+
+  it("routes a pipeline lens to eo-reviewer", () => {
+    const plan = planStageRound("research", EMPTY_STACK);
+    expect(plan.lenses.map((l) => l.lens)).toEqual([
+      "completeness",
+      "source-quality",
+      "assumption-audit",
+    ]);
+    for (const lens of plan.lenses) expect(lens.reviewer).toBe("eo-reviewer");
+  });
+
+  it("splits a stage whose lens list mixes both families", () => {
+    // `implement` plans `correctness` and `security` (pipeline) alongside
+    // `compliance` and `clean-code` (domain). A single hardcoded agent type is
+    // wrong for half of them whichever one it picks — which is the argument for
+    // deriving it per lens rather than per stage.
+    const byLens = new Map(
+      planStageRound("implement", EMPTY_STACK).lenses.map((l) => [l.lens, l.reviewer]),
+    );
+    expect(byLens.get("correctness")).toBe("eo-reviewer");
+    expect(byLens.get("security")).toBe("eo-reviewer");
+    expect(byLens.get("compliance")).toBe("eo-domain-reviewer");
+    expect(byLens.get("clean-code")).toBe("eo-domain-reviewer");
+  });
+
+  it("names a reviewer for every lens of every stage", () => {
+    // No stage may plan a lens with no reviewer: an undispatchable lens is an
+    // unanswered obligation, and `admissibility.ts` bound 2 holds the stage open
+    // on it forever.
+    for (const stage of PIPELINE_STAGE_IDS) {
+      for (const lens of planStageRound(stage, EMPTY_STACK).lenses) {
+        expect(lens.reviewer, `${stage}/${lens.lens}`).toMatch(/^eo-(domain-)?reviewer$/);
+      }
+    }
+  });
+});

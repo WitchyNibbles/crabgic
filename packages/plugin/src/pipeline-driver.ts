@@ -1,4 +1,5 @@
 import {
+  DOMAIN_LENS_IDS,
   PIPELINE_STAGE_IDS,
   REVIEW_RUNAWAY_GUARD,
   exitCriteriaFor,
@@ -88,10 +89,36 @@ export function nextStage(completed: readonly PipelineStageId[]): PipelineStageI
   return firstIncomplete;
 }
 
+/** The two reviewer subagents the pipeline dispatches lenses to. */
+export type LensReviewer = "eo-reviewer" | "eo-domain-reviewer";
+
+/**
+ * Which subagent owns a lens.
+ *
+ * The two rosters are different in kind, and the agent definitions say so:
+ * `eo-domain-reviewer` asks what a specialist in that FIELD would notice,
+ * `eo-reviewer` asks whether the artifact meets a stated criterion. Membership
+ * of `DOMAIN_LENS_IDS` is the whole discriminator, so it is read here rather
+ * than retyped — the audit stage's roster IS that list.
+ *
+ * This is derived rather than configured because the alternative was measured:
+ * `workflows/stage-round.mjs` hardcoded one agent type for every lens of every
+ * stage, and a workflow script has no imports, so it had no way to tell the
+ * families apart. The plan carries the answer for the same reason it already
+ * carries the lens list.
+ */
+export function reviewerFor(lens: string): LensReviewer {
+  return (DOMAIN_LENS_IDS as readonly string[]).includes(lens)
+    ? "eo-domain-reviewer"
+    : "eo-reviewer";
+}
+
 /** One reviewer to dispatch, and the checklist it owes an answer about. */
 export interface PlannedLens {
   readonly lens: string;
   readonly obligations: readonly string[];
+  /** The subagent this lens is dispatched to — see `reviewerFor`. */
+  readonly reviewer: LensReviewer;
 }
 
 export interface StageRoundPlan {
@@ -128,7 +155,11 @@ export function planStageRound(stage: PipelineStageId, evidence: StackEvidence):
     const { applicable, skipped } = lensesApplicableTo(evidence);
     return {
       stage,
-      lenses: applicable.map((lens) => ({ lens: lens.id, obligations })),
+      lenses: applicable.map((lens) => ({
+        lens: lens.id,
+        obligations,
+        reviewer: reviewerFor(lens.id),
+      })),
       skipped,
       obligations,
     };
@@ -136,7 +167,11 @@ export function planStageRound(stage: PipelineStageId, evidence: StackEvidence):
 
   return {
     stage,
-    lenses: definition.lenses.map((lens) => ({ lens, obligations })),
+    lenses: definition.lenses.map((lens) => ({
+      lens,
+      obligations,
+      reviewer: reviewerFor(lens),
+    })),
     skipped: [],
     obligations,
   };

@@ -70,6 +70,51 @@ describe("the pipeline.plan → stage-round/stage-loop seam", () => {
     },
   );
 
+  it.each(["stage-round.mjs", "stage-loop.mjs"])(
+    "%s reads only PLANNED-LENS fields the handler actually emits",
+    (script) => {
+      // The `plan.<field>` check above never looked inside a lens, so
+      // `lens.reviewer` — which decides which subagent every review is
+      // dispatched to — sat outside the seam it belongs to. A lens field that
+      // reads `undefined` is the same failure mode one level down: the round
+      // runs, and it runs wrong.
+      const lenses = plan.lenses ?? [];
+      expect(lenses.length).toBeGreaterThan(0);
+      const emitted = new Set(Object.keys(lenses[0]!));
+      // `lens?.reviewer` as well as `lens.reviewer`. The first version of this
+      // matched only the un-guarded form and stayed GREEN with `reviewer`
+      // deleted from the handler — blind to the single field it was added for,
+      // because the script reads it through an optional chain.
+      const read = [
+        ...new Set(
+          [...scriptText(script).matchAll(/\blens\??\.([a-zA-Z][a-zA-Z0-9]*)/g)].map((m) => m[1]!),
+        ),
+      ];
+      expect(
+        read.filter((f) => !emitted.has(f)),
+        `${script} reads unemitted lens fields`,
+      ).toEqual([]);
+    },
+  );
+
+  it("names a dispatchable reviewer on every planned lens of every stage", () => {
+    // `stage-round` throws on a lens the plan did not label, so an unlabelled
+    // lens is a dead round rather than a mis-dispatched one. Held here against
+    // the handler that actually serves the wire.
+    for (const completed of [
+      [],
+      ["research", "clarify", "design", "design-gate", "plan"],
+      ["research", "clarify", "design", "design-gate", "plan", "implement", "integrate"],
+    ]) {
+      const stagePlan = runPipelinePlan({ completedStages: completed });
+      for (const lens of stagePlan.lenses ?? []) {
+        expect(["eo-reviewer", "eo-domain-reviewer"], `${stagePlan.stage}/${lens.lens}`).toContain(
+          lens.reviewer,
+        );
+      }
+    }
+  });
+
   it("emits `ownerGated` truthfully for a gate — the field that stops a reviewer closing it", () => {
     const gate = runPipelinePlan({ completedStages: ["research", "clarify", "design"] });
     expect(gate.stage).toBe("design-gate");
