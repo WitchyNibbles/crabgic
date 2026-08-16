@@ -1165,3 +1165,115 @@ describe("the documentation stage — roadmap/25 WI 8", () => {
     expect(result.error).toMatch(/documentation record/i);
   });
 });
+
+/**
+ * Owner ruling R8 (2026-08-16), work item 2 — the writer half.
+ *
+ * `pipeline.plan` took `completedStages` from its caller, which let it refuse a
+ * completion set with a HOLE in it and left it unable to refuse a caller
+ * claiming a stage it never ran. R8 makes dispatch depend on the `design-gate`
+ * stage having closed, so the claim has to become a record — written HERE, from
+ * this handler's own closure computation, because this is the one place that
+ * computes it.
+ *
+ * The tests below are written so that deleting the write reddens them, and so
+ * that a write on a stage that did NOT close reddens them too. Both directions
+ * matter: a record written when nothing closed is worse than no record, because
+ * dispatch would then proceed on it.
+ */
+describe("stage-completion recording — R8", () => {
+  function capturing(overrides: Partial<ReviewSubmitDeps> = {}) {
+    const recorded: Array<{ stage: string; round: number; artifactRef: string }> = [];
+    const d = deps({
+      recordStageCompletion: (record) => {
+        recorded.push({
+          stage: record.stage,
+          round: record.round,
+          artifactRef: record.artifactRef,
+        });
+        return Promise.resolve();
+      },
+      ...overrides,
+    });
+    return { deps: d, recorded };
+  }
+
+  it("records a completion when the stage closes", async () => {
+    const { deps: d, recorded } = capturing();
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve", findings: [] }),
+        attestations: [doneCriteriaAttestation()],
+      },
+      d,
+    );
+    expect(result.stageClosable).toBe(true);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]?.stage).toBe("implement");
+  });
+
+  /**
+   * The arm that matters more. A completion recorded for a stage that did not
+   * close would let dispatch proceed on a stage nobody finished — which under
+   * R8 is the whole failure this record exists to prevent.
+   */
+  it("records NOTHING when the stage does not close", async () => {
+    const { deps: d, recorded } = capturing({
+      metCriteria: () => [],
+    });
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ stage: "implement", verdict: "approve", findings: [] }),
+      },
+      d,
+    );
+    expect(result.stageClosable).toBe(false);
+    expect(recorded).toEqual([]);
+  });
+
+  it("carries the round the stage closed on, not a constant", async () => {
+    const { deps: d, recorded } = capturing();
+    await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve", findings: [], round: 4 }),
+        attestations: [doneCriteriaAttestation(4)],
+      },
+      d,
+    );
+    expect(recorded[0]?.round).toBe(4);
+  });
+
+  it("carries the artifact the stage closed over", async () => {
+    const { deps: d, recorded } = capturing();
+    await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve", findings: [] }),
+        attestations: [doneCriteriaAttestation()],
+      },
+      d,
+    );
+    expect(recorded[0]?.artifactRef).toBeTruthy();
+  });
+
+  /**
+   * The handler must not require the dep. A caller that has not wired the store
+   * — every existing test, and any embedder — keeps working, and the absence is
+   * a missing RECORD rather than a thrown error at the moment a stage closes.
+   */
+  it("closes the stage normally when no recorder is wired", async () => {
+    const result = await runReviewSubmit(
+      {
+        stage: "implement",
+        verdict: verdict({ verdict: "approve", findings: [] }),
+        attestations: [doneCriteriaAttestation()],
+      },
+      deps(),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.stageClosable).toBe(true);
+  });
+});
