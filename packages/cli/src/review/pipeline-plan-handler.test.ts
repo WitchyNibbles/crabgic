@@ -150,3 +150,75 @@ describe("runPipelinePlan — absent stack evidence", () => {
     expect(result.lenses?.map((l) => l.lens)).not.toContain("frontend");
   });
 });
+
+/**
+ * Owner ruling R8 (2026-08-16), work item 3 — the claim becomes a record.
+ *
+ * The bound this tool shipped with was that `completedStages` comes from the
+ * caller, so a hole could be refused and a lie could not. R8 makes dispatch
+ * depend on a stage having closed, which turns that from a disclosed residual
+ * into the thing an attacker or a confused caller would aim at.
+ *
+ * These tests are written so that deleting the derivation reddens them: each one
+ * has the caller claiming something the record does not support.
+ */
+describe("completedStages is derived, not believed — R8", () => {
+  it("uses the recorded completions and ignores a caller that claims more", () => {
+    // The load-bearing arm. A caller claiming `research` and `clarify` when only
+    // `research` is recorded must be planned as if only `research` closed.
+    const result = runPipelinePlan({
+      completedStages: ["research", "clarify"],
+      recordedStages: ["research"],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.stage).toBe("clarify");
+  });
+
+  it("reports the stages the caller claimed but nothing recorded", () => {
+    // Told, not silently corrected. A caller working from a stale local view
+    // needs to know its picture disagrees with the server's, or it will keep
+    // submitting against the wrong stage and read the result as a bug.
+    const result = runPipelinePlan({
+      completedStages: ["research", "clarify"],
+      recordedStages: ["research"],
+    });
+    expect(result.unrecordedClaims).toEqual(["clarify"]);
+  });
+
+  it("plans the first stage when the caller claims progress and nothing is recorded", () => {
+    // The empty-record case must mean NOTHING closed, never everything. This is
+    // the same fail-safe direction the store reads in.
+    const result = runPipelinePlan({
+      completedStages: ["research", "clarify", "design"],
+      recordedStages: [],
+    });
+    expect(result.stage).toBe("research");
+  });
+
+  it("still refuses a recorded set with a hole in it, naming the stage jumped", () => {
+    // The property the tool already had must survive the derivation — a record
+    // can have a hole too, if a stage was closed out of order.
+    const result = runPipelinePlan({ recordedStages: ["research", "design"] });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/clarify/);
+  });
+
+  it("falls back to the caller's claim when no recorded set is supplied at all", () => {
+    // Absent is not the same as empty. An embedder that has not wired the store
+    // keeps the pre-R8 behaviour rather than being told nothing has ever closed,
+    // and `unrecordedClaims` stays absent so nobody reads a fallback as a
+    // disagreement.
+    const result = runPipelinePlan({ completedStages: ["research"] });
+    expect(result.ok).toBe(true);
+    expect(result.stage).toBe("clarify");
+    expect(result.unrecordedClaims).toBeUndefined();
+  });
+
+  it("reports no disagreement when the claim matches the record", () => {
+    const result = runPipelinePlan({
+      completedStages: ["research"],
+      recordedStages: ["research"],
+    });
+    expect(result.unrecordedClaims).toBeUndefined();
+  });
+});
