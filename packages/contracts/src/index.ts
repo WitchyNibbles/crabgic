@@ -95,6 +95,7 @@ export * from "./contracts/spec-record.js";
 export * from "./contracts/autonomy-settings.js";
 // The design gate's only key — owner ruling R2, roadmap/25 WI 5.
 export * from "./contracts/owner-design-verdict.js";
+export * from "./contracts/stage-completion-record.js";
 // The documentation stage's artifact — roadmap/25 WI 8.
 export * from "./contracts/documentation-record.js";
 export * from "./contracts/capability-manifest.js";
