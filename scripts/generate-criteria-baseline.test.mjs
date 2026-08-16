@@ -10,7 +10,11 @@
  */
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { baselineEntryFor, diffAgainstCommitted } from "./generate-criteria-baseline.mjs";
+import {
+  auditPinReachability,
+  baselineEntryFor,
+  diffAgainstCommitted,
+} from "./generate-criteria-baseline.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value, "utf8").digest("hex");
 const PIN = { rev: "a".repeat(40), note: "fixture pin" };
@@ -117,5 +121,58 @@ describe("diffAgainstCommitted", () => {
     const committed = clone();
     committed.phases["03"].criteria = ["h1"];
     expect(diffAgainstCommitted(derived, committed).join("\n")).toContain("criteria");
+  });
+});
+
+/**
+ * PIN REACHABILITY — added 2026-08-15, from a defect that was live on `main`.
+ *
+ * Phase 25's pin named a commit on the feature branch that PR #137
+ * squash-merged. The object survived only as long as the merged branch did, and
+ * deleting a merged branch is routine — so the repository's own criteria seal
+ * was one cleanup away from being permanently underivable, with CI green the
+ * whole time because `fetch-depth: 0` fetches every branch.
+ *
+ * A comment saying "pin at the merge commit" would not have caught it. This is
+ * the mechanism.
+ */
+describe("auditPinReachability", () => {
+  const PINS = { 25: { rev: "f".repeat(40), note: "the merge of PR #137" } };
+
+  it("passes a pin reachable from main", () => {
+    const audit = auditPinReachability(PINS, () => "main");
+    expect(audit.problems).toEqual([]);
+    expect(audit.pendingRepins).toEqual([]);
+  });
+
+  /**
+   * The exact shape of the live defect: after the squash merge the branch
+   * commit is an ancestor of nothing the repository keeps. It must FAIL, and
+   * the message must say what to do, because the symptom a maintainer would
+   * otherwise meet is `git cat-file` failing inside a hashing script.
+   */
+  it("FAILS a pin reachable from neither main nor HEAD, and says how to fix it", () => {
+    const audit = auditPinReachability(PINS, () => "none");
+    expect(audit.problems).toHaveLength(1);
+    expect(audit.problems[0]).toContain("25");
+    expect(audit.problems[0]).toContain("re-pin");
+  });
+
+  /**
+   * The introducing PR. Its pin cannot yet be a merge commit — the merge commit
+   * does not exist — so this must NOT fail, or no new phase could ever be added.
+   * It is recorded as owed instead, and the hard failure arrives on `main`'s
+   * first run after the squash, which is the earliest moment it can.
+   */
+  it("does NOT fail a pin that is only HEAD-reachable, but records it as owed", () => {
+    const audit = auditPinReachability(PINS, () => "head");
+    expect(audit.problems).toEqual([]);
+    expect(audit.pendingRepins).toHaveLength(1);
+    expect(audit.pendingRepins[0]).toContain("after this branch merges");
+  });
+
+  it("reports every bad pin rather than only the first", () => {
+    const many = { 25: PINS[25], 26: { rev: "e".repeat(40), note: "x" } };
+    expect(auditPinReachability(many, () => "none").problems).toHaveLength(2);
   });
 });

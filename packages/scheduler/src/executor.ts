@@ -192,11 +192,60 @@ async function journalSealRefusal(
   });
 }
 
+/**
+ * Records WHY a worker's reported result was rejected as malformed.
+ *
+ * Same discipline and same security bound as `journalSealRefusal`: the reason
+ * reaches the journal BEFORE the `failed` transition, and it carries the
+ * VALIDATOR's diagnostics — never worker-authored prose, which is
+ * attacker-controlled on exactly this path.
+ */
+async function journalWorkerResultRejection(
+  params: ConsumeEventsParams,
+  diagnostics: readonly string[],
+): Promise<void> {
+  await params.journal.appendEntry({
+    type: "adjudication_decision",
+    ...(params.runId !== undefined ? { runId: params.runId } : {}),
+    workUnitId: params.workUnitId,
+    payload: {
+      decision: "worker_result_rejected",
+      rationale: `rejected a reported result: it does not match the WorkerResult schema — ${
+        diagnostics.length > 0 ? diagnostics.join("; ") : "no diagnostics supplied"
+      }`,
+      subjectId: params.workUnitId,
+    },
+  });
+}
+
 /** Shared event-consumption loop between a fresh dispatch and a resume — see file-level doc comment. */
 async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttemptOutcome> {
   for await (const event of params.events) {
     if (event.type === "limitSignal") {
+      /**
+       * ONLY A REFUSAL PARKS. `rate_limit_event` is routine usage TELEMETRY:
+       * all sixteen samples `docs/engine-baseline.md` §8 recorded carry
+       * `status` `allowed` or `allowed_warning`, and §8's directive to phase 06
+       * is to watch for "a `status` transition to `'rejected'`".
+       *
+       * This gate was missing, and it is why no crabgic work unit had ever
+       * completed (measured 2026-08-16 on run 08f1f1dd): a worker parked
+       * seconds after dispatch on a message saying it was ALLOWED to proceed,
+       * waited five hours for a window it did not need, and parked again on the
+       * next telemetry event. Four dispatches over eleven hours produced nine
+       * seconds of work and no code. The `accountWide` expression below already
+       * encoded the right distinction — it was simply never consulted for the
+       * park decision itself.
+       *
+       * `allowed_warning` deliberately does not park. §8 offers it as an
+       * early-warning the scheduler MAY park on ahead of hard rejection —
+       * permission, not instruction — and pre-emptive parking trades a possible
+       * future block for a certain present stall, which is the failure just
+       * measured. If it is ever wanted it belongs behind an explicit
+       * utilization threshold, never in the default path.
+       */
       const accountWide = event.status === "rejected" || event.errorCode === "credits_required";
+      if (!accountWide) continue;
       await parkWorkUnit({
         journal: params.journal,
         workUnitId: params.workUnitId,
@@ -209,9 +258,19 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
     }
 
     if (event.type === "result") {
-      const validation = validateWorkerResult(event);
+      const validation = validateWorkerResult(event, params.workUnitId);
 
       if (validation.kind === "schemaViolation") {
+        // Journaled BEFORE the transition, for the reason the seal-refusal
+        // branch below already states: a crash between the two must leave the
+        // REASON behind, not a bare `failed` nothing accounts for. Until
+        // 2026-08-16 this branch did exactly that — run 97fb3b10's worker
+        // returned `{outcome, summary}` without the required
+        // `schemaVersion`/`id`/`workUnitId`, and the journal recorded a failure
+        // with no cause while the diagnostics were handed to the caller and
+        // discarded. Recovering the reason meant reading this file's branches
+        // against the worker's raw transcript.
+        await journalWorkerResultRejection(params, validation.diagnostics);
         await recordAttempt(
           params.journal,
           params.workUnitId,

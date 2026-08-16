@@ -139,8 +139,27 @@ async function* replayFakeEngineScript(
     yield { type: "assistant", sessionId: script.sessionId, text: script.assistantText };
   }
 
-  const structuredOutput =
-    script.failure?.kind === "schemaViolation" ? undefined : script.structuredOutput;
+  /**
+   * PROJECTED to the worker-authored fields, because that is all a real worker
+   * can emit: the SDK constrains structured output to the `outputFormat` schema
+   * the daemon publishes, which is `WorkerAuthoredResultSchema`.
+   *
+   * Scripts still declare a full `WorkerResult` — it is what assertions compare
+   * against — but emitting all seven fields here would model an engine that
+   * hands back `id`, `workUnitId` and `usage` the model invented. That fiction
+   * is precisely what hid the schema mismatch measured on run 97fb3b10: the
+   * fake engine produced documents no real worker could produce, so the whole
+   * suite agreed with a contract production never honoured.
+   */
+  const authored =
+    script.structuredOutput === undefined
+      ? undefined
+      : {
+          outcome: script.structuredOutput.outcome,
+          summary: script.structuredOutput.summary,
+          diagnostics: script.structuredOutput.diagnostics,
+        };
+  const structuredOutput = script.failure?.kind === "schemaViolation" ? undefined : authored;
 
   yield {
     type: "result",

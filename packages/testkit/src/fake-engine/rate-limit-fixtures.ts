@@ -48,6 +48,36 @@ export const RATE_LIMIT_ALLOWED_WARNING_99: RateLimitEventPayload = {
   surpassedThreshold: 0.9,
 };
 
+/**
+ * ⚠️ NOT A RECORDED SAMPLE — derived from the SDK's TYPE DECLARATION, and the
+ * one payload in this file that is.
+ *
+ * `docs/engine-baseline.md` §8 records the `rejected` variant as UNRESOLVED:
+ * never captured live on either baseline pass, because deliberately exhausting
+ * the owner's subscription is refused. §8 rules on that gap explicitly — phase
+ * 13 "must treat the `'rejected'`-transition handling as built on the SDK's
+ * _typed_ promise, exercised only against fake-engine fixtures" — which is
+ * exactly what this is for, and why it is kept OUT of
+ * `RECORDED_RATE_LIMIT_PAYLOADS` below. That array means "verbatim observed",
+ * and this must never be allowed to dilute it.
+ *
+ * It exists because the alternative was worse. Until 2026-08-16 every park test
+ * staged its park with an `allowed_warning` payload, which made the whole suite
+ * agree that routine telemetry parks a worker — the defect that stopped any
+ * work unit from ever completing. Testing the park path needs a payload that
+ * genuinely refuses, and the SDK declares exactly what one looks like.
+ *
+ * Field set mirrors `RATE_LIMIT_ALLOWED_FIVE_HOUR`, an observed sample, with
+ * only `status` changed: nothing here is invented beyond the enum value
+ * `sdk.d.ts` 0.3.218 declares.
+ */
+export const RATE_LIMIT_REJECTED: RateLimitEventPayload = {
+  status: "rejected",
+  resetsAt: 1784135400,
+  rateLimitType: "five_hour",
+  isUsingOverage: false,
+};
+
 /** All four verbatim recorded payloads, in the order docs/engine-baseline.md §8 lists them. */
 export const RECORDED_RATE_LIMIT_PAYLOADS: readonly RateLimitEventPayload[] = [
   RATE_LIMIT_ALLOWED_FIVE_HOUR,

@@ -1,8 +1,16 @@
 # What an unattended run needs, and what it would cost
 
-**Status:** not run. The owner authorized a _small scoped run_ (2026-08-15) and
-declined the full pipeline. This document exists so that authorizing it later is
-a decision about a known quantity rather than an open-ended one.
+**Status:** ~~not run.~~ **Superseded in part, 2026-08-15 — a real run was
+dispatched.** See `first-real-dispatch.md`. The standing `EnvelopePolicy` this
+document lists as an owner prerequisite **already existed** (written by the
+owner's terminal `install` at 18:46); the run was approved, sealed and dispatched
+with no human in the sequence, and parked on the **account's rate limit**. The
+cost estimate and the convergence question below stand unchanged — the worker
+produced no code, so nothing here is measured that was not measured before.
+
+The owner authorized a _small scoped run_ (2026-08-15) and declined the full
+pipeline. This document exists so that authorizing it later is a decision about a
+known quantity rather than an open-ended one.
 
 ## What has been demonstrated
 
@@ -23,8 +31,42 @@ Four things, each with what it needs:
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Reviewers dispatched by the pipeline, not by an operator** | The manager invokes `crabgic-stage-loop` instead of an operator spawning agents. Needs an interactive manager session with the plugin installed. Cost: one stage's lenses per round, same as today.                         |
 | **Findings repaired by workers, not by an operator**         | A dispatched, envelope-bounded worker in its own worktree writes the fix. Needs `crabgic run` against a real ChangeSet with an approved envelope, and engine spend per attempt (initial + up to two repairs per work unit). |
-| **The audit stage firing where a run reaches**               | Blocked on phase 14's gate-registry composition — no production code moves a run to `verifying`/`final_verifying`. See `docs/deploy-posture.md`, gate-registry row. This is not a spend question.                           |
+| **The audit stage firing where a run reaches**               | ~~Blocked on phase 14's gate-registry composition.~~ **Corrected 2026-08-15 — see the note below.** Needs exactly what the first two rows need: an installed manager session, and spend for up to eight domain lenses.      |
 | **Guides written by a worker**                               | `buildDocumentationWorkUnit` produces the unit; dispatching it needs the same worker path as any other unit.                                                                                                                |
+
+### Correction, 2026-08-15 — the audit-stage blocker was not real
+
+The row above originally named phase 14's gate-registry composition as a
+**non-spend blocker** on the audit stage. That was wrong, and it was wrong in the
+way this repository has a rule about: it cited a `docs/deploy-posture.md` row
+**that the same document had already superseded**, without reading the amendment
+sitting directly beneath it.
+
+What is actually true, each checked against production source rather than against
+the posture doc's prose:
+
+- The daemon's one production composition root **does** compose a gate registry —
+  `packages/cli/src/daemon/compose-gate-registry.ts`, derived from
+  `REQUIRED_SECURITY_FIXTURE_IDS` so a manifest entry auto-registers.
+- Production code **does** walk the run onto those states.
+  `runPostCompletionPipeline` transitions `verifying` (`:217`), `integrating`
+  (`:288`), `final_verifying` (`:364`) and `published_local` (`:454`), and it is
+  called from the real dispatcher at `run-dispatcher.ts:950` — not only from
+  tests.
+- The pipeline's own `audit` stage is planned, not stubbed. `planStageRound`
+  branches to the domain roster for it (`pipeline-driver.ts:127`), the e2e stage
+  walk reaches it in order, and `stage-round.mjs` fans out one
+  `eo-domain-reviewer` per applicable lens with the skipped ones logged by name.
+
+So there was never a code blocker between a run and its audit stage. The gap
+collapses into the two rows above it: **an installed manager session and spend.**
+Nothing here was fixed to make that true — it was already true when the row was
+written, and the row was mistaken.
+
+Recorded rather than quietly edited, because the failure is the interesting part:
+a stale citation to a document that had corrected itself in place produced a
+blocker that never existed, and a _false_ blocker is worse than a missing one —
+it argues against attempting the very thing it was blocking.
 
 ## The honest cost estimate
 

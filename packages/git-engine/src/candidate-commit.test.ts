@@ -161,6 +161,51 @@ describe("commitWorktreeCandidate — collecting a worker's uncommitted output",
     expect(COLLECTION_EXCLUDE_PATHSPECS.length).toBeGreaterThan(0);
   });
 
+  /**
+   * MEASURED on run 4de72ba8 (2026-08-16) — the first run whose worker
+   * SUCCEEDED. Collection then aborted the whole run:
+   *
+   *     git add --all --end-of-options . :(exclude)node_modules
+   *       :(exclude,glob)**\/node_modules/**  exited with code 1:
+   *     The following paths are ignored by one of your .gitignore files:
+   *     node_modules
+   *
+   * `git add` REFUSES a pathspec that explicitly names an ignored path. The
+   * exclusions exist for the project that does NOT gitignore `node_modules`
+   * (see `COLLECTION_EXCLUDE_PATHSPECS`) — and in the far more common project
+   * that DOES, naming it is what breaks. Six minutes of successful worker
+   * output, and $2.05, discarded at the last step.
+   *
+   * Crabgic's own repository is this case, so every dogfooded run hit it.
+   */
+  it("collects successfully when the project DOES gitignore node_modules", async () => {
+    const fixture = await buildWorktreeFixture();
+    writeFileSync(join(fixture.worktreePath, "node_modules-ignore"), "", "utf8");
+    writeFileSync(join(fixture.worktreePath, ".gitignore"), "node_modules\n", "utf8");
+    mkdirSync(join(fixture.worktreePath, "node_modules", "left-pad"), { recursive: true });
+    writeFileSync(
+      join(fixture.worktreePath, "node_modules", "left-pad", "index.js"),
+      "module.exports = 1;\n",
+      "utf8",
+    );
+    // Real worker output alongside it — the thing that must survive.
+    writeFileSync(join(fixture.worktreePath, "worker-output.txt"), "the work\n", "utf8");
+
+    const result = await commitWorktreeCandidate(plumbing, {
+      worktreePath: fixture.worktreePath,
+      subject: "feat: the worker's actual work",
+      body: "Why: fixture\nRisk: none\nCompat: none\nVerification: pending",
+      identity: IDENTITY,
+      baseObjectId: fixture.baseObjectId,
+    });
+
+    expect(result.status).toBe("committed");
+    // And the provisioned tree still did not get swept in.
+    const listed = fixtureGit(fixture.worktreePath, ["ls-tree", "-r", "--name-only", "HEAD"]);
+    expect(listed).toContain("worker-output.txt");
+    expect(listed).not.toContain("node_modules/left-pad");
+  });
+
   it("HARDENING — work the worker committed ITSELF is returned as the candidate, never silently dropped", async () => {
     const fixture = await buildWorktreeFixture();
     // Today no worker can commit (the compiled profile grants no `git commit`),

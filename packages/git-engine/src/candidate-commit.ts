@@ -174,7 +174,32 @@ export async function commitWorktreeCandidate(
       : { status: "committed", objectId: tip };
   }
 
-  await plumbing.run(["add", "--all", OPTION_TERMINATOR, ".", ...COLLECTION_EXCLUDE_PATHSPECS], {
+  /**
+   * The exclusions are applied ONLY when the project does not already ignore
+   * `node_modules`, because `git add` REFUSES a pathspec that explicitly names
+   * an ignored path:
+   *
+   *     The following paths are ignored by one of your .gitignore files:
+   *     node_modules
+   *
+   * Measured on run 4de72ba8 (2026-08-16), the first run whose worker actually
+   * succeeded: collection aborted, and six minutes of real output was
+   * discarded at the last step. Crabgic's own repository gitignores
+   * `node_modules`, so every dogfooded run hit it.
+   *
+   * Probing rather than catching: `check-ignore` answers the exact question
+   * ("does THIS worktree ignore it"), where swallowing the `add` failure would
+   * also swallow the unrelated ones. When the path IS ignored the exclusions
+   * are redundant — git already omits it — so dropping them changes nothing
+   * about what gets committed, which the test asserts rather than assumes.
+   */
+  const ignoresNodeModules = await plumbing.run(
+    ["check-ignore", "--quiet", OPTION_TERMINATOR, "node_modules"],
+    { cwd: options.worktreePath, env: CONTROL_CONTEXT_ENV, allowFailure: true },
+  );
+  const excludes = ignoresNodeModules.exitCode === 0 ? [] : COLLECTION_EXCLUDE_PATHSPECS;
+
+  await plumbing.run(["add", "--all", OPTION_TERMINATOR, ".", ...excludes], {
     cwd: options.worktreePath,
     env: CONTROL_CONTEXT_ENV,
   });

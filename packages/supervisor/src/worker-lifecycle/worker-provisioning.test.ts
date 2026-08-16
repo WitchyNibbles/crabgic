@@ -38,3 +38,45 @@ describe("provisionWorkerDirs", () => {
     await expect(provisionWorkerDirs(root, "worker-1")).resolves.toBeDefined();
   });
 });
+
+/**
+ * THE 108-BYTE CEILING — measured 2026-08-16, and the reason no crabgic worker
+ * could run a command.
+ *
+ * `sun_path` in `sockaddr_un` is 108 bytes on Linux. The engine's command
+ * sandbox creates its bridge sockets under `TMPDIR`, so a deep `TMPDIR` leaves
+ * no room for the socket name and every `Bash` call dies with:
+ *
+ *     Sandbox is required but failed to initialize:
+ *     Failed to create bridge sockets after 5 attempts.
+ *
+ * The real provisioned path was 101 characters —
+ * `<cache>/<projectHash>/worktrees/workers/<work-unit-uuid>/tmp` — leaving
+ * seven. Isolated by probe: the same strict worker env with a SHORT `TMPDIR`
+ * runs `echo` fine; with a long one it fails. Both controls recorded in
+ * `docs/evidence/phase-25/published-unverified.md`.
+ *
+ * The consequence was not a broken sandbox but a silent one: workers could not
+ * run tests, reported success anyway, and runs published unverified work.
+ */
+describe("TMPDIR must fit a unix domain socket", () => {
+  it("leaves usable room under the 108-byte sun_path limit", async () => {
+    const base = await mkdtemp(join(tmpdir(), "crabgic-provisioning-"));
+    const provisioning = await provisionWorkerDirs(
+      join(base, "worktrees", "workers"),
+      "1c7d5e92-4a63-4f18-8b20-6e93c1a7d044",
+    );
+    // A socket name needs real room, not the last byte. 40 is comfortably
+    // more than any observed bridge-socket filename and still far below 108.
+    expect(provisioning.TMP.length).toBeLessThanOrEqual(108 - 40);
+  });
+
+  it("stays short even for a deeply nested base dir — the real shape", async () => {
+    // What production actually passes: an XDG cache root, a project hash, and
+    // two path segments before the worker id.
+    const deep = await mkdtemp(join(tmpdir(), "crabgic-deep-"));
+    const base = join(deep, ".cache", "crabgic", "47ea4ed1d22b4abf", "worktrees", "workers");
+    const provisioning = await provisionWorkerDirs(base, "1c7d5e92-4a63-4f18-8b20-6e93c1a7d044");
+    expect(provisioning.TMP.length).toBeLessThanOrEqual(108 - 40);
+  });
+});

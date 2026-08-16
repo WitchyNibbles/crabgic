@@ -86,6 +86,9 @@ import {
 import { changeSetRequirementIds } from "./compose-gate-registry.js";
 import { deriveBranchType, type PostCompletionGitEffects } from "./post-completion-git-effects.js";
 
+/** Names the coverage note this pipeline writes just before publication. */
+export const FINAL_GATE_COVERAGE_DECISION = "final_gate_coverage";
+
 /**
  * Internal checkpoints, exposed as a test-only observer seam — the same
  * `onStep` pattern `@crabgic/git-engine`'s `createWorktree`/`ensureControlClone`
@@ -449,6 +452,41 @@ export async function runPostCompletionPipeline(
         `and the run failed rather than leave an unverified artifact published.`,
     };
   }
+
+  /**
+   * WHAT THE GATES ACTUALLY COVERED, written down before the run is called
+   * published.
+   *
+   * `published_local` is the strongest thing this system says, and it reads as
+   * a verdict. Measured on runs 04a0bf70 and bc167a3a (2026-08-16), it was not
+   * one: both published while NOTHING had evaluated their acceptance criteria.
+   * The criteria seal is an anti-tamper check and passed correctly; the gates
+   * that fire here ask a different question; the tranche that would ask has no
+   * production registration (`docs/deploy-posture.md`, gate-registry row).
+   *
+   * This does not change what publishes — that is an owner scope decision, and
+   * quietly turning today's successful runs into refusals is not this function's
+   * to do. It changes what is KNOWN about a publication: the gates that ran are
+   * named, and the fact that acceptance criteria were not among them is stated
+   * in the record rather than left for a reader to infer from an absence.
+   *
+   * A terminal state that carries no verdict is not made honest by a document
+   * somebody has to find. It is made honest here.
+   */
+  await deps.journal.appendEntry({
+    type: "adjudication_decision",
+    runId: input.runId,
+    payload: {
+      decision: FINAL_GATE_COVERAGE_DECISION,
+      rationale:
+        `published ${objectId} after ${String(results.length)} final-candidate gate(s): ` +
+        `${results.map((result) => result.name).join(", ")}. ` +
+        `NOT COVERED: this change set's own acceptance criteria — no registered gate ` +
+        `evaluates them, so publication attests that the candidate merged cleanly and ` +
+        `passed the gates named above, never that the work meets what it was approved to do.`,
+      subjectId: changeSetId,
+    },
+  });
 
   await deps.onStep?.("before-published-local");
   if (!(await transition("published_local"))) return raced("record publication");

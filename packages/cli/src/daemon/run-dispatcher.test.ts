@@ -348,7 +348,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               // driver finds it ready-to-resume immediately.
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 1, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 1, rateLimitType: "five_hour" },
               },
               // The continuation the retained adapter runs on resume.
               onResume: buildFakeEngineScript({
@@ -381,6 +381,72 @@ describe("createRealRunDispatcher — dispatch", () => {
     );
     // Resume reused the RETAINED adapter — it never asked for a fresh one.
     expect(adaptersCreated).toBe(1);
+  });
+
+  /**
+   * MEASURED 2026-08-16, on the live run 08f1f1dd. `resume` on a run whose only
+   * unit is parked with its window STILL OPEN answered `accepted: true`, cut a
+   * fresh intake freeze, journaled it, and transitioned nothing. An operator
+   * loop polling "parked -> resume" therefore wrote 214 `git_freeze` entries
+   * and made no progress, while every reply said the resume had been accepted.
+   *
+   * The freeze is the expensive half and it happens INSIDE the drive, so the
+   * refusal has to come from `classifyResume` — before `beginDriving` — or the
+   * work is already done by the time anyone could refuse.
+   *
+   * This is the third member of the register PR #46 established (name what is
+   * in the way, why, and the exit that works) and the only one where waiting IS
+   * the exit, so the reason must carry the reset time rather than send the
+   * operator to `cancel`.
+   */
+  it("REFUSES to resume a parked unit whose reset window has not passed, without freezing", async () => {
+    const SESSION = "99999999-9999-4999-8999-999999999999";
+    const worktreePath = join(dir, "worktree");
+    let clock = 1000; // strictly before the reset window
+    let freezes = 0;
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      prepareRun: () => {
+        freezes += 1;
+        return Promise.resolve("a".repeat(40));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
+              },
+            }),
+          ),
+        ),
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    await dispatcher.whenIdle();
+    const freezesAfterFirstDrive = freezes;
+
+    // The window is STILL open (`clock` 1000 < `resetsAt` 5000).
+    const refused = await dispatcher.resume(runId);
+    expect(refused.accepted).toBe(false);
+    // The reason must let the operator act: when, not just "no".
+    expect(refused.reason).toMatch(/5000|window|rate limit/i);
+
+    // THE POINT: no second freeze. A refusal that still did the expensive work
+    // would fix the message and none of the cost.
+    expect(freezes).toBe(freezesAfterFirstDrive);
+
+    // And the control: once the window passes, the same call is accepted.
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
   });
 
   /**
@@ -419,7 +485,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               // separate, later drive.
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
               },
               onResume: buildFakeEngineScript({
                 sessionId: SESSION,
@@ -513,7 +579,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               worktreePath,
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
               },
             }),
           ),
@@ -1162,7 +1228,7 @@ describe("createRealRunDispatcher — a published change set", () => {
                 worktreePath,
                 failure: {
                   kind: "limitSignal",
-                  payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                  payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
                 },
                 onResume: buildFakeEngineScript({
                   sessionId: SESSION,

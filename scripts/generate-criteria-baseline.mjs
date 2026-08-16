@@ -85,13 +85,32 @@ const PRE_CLOSEOUT_REVISIONS = {
   /**
    * Phase 25 postdates `DEFAULT_REVISION` — it did not exist at af46e00, so
    * there is no tree there to hash. It is pinned at the commit that introduced
-   * it, which is pre-closeout by construction: no closeout pass has run, and
-   * `baselineEntryFor` asserts that by refusing any checkbox already carrying
-   * the annotation lead.
+   * it to `main`, which is pre-closeout by construction: no closeout pass has
+   * run, and `baselineEntryFor` asserts that by refusing any checkbox already
+   * carrying the annotation lead.
+   *
+   * ⚠️ A PIN MUST BE REACHABLE FROM `main`, and this one was not (fixed
+   * 2026-08-15). It originally named `68e5620`, a commit on the feature branch
+   * that PR #137 **squash-merged** — so the object survived only as long as
+   * `origin/feat/pipeline-conformance` did. Deleting a merged branch is
+   * routine, and doing it would have made `showBlob` fail for phase 25 and
+   * broken `check:criteria-closeout` on `main` permanently, for a reason
+   * nothing in the failure would have explained. CI passed throughout because
+   * `fetch-depth: 0` fetches every branch, which is precisely why the defect
+   * was invisible.
+   *
+   * The re-pin is hash-neutral and was verified as such: no criterion checkbox
+   * line differs between `68e5620` and `fc448fb`, so the frozen wording this
+   * baseline seals is byte-identical. Nothing was re-sealed — only the anchor
+   * moved onto history that cannot disappear.
+   *
+   * THE RULE THIS GENERALISES TO: pin a postdating phase at its **merge**
+   * commit on `main`, never at a branch commit. A pin on a squash-merged branch
+   * is a dangling reference waiting for a cleanup.
    */
   25: {
-    rev: "68e5620fa090eb07f1b2e8d3b3e8c0ea67bb4633",
-    note: "the commit that introduced roadmap/25; no closeout has touched it",
+    rev: "fc448fb018454ea6a964819ff433b5b5f3f0bed4",
+    note: "the merge of PR #137, which introduced roadmap/25 to main; no closeout has touched it",
   },
 };
 
@@ -153,6 +172,74 @@ export function baselineEntryFor(file, pin, markdown) {
 }
 
 /** Builds the manifest object from git, throwing on anything that smells wrong. */
+/**
+ * Where a pinned revision still lives — `"main"`, `"head"` or `"none"`.
+ *
+ * Separated from the audit below so the audit can be unit-tested without git,
+ * the same split `baselineEntryFor` already uses.
+ */
+function pinReachability(rev) {
+  const reachableFrom = (ref) => {
+    try {
+      execFileSync("git", ["merge-base", "--is-ancestor", rev, ref], { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  // `origin/main` first, then a local `main`: a fresh CI checkout has the
+  // remote-tracking ref, a developer clone usually has both.
+  for (const ref of ["origin/main", "main"]) {
+    try {
+      execFileSync("git", ["rev-parse", "--verify", "--quiet", ref], { stdio: "ignore" });
+    } catch {
+      continue;
+    }
+    if (reachableFrom(ref)) return "main";
+  }
+  return reachableFrom("HEAD") ? "head" : "none";
+}
+
+/**
+ * Refuses a pin that no longer hangs off history the repository keeps.
+ *
+ * WHY THIS EXISTS — a defect that was live on `main` and green in CI. Phase 25
+ * was pinned at `68e5620`, a commit on the feature branch that PR #137
+ * **squash-merged**. Squashing does not preserve the branch's commits, so the
+ * object survived only while `origin/feat/pipeline-conformance` did. Deleting a
+ * merged branch is routine housekeeping, and doing it would have made
+ * `showBlob` fail for phase 25 and broken `check:criteria-closeout` on `main`
+ * permanently — the repository's own criteria seal, underivable, for a reason
+ * the failure text would not have explained. CI was green throughout because
+ * `fetch-depth: 0` fetches every branch, which is exactly why nobody saw it.
+ *
+ * WHY A HEAD-ONLY PIN IS OWED RATHER THAN REFUSED. The PR that introduces a
+ * phase cannot pin its own merge commit — that commit does not exist yet. So a
+ * pin reachable only from `HEAD` is recorded as owed and the branch stays
+ * green; the refusal fires on `main`'s first run after the squash, which is the
+ * earliest moment the defect is real. That costs one loud red run per newly
+ * introduced phase, and it is the honest price of a seal that cannot rot
+ * quietly.
+ */
+export function auditPinReachability(pins, reachability = pinReachability) {
+  const problems = [];
+  const pendingRepins = [];
+  for (const [phase, pin] of Object.entries(pins)) {
+    const where = reachability(pin.rev);
+    if (where === "main") continue;
+    if (where === "head") {
+      pendingRepins.push(
+        `phase ${phase}: pin ${pin.rev} is not on main yet — re-pin it to the merge commit after this branch merges, or the seal dies with the branch`,
+      );
+      continue;
+    }
+    problems.push(
+      `phase ${phase}: pinned revision ${pin.rev} is reachable from neither main nor HEAD — it was almost certainly a squash-merged branch commit. Re-pin phase ${phase} to the merge commit that introduced its roadmap file to main; the re-pin is hash-neutral if no criterion wording changed, and this script proves that when you regenerate.`,
+    );
+  }
+  return { problems, pendingRepins };
+}
+
 export function deriveBaseline() {
   const phases = {};
   for (const file of phaseFiles(DEFAULT_REVISION)) {
@@ -250,7 +337,17 @@ function main() {
     console.error(`generate-criteria-baseline: cannot read ${BASELINE_FILE} — ${String(cause)}`);
     process.exit(1);
   }
-  const problems = diffAgainstCommitted(derived, committed);
+  /**
+   * Reachability is audited BEFORE the hash diff, and its problems are merged
+   * into the same failure. A dead pin makes every hash under it meaningless, so
+   * reporting "the hashes re-derive" first would be reassuring the reader about
+   * a derivation that is one branch deletion from impossible.
+   */
+  const reach = auditPinReachability(PRE_CLOSEOUT_REVISIONS);
+  for (const owed of reach.pendingRepins) {
+    console.warn(`generate-criteria-baseline: OWED — ${owed}`);
+  }
+  const problems = [...reach.problems, ...diffAgainstCommitted(derived, committed)];
   if (problems.length > 0) {
     for (const problem of problems) console.error(`generate-criteria-baseline: ${problem}`);
     console.error(

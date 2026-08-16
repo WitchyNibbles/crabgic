@@ -96,10 +96,16 @@ a much higher value, and under R3 it defaults rather than halting the run.
 - **Deleting the 2026-07-29 measurement.** R4 replaces the rule the measurement
   produced, not the measurement. `docs/staged-review-pipeline.md` §2 stays
   verbatim and is annotated, per this repo's annotate-never-rewrite convention.
-- **Composing the gate registry.** The `audit` stage's reachability depends on it
-  (`docs/deploy-posture.md`, gate-registry row), and that defect is phase 14's.
-  This phase's criterion 8 binds the audit stage to a **reached** stage rather
-  than shipping a handler with no reader.
+- **Composing the gate registry.** ~~The `audit` stage's reachability depends on
+  it (`docs/deploy-posture.md`, gate-registry row), and that defect is phase
+  14's.~~ **Corrected 2026-08-15:** it had already landed (PRs #104/#121) and
+  this non-goal cited the superseded row rather than the amendment beneath it —
+  see `docs/evidence/phase-25/unattended-run-gap.md`, "the audit-stage blocker
+  was not real". The non-goal still holds for the tranche that is genuinely
+  uncomposed (15's perf gate, 14's tdd/coverage/flake/scanner), which is an owner
+  scope decision. This phase's criterion 8 binds the audit stage to a **reached**
+  stage rather than shipping a handler with no reader, and that binding is
+  unchanged.
 - **Multi-tenant anything.** `docs/deploy-posture.md` is unchanged by this phase.
 
 ## Interfaces produced
@@ -554,9 +560,22 @@ reachable, not proved.
 
 **What an unattended run still needs, and what it would cost**, is written down
 at `docs/evidence/phase-25/unattended-run-gap.md` so that authorizing it is a
-decision about a known quantity. One gap in it is not a spend question at all:
+decision about a known quantity. ~~One gap in it is not a spend question at all:
 the `audit` stage cannot fire where no production run reaches, which is phase
-14's gate-registry composition and is why criterion 9 below stays unticked.
+14's gate-registry composition and is why criterion 9 below stays unticked.~~
+**Corrected 2026-08-15:** that blocker did not exist. The registry is composed
+(`compose-gate-registry.ts`) and `runPostCompletionPipeline` walks
+`verifying → integrating → final_verifying → published_local` from the real
+dispatcher (`run-dispatcher.ts:950`). The audit criterion — **checkbox 13**, which
+the prose above and the non-goals section miscount as 9 and 8 respectively — stays
+unticked for the ordinary reason every other unrun criterion does: **no run has
+been authorized.** Nothing blocks it.
+
+Its own wording still carries the false conditional ("if phase 14's gate-registry
+composition has not landed"). That sentence is **deliberately left alone**: the
+criteria list is hashed into `docs/evidence/criteria-closeout/criteria-baseline.json`
+and re-wording it would break the seal to fix a sentence this paragraph already
+corrects. Read the criterion with this note attached.
 
 ## Exit criteria
 

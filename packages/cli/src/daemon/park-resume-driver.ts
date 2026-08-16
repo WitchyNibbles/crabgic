@@ -1,0 +1,286 @@
+/**
+ * Resumes runs parked on a rate limit, once their window has passed.
+ *
+ * WHY THIS EXISTS — a defect the first real dispatch MEASURED, rather than one
+ * reasoned about (2026-08-15, `docs/evidence/phase-25/first-real-dispatch.md`).
+ * A run that meets the account's rate limit parks correctly, retains its engine
+ * adapter correctly, and journals a `rate_limit_park_timer` carrying the reset
+ * correctly. **Nothing read that timer back.** The run sat parked until a human
+ * typed `crabgic resume`, twice — which is precisely the property the owner's
+ * pipeline may not have past the design gate: "from this point no human
+ * feedback is needed". Approval, sealing, dispatch and the worker itself
+ * already need no human; surviving a rate limit did, and a long run will meet
+ * one.
+ *
+ * WHY IT DERIVES FROM THE JOURNAL rather than from the dispatcher's in-memory
+ * retained-adapter map. The map is the right answer to "which adapter do I
+ * reuse" and the wrong answer to "what is parked": it is per-process, so a
+ * daemon restart would silently strand every parked run, and reading it would
+ * need a new method on a cross-package interface for a fact the journal already
+ * records. `work_unit_transition` entries carry `runId` and `workUnitId`, so the
+ * parked set is derivable and restart-safe — this repository's stated preference
+ * everywhere else parking is concerned (`@crabgic/scheduler`'s `getParkStatus`
+ * makes the same call for the same reason).
+ *
+ * WHAT IT DOES NOT DECIDE. Not whether a resume is allowed — `resume` is the
+ * dispatcher's own operation and refuses a terminal or mid-pipeline run on its
+ * own terms. Not when the window has passed — that is `getParkStatus`'s
+ * `readyToResume`, injected here. This module decides only WHICH runs to ask
+ * about, and asks at most once at a time.
+ *
+ * ⚠️ THE BOUND THIS FIX DOES NOT REACH, stated here because it is invisible
+ * from the outside and this driver otherwise reads as if it closed the whole
+ * gap. Resuming a parked session with FULL authority needs the same adapter
+ * instance that spawned it — only that instance holds the session's
+ * `{packet, profile}` context, and a fresh one gets a read-only fallback
+ * (`./run-dispatcher.ts`, `retainedWorkers`). Those instances are per-process.
+ *
+ * So this driver rescues a run parked by the daemon it is running in, and
+ * CANNOT rescue one parked by a previous daemon: a restart mid-park downgrades
+ * that run's resume no matter who calls it, driver or human. Deploying this
+ * driver to a daemon that is already holding a parked run therefore does not
+ * help that run — the restart required to load it is the very thing that
+ * strands it.
+ *
+ * Closing THAT needs durable session context a new process can pick up, which
+ * is a different change with a different risk surface. Recorded as a known
+ * bound rather than papered over, because "runs now resume themselves" is true
+ * only for the daemon that parked them.
+ */
+
+import { getParkStatus, isGloballyPaused } from "@crabgic/scheduler";
+import type { JournalStore } from "@crabgic/journal";
+
+/** The minimum of a `work_unit_transition` this driver reads. */
+export interface AttemptTransition {
+  readonly seq: number;
+  readonly runId: string | undefined;
+  readonly workUnitId: string | undefined;
+  readonly status: string;
+}
+
+const PARKED_STATUS = "parked:rate_limit";
+
+/**
+ * Composite-key separator, written as an ESCAPE and never as a raw byte —
+ * `check:hygiene` refuses a raw NUL in tracked source, and this repository has
+ * now paid for that twice in one day. NUL rather than a space or a colon
+ * because it cannot occur in either half, so no pair of ids can collide by
+ * spelling — the same reasoning `findingKey` uses in
+ * `../review/admissibility.ts`.
+ */
+const KEY_SEP = "\u0000";
+
+/**
+ * The work units whose LATEST transition is a rate-limit park, grouped by run.
+ *
+ * Latest-wins by `seq`, never by iteration order: journal reads ascend today,
+ * and a driver that silently depended on that would be wrong the first time
+ * anything batches or replays. An entry missing `runId` or `workUnitId` is
+ * skipped rather than trusted or thrown on — never trust file content, and one
+ * malformed entry must not hide every well-formed one after it.
+ */
+export function latestParkedByRun(
+  transitions: Iterable<AttemptTransition>,
+): ReadonlyMap<string, readonly string[]> {
+  const latest = new Map<string, { seq: number; status: string }>();
+  const keys = new Map<string, { runId: string; workUnitId: string }>();
+
+  for (const entry of transitions) {
+    const { runId, workUnitId } = entry;
+    if (runId === undefined || workUnitId === undefined) continue;
+    const key = `${runId}${KEY_SEP}${workUnitId}`;
+    const seen = latest.get(key);
+    if (seen !== undefined && seen.seq >= entry.seq) continue;
+    latest.set(key, { seq: entry.seq, status: entry.status });
+    keys.set(key, { runId, workUnitId });
+  }
+
+  const parked = new Map<string, string[]>();
+  for (const [key, { status }] of latest) {
+    if (status !== PARKED_STATUS) continue;
+    const { runId, workUnitId } = keys.get(key)!;
+    const units = parked.get(runId);
+    if (units === undefined) parked.set(runId, [workUnitId]);
+    else units.push(workUnitId);
+  }
+  return parked;
+}
+
+/**
+ * The runs worth asking to resume: those with at least one parked unit whose
+ * reset has passed.
+ *
+ * ANY rather than EVERY, deliberately. A run whose units parked at different
+ * times has different windows, and waiting for the last one would leave earlier
+ * work idle for no reason — the dispatcher re-drives the whole DAG and parks
+ * again whatever is still inside its window.
+ *
+ * The restraint is the other half: a run with parked units, none past its
+ * window, is NOT returned. Asking anyway would spend an engine call to be told
+ * the same thing, and re-park with a fresh timer — a driver on a tick would
+ * busy-loop against the very rate limiter it is waiting out.
+ */
+export function runsReadyToResume(
+  parked: ReadonlyMap<string, readonly string[]>,
+  isReady: (runId: string, workUnitId: string) => boolean,
+): readonly string[] {
+  const ready: string[] = [];
+  for (const [runId, units] of parked) {
+    if (units.some((workUnitId) => isReady(runId, workUnitId))) ready.push(runId);
+  }
+  return ready;
+}
+
+export interface ParkResumeDriverOptions {
+  /** Every `work_unit_transition` on record, ascending or not. */
+  readonly readTransitions: () => Promise<Iterable<AttemptTransition>>;
+  /** `getParkStatus(...).readyToResume` for one unit of one run. */
+  readonly isReadyToResume: (runId: string, workUnitId: string) => Promise<boolean>;
+  /** The dispatcher's own `resume`. */
+  readonly resume: (runId: string) => Promise<unknown>;
+  /** Account-wide pause, if the caller tracks one. Absent means "never paused". */
+  readonly isGloballyPaused?: () => Promise<boolean>;
+  readonly onError?: (error: unknown) => void;
+  /** Tick period. Defaults to a minute — the windows are minutes-to-hours long. */
+  readonly intervalMs?: number;
+}
+
+export interface ParkResumeDriver {
+  /** One sweep. Never rejects: a driver that threw would stop its own timer. */
+  readonly tick: () => Promise<void>;
+  readonly start: () => void;
+  readonly stop: () => void;
+}
+
+export const DEFAULT_PARK_RESUME_INTERVAL_MS = 60_000;
+
+export function createParkResumeDriver(options: ParkResumeDriverOptions): ParkResumeDriver {
+  const report = options.onError ?? ((): void => {});
+  let timer: NodeJS.Timeout | undefined;
+  /**
+   * Ticks may not overlap. A resume slower than the interval would otherwise
+   * stack calls for the same run — the duplicate dispatch this driver exists to
+   * avoid, arriving through its own timer.
+   */
+  let ticking = false;
+
+  async function tick(): Promise<void> {
+    if (ticking) return;
+    ticking = true;
+    try {
+      if (options.isGloballyPaused !== undefined && (await options.isGloballyPaused())) return;
+
+      const parked = latestParkedByRun(await options.readTransitions());
+      if (parked.size === 0) return;
+
+      // Readiness is async per unit, so it is resolved BEFORE the pure
+      // selection rather than inside it — keeping `runsReadyToResume` a
+      // function a test can reason about without a clock or a journal.
+      const readiness = new Map<string, boolean>();
+      for (const [runId, units] of parked) {
+        for (const workUnitId of units) {
+          readiness.set(
+            `${runId}${KEY_SEP}${workUnitId}`,
+            await options.isReadyToResume(runId, workUnitId),
+          );
+        }
+      }
+
+      for (const runId of runsReadyToResume(
+        parked,
+        (run, unit) => readiness.get(`${run}${KEY_SEP}${unit}`) === true,
+      )) {
+        try {
+          await options.resume(runId);
+        } catch (error) {
+          // One run's refusal must not abandon the others: they are
+          // independent, and the next window is a minute away at best.
+          report(error);
+        }
+      }
+    } catch (error) {
+      report(error);
+    } finally {
+      ticking = false;
+    }
+  }
+
+  return {
+    tick,
+    start(): void {
+      if (timer !== undefined) return;
+      timer = setInterval(() => void tick(), options.intervalMs ?? DEFAULT_PARK_RESUME_INTERVAL_MS);
+      // Unref'd: a resume driver must never be the reason a daemon cannot exit.
+      timer.unref?.();
+    },
+    stop(): void {
+      if (timer === undefined) return;
+      clearInterval(timer);
+      timer = undefined;
+    },
+  };
+}
+
+/** Just enough of `SupervisorDependencies` for the driver — the journal. */
+export interface ParkResumeJournalDeps {
+  readonly journal: JournalStore;
+}
+
+/** Injectable for tests; production passes `@crabgic/scheduler`'s own readers. */
+export interface ParkResumeWiring {
+  readonly getParkStatus: typeof getParkStatus;
+  readonly isGloballyPaused: typeof isGloballyPaused;
+  readonly nowSeconds: () => number;
+  readonly onError: (error: unknown) => void;
+  readonly intervalMs?: number;
+}
+
+/**
+ * Starts the driver against a real journal and dispatcher, and returns the
+ * dispatcher UNCHANGED.
+ *
+ * It wraps rather than replaces because the daemon's composition root uses the
+ * return value as its dispatcher: a wiring function that returned anything else
+ * would silently disable dispatch entirely. Registering something at a
+ * composition root and not returning it is precisely the shape of
+ * `14-gate-registry-never-composed`, so the test for this asserts identity
+ * first.
+ *
+ * `getParkStatus` is called RUN-SCOPED. Work-unit ids are stable across runs of
+ * the same change set, so an unscoped read could report another run's park and
+ * resume the wrong one.
+ */
+export function startParkResumeDriver<T extends { resume: (runId: string) => Promise<unknown> }>(
+  deps: ParkResumeJournalDeps,
+  dispatcher: T,
+  wiring?: Partial<ParkResumeWiring>,
+): T {
+  const readStatus = wiring?.getParkStatus ?? getParkStatus;
+  const paused = wiring?.isGloballyPaused ?? isGloballyPaused;
+  const now = wiring?.nowSeconds ?? ((): number => Math.floor(Date.now() / 1000));
+
+  const driver = createParkResumeDriver({
+    readTransitions: async () => {
+      const transitions: AttemptTransition[] = [];
+      for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+        if (entry.type !== "work_unit_transition") continue;
+        transitions.push({
+          seq: entry.seq,
+          runId: entry.runId,
+          workUnitId: entry.workUnitId,
+          status: entry.payload.status,
+        });
+      }
+      return transitions;
+    },
+    isReadyToResume: async (runId, workUnitId) =>
+      (await readStatus(deps.journal, workUnitId, now(), runId)).readyToResume,
+    isGloballyPaused: () => paused(deps.journal, now()),
+    resume: (runId) => dispatcher.resume(runId),
+    onError: wiring?.onError ?? ((): void => {}),
+    ...(wiring?.intervalMs !== undefined ? { intervalMs: wiring.intervalMs } : {}),
+  });
+  driver.start();
+  return dispatcher;
+}

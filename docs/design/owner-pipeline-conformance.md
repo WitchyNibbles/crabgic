@@ -41,28 +41,91 @@ second one is checkable.
 
 ## 3. Conformance table
 
-| #   | Owner's step                             | State         | Evidence                                                                                                                                                                                                                                                                                 |
-| --- | ---------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Take requirements from the user          | **PRESENT**   | `IntentContract` + `CONTRACT_SECTIONS`; `packages/supervisor/src/intake/`                                                                                                                                                                                                                |
-| 2   | Deep research about it                   | **PARTIAL**   | `research` stage + 3 lenses exist (`pipeline-stages.ts:77-98`); **no `ResearchRecord`**, so all 3 criteria are judged-only (`staged-review-pipeline.md` §8.7); **no web access anywhere** — see §4.1                                                                                     |
-| 3   | `AskUserQuestion` to clarify             | **PRESENT**   | `clarify` stage closes on all 9 `CONTRACT_SECTIONS` answerable; `manager-protocol.ts:315-322` mandates the tool. This is the pipeline's strongest stage and the model the rest copies                                                                                                    |
-| 4   | Design by **per-domain** specialists     | **ABSENT**    | One generalist `eo-architect`. The whole agent roster is five files (`packages/plugin/agents/`); no backend/frontend/infra/testing/product-design agent, and no domain-lens list in `@crabgic/contracts`                                                                                 |
-| 5   | Deep research that the design is best    | **ABSENT**    | Design lenses are `contract-fit`, `security`, `operability` (`pipeline-stages.ts:108`). No alternatives-considered criterion, no prior-art criterion at design stage                                                                                                                     |
-| 6   | `AskUserQuestion` to confirm the design  | **ABSENT**    | `MANAGER_APPROVAL_GATES` has three entries (`manager-protocol.ts:220-230`); none is the design. Design closes on reviewer verdict + attestation, never on the owner                                                                                                                      |
-| 7   | Loop until the owner approves the design | **ABSENT**    | Follows from 6 — there is no owner verdict to loop on                                                                                                                                                                                                                                    |
-| 8   | Autonomous from that point               | **PRESENT**   | Standing `EnvelopePolicy` (ledger Gap 18) removes per-ChangeSet consent; `driveRun` executes the DAG; `manager-protocol.ts:278-282` forbids permission-asking. **Bounded by §4.2**                                                                                                       |
-| 9   | Prepare SDD documents for subagents      | **PARTIAL**   | `PlanRecord` tasks and `TaskPacket` exist; a task is a **work order, not a spec** — no requirements/design/tasks triad per unit, no acceptance criteria in the packet (`TaskPacket` carries `requirementIds` only)                                                                       |
-| 10  | Review the development documents, loop   | **PRESENT**   | `plan` stage, 2 lenses, 3 criteria **derived from the artifact** rather than judged (`review-submit-handler.ts`; `staged-review-pipeline.md` §8.7)                                                                                                                                       |
-| 11  | Orchestrate with Workflows + goal skills | **ABSENT**    | **Zero references** to the `Workflow` tool or the `/goal` skill in the entire repository. `PIPELINE_STAGES` has exactly one consumer — `review-submit-handler.ts` — which **judges** a stage; nothing **sequences** them. §8.4 records the choice as unmade                              |
-| 12  | Each specialist develops its document    | **PRESENT**   | `dispatchAttempt` / `driveRun`; worktree per unit, ≤4 concurrent, delegation depth 1                                                                                                                                                                                                     |
-| 13  | Four skill-charged evaluators            | **PARTIAL**   | `implement` lenses are `correctness` and `security` — **2 of 4**. No compliance lens; no stack-best-practices lens; no clean-code lens. And see §4.1: a "research best practices" lens has nothing to research with                                                                      |
-| 14  | Loop until zero issues/warnings/buts     | **RE-OPENED** | **Measured non-terminating over 12 rounds** on one subsystem, every finding real and reproducible (`staged-review-pipeline.md` §2). Owner ruling 2026-07-29 replaced it with progress-based closure, ceiling 5 — **re-opened by R4 on 2026-08-15**; §4.3 delivers the zero-findings exit |
-| 15  | Per-domain audit of the end product      | **ABSENT**    | `integrate` has **zero lenses** and one criterion (`pipeline-stages.ts:180-190`). Separately: the final-candidate gate's own reachability is a disclosed defect — `docs/deploy-posture.md` gate-registry row                                                                             |
-| 16  | Main loop ends when audits are clean     | **RE-OPENED** | Same ruling as 14                                                                                                                                                                                                                                                                        |
-| 17  | Documentation loop — user + maintenance  | **ABSENT**    | No seventh stage, no documentation agent, no documentation criteria. Searched `PIPELINE_STAGES`, the agent roster and the contracts index                                                                                                                                                |
+| #   | Owner's step                             | State         | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | ---------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Take requirements from the user          | **PRESENT**   | `IntentContract` + `CONTRACT_SECTIONS`; `packages/supervisor/src/intake/`                                                                                                                                                                                                                                                                                                                                                                   |
+| 2   | Deep research about it                   | **PARTIAL**   | `research` stage + 3 lenses exist (`pipeline-stages.ts:77-98`); **no `ResearchRecord`**, so all 3 criteria are judged-only (`staged-review-pipeline.md` §8.7); **no web access anywhere** — see §4.1                                                                                                                                                                                                                                        |
+| 3   | `AskUserQuestion` to clarify             | **PRESENT**   | `clarify` stage closes on all 9 `CONTRACT_SECTIONS` answerable; `manager-protocol.ts:315-322` mandates the tool. This is the pipeline's strongest stage and the model the rest copies                                                                                                                                                                                                                                                       |
+| 4   | Design by **per-domain** specialists     | **ABSENT**    | One generalist `eo-architect`. The whole agent roster is five files (`packages/plugin/agents/`); no backend/frontend/infra/testing/product-design agent, and no domain-lens list in `@crabgic/contracts`                                                                                                                                                                                                                                    |
+| 5   | Deep research that the design is best    | **ABSENT**    | Design lenses are `contract-fit`, `security`, `operability` (`pipeline-stages.ts:108`). No alternatives-considered criterion, no prior-art criterion at design stage                                                                                                                                                                                                                                                                        |
+| 6   | `AskUserQuestion` to confirm the design  | **ABSENT**    | `MANAGER_APPROVAL_GATES` has three entries (`manager-protocol.ts:220-230`); none is the design. Design closes on reviewer verdict + attestation, never on the owner                                                                                                                                                                                                                                                                         |
+| 7   | Loop until the owner approves the design | **ABSENT**    | Follows from 6 — there is no owner verdict to loop on                                                                                                                                                                                                                                                                                                                                                                                       |
+| 8   | Autonomous from that point               | **PRESENT**   | Standing `EnvelopePolicy` (ledger Gap 18) removes per-ChangeSet consent; `driveRun` executes the DAG; `manager-protocol.ts:278-282` forbids permission-asking. **Bounded by §4.2**                                                                                                                                                                                                                                                          |
+| 9   | Prepare SDD documents for subagents      | **PARTIAL**   | `PlanRecord` tasks and `TaskPacket` exist; a task is a **work order, not a spec** — no requirements/design/tasks triad per unit, no acceptance criteria in the packet (`TaskPacket` carries `requirementIds` only)                                                                                                                                                                                                                          |
+| 10  | Review the development documents, loop   | **PRESENT**   | `plan` stage, 2 lenses, 3 criteria **derived from the artifact** rather than judged (`review-submit-handler.ts`; `staged-review-pipeline.md` §8.7)                                                                                                                                                                                                                                                                                          |
+| 11  | Orchestrate with Workflows + goal skills | **ABSENT**    | **Zero references** to the `Workflow` tool or the `/goal` skill in the entire repository. `PIPELINE_STAGES` has exactly one consumer — `review-submit-handler.ts` — which **judges** a stage; nothing **sequences** them. §8.4 records the choice as unmade                                                                                                                                                                                 |
+| 12  | Each specialist develops its document    | **PRESENT**   | `dispatchAttempt` / `driveRun`; worktree per unit, ≤4 concurrent, delegation depth 1                                                                                                                                                                                                                                                                                                                                                        |
+| 13  | Four skill-charged evaluators            | **PARTIAL**   | `implement` lenses are `correctness` and `security` — **2 of 4**. No compliance lens; no stack-best-practices lens; no clean-code lens. And see §4.1: a "research best practices" lens has nothing to research with                                                                                                                                                                                                                         |
+| 14  | Loop until zero issues/warnings/buts     | **RE-OPENED** | **Measured non-terminating over 12 rounds** on one subsystem, every finding real and reproducible (`staged-review-pipeline.md` §2). Owner ruling 2026-07-29 replaced it with progress-based closure, ceiling 5 — **re-opened by R4 on 2026-08-15**; §4.3 delivers the zero-findings exit                                                                                                                                                    |
+| 15  | Per-domain audit of the end product      | **ABSENT**    | `integrate` has **zero lenses** and one criterion (`pipeline-stages.ts:180-190`). ~~Separately: the final-candidate gate's own reachability is a disclosed defect — `docs/deploy-posture.md` gate-registry row~~ **corrected 2026-08-15:** it fires (`post-completion-pipeline.ts:376`) against a composed registry; what is genuinely unregistered is the perf/tdd/coverage/flake/scanner tranche, so it fires with a **partial** gate set |
+| 16  | Main loop ends when audits are clean     | **RE-OPENED** | Same ruling as 14                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 17  | Documentation loop — user + maintenance  | **ABSENT**    | No seventh stage, no documentation agent, no documentation criteria. Searched `PIPELINE_STAGES`, the agent roster and the contracts index                                                                                                                                                                                                                                                                                                   |
 
 **Score at audit: 7 present, 4 partial, 4 absent, 2 refused.** After the rulings,
 the two refused rows are re-opened and all 17 are in scope for phase 25.
+
+### 3b. Re-audited 2026-08-16 — BUILT vs. DEMONSTRATED
+
+The table above audits what is BUILT. Phase 25 then built most of the gaps, and
+running the result end to end on this repository showed that "built" and "works"
+were separated by six defects no test suite could see. This section is the second
+axis, and it is the one that matters for the owner's condition: **has the step
+ever actually run?**
+
+| #   | Owner's step                   | Built after phase 25                               | Ever RUN, measured                                                                             |
+| --- | ------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | Take requirements              | yes                                                | **YES** — 3 runs, contract + DAG + envelope assembled                                          |
+| 2   | Deep research                  | yes (`ResearchRecord`, `eo-researcher`)            | no                                                                                             |
+| 3   | `AskUserQuestion` to clarify   | yes                                                | **YES** — owner rulings R1–R4, 2026-08-15                                                      |
+| 4   | Per-domain design panel        | yes (`DOMAIN_LENSES`, `eo-domain-reviewer`)        | no                                                                                             |
+| 5   | Research the design            | yes                                                | no                                                                                             |
+| 6   | Owner confirms the design      | yes (`design-gate`, `crabgic design approve`)      | no                                                                                             |
+| 7   | Loop until owner approves      | yes                                                | no                                                                                             |
+| 8   | Autonomous from that point     | yes                                                | **YES** — approval, sealing, dispatch, integration, publish, no human                          |
+| 9   | SDD documents per unit         | yes (`SpecRecord`, `TaskPacket.spec`)              | partial — packets carried specs; no generation loop ran                                        |
+| 10  | Review the documents, loop     | yes                                                | no                                                                                             |
+| 11  | Orchestrate with Workflows     | yes (`pipeline.plan`, `stage-round`, `stage-loop`) | no — never invoked by a manager session                                                        |
+| 12  | Each specialist develops       | yes                                                | **YES** — 29 commands executed, real code, own worktree                                        |
+| 13  | Four evaluators                | yes (4 lenses)                                     | **partial** — 4 real reviewers ran 2026-08-15, dispatched by the operator, not by `stage-loop` |
+| 14  | Loop to zero findings          | yes (4 bounds)                                     | **partial** — 3 rounds, 9 defects, no convergence                                              |
+| 15  | Per-domain audit               | yes (`audit` stage)                                | no                                                                                             |
+| 16  | Main loop ends on clean audits | yes                                                | no                                                                                             |
+| 17  | Documentation loop             | yes (`document` stage, `eo-documenter`)            | no                                                                                             |
+
+_Amended the same day, after driving `pipeline.plan` against the production
+gateway (`pipeline-plan-live.md`) — no engine spend, so it needed no
+authorization._ The DECIDING half of the staged pipeline is now measured on the
+real surface: all nine stages issued in order, with their lens rosters,
+obligation checklists, round budgets and owner-gated flags, terminating on
+`finished`. That moves rows 4, 6, 7, 10, 11, 13, 15 and 17 from "never run" to
+**"server half run, dispatch half unrun"** — the server issues each round
+correctly; no reviewer has answered one through `stage-loop`.
+
+Concretely established there: `implement` issues **all four** evaluators
+(`correctness`, `security`, `compliance`, `clean-code`), `clarify` and
+`design-gate` carry a round budget of **1** — the machine-readable form of "only
+a human closes this" — the `audit` stage ran its domain roster and **named the
+four lenses it skipped**, and the `document` stage exists with `completeness`
+and `readability`.
+
+**5 run, 3 partial, 9 never run.** The five that ran are the SPINE —
+`intake → approve → dispatch → implement → integrate → publish` — which is the
+half that had to work before any staged loop could mean anything, and which took
+six defect fixes to work at all (`first-completed-run.md`,
+`published-unverified.md`).
+
+**The nine unrun rows are unrun for one reason, and it is not a missing
+capability:** every one of them dispatches reviewer or producer agents through
+`crabgic-stage-loop`, which a manager session invokes. That is engine spend on
+the owner's account, and the owner authorized a _small scoped run_ on 2026-08-15
+while explicitly declining the full pipeline. The surfaces exist, are installed
+in this repository, and are unit-tested; what has never happened is a manager
+session being told to run them.
+
+**And one caveat that outranks the count.** Both completed runs reached
+`published_local` without their acceptance criteria ever being evaluated — see
+`published-unverified.md`. Until that is closed, a green row above means "the
+step executed", never "the step verified anything".
 
 ## 4. The four things that are not simply missing work
 
@@ -371,10 +434,15 @@ itself names, and must not be folded into Gap 23: one ruling, one gap.
 
 - It does not claim the substrate is finished. `docs/deploy-posture.md` governs
   that and says single-tenant trusted-operator only.
-- It does not claim the reachability of stage 7 is solved. The gate registry has
-  no production composition (deploy-posture, gate-registry row); an `audit` stage
-  that fires nowhere would be the harness-only vacuity this repo's own discipline
-  exists to catch, so phase 25's exit criteria bind it to a reached stage.
+- It does not claim the reachability of stage 7 is solved. ~~The gate registry has
+  no production composition (deploy-posture, gate-registry row);~~ **Corrected
+  2026-08-15 — that clause was false when written**: the registry is composed at
+  `compose-gate-registry.ts` and the post-completion pipeline walks the run onto
+  `verifying`/`final_verifying` from the real dispatcher. The claim it was
+  supporting survives without it: an `audit` stage that fires nowhere would be the
+  harness-only vacuity this repo's own discipline exists to catch, so phase 25's
+  exit criteria bind it to a reached stage — and no authorized run has reached one
+  yet. See `docs/evidence/phase-25/unattended-run-gap.md`.
 - It does not claim a `Workflow` script makes the pipeline mandatory. §5.3 states
   exactly how far the enforcement goes.
 - **It does not claim the zero-findings loop is proven to terminate.** §4.3's four

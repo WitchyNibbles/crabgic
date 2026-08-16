@@ -27,7 +27,7 @@ import {
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
-  RATE_LIMIT_ALLOWED_WARNING_96,
+  RATE_LIMIT_REJECTED,
 } from "@crabgic/testkit";
 import type { WorkUnit } from "@crabgic/contracts";
 import type { EngineAdapter } from "@crabgic/engine-core";
@@ -101,7 +101,7 @@ function buildDeps(
       const script =
         want === "limit"
           ? buildFakeEngineScript({
-              failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+              failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
             })
           : buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: want }) });
 
