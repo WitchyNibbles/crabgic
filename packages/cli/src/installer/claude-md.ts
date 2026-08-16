@@ -6,8 +6,45 @@
  * the import line, never duplicated instruction text.
  */
 import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
-import { buildManagerProtocolBlock } from "@crabgic/plugin";
+import { buildManagerProtocolBlock, REQUIRED_SKILL_NAMES } from "@crabgic/plugin";
 import { mergeManagedTextBlock, type TextMergeResult } from "./merge-text.js";
+
+/**
+ * How many commands go on one rendered line.
+ *
+ * A fixed COUNT rather than a computed width, for the same reason
+ * `manager-protocol.ts` wraps its glyph vocabulary that way: this text lands in
+ * a consuming repo's `CLAUDE.md` through a byte-preserving, drift-detected
+ * merge, so anything derived from a terminal width would show up as spurious
+ * drift in every consuming repo.
+ */
+const COMMANDS_PER_ROW = 4;
+
+/**
+ * The slash-command roster, DERIVED from the plugin manifest rather than typed
+ * out a second time.
+ *
+ * It was typed out a second time until 2026-08-16, and the two lists diverged
+ * exactly as this repository's own rule about two lists that must agree
+ * predicts: seven skills shipped and six were advertised. The missing one was
+ * `/eo:pipeline` — the only skill that DRIVES the staged pipeline — so a
+ * manager session reading this block could not learn that the surface phase 25
+ * built existed at all.
+ *
+ * `docs/evidence/phase-25/pipeline-surface-unreachable.md` records the mirror
+ * image of this defect: the same block advertising six commands that were not
+ * installed. One list, derived, closes both directions.
+ */
+function renderSlashCommands(): string {
+  const entries = REQUIRED_SKILL_NAMES.map((name) => `\`/eo:${name}\``);
+  const rows: string[] = [];
+  for (let index = 0; index < entries.length; index += COMMANDS_PER_ROW) {
+    const row = entries.slice(index, index + COMMANDS_PER_ROW).join(", ");
+    const isLast = index + COMMANDS_PER_ROW >= entries.length;
+    rows.push(isLast ? `${row}.` : `${row},`);
+  }
+  return rows.join("\n  ");
+}
 
 // Interpolated (never a hand-typed literal) so the Gap-11 sole-definition
 // scanner stays green — the generated CLAUDE.md still shows the real server name.
@@ -16,8 +53,7 @@ const CAPABILITIES = `# Crabgic
 This project is managed by the Crabgic plugin. The manager
 session in this repo has access to:
 
-- Slash commands: \`/eo:run\`, \`/eo:status\`, \`/eo:approve\`, \`/eo:evidence\`,
-  \`/eo:connections\`, \`/eo:protocol\`.
+- Slash commands: ${renderSlashCommands()}
 - Read-only subagents: \`eo-explore\` (repository prior art), \`eo-researcher\`
   (research, the only agent with web access), \`eo-architect\` (design),
   \`eo-planner\` (tasks), \`eo-reviewer\` (review, one lens per round),

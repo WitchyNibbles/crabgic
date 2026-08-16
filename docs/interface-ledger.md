@@ -1766,3 +1766,135 @@ OPTIONAL" stands, with no global version bump, no migrations, and no default, be
 forges what the human signed. This paragraph supersedes the "Awaiting owner ratification" marker in
 Gap 22's provenance paragraph, which stays verbatim per this file's own annotate-never-rewrite
 convention. Appended at end of file so no protected anchor moves.
+
+---
+
+## Gap 23 — The pipeline's stage roster is generalist and its sequencing is prose
+
+**Origin:** proposed in `docs/design/owner-pipeline-conformance.md` §7 (2026-08-15) and written up here
+2026-08-16, after the phase-25 work items it governs had shipped and been driven against the production
+gateway. Never seen by the four original resolvers; follows Gap 16/20/21/22's own-provenance shape, per this
+file's Provenance note. **Not itself an owner ruling.** R2 (the `design-gate`) and R4 (bounded closure) are
+the owner's and are recorded under Gap 19 and phase 25; this entry records the *mechanism* those rulings and
+the owner's 17-step pipeline are implemented by, plus one correction to a design-doc choice that turned out
+to be unimplementable on this harness (part 2 below). Deliberately appended at end of file, with **no row
+added to the intro sentence, the origin table or the Index** — a table row is an inserted line, and an
+inserted line moves every protected anchor below it. The notation-aware census was re-run 2026-08-16 over
+`docs/`, `roadmap/`, `packages/`, `e2e/` and `scripts/` in both notations (explicit `interface-ledger.md:NN`
+and prose "line NN", over a joined document because prose wraps): inbound anchors resolve at `:111`,
+`:400-402`, `:714-717` and `:1574`, all above the append point, so this addition shifts nothing. The
+omission is deliberate — line stability over self-consistency, the precedent Gaps 21 and 22 already set —
+and this paragraph is its authoritative record.
+
+**Gap statement:** the owner's pipeline is a per-domain panel driven by a program. Crabgic implemented six
+**generalist** stages driven by **prose**. Two distinct failures, and only the second one looked like a
+missing feature:
+
+1. **The roster was generalist, and a roster of agent files could not be otherwise.** The owner named six
+   design domains and four quality evaluators; the repository had one `eo-architect` and two implement
+   lenses. Shipping the missing eight as `.md` agent files would have made the roster a plugin-packaging
+   concern and **unenumerable by any check** — and a lens that did not apply would be indistinguishable
+   from a lens nobody wrote.
+2. **Nothing sequenced the stages.** `PIPELINE_STAGES` had exactly one consumer,
+   `review-submit-handler.ts`, which **judges** a stage. Stage order, per-stage lens coverage and the round
+   budget existed only as prose in `buildManagerProtocolBlock()`. That is the same medium whose failure
+   Gap 20 was raised about: a model instruction no artifact can contradict. A stage could be skipped, a
+   planned lens never run, and a budget ignored, with every test in the repository still green — because
+   nothing anywhere held a claim about the sequence that could be false.
+
+**Ruling — five parts.**
+
+1. **The roster is DATA, at nine stages, and so are the domains.** `PIPELINE_STAGES` (`@crabgic/contracts`)
+   carries nine members — `design-gate` after `design`, `audit` after `integrate`, `document` last — with
+   criterion ids unique across the whole roster, since a blocking finding names one and a name that resolves
+   to nothing is not a constraint. `DOMAIN_LENSES` is a second table, each entry `{id, question, appliesWhen}`
+   where `appliesWhen` is a predicate over `@crabgic/detect`'s stack classification. A lens with no
+   predicate is **unrepresentable**: a lens that always applies is a claim and must be written as one. The
+   load-bearing consequence is not the fan-out — it is that the pipeline can **state which lenses it skipped
+   and why**, which a folder of agent files never could. Agent files are not the roster; they are producers
+   the roster names.
+
+2. **Sequencing is decided SERVER-SIDE, by `pipeline.plan` — not computed by the script.** This corrects
+   `docs/design/owner-pipeline-conformance.md` §5.3, which chose a `Workflow` script to own stage order and
+   lens coverage and closed `docs/staged-review-pipeline.md` §8.4 on that basis. Implementing it surfaced a
+   harness fact the design did not account for: **workflow scripts have no imports and no filesystem
+   access.** A script therefore cannot read `PIPELINE_STAGES`, `DOMAIN_LENSES` or a stage's exit criteria —
+   it would have to inline copies of all three, planting the two-lists-that-must-agree failure at the exact
+   point that decides what gets reviewed. The decisions are therefore served the way every other
+   server-decided answer in this product is: as a gateway tool, beside `review.submit`. The manager **asks**
+   what to run; it does not decide. §8.4 is closed, by a different mechanism than §5.3 named, and §5.3 is
+   annotated rather than rewritten.
+
+3. **The scripts own the FAN-OUT and the ROUND COUNT, and nothing else.** `crabgic-stage-round` runs one
+   round: one reviewer per applicable lens through `pipeline()`, so a lens's findings verify the moment that
+   lens finishes rather than waiting for the slowest, and every finding is put to an independent skeptic
+   prompted to refute it. `crabgic-stage-loop` owns how many times to go round. **Neither decides closure** —
+   that stays `review.submit`'s, computed from findings on record under Gap 19's amended rule, and a test
+   asserts the round script never mentions `stageClosable`. A script returning closure would be the caller
+   grading its own work, which is the sycophancy inversion Gap 19's part 3 was written to exclude, arriving
+   one level up.
+
+4. **Every planned lens carries the reviewer that owns it, on the wire.** The lenses are not one family:
+   `audit` plans domain lenses; `research`, `design`, `plan` and `document` plan pipeline lenses; and
+   `implement` plans **both in one stage**, which no single hardcoded agent type can get right. `planStageRound`
+   labels each lens `eo-reviewer` or `eo-domain-reviewer` from `DOMAIN_LENS_IDS`, and the script **throws**
+   on a lens the plan did not label rather than defaulting — a default here silently reproduces the defect
+   this part exists to close. Measured before the fix: eleven of the shipped lens names went to a reviewer
+   whose own definition does not list them, and `eo-reviewer` was dispatched by **nothing** in the shipped
+   product (`docs/evidence/phase-25/pipeline-surface-unreachable.md`, defect 4).
+
+5. **The always-loaded protocol block names the surface instead of restating the sequence.**
+   `buildManagerProtocolBlock()` keeps the loop's RULES — those are model behaviour and prose is their only
+   delivery path — and points at `pipeline.plan` and `crabgic-stage-loop` for stage order, lens roster and
+   round budget. Naming them is load-bearing rather than courteous: a session that has never heard of
+   `pipeline.plan` reconstructs a stage order from the loop rules it CAN see, arriving back at the defect by
+   being reasonable rather than by being careless. And what the block advertises is **derived**, not typed a
+   second time — the installer's slash-command roster renders from `REQUIRED_SKILL_NAMES`, and
+   `MANAGER_APPROVAL_GATES` carries the `design-gate` R2 granted. Both had already drifted:
+   `/eo:pipeline` shipped and was not advertised, and the design gate was enforced while the roster that
+   announces it still had three entries. A surface that ships is a surface the session is told about.
+
+**Phases affected:** 10 (`roadmap/10-plugin-and-installer.md` — the manager protocol block, the approval-gate
+roster and the skill roster it advertises), 11 (`roadmap/11-intake-contract-approval.md` — the `design-gate`
+is an approval gate and **not** a contract approval; it precedes dispatch and widens no authority, so Gap 18's
+argument is untouched), 13 (`roadmap/13-scheduler-packets-context.md` — `TaskPacket.spec` carries the
+acceptance criteria **verbatim** to the worker that must satisfy them), 14
+(`roadmap/14-quality-security-gates.md` — `PIPELINE_STAGES` at nine, `exitCriteriaFor` over the new members,
+and `review.submit` deriving criteria for the `research` and `documentation` artifacts), 25
+(`roadmap/25-owner-pipeline-conformance.md` — implements all five parts).
+
+**Verified in:** `packages/contracts/src/contracts/pipeline-stages.ts` (the nine-member roster);
+`packages/contracts/src/contracts/domain-lenses.ts` (`DOMAIN_LENSES`, `lensesApplicableTo`);
+`packages/contracts/src/contracts/task-packet.ts` (`spec`, required);
+`packages/cli/src/review/pipeline-plan-handler.ts` (`planStageRound`, including the per-lens `reviewer`);
+`packages/cli/src/review/admissibility.ts` (the four bounds closure runs on);
+`packages/plugin/workflows/stage-round.mjs` + `stage-loop.mjs` (fan-out and round count);
+`packages/plugin/skills/pipeline/SKILL.md` (the callable surface);
+`packages/plugin/src/manager-protocol.ts` (`PIPELINE_PLAN_TOOL_NAME`, `STAGE_LOOP_WORKFLOW_NAME`, the fourth
+approval gate); `packages/cli/src/installer/claude-md.ts` (the derived slash-command roster);
+`roadmap/{10,11,13,14,25}`'s coordinated clauses.
+
+**Disclosed residuals — labelled, not claimed closed:**
+
+1. **The driver is only as binding as its invocation.** A `Workflow` script the manager never calls
+   constrains nothing. This ruling moves enforcement from per-stage prose compliance to a **single
+   invocation**, which is a large improvement and not a proof. Whether a `SessionStart` or `UserPromptSubmit`
+   hook should make the invocation structural is open, and is bounded by Gap 17's ruling that `PreToolUse`
+   may not block.
+2. **`completedStages` comes from the caller.** No durable stage-completion record exists — production
+   passes a no-op `appendEvidence` for review verdicts, so a closed stage leaves no journal trace to read
+   back. `pipeline.plan` refuses a completion set with a **hole** in it, naming the stage jumped; it cannot
+   refuse a caller claiming a stage it never ran. Closing this needs a journaled stage-completion record,
+   named here rather than left for a reader to discover.
+3. **The plugin cache is a snapshot, not a link.** `claude plugin install` copies the tree into
+   `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`, so while developing crabgic **on** crabgic
+   every edit under `packages/plugin/` is invisible to the next session until reinstall. Nothing warns, and
+   the symptom — a fixed workflow still behaving like the broken one — reads as the fix not working.
+4. **`REVIEW_ROUND_CEILING` remains duplicated** between `@crabgic/contracts` and `@crabgic/plugin`.
+   Pre-existing and not widened by this ruling: the runaway guard `REVIEW_RUNAWAY_GUARD` is **imported**
+   rather than re-declared, precisely so the amendment did not make the same mistake knowingly.
+5. **Nine of the owner's seventeen steps are BUILT and never RUN.** Every one of them dispatches reviewer or
+   producer agents through `crabgic-stage-loop`, which is engine spend on the owner's account. The DECIDING
+   half is measured against the production gateway (`docs/evidence/phase-25/pipeline-plan-live.md`); the
+   DISPATCH half is not. A ruling implemented and unexercised is a ruling whose residuals are still
+   theoretical, and this one says so.

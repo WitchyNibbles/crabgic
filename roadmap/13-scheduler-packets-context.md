@@ -23,6 +23,14 @@ Once this phase lands, the DAG approved in 11 executes to completion without fur
   writes, and not raised before. The ceiling of five becomes a runaway guard at `REVIEW_RUNAWAY_GUARD` (20),
   which reports a **stall**, never a close. Everything else in Gap 19 — read-only rounds, no repair attempt
   spent, dispositions at every severity, a fresh reviewer per round — stands unchanged.
+
+  **AMENDED 2026-08-16 (ledger Gap 23, part 1 — the packet reaches the party that must satisfy it).** The
+  `TaskPacket` builder below carries `spec: SpecRecord`, and the field is **required** — omission fails
+  compilation at every public dispatch entry point rather than being caught by a reviewer. It holds the work
+  unit's acceptance criteria **verbatim**, not by reference: the worker cannot resolve a `Requirement`
+  registry, so `requirementIds` alone meant the party responsible for meeting the criteria was the one party
+  that never saw them. This is the last hop of the requirements wiring phase 24 began. **Coordinated with:**
+  `roadmap/{10,11,14,25}` in the same change.
 - **Policy containment check at dispatch (2026-07-28 — ledger Gap 18).** Immediately before the call into 06's spawn surface, the compiled `AuthorizationEnvelope` is tested for containment in 10's `EnvelopePolicy`. Contained → dispatch proceeds with no prompt and no token, and the authorizing **policy digest is journaled with the dispatch** so evidence can answer what the human was standing behind. Not contained → 11's `expanded_authority` halts the run, all-or-nothing; this phase never dispatches the contained subset of an out-of-policy envelope. The check itself belongs to 03 (the security keystone); this phase owns only the call site and the journaling.
 - **Scheduler half of the TDD evidence protocol** (14 work item 2, "scheduler cooperation"): journal a base-revision (red) evidence capture immediately before an attempt is dispatched, and mark the candidate (green) available immediately after a `succeeded` transition. 14's gate framework, built on this phase, keys its own verification stages off these journal points; this phase never itself decides gate pass/fail.
 - **TaskPacket builder:** requirement IDs, objective, non-goals, exact base object ID (07's freeze), relevant interfaces, owned paths (11's write ownership), constraints, resource limits, gates, result schema — nothing else; size budgets enforced. Optional ephemeral lesson-preamble slot, populated only by an in-run repair (22: "a repair may use a lesson during the active run") or by shadow-run (below) — never a persistent packet field, never read anywhere else.

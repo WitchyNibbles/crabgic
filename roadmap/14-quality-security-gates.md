@@ -23,6 +23,17 @@ Before this phase, `verifying`/`final_verifying` are named run-lifecycle stages 
   writes, and not raised before. The ceiling of five becomes a runaway guard at `REVIEW_RUNAWAY_GUARD` (20),
   which reports a **stall**, never a close. Everything else in Gap 19 — read-only rounds, no repair attempt
   spent, dispositions at every severity, a fresh reviewer per round — stands unchanged.
+
+  **AMENDED 2026-08-16 (ledger Gap 23, parts 1-3 — the review surface this phase owns grew, and stopped
+  being the only consumer).** `PIPELINE_STAGES` carries **nine** members (`design-gate`, `audit` and
+  `document` added), with criterion ids unique across the whole roster, and `exitCriteriaFor` covers every
+  one. `review.submit` derives criteria for the `research` and `documentation` artifacts on the same terms as
+  `design` and `plan` — parsed and refused rather than ignored, derivations server-side, and an attestation
+  claiming a criterion the artifact contradicts is voided. And this phase's handler is **no longer the
+  roster's only consumer**: `pipeline.plan` reads the same table to decide what runs next, so the roster is
+  now sequenced as well as judged. Neither the gate registry nor any `GateVerdict` is changed by this, and
+  the precedence rule above is untouched — a reviewer still may not re-litigate what a gate decides.
+  **Coordinated with:** `roadmap/{10,11,13,25}` in the same change.
 - **Coverage:** ≥80% line+branch on greenfield projects; existing projects never regress below their recorded floor; changed instrumentable code reaches 80%; ratchet state journaled and monotonic.
 - **Test execution:** unit/integration/E2E via stack-native commands declared on `ProjectProfile` (02), run inside the dispatching work unit's own worker-grade sandbox (03/06, provisioned by 13). Which adapter/scanner *categories* apply at all is decided from `StackEvidence` (02, populated by 12) — e.g. no JS-specific SAST ruleset fires without Node evidence; IaC adapters fire only when Terraform/CloudFormation files are detected. (`ProjectProfile` says *how* to run a stack's own tests; `StackEvidence` says *whether* a given gate category applies at all — the two schemas serve distinct roles here, not made explicit anywhere else in the roadmap.)
 - **Security checks (SSDF-selected):** SAST (semgrep), secret scanning (gitleaks), dependency/license analysis (osv-scanner + policy); negative tests; fuzzing/DAST/container/IaC adapters where `StackEvidence` applies; CRITICAL/HIGH findings block. Scanner binaries resolve as digest-pinned entries from 12's content-addressed capability store — never fetched or executed ad hoc.

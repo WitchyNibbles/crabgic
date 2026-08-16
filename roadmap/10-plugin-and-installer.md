@@ -118,6 +118,17 @@ capped. The manager protocol block renders the new rule (`buildManagerProtocolBl
 it used to interpolate is now the runaway guard `REVIEW_RUNAWAY_GUARD`. **Also coordinated with:**
 `roadmap/25-owner-pipeline-conformance.md`, which implements it.
 
+**AMENDED 2026-08-16 (ledger Gap 23, parts 1 and 5).** This phase owns the three rosters the manager session
+reads, and all three had drifted from what actually ships. (a) `buildManagerProtocolBlock()` stops implying
+that stage order, lens coverage and the round budget are the session's to interpret and **names the surface
+that owns them** — `pipeline.plan` and the `crabgic-stage-loop` workflow. It keeps the loop's rules, which
+are model behaviour and have no other delivery path. (b) The installer's slash-command roster is **derived
+from `REQUIRED_SKILL_NAMES`** rather than typed a second time; the two lists had diverged, and the skill that
+went unadvertised was `/eo:pipeline` — the only one that drives the pipeline. (c) `MANAGER_APPROVAL_GATES`
+gains the **fourth** gate ruling R2 granted, `crabgic design approve`: its enforcement shipped with phase 25
+while the roster that announces it still had three entries. **Coordinated with:**
+`roadmap/{11,13,14,25}` in the same change.
+
 
 ## Out of scope
 

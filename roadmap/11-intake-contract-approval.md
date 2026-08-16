@@ -79,6 +79,15 @@ silent continuation. Done means: an approved `ChangeSet` carrying a currently-va
   reachable from a session widens the model's own authority. The seven conditions are unchanged in number
   and in meaning.
 
+  **AMENDED 2026-08-16 (ledger Gap 23, part 5 — a boundary, not a new condition).** The `design-gate` added
+  by ruling R2 is an **approval gate**, never a stop condition and never a contract approval. It fires
+  *before* dispatch, so it authorizes nothing and widens nothing: Gap 18's standing `EnvelopePolicy` still
+  governs what may execute, and this gate governs only what is worth executing. The two questions are
+  distinct and only the second was ever the owner's to skip. It is recorded through `crabgic design
+  approve|reject` — the CLI is the sole writer, and the gateway deliberately exposes no tool that can record
+  a verdict, because a model able to call one could approve its own design. The seven stop conditions are
+  untouched by this. **Coordinated with:** `roadmap/{10,13,14,25}` in the same change.
+
 ## Out of scope
 
 - Worker dispatch, DAG execution, task-packet construction/caching, model-routing defaults (→ 13).

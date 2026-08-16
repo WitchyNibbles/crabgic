@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildManagerProtocolBlock, QUESTION_TOOL_NAME } from "@crabgic/plugin";
+import {
+  buildManagerProtocolBlock,
+  QUESTION_TOOL_NAME,
+  REQUIRED_SKILL_NAMES,
+} from "@crabgic/plugin";
 import { buildClaudeMdManagedBlockContent, mergeClaudeMd, AGENTS_MD_BRIDGE } from "./claude-md.js";
 
 /**
@@ -71,6 +75,45 @@ describe("buildClaudeMdManagedBlockContent", () => {
   it("is deterministic — the installer merge is byte-preserving and drift-detected", () => {
     expect(buildClaudeMdManagedBlockContent(true)).toBe(buildClaudeMdManagedBlockContent(true));
     expect(buildClaudeMdManagedBlockContent(false)).toBe(buildClaudeMdManagedBlockContent(false));
+  });
+
+  /**
+   * The block's slash-command roster and `REQUIRED_SKILL_NAMES` are two lists
+   * that must agree, and this file is where they were allowed to diverge.
+   *
+   * Measured 2026-08-16: the roster named six commands while seven skills
+   * shipped — `/eo:pipeline` was absent, and it is the ONE skill that drives
+   * the staged pipeline (`pipeline.plan` → dispatch → `review.submit`). A
+   * manager session reading this block had no way to learn the surface existed,
+   * which is the same failure `docs/evidence/phase-25/pipeline-surface-unreachable.md`
+   * records in its other direction: that document found the block advertising
+   * six commands that were not installed, while this one had it advertising
+   * six of the seven that were.
+   *
+   * Asserted against the manifest rather than against a second literal, so a
+   * skill added there cannot be forgotten here.
+   */
+  it("advertises every skill the plugin manifest requires, so the roster cannot drift", () => {
+    for (const hasAgentsMd of [true, false]) {
+      const content = buildClaudeMdManagedBlockContent(hasAgentsMd);
+      for (const name of REQUIRED_SKILL_NAMES) {
+        expect(content, `hasAgentsMd=${hasAgentsMd}, missing skill: ${name}`).toContain(
+          `/eo:${name}`,
+        );
+      }
+    }
+  });
+
+  it("advertises no slash command the manifest does not require", () => {
+    const advertised = [...buildClaudeMdManagedBlockContent(false).matchAll(/\/eo:([a-z-]+)/g)].map(
+      (match) => match[1],
+    );
+    expect(advertised.length).toBeGreaterThan(0);
+    for (const name of advertised) {
+      expect(REQUIRED_SKILL_NAMES as readonly string[], `not a shipped skill: ${name}`).toContain(
+        name,
+      );
+    }
   });
 });
 
