@@ -501,6 +501,48 @@ design approve|reject` IS the sole writer, and no gateway tool can record a
 > and it is owed as work rather than accepted here. Measured at
 > `docs/evidence/phase-25/first-staged-round-live.md`, structural finding 2.
 
+### 6c. Owner ruling R8 — given 2026-08-16
+
+Put to the owner immediately after the measurement that found R2 implemented one
+layer short of where it was ruled
+(`docs/evidence/criteria-closeout/defects/25-design-gate-not-consulted-by-dispatch.md`).
+
+| #   | Ruling                          | Answer                                                       | Obliges                                                                                                    |
+| --- | ------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| R8  | How the design gate binds a run | **Dispatch requires the `design-gate` stage to have CLOSED** | a journaled stage-completion record; `completedStages` derived, not caller-supplied; a dispatch-time check |
+
+> **RULED 2026-08-16 (R8): the run path gains a real dependency on the pipeline.**
+> Three remedies were offered and the owner took the most expensive of them
+> deliberately. The two rejected are recorded with why, because the rejected
+> branch is the thing a later reader reintroduces believing it was never
+> considered:
+>
+> - **Rejected: dispatch requires a recorded `OwnerDesignVerdict`.** Closest to
+>   R2's literal words and cheaper (effort M), but it puts a human act in front
+>   of every run, which is precisely what ledger Gap 18's standing
+>   `EnvelopePolicy` exists to remove. It would have bought R2 by spending R8's
+>   sibling ruling.
+> - **Rejected: leave the gate advisory and amend R2.** Free, and honest about
+>   what is built — but it accepts that an unattended run can implement a design
+>   the owner never saw, and the owner declined to accept that.
+>
+> **What was chosen is stronger than the question asked.** Making dispatch depend
+> on the `design-gate` stage having closed makes the run path depend on the
+> **pipeline**, not on one gate. The whole staged loop stops being optional. That
+> is a larger change than R2 alone needs and the owner took it on those terms.
+>
+> **It is the only option that also closes ledger Gap 23's disclosed residual 2.**
+> `completedStages` is caller-supplied today because no durable stage-completion
+> record exists — production passes a no-op `appendEvidence` for review verdicts,
+> so a closed stage leaves no journal trace to read back. R8 cannot be implemented
+> without building that record, which is why its effort is L and why it discharges
+> a residual the cheaper options would have left standing.
+>
+> **What R8 does NOT change.** It grants no authority and touches no envelope: a
+> dependency on a stage having closed is a precondition on dispatch, never a
+> widening of what may execute. Gap 18's argument is untouched, and
+> `expanded_authority` remains unrepresentable in the autonomy settings.
+
 ## 7. Reconciliation with settled authorities
 
 | authority                          | this document                                                                                                            |

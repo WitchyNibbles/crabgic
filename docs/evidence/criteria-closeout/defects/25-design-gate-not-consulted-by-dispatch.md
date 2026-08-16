@@ -86,3 +86,47 @@ repository's annotate-never-rewrite convention:
 Both were written from the gate's own tests, which are sound about stage closure, without reading the
 dispatch path. That is the error this record exists to stop being repeated: a gate's tests can be
 entirely correct about what the gate decides while saying nothing about whether anything asks it.
+
+---
+
+## RULED 2026-08-16 (R8) — remedy 2 is chosen
+
+**Dispatch requires the `design-gate` stage to have CLOSED.** The owner took the
+most expensive of the three sized above, deliberately and on those terms. Full
+wording at `docs/design/owner-pipeline-conformance.md` §6c.
+
+**Status moves `open` -> `owner-ruled, unimplemented`.** The index row stays
+`open` under that table's mechanical rule — the record still evidences no remedy
+— and this section is why it is not `owner-gated`: nothing here needs an
+owner-authorised run, only work.
+
+### What the remedy now owes
+
+1. **A journaled stage-completion record.** Production passes
+   `appendEvidence: () => Promise.resolve()` for review verdicts, so a closed
+   stage leaves no trace to read back. This is ledger Gap 23's disclosed residual
+   2, and R8 cannot be built without discharging it.
+2. **`completedStages` derived rather than caller-supplied.** `pipeline.plan`
+   today refuses a completion set with a **hole** in it but cannot refuse a
+   caller claiming a stage it never ran. Once stage completion is journaled, the
+   plan reads it instead of trusting the argument.
+3. **A dispatch-time precondition.** The run path gains a check that the
+   `design-gate` stage has closed for this change set. It grants nothing and
+   widens nothing — a precondition on dispatch is not a change to what may
+   execute — so Gap 18's argument is untouched.
+
+### The scope is larger than this record's title
+
+R8 makes the run path depend on the **pipeline**, not on one gate. The whole
+staged loop stops being optional, which is a bigger change than R2 alone needs.
+Recorded here so that whoever implements it does not scope it down to the design
+gate and believe they have finished.
+
+### The two rejected branches, on the record
+
+- **Dispatch requires a recorded `OwnerDesignVerdict`** — closest to R2's literal
+  words, effort M. Rejected because it puts a human act in front of every run,
+  which is what ledger Gap 18's standing `EnvelopePolicy` exists to remove.
+- **Leave the gate advisory and amend R2** — free, and honest about what is
+  built. Rejected because it accepts that an unattended run can implement a
+  design the owner never saw.
