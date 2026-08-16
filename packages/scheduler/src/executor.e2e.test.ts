@@ -10,7 +10,7 @@ import {
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
-  RATE_LIMIT_ALLOWED_WARNING_96,
+  RATE_LIMIT_REJECTED,
 } from "@crabgic/testkit";
 import { compileEnvelope } from "@crabgic/engine-core";
 import type { CollisionVerdict } from "@crabgic/git-engine";
@@ -402,7 +402,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
     });
     const parkScript = buildFakeEngineScript({
       sessionId,
-      failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+      failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
       onResume: resumeScript,
     });
     const adapter = new FakeEngineAdapter(parkScript);
@@ -425,14 +425,14 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
     const beforeReset = await getParkStatus(
       freshStore,
       workUnitId,
-      RATE_LIMIT_ALLOWED_WARNING_96.resetsAt - 1,
+      RATE_LIMIT_REJECTED.resetsAt - 1,
     );
     expect(beforeReset).toMatchObject({ parked: true, readyToResume: false });
 
     const afterReset = await getParkStatus(
       freshStore,
       workUnitId,
-      RATE_LIMIT_ALLOWED_WARNING_96.resetsAt + 1,
+      RATE_LIMIT_REJECTED.resetsAt + 1,
     );
     expect(afterReset).toMatchObject({ parked: true, readyToResume: true, sessionId });
 
@@ -456,7 +456,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
     const finalStatus = await getParkStatus(
       freshStore,
       workUnitId,
-      RATE_LIMIT_ALLOWED_WARNING_96.resetsAt + 100,
+      RATE_LIMIT_REJECTED.resetsAt + 100,
     );
     expect(finalStatus.parked).toBe(false);
   });
@@ -471,7 +471,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId: sessionG,
-          failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+          failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
         }),
       ),
       criteriaSeal: { requirements: [], approvalSeal: undefined },
@@ -485,7 +485,7 @@ describe("E2E: limit-signal → park → simulated clock past reset → resume, 
       adapter: new FakeEngineAdapter(
         buildFakeEngineScript({
           sessionId: sessionH,
-          failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+          failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
         }),
       ),
       criteriaSeal: { requirements: [], approvalSeal: undefined },

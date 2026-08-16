@@ -9,7 +9,11 @@ import {
   buildWorkerResult,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
-import { RATE_LIMIT_ALLOWED_WARNING_96 } from "@crabgic/testkit";
+import {
+  RATE_LIMIT_ALLOWED_FIVE_HOUR,
+  RATE_LIMIT_ALLOWED_WARNING_96,
+  RATE_LIMIT_REJECTED,
+} from "@crabgic/testkit";
 import {
   allowAllAdjudicate,
   buildMinimalCompiledProfile,
@@ -206,7 +210,50 @@ describe("dispatchAttempt", () => {
     expect(outcome.kind).toBe("cancelled");
   });
 
-  it("returns 'parked' with resetsAt on a limitSignal, and journals parked:rate_limit retaining the sessionId", async () => {
+  /**
+   * MEASURED 2026-08-16, on the live run 08f1f1dd, and the reason no crabgic
+   * work unit had ever completed.
+   *
+   * The SDK emits `rate_limit_event` as ROUTINE USAGE TELEMETRY. Every one of
+   * the sixteen samples `docs/engine-baseline.md` §8 recorded carries `status`
+   * `allowed` or `allowed_warning`, and the baseline's own directive to phase
+   * 06 is to watch for "a `status` transition to `'rejected'`". The executor
+   * instead parked on ANY `limitSignal`. So a worker parked seconds after
+   * dispatch, on a message saying it was ALLOWED to proceed, and waited for the
+   * next five-hour window — where it parked again. Four dispatches over eleven
+   * hours produced nine seconds of work and no code.
+   *
+   * The bug survived 7489 green tests because the tests encoded it: this very
+   * case asserted that an `allowed_warning` payload MUST park. The fixtures
+   * were faithful recordings; the assertion built on them was not.
+   *
+   * `allowed_warning` deliberately does NOT park either. Baseline §8 offers it
+   * as an early-warning the scheduler *can* park on before hard rejection —
+   * permission, not instruction — and pre-emptive parking trades a possible
+   * future block for a certain present stall, which is precisely what was just
+   * measured. If it is ever wanted it belongs behind an explicit utilization
+   * threshold, not in the default path.
+   */
+  it("does NOT park on `allowed` telemetry — it is not an exhaustion", async () => {
+    const script = buildFakeEngineScript({
+      failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_FIVE_HOUR },
+    });
+    const adapter = new FakeEngineAdapter(script);
+    const outcome = await dispatchAttempt({
+      adapter,
+      journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+    });
+    expect(outcome.kind).not.toBe("parked");
+    const latest = await getLatestAttempt(store, WORK_UNIT_ID);
+    expect(latest?.status).not.toBe("parked:rate_limit");
+  });
+
+  it("does NOT park on `allowed_warning` either — a warning is not a refusal", async () => {
     const script = buildFakeEngineScript({
       failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
     });
@@ -220,10 +267,32 @@ describe("dispatchAttempt", () => {
       adjudicate: allowAllAdjudicate,
       evidenceKind: "none",
     });
+    expect(outcome.kind).not.toBe("parked");
+  });
+
+  it("DOES park on `rejected`, account-wide, retaining the sessionId", async () => {
+    // The positive control. Without it the two refusals above would be
+    // satisfied by an executor that never parks at all.
+    const script = buildFakeEngineScript({
+      failure: {
+        kind: "limitSignal",
+        payload: { ...RATE_LIMIT_ALLOWED_FIVE_HOUR, status: "rejected" },
+      },
+    });
+    const adapter = new FakeEngineAdapter(script);
+    const outcome = await dispatchAttempt({
+      adapter,
+      journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+    });
     expect(outcome).toMatchObject({
       kind: "parked",
-      resetsAt: RATE_LIMIT_ALLOWED_WARNING_96.resetsAt,
-      accountWide: false,
+      resetsAt: RATE_LIMIT_ALLOWED_FIVE_HOUR.resetsAt,
+      accountWide: true,
     });
     const latest = await getLatestAttempt(store, WORK_UNIT_ID);
     expect(latest?.status).toBe("parked:rate_limit");
@@ -337,7 +406,7 @@ describe("resumeAttempt", () => {
   it("resumes the SAME session id and reaches a terminal outcome via the onResume continuation script", async () => {
     const parkScript = buildFakeEngineScript({
       sessionId: "99999999-9999-4999-8999-999999999999",
-      failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+      failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
       onResume: buildFakeEngineScript({
         sessionId: "99999999-9999-4999-8999-999999999999",
         structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
@@ -461,7 +530,7 @@ describe("resumeAttempt", () => {
     });
     const registeringScript = buildFakeEngineScript({
       sessionId,
-      failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_WARNING_96 },
+      failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
       onResume: resumeSuccessScript,
     });
     const adapter = new FakeEngineAdapter(registeringScript);

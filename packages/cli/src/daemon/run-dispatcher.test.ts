@@ -348,7 +348,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               // driver finds it ready-to-resume immediately.
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 1, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 1, rateLimitType: "five_hour" },
               },
               // The continuation the retained adapter runs on resume.
               onResume: buildFakeEngineScript({
@@ -421,7 +421,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               worktreePath,
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
               },
             }),
           ),
@@ -485,7 +485,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               // separate, later drive.
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
               },
               onResume: buildFakeEngineScript({
                 sessionId: SESSION,
@@ -579,7 +579,7 @@ describe("createRealRunDispatcher — dispatch", () => {
               worktreePath,
               failure: {
                 kind: "limitSignal",
-                payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
               },
             }),
           ),
@@ -1228,7 +1228,7 @@ describe("createRealRunDispatcher — a published change set", () => {
                 worktreePath,
                 failure: {
                   kind: "limitSignal",
-                  payload: { status: "allowed", resetsAt: 5000, rateLimitType: "five_hour" },
+                  payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
                 },
                 onResume: buildFakeEngineScript({
                   sessionId: SESSION,
