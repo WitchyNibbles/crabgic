@@ -179,6 +179,49 @@ describe("fail-closed: an empty gate registry never publishes", () => {
     expect(runs.get(RUN_ID)?.runState).toBe("published_local");
   });
 
+  /**
+   * MEASURED on runs 04a0bf70 and bc167a3a (2026-08-16): both reached
+   * `published_local` while NOTHING had evaluated their acceptance criteria.
+   * The criteria seal is an anti-tamper check and passed correctly; the gates
+   * registered at `final_verifying` ask a different question entirely; the
+   * tranche that would ask has no production registration.
+   *
+   * `published_local` therefore currently means "a worker claimed success and
+   * its diff merged cleanly", not "the work was verified" — and a terminal
+   * state that READS as a verdict while carrying none is this repository's own
+   * vacuity pattern arriving at the top of the product.
+   *
+   * Changing what publishes is an owner scope decision (`docs/deploy-posture.md`,
+   * gate-registry row). Recording WHAT THE GATES ACTUALLY COVERED is not: it
+   * adds no refusal, changes no state, and makes the gap legible in the journal
+   * instead of only in a document somebody has to find. An operator reading the
+   * run can now see the difference between "verified" and "published".
+   */
+  it("journals what the final gates COVERED, so publication cannot read as a verdict it never earned", async () => {
+    await seedRunningRun();
+    const outcome = await run({ units: [unit(UNIT_A)], registry: passingRegistry() });
+    expect(outcome.status).toBe("published");
+
+    const decisions: { decision?: string; rationale?: string }[] = [];
+    for await (const entry of journal.queryEntries({ type: "adjudication_decision" })) {
+      decisions.push(entry.payload as { decision?: string; rationale?: string });
+    }
+    const coverage = decisions.find((d) => d.decision === "final_gate_coverage");
+    expect(coverage, "publication left no record of what was actually checked").toBeDefined();
+    // It must NAME the gates that ran — a count alone would be unactionable,
+    // and a rationale that named none would be the same silence in longer form.
+    // Derived from the registry under test, never a hardcoded production gate
+    // name: an assertion that hardcodes one passes for the wrong reason the day
+    // the roster changes.
+    for (const name of passingRegistry()
+      .list()
+      .map((gate) => gate.name)) {
+      expect(String(coverage?.rationale)).toContain(name);
+    }
+    // And it must say, in terms, that acceptance criteria were not among them.
+    expect(String(coverage?.rationale)).toMatch(/acceptance criteria/i);
+  });
+
   it("settles the run failed when a declared requirement id resolves to no record", async () => {
     await seedRunningRun();
     // The composed registry's requirements reader resolves STRICTLY, so this is
