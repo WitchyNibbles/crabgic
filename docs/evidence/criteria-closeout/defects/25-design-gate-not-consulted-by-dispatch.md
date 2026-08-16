@@ -130,3 +130,84 @@ gate and believe they have finished.
 - **Leave the gate advisory and amend R2** — free, and honest about what is
   built. Rejected because it accepts that an unattended run can implement a
   design the owner never saw.
+
+---
+
+## Implementation status — 2026-08-16
+
+**Items 1-3 of R8 are built, tested and merged. Item 4 is scoped and NOT built.**
+
+| #   | R8 owes                                                    | State         | Evidence                                                                     |
+| --- | ---------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------- |
+| 1   | a journaled stage-completion record                        | **done**      | `StageCompletionRecord` + `stage-completion-store.ts`, 27 tests              |
+| 2   | `review.submit` writes it from its own closure computation | **done**      | 5 tests, incl. the negative — nothing recorded when the stage does not close |
+| 3   | `completedStages` derived rather than caller-supplied      | **done**      | 6 tests; ledger Gap 23 residual 2 discharged                                 |
+| 4   | the dispatch precondition                                  | **NOT BUILT** | scoped below                                                                 |
+
+### Item 4's seam, decided and recorded so it is not re-derived
+
+`transitionChangeSetToReady` (`packages/supervisor/src/intake/readiness-gate.ts`)
+is the right place, and the reasoning is worth keeping:
+
+- it is **the only path** from `awaiting_approval` to `ready`, and `ready` is
+  what dispatch requires — so refusing here refuses dispatch;
+- it leaves the **seven stop conditions unchanged in number and meaning**, which
+  phase 11's own amendment requires;
+- it leaves ledger Gap 18's containment check exactly as it is. A precondition on
+  dispatch is not a widening of what may execute.
+
+The shape: a `DesignGateNotClosedError` beside the existing
+`UnmappedRequirementError`, and a **required** `stageCompletions` option checked
+with `stageCompleted(..., "design-gate")` **before** the criteria seal — the same
+ordering discipline the unmapped-requirement check already follows, so a refused
+transition leaves no seal implying the run got further than it did.
+
+Required rather than optional, for the reason the `requirements` field beside it
+already records: this is the one funnel both activation paths share, and an
+optional field would let a caller that forgot it produce a `ready` ChangeSet
+whose design nobody approved — the defect reintroduced one layer up.
+
+The predicate lives in `@crabgic/contracts` and the STORE lives in
+`packages/cli`, because the package graph runs cli -> supervisor. So the option
+is threaded by the caller rather than read in the supervisor.
+
+### Why it is not built yet, stated plainly
+
+The change is mechanically simple and its blast radius is not: making the field
+required correctly forces **every** call site to supply it, which is about
+twenty-five test fixtures plus four production threading points
+(`standing-approval.ts`, `contract-approve-handler.ts`,
+`complete-envelope-approval.ts`, and `bootstrap.ts`/`approve.ts` above them).
+
+That is the right cost — an optional field would have shipped a gate that
+silently does nothing — but it is a whole change set rather than a tail-end edit,
+and it was stopped rather than half-landed. The work in progress is stashed on
+the branch as `R8 item 4 WIP: design-gate readiness precondition`.
+
+**The most important line in that path is `standing-approval.ts`.** That is the
+Gap 18 path — the one that dispatches with no human in the sequence — and it is
+therefore exactly where a design nobody approved would reach a worker. Whoever
+finishes item 4 should treat that call site as the point of the exercise rather
+than as one of five.
+
+### Citation drift this change set caused, recorded rather than absorbed
+
+R8 items 2 and 3 inserted lines into
+`packages/cli/src/gateway-mcp/build-tool-registry.test.ts`, which moved text a
+**merged** citation pins:
+
+| record             | pinned span                           | before                    | after                        |
+| ------------------ | ------------------------------------- | ------------------------- | ---------------------------- |
+| `phase-11.json#c2` | `build-tool-registry.test.ts:177-187` | `OK@187`, `MOVED@196-197` | `MOVED@191`, `MOVED@200-201` |
+
+The baseline was regenerated (`--update-baseline`), and the counts moved
+`anchored` 2639 -> 2638 and `seededStale` 682 -> 683. **That is one new stale
+entry**, and the baseline's own note is explicit that seeded stale entries "are
+not licence to add more" — so it is named here rather than left to be found in a
+count.
+
+The citation's CLAIM is unaffected: the test it points at still exists, still
+asserts what the record says it asserts, and moved only because a fixture field
+was added above it. What is now weaker is the pointer, and the honest statement
+is that this change set spent a small amount of citation precision to add a
+required field to a shared test fixture.

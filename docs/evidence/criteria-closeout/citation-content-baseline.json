@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-16",
-  "generatedAtSha": "be99caf50d5de3ad8889467f43105c128b2d4435",
+  "generatedAtSha": "bf0e5a3181dfe52472dba030b4c83aeaa3921823",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2639,
-    "seededStale": 682,
-    "outsideSpan": 804,
+    "anchored": 2638,
+    "seededStale": 683,
+    "outsideSpan": 805,
     "repeatText": 531,
     "crossFile": 20,
     "skipped": 610
@@ -3717,7 +3717,7 @@
       "qa": "4af789d90759",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@154!span"
+        "MOVED/collapsed@158!span"
       ]
     },
     "phase-09.json#c2#packages/cli/src/installer/mcp-entry.golden.test.ts:37": {
@@ -4639,8 +4639,8 @@
       "qa": "6542832bc9d5",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@187",
-        "MOVED/collapsed@196-197!span"
+        "MOVED/collapsed@191!span",
+        "MOVED/collapsed@200-201!span"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:128": {
@@ -4812,7 +4812,7 @@
       "qa": "3dc52e822634",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@154!span"
+        "MOVED/collapsed@158!span"
       ]
     },
     "phase-11.json#c5#packages/cli/src/intake/project-inspect-handler.test.ts:23": {
@@ -11566,9 +11566,9 @@
       "qa": "d7055acc9ea8",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@515!span",
-        "MOVED/collapsed@516!span",
         "MOVED/collapsed@517!span",
+        "MOVED/collapsed@518!span",
+        "MOVED/collapsed@519!span",
         "SKIP-short"
       ]
     },
