@@ -240,3 +240,59 @@ description above. Budget the work by the fixture count, not by the diff size of
 the change that motivates it — the ratio here is roughly ten lines of behaviour
 to four hundred lines of fixture, and reading it the other way is what made this
 look like a tail-end edit twice.
+
+### Third attempt — the production design is now settled, and it is SMALLER
+
+The third attempt changed the shape of the dependency and that halved the
+cascade. **The production half compiles clean; only fixtures remain.** The
+design below is the one to build, and it supersedes the threading described in
+the second attempt.
+
+**Use a CLOSURE, not a path or a value.** The first two attempts threaded a
+`stageCompletionsPath: string` through every deps interface, which forced a new
+required field onto `IntakeDependencies`, `RunIntakeCommandDeps`,
+`ContractApproveDeps` and `CompleteEnvelopeApprovalDeps` — and through them onto
+every fixture that constructs any of them.
+
+A closure shaped exactly like the `loadPolicy` field that already sits beside it:
+
+```ts
+readonly loadStageCompletions: () => Promise<readonly StageCompletionRecord[]>;
+```
+
+It reads at the moment of the decision rather than from a value captured when
+the command was assembled — so a design approved while a run was being put
+together counts — and, because it matches an existing field's shape, it lands
+next to `loadPolicy` at every site instead of introducing a new threading
+pattern.
+
+**Measured difference:** 49 failing call sites became 24, and
+`packages/cli/src/commands/types.ts` takes ONE new field instead of a path plus
+its resolution.
+
+**The full production set, all compiling:** `readiness-gate.ts` (the error, the
+required option, the check before the seal), `standing-approval.ts`,
+`contract-approve-handler.ts`, `complete-envelope-approval.ts`,
+`run-intake-command.ts`, `real-handlers.ts`, `approve.ts`, `types.ts`,
+`bootstrap.ts`, `build-tool-registry.ts`.
+
+Note the split that falls out of it: the two paths that already resolve durable
+state (`standing-approval` via `run-intake-command`, and `approve`) take the
+CLOSURE; the two that are handed their inputs (`contract-approve-handler`,
+`complete-envelope-approval`) take the RECORDS. Following the surrounding
+convention at each site rather than imposing one shape is what kept the change
+small.
+
+**What still has to be done by hand, and why a script cannot.** The remaining
+sites are test fixtures, and an anchored insertion after the existing
+`loadPolicy:` line fails on a specific case worth naming: several helpers
+declare `loadPolicy` as a FUNCTION PARAMETER with a type annotation
+(`loadPolicy: () => LoadPolicyResult,`), which is textually identical to an
+object-literal field. Inserting a field-shaped line after it produces
+`loadStageCompletions: () => Promise.resolve([]),` inside a parameter list —
+`TS1005`. Those helpers need the dependency threaded as a real parameter with a
+default, not injected as a field.
+
+That is the whole remaining task: roughly two dozen fixtures, a handful of which
+are helper signatures rather than literals. It is an afternoon of careful,
+boring work and it does not need another design pass.
