@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-16",
-  "generatedAtSha": "3036bf6df8540c6cd9ba74e37aacc5d2f1dd4597",
+  "generatedAtSha": "7e810223afbaafc3bc56b2076bdf24978eb9d7c8",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2585,
-    "seededStale": 736,
-    "outsideSpan": 850,
+    "anchored": 2571,
+    "seededStale": 750,
+    "outsideSpan": 860,
     "repeatText": 531,
     "crossFile": 20,
     "skipped": 610
@@ -2603,7 +2603,7 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@111",
-        "MOVED/collapsed@263!file"
+        "MOVED/collapsed@338!file"
       ]
     },
     "phase-06.json#c6#docs/engine-baseline.md:364": {
@@ -4581,7 +4581,7 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "MOVED/collapsed@122!span",
+        "MOVED/collapsed@152!span",
         "SKIP-short",
         "MOVED/collapsed@19!span"
       ]
@@ -10545,9 +10545,9 @@
       "qa": "bac364c9a0ae",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@203",
-        "OK/collapsed@216!span",
-        "OK/collapsed@217!span"
+        "MOVED/collapsed@220!span",
+        "MOVED/collapsed@233!span",
+        "MOVED/collapsed@234!span"
       ]
     },
     "phase-22.json#c7#packages/journal/src/codec/ndjson-codec.ts:28": {
@@ -11862,18 +11862,18 @@
       "qa": "b5a58b2f0fe5",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@180",
-        "OK/collapsed@184,208~repeat",
-        "OK/collapsed@188"
+        "MOVED/collapsed@187",
+        "MOVED-AMBIG/collapsed@191,215~repeat",
+        "MOVED/collapsed@195!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.ts:247-264": {
       "qa": "c92e7caae0db",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@306!span",
-        "MOVED/collapsed@316!span",
-        "MOVED-AMBIG/collapsed@274,317,337,348,358,376,450,526!span~repeat"
+        "MOVED/collapsed@381!span",
+        "MOVED/collapsed@391!span",
+        "MOVED-AMBIG/collapsed@349,392,412,423,433,451,525,601!span~repeat"
       ]
     },
     "phase-24.json#c6#docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt": {
@@ -12045,17 +12045,17 @@
       "qa": "965443666b0b",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@127",
-        "OK/collapsed@128,384,481~repeat"
+        "MOVED/collapsed@132!span",
+        "MOVED-AMBIG/collapsed@133,459,556!span~repeat"
       ]
     },
     "phase-24.json#c8#packages/scheduler/src/executor.ts:321-325": {
       "qa": "4b00494387ab",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@380!span",
-        "MOVED-AMBIG/collapsed@383,480!span~repeat",
-        "MOVED-AMBIG/collapsed@128,384,481!span~repeat",
+        "MOVED/collapsed@455!span",
+        "MOVED-AMBIG/collapsed@458,555!span~repeat",
+        "MOVED-AMBIG/collapsed@133,459,556!span~repeat",
         "SKIP-short",
         "SKIP-commentary",
         "SKIP-commentary"
@@ -12065,8 +12065,8 @@
       "qa": "ff677c6c8354",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@477!span",
-        "MOVED-AMBIG/collapsed@128,384,481!span~repeat"
+        "MOVED/collapsed@552!span",
+        "MOVED-AMBIG/collapsed@133,459,556!span~repeat"
       ]
     },
     "phase-24.json#c9#docs/evidence/phase-24/closeout-c9-journal-entry-type-13.txt": {
@@ -12101,21 +12101,21 @@
       "qa": "aad0a709084c",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@101",
-        "OK/collapsed@42,72,79,102,135,142,150,158,166,174,181,189~repeat",
-        "OK/collapsed@103",
-        "OK/collapsed@123",
+        "OK/collapsed@102",
+        "OK/collapsed@43,73,80,103,152,159,167,175,183,191,198,206~repeat",
+        "OK/collapsed@104",
+        "OK/collapsed@124",
         "SKIP-short",
-        "OK/collapsed@46,76,90,125,138,146,154,162,170,177,185,193~repeat"
+        "MOVED-AMBIG/collapsed@47,77,91,142,155,163,171,179,187,194,202,210!span~repeat"
       ]
     },
     "phase-24.json#c9#packages/journal/src/codec/journal-payloads.ts:203-217": {
       "qa": "b7164edc826c",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@203",
-        "OK/collapsed@206",
-        "OK/collapsed@217"
+        "MOVED/collapsed@220!span",
+        "MOVED/collapsed@223!span",
+        "MOVED/collapsed@234!span"
       ]
     },
     "phase-24.json#c9#packages/journal/src/criteria-seal-anchor.test.ts:84-93": {
@@ -12142,10 +12142,10 @@
       "qa": "545ef77a69eb",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@183,207~repeat",
-        "OK/collapsed@184,208~repeat",
-        "OK/collapsed@187,211,447~repeat",
-        "OK/collapsed@188"
+        "OK/collapsed@190,214~repeat",
+        "OK/collapsed@191,215~repeat",
+        "MOVED-AMBIG/collapsed@194,218,522!span~repeat",
+        "MOVED/collapsed@195!span"
       ]
     }
   }

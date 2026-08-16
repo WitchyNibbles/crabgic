@@ -806,6 +806,53 @@ describe("normalizeSdkStream — user-message tool_result extraction edge cases 
       expect(paired.toolResult).toBe(JSON.stringify({ code: 42 }));
     }
   });
+
+  /**
+   * `is_error` passthrough — owner ruling R5.
+   *
+   * Until now this flag was read off the block and discarded, so nothing
+   * downstream could tell a command that RAN from one that failed to start. The
+   * publish gate is built on that distinction, and these three cases pin the
+   * three states the flag can be in, including the one that matters most: an
+   * ABSENT flag must stay absent rather than becoming `false`, because
+   * `false` is what the observer counts as a clean run.
+   */
+  describe("is_error passthrough on the paired toolUse event", () => {
+    async function pairedFor(
+      resultBlock: Record<string, unknown>,
+    ): Promise<{ readonly toolResultIsError?: boolean } | undefined> {
+      const assistant = {
+        type: "assistant",
+        message: { content: [{ type: "tool_use", id: "e1", name: "Bash", input: {} }] },
+        parent_tool_use_id: null,
+        uuid: "ue",
+        session_id: "s",
+      } as unknown as SDKMessage;
+      const user = userMessage([{ type: "tool_result", tool_use_id: "e1", ...resultBlock }]);
+      const events = await collect(
+        normalizeSdkStream(toAsyncIterable([assistant, user]), "fallback"),
+      );
+      const paired = events.find((e) => e.type === "toolUse" && e.toolResult !== undefined);
+      return paired?.type === "toolUse" ? paired : undefined;
+    }
+
+    it("carries an explicit false", async () => {
+      expect(await pairedFor({ content: "ok", is_error: false })).toMatchObject({
+        toolResultIsError: false,
+      });
+    });
+
+    it("carries an explicit true", async () => {
+      expect(await pairedFor({ content: "boom", is_error: true })).toMatchObject({
+        toolResultIsError: true,
+      });
+    });
+
+    it("⚠️ leaves the flag ABSENT when the block omits it or sends a non-boolean — never coerced to false", async () => {
+      expect((await pairedFor({ content: "ok" }))?.toolResultIsError).toBeUndefined();
+      expect((await pairedFor({ content: "ok", is_error: "yes" }))?.toolResultIsError).toBeUndefined();
+    });
+  });
 });
 
 describe("normalizeSdkStream — result-message error-string fallback detection (docs/engine-baseline.md §8)", () => {

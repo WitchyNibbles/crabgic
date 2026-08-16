@@ -84,7 +84,9 @@
  * silently.
  */
 import {
+  ACCEPTANCE_EVALUATED_GATE_NAME,
   createGateRegistry,
+  registerAcceptanceEvaluatedGate,
   registerCriteriaSealGate,
   registerSecurityFixtureManifest,
   REQUIRED_SECURITY_FIXTURE_IDS,
@@ -126,6 +128,7 @@ import { resolveRequirementsStrict, type SupervisorDependencies } from "@crabgic
 export const COMPOSED_GATE_NAMES: readonly string[] = Object.freeze([
   ...REQUIRED_SECURITY_FIXTURE_IDS,
   "criteria-seal",
+  ACCEPTANCE_EVALUATED_GATE_NAME,
 ]);
 
 /** What the registry needs from the daemon's dependency bundle — a narrow slice, so this cannot reach for anything else. */
@@ -205,5 +208,31 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
    * from the manifest.
    */
   registerSecurityFixtureManifest(registry);
+  /**
+   * Owner ruling R5's publish refusal, registered under the SAME `acceptance`
+   * tag and reading the SAME requirement union the seal gate does — so the two
+   * can never disagree about what this run's bar is, which is the property the
+   * union resolver above exists for.
+   *
+   * It clears this file's admission test on the same grounds the seal gate does:
+   * a journal read and a set difference. No subprocess, no measurement, no
+   * capability store, no engine.
+   *
+   * ⚠️ THIS ONE CHANGES WHAT THE PRODUCT PROMISES, and unlike every other
+   * registration here it will refuse runs that used to publish. Before it, the
+   * terminal state `published_local` meant "a worker claimed success and its
+   * diff merged cleanly"; after it, the claim carries a check. Both runs in
+   * `docs/evidence/phase-25/published-unverified.md` become refused runs, which
+   * is the owner's stated intent rather than a regression — the cost was put to
+   * them with the ruling and accepted with it.
+   */
+  registerAcceptanceEvaluatedGate(registry, {
+    requirements: (context): readonly Requirement[] =>
+      resolveRequirementsStrict(
+        deps.requirements,
+        changeSetRequirementIds(deps.workUnits, context.changeSetId),
+        context.changeSetId,
+      ),
+  });
   return registry;
 }

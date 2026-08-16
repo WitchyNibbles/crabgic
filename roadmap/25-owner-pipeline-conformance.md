@@ -717,6 +717,25 @@ the un-annotated block before any implementation existed.
       `docs/staged-review-pipeline.md` §2's measurement is annotated rather than
       rewritten. A rule amended without its mechanism, or a mechanism shipped
       against an unamended rule, fails this box.
+> **Owner ruling R5, 2026-08-16 — DELIVERED, and deliberately NOT a checkbox.**
+> A run whose acceptance criteria were never evaluated no longer reaches
+> `published_local`, and the refusal names every unevaluated requirement with its
+> criteria, what each work unit was observed running, and what would satisfy the
+> gate. A change set declaring **no** acceptance criteria is refused too, so the
+> universal quantifier cannot be satisfied by an empty set.
+>
+> **Why prose and not a nineteenth box.** `criteria-baseline.json` pins this
+> phase's criteria to a git revision that predates any closeout, precisely so a
+> criterion cannot be softened inside the commit that would benefit. It enforces
+> an exact COUNT, so adding a box here — even a true one, even a ticked one —
+> means either rewriting published history or relaxing that check. Neither is
+> worth doing for bookkeeping, and the ruling's evidence stands on its own.
+>
+> Full wording, the accepted cost, and what the gate does and does not establish:
+> `docs/design/owner-pipeline-conformance.md` §6b and §6d. Measurement and both
+> re-scored runs: `docs/evidence/phase-25/published-unverified.md`. Bearer tests:
+> `packages/cli/src/daemon/composed-post-completion.e2e.test.ts`, T1 and T5 — the
+> same fixture either side of one variable.
 
 ## Risks & open questions
 

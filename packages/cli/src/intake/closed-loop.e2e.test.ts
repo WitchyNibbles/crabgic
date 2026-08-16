@@ -48,6 +48,36 @@ import {
   type RunsRegistry,
 } from "@crabgic/supervisor";
 import { FakeEngineAdapter, buildFakeEngineScript, buildWorkerResult } from "@crabgic/testkit";
+
+/**
+ * Owner ruling R5: a run that verified nothing does not publish. Every case in
+ * this file closes the loop ON `published_local`, so each scripted worker runs
+ * its one granted command and the engine reports it clean.
+ *
+ * The adjudicator is needed because the daemon default refuses everything and
+ * the FAKE engine consults it even for pre-permitted tools — a modelling
+ * difference from production, narrowed here to the single granted command so
+ * the fixture still fails closed on anything else.
+ */
+const VERIFICATION_TOOL_CALL = {
+  toolName: "Bash",
+  toolInput: { command: "npm run test" },
+  toolResult: "ok",
+  toolResultIsError: false,
+} as const;
+
+const ALLOW_VERIFICATION_ONLY = (
+  toolName: string,
+  toolInput: Readonly<Record<string, unknown>>,
+): Promise<
+  | { readonly behavior: "allow"; readonly updatedInput: Readonly<Record<string, unknown>> }
+  | { readonly behavior: "deny"; readonly message: string }
+> =>
+  Promise.resolve(
+    toolName === "Bash" && toolInput["command"] === "npm run test"
+      ? { behavior: "allow", updatedInput: toolInput }
+      : { behavior: "deny", message: "not granted by this fixture" },
+  );
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 import { dispatchCommand } from "../commands/dispatch.js";
@@ -178,7 +208,12 @@ function intakeRequest(): IntakeRequest {
     ],
     envelopeContent: {
       ownedPaths: ["src/login"],
-      commands: [],
+      /**
+       * R5: publication now requires that the granted verification command
+       * actually RAN. This loop closes on `published_local`, so the envelope has
+       * to grant one and the scripted worker below has to run it.
+       */
+      commands: ["npm run test"],
       networkDestinations: [],
       credentialReferences: [],
       dependencies: [],
@@ -205,6 +240,13 @@ function policy(overrides: Partial<EnvelopePolicy> = {}): EnvelopePolicy {
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     createdAt: "2026-01-01T00:00:00.000Z",
     allowedPathPrefixes: ["src"],
+    /**
+     * R5: the standing policy must contain the envelope's grant, or containment
+     * escalates and the loop never reaches a run at all. The one case that
+     * overrides `allowedPathPrefixes` to force an escalation keeps working —
+     * it escalates on the PATH, which is what it asserts.
+     */
+    allowedCommands: ["npm run test"],
     ...overrides,
   });
 }
@@ -282,9 +324,15 @@ function buildDispatcher(
     createAdapter: () =>
       Promise.resolve(
         new FakeEngineAdapter(
-          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+          buildFakeEngineScript({
+            // R5: runs its granted verification command, so the publish gate has
+            // something to pass on.
+            toolCalls: [VERIFICATION_TOOL_CALL],
+            structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+          }),
         ),
       ),
+    adjudicate: ALLOW_VERIFICATION_ONLY,
     // The git half of the post-completion pipeline, faked for the same reason
     // `prepareRun`/`createAttemptWorktree` are: this suite has no repository.
     // The gate registry, the `final_verifying` firing and the
@@ -350,10 +398,12 @@ describe("closed loop — entered through the shipped `run` command", () => {
         Promise.resolve(
           new FakeEngineAdapter(
             buildFakeEngineScript({
+              toolCalls: [VERIFICATION_TOOL_CALL],
               structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
             }),
           ),
         ),
+      adjudicate: ALLOW_VERIFICATION_ONLY,
       // Same git-boundary seam as the sibling cases; the gate firing is real.
       postCompletionGitEffects: createFakePostCompletionGitEffects(),
     });

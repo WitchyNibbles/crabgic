@@ -33,6 +33,23 @@ export interface EngineToolUseEvent {
   readonly toolName: string;
   readonly toolInput: Readonly<Record<string, unknown>>;
   readonly toolResult?: string;
+  /**
+   * Whether the engine reported this tool call as errored — the `is_error` flag
+   * on the `tool_result` block.
+   *
+   * ABSENT on the tool_use half of the pair (the outcome is not known yet) and
+   * absent when the engine omitted the flag; present, and boolean, once the
+   * matching `tool_result` arrives carrying it. Consumers must treat absence as
+   * "not known to have succeeded" rather than as success — owner ruling R5's
+   * `AcceptanceEvaluationRecord` counts only an explicit `false`.
+   *
+   * Grounded in this repository's own measured engine behaviour rather than in
+   * memory: `../../../engine-claude/src/live/read-exposure.live.test.ts` and
+   * `.../sandbox-containment.live.test.ts` both read `is_error` off tool_result
+   * blocks to detect a refused call, against the version range
+   * `docs/engine-baseline.md` pins.
+   */
+  readonly toolResultIsError?: boolean;
 }
 
 export interface EnginePermissionDenial {

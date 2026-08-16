@@ -163,6 +163,11 @@ export type { WorkUnitAttemptRecord } from "./attempts.js";
 
 // ---- Acceptance-criteria seal anchor (roadmap/24) ----
 export { journalCriteriaSeal, findLatestCriteriaSeal } from "./criteria-seal-anchor.js";
+export {
+  ACCEPTANCE_EVALUATION_DECISION,
+  journalAcceptanceEvaluation,
+  findAcceptanceEvaluations,
+} from "./acceptance-evaluation-anchor.js";
 
 // ---- Journal head anchoring (detects wholesale chain rewrites) ----
 export {

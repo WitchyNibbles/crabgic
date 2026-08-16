@@ -94,7 +94,22 @@ describe("the registered gate set is pinned", () => {
    * residual (15's perf gate and 14's own tranche are still unregistered), and
    * that residual is the one this batch deliberately did not close.
    */
-  it("registers EXACTLY the security-fixture manifest plus the criteria-seal gate — nothing else", () => {
+  /**
+   * ⚠️ FLIPPED AGAIN (owner ruling R5, 2026-08-16), and disclosed for the same
+   * reason the Batch M flip above was. The `acceptance` tag now carries TWO
+   * gates, not one, and the ordering claim below changes with it.
+   *
+   * The two are complementary rather than redundant, which is why the
+   * one-acceptance-gate assertion was wrong to keep: `criteria-seal` asks
+   * whether the criteria being published against are the criteria that were
+   * APPROVED, and `acceptance-evaluated` asks whether they were ever EVALUATED.
+   * Both of the runs in `docs/evidence/phase-25/published-unverified.md` passed
+   * the first and would fail the second.
+   *
+   * The emptiness assertions for the deferred tranches are UNCHANGED and still
+   * pin the residual R5 does not close.
+   */
+  it("registers EXACTLY the security-fixture manifest plus both acceptance gates — nothing else", () => {
     const registry = composeGateRegistry({
       requirements: requirements([]),
       workUnits: units([]),
@@ -104,7 +119,10 @@ describe("the registered gate set is pinned", () => {
     // gate FAMILY grows `list()` without growing the derived constant, so it
     // reddens here.
     expect(registry.list().map((gate) => gate.name)).toStrictEqual([...COMPOSED_GATE_NAMES]);
-    expect(registry.list("acceptance").map((gate) => gate.name)).toStrictEqual(["criteria-seal"]);
+    expect(registry.list("acceptance").map((gate) => gate.name)).toStrictEqual([
+      "criteria-seal",
+      "acceptance-evaluated",
+    ]);
     expect(registry.list("security").map((gate) => gate.name)).toStrictEqual([
       ...REQUIRED_SECURITY_FIXTURE_IDS,
     ]);
@@ -145,7 +163,7 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
     );
   });
 
-  it("lists in GATE_RISK_TAGS order, not registration order — the seal gate registers FIRST and lists LAST", () => {
+  it("lists in GATE_RISK_TAGS order, not registration order — the acceptance gates register FIRST and LAST but list together, last", () => {
     const registry = composeGateRegistry({
       requirements: requirements([]),
       workUnits: units([]),
@@ -159,9 +177,14 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
     // (`packages/contracts/src/contracts/intent-contract.ts:16`), which lists
     // `security` fifth and `acceptance` ninth. Re-ordering either list reddens
     // here even though every gate is still registered.
+    //
+    // R5 makes this sharper rather than weaker: `acceptance-evaluated`
+    // registers LAST of all and still lists inside the `acceptance` block,
+    // beside a gate registered first — so this asserts the tag grouping, not an
+    // insertion order that happens to agree with it.
     const names = registry.list().map((gate) => gate.name);
-    expect(names.at(-1)).toBe("criteria-seal");
-    expect(names.slice(0, -1)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
+    expect(names.slice(-2)).toStrictEqual(["criteria-seal", "acceptance-evaluated"]);
+    expect(names.slice(0, -2)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
   });
 
   it("FIRES every one of them through the composed registry, each emitting its own EvidenceRecord bound to the candidate", async () => {
@@ -227,13 +250,26 @@ describe("the composed requirements reader", () => {
       journal,
     });
 
-    expect(results).toHaveLength(1);
-    expect(results[0]?.verdict.passed).toBe(true);
-    // The verdict's own count is what proves BOTH were verified. A reader scoped
-    // to one unit would report 1 here and still pass.
-    expect(JSON.parse(results[0]!.verdict.detail) as { verified: number }).toStrictEqual({
+    // BOTH acceptance gates share this one reader (R5), so the union claim is
+    // asserted through each of them — a reader scoped to one unit would report
+    // 1 in either place and still pass.
+    const seal = results.find((result) => result.name === "criteria-seal");
+    expect(seal?.verdict.passed).toBe(true);
+    expect(JSON.parse(seal!.verdict.detail) as { verified: number }).toStrictEqual({
       verified: 2,
     });
+
+    const evaluated = results.find((result) => result.name === "acceptance-evaluated");
+    // It REFUSES here, and that is the correct answer: this fixture seals two
+    // requirements and journals no evaluation for either. What it pins is that
+    // the refusal names BOTH — the union, not one unit's half.
+    expect(evaluated?.verdict.passed).toBe(false);
+    const detail = JSON.parse(evaluated!.verdict.detail) as {
+      readonly unevaluated: readonly { readonly requirementId: string }[];
+    };
+    expect(detail.unevaluated.map((entry) => entry.requirementId).sort()).toStrictEqual(
+      [REQ_1, REQ_2].sort(),
+    );
   });
 
   it("reads the records WHEN IT FIRES, so a post-registration tamper is caught", async () => {

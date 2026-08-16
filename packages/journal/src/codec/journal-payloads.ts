@@ -26,6 +26,7 @@
 
 import { z } from "zod";
 import {
+  AcceptanceEvaluationRecordSchema,
   CriteriaApprovalSealSchema,
   EvidenceRecordSchema,
   IdSchema,
@@ -121,6 +122,22 @@ export const AdjudicationDecisionPayloadSchema = z
      * convention-instead-of-contract shape that ruling rejects.
      */
     criteriaSeal: CriteriaApprovalSealSchema.optional(),
+    /**
+     * OPTIONAL for the same reason `criteriaSeal` is, and by the same ruling:
+     * Gap 5 closes the entry-TYPE union at thirteen and says nothing about
+     * payload shapes, and every adjudication entry written before owner ruling
+     * R5 existed stays valid.
+     *
+     * Deciding that an attempt's granted verification commands did or did not
+     * run IS an adjudication about that attempt — it is what the publish gate
+     * later adjudicates on — so it rides here rather than on a fourteenth type.
+     *
+     * A TYPED field, not JSON in `rationale`: Gap 20's ruling is that what a
+     * schema can carry, a schema should carry. It also matters more here than
+     * usual — the record's whole value is that a reader can fold over it, and a
+     * hand-encoded blob would put the parsing burden on every consumer.
+     */
+    acceptanceEvaluation: AcceptanceEvaluationRecordSchema.optional(),
   })
   .strict();
 
