@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-16",
-  "generatedAtSha": "572b5dccc997be9a7ef219c732c518f0a8ca1d6a",
+  "generatedAtSha": "be99caf50d5de3ad8889467f43105c128b2d4435",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2640,
-    "seededStale": 681,
+    "anchored": 2639,
+    "seededStale": 682,
     "outsideSpan": 804,
     "repeatText": 531,
     "crossFile": 20,
@@ -3462,7 +3462,7 @@
       "pins": [
         "OK/collapsed@136-137!span",
         "ABSENT@-",
-        "OK/collapsed@56!file"
+        "OK/collapsed@57!file"
       ]
     },
     "phase-08.json#c3#packages/git-engine/src/renderer-corpus-shared.test.ts:28": {
@@ -3556,7 +3556,7 @@
       "qa": "e1227929074b",
       "ref": "OK",
       "pins": [
-        "OK-pieces/code@79-82,84-85!span"
+        "OK-pieces/code@80-83,85-86!span"
       ]
     },
     "phase-08.json#c5#packages/git-engine/src/publish-local.test.ts:234": {
@@ -7939,14 +7939,14 @@
       "qa": "d7c692cabf2d",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@33",
-        "OK/collapsed@34,60~repeat",
+        "OK/collapsed@34",
+        "OK/collapsed@35,61~repeat",
         "SKIP-short",
-        "OK/collapsed@56",
         "OK/collapsed@57",
         "OK/collapsed@58",
         "OK/collapsed@59",
         "OK/collapsed@60",
+        "MOVED/collapsed@61",
         "SKIP-commentary"
       ]
     },

@@ -49,9 +49,50 @@ export type RenderCommitResult =
       readonly findings: readonly LintFinding[];
     };
 
+/** commitlint's `footer-max-line-length`, and the width this repo's own config inherits. */
+const FOOTER_MAX_LINE_LENGTH = 100;
+
+/**
+ * Lowers ONLY the first letter.
+ *
+ * `outcome` comes from a `WorkUnit`/`Requirement` title, which humans
+ * conventionally capitalise, and commitlint's `subject-case` rule rejects
+ * sentence-case. Lowercasing the whole subject would be worse than the problem
+ * it solves: it mangles `TaskPacket` into `taskpacket`. The rule objects to
+ * sentence-case, not to capitals anywhere.
+ */
+function lowerFirst(text: string): string {
+  return text.length === 0 ? text : `${text[0]!.toLowerCase()}${text.slice(1)}`;
+}
+
+/**
+ * Wraps one footer line at `FOOTER_MAX_LINE_LENGTH`, continuing on indented
+ * lines so the trailer key stays at a line start and the footer stays
+ * parseable. Never splits a word — an over-long token (a path, typically) is
+ * left whole and over-length rather than corrupted, because a broken path is a
+ * worse outcome than a long line.
+ */
+function wrapFooterLine(key: string, value: string): readonly string[] {
+  const lines: string[] = [];
+  let current = `${key} `;
+  for (const word of value.split(/\s+/).filter((part) => part.length > 0)) {
+    if (
+      current.trimEnd().length > key.length &&
+      `${current}${word}`.length > FOOTER_MAX_LINE_LENGTH
+    ) {
+      lines.push(current.trimEnd());
+      current = `  ${word} `;
+    } else {
+      current = `${current}${word} `;
+    }
+  }
+  lines.push(current.trimEnd());
+  return lines;
+}
+
 export function assembleCommitSubject(input: RenderCommitInput): string {
   const prefix = input.scope !== undefined ? `${input.type}(${input.scope})` : input.type;
-  return `${prefix}: ${input.outcome}`;
+  return `${prefix}: ${lowerFirst(input.outcome)}`;
 }
 
 export function assembleCommitBody(input: RenderCommitInput): string {
@@ -61,6 +102,34 @@ export function assembleCommitBody(input: RenderCommitInput): string {
     `Compat: ${input.compat}`,
     `Verification: ${input.verification}`,
   ].join("\n");
+}
+
+/**
+ * Wraps an assembled body to commitlint's footer width, AFTER the policy has
+ * judged it.
+ *
+ * The order is the whole point. `CommunicationPolicy` caps a commit body at
+ * five lines, and that cap is about how much a human must READ — one logical
+ * line per trailer key. Wrapping before the check would let display width
+ * decide a content question: a long `rollbackStrategy` would push the body past
+ * five wrapped lines and get blocked for being wide rather than for saying too
+ * much, and (measured while writing this) collapsing the author's own newlines
+ * into spaces would let a genuinely six-line body slip through the guard
+ * entirely.
+ *
+ * So each line is wrapped INDEPENDENTLY and hard breaks are preserved: the
+ * policy counts entries, commitlint counts columns, and neither decides the
+ * other's question.
+ */
+export function wrapCommitFooter(body: string): string {
+  return body
+    .split("\n")
+    .flatMap((line) => {
+      const separator = line.indexOf(":");
+      if (separator < 0) return [line];
+      return wrapFooterLine(line.slice(0, separator + 1), line.slice(separator + 1).trim());
+    })
+    .join("\n");
 }
 
 /**
@@ -109,6 +178,8 @@ export async function renderCommit(
   return {
     status: "rendered",
     subject: subjectOutcome.artifact.content,
-    body: bodyOutcome.artifact.content,
+    // Wrapped only now, once the policy has judged the content — see
+    // `wrapCommitFooter` for why that order is load-bearing.
+    body: wrapCommitFooter(bodyOutcome.artifact.content),
   };
 }
