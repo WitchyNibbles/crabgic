@@ -234,6 +234,58 @@ describe("dispatchAttempt", () => {
    * measured. If it is ever wanted it belongs behind an explicit utilization
    * threshold, not in the default path.
    */
+  /**
+   * MEASURED on run 97fb3b10 (2026-08-16), the first run that produced code.
+   * Its worker returned `{outcome, summary}` — `WorkerResult` also requires
+   * `schemaVersion`/`id`/`workUnitId` — so the attempt failed as a
+   * `schemaViolation`, and the journal recorded only:
+   *
+   *     {"status": "failed", "previousStatus": "dispatched", "sessionId": "…"}
+   *
+   * No reason. The diagnostics existed and were returned in memory, then
+   * discarded. Recovering the cause meant reading the executor's branches and
+   * the worker's raw transcript.
+   *
+   * The seal-refusal branch TWELVE LINES BELOW already journals first, and its
+   * own comment states the rule this branch broke: "a crash between the two
+   * must leave the REASON behind, not a bare `failed` nothing accounts for."
+   * The lesson was learned in one branch and not applied to its sibling.
+   */
+  it("journals WHY a schema violation failed, before the failed transition", async () => {
+    const script = buildFakeEngineScript({ failure: { kind: "schemaViolation" } });
+    const adapter = new FakeEngineAdapter(script);
+    const outcome = await dispatchAttempt({
+      adapter,
+      journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+    });
+    expect(outcome.kind).toBe("failed");
+
+    const entries: { type: string; payload: Record<string, unknown> }[] = [];
+    for await (const e of store.queryEntries()) {
+      entries.push({ type: e.type, payload: e.payload as Record<string, unknown> });
+    }
+    const refusal = entries.find(
+      (e) => e.type === "adjudication_decision" && e.payload.decision === "worker_result_rejected",
+    );
+    expect(refusal, "a bare `failed` with no journaled cause is the defect").toBeDefined();
+    expect(String(refusal?.payload.rationale)).toMatch(/schema/i);
+
+    // Ordered: the REASON must survive a crash between the two writes, so it is
+    // written first — the same rule the seal-refusal branch already follows.
+    const reasonIdx = entries.findIndex(
+      (e) => e.type === "adjudication_decision" && e.payload.decision === "worker_result_rejected",
+    );
+    const failedIdx = entries.findIndex(
+      (e) => e.type === "work_unit_transition" && e.payload.status === "failed",
+    );
+    expect(reasonIdx).toBeLessThan(failedIdx);
+  });
+
   it("does NOT park on `allowed` telemetry — it is not an exhaustion", async () => {
     const script = buildFakeEngineScript({
       failure: { kind: "limitSignal", payload: RATE_LIMIT_ALLOWED_FIVE_HOUR },

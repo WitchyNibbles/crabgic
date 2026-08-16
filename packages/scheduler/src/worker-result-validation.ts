@@ -19,7 +19,12 @@
  * built and frozen, so duplicating this ~40-line pure function here is the
  * documented, minimal-risk choice for this phase's own build.
  */
-import { WorkerResultSchema, type WorkerResult } from "@crabgic/contracts";
+import { randomUUID } from "node:crypto";
+import {
+  CURRENT_SCHEMA_VERSION,
+  WorkerAuthoredResultSchema,
+  type WorkerResult,
+} from "@crabgic/contracts";
 import type { EngineResultEvent } from "@crabgic/engine-core";
 
 export type SchedulerSchemaViolationReason = "absent" | "invalid" | "retriesExhausted";
@@ -59,7 +64,10 @@ function diagnosticFor(issue: {
  * module's file-level doc comment for why this is a deliberate parallel of
  * 06's own validator, not an import of it.
  */
-export function validateWorkerResult(result: EngineResultEvent): SchedulerWorkerResultValidation {
+export function validateWorkerResult(
+  result: EngineResultEvent,
+  workUnitId: string,
+): SchedulerWorkerResultValidation {
   if (result.subtype === STRUCTURED_OUTPUT_RETRIES_EXHAUSTED_SUBTYPE) {
     return {
       kind: "schemaViolation",
@@ -80,7 +88,22 @@ export function validateWorkerResult(result: EngineResultEvent): SchedulerWorker
     };
   }
 
-  const parsed = WorkerResultSchema.safeParse(result.structuredOutput);
+  /**
+   * Parsed against the WORKER-AUTHORED half, which is exactly the schema
+   * published to the engine as `outputFormat` — see
+   * `WorkerAuthoredResultSchema`. It used to parse the full `WorkerResult`
+   * against raw structured output while the daemon published a two-property
+   * document, so a compliant worker was rejected every time (measured, run
+   * 97fb3b10, 2026-08-16).
+   *
+   * The remaining fields are COMPOSED here rather than requested: `id` and
+   * `workUnitId` are the harness's facts — a worker asserting its own
+   * `workUnitId` would be claiming an identity nothing verifies — `usage` is
+   * the engine's, carried on this very event, and `schemaVersion` is a
+   * constant. Asking a model for any of them invites fabrication, and one is
+   * an impersonation vector.
+   */
+  const parsed = WorkerAuthoredResultSchema.safeParse(result.structuredOutput);
   if (!parsed.success) {
     return {
       kind: "schemaViolation",
@@ -91,7 +114,18 @@ export function validateWorkerResult(result: EngineResultEvent): SchedulerWorker
 
   return {
     kind: "valid",
-    result: parsed.data,
+    result: {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      id: randomUUID(),
+      workUnitId,
+      outcome: parsed.data.outcome,
+      summary: parsed.data.summary,
+      diagnostics: parsed.data.diagnostics,
+      usage: {
+        turnsUsed: result.turnsUsed ?? 0,
+        ...(result.totalCostUsd !== undefined ? { totalCostUsd: result.totalCostUsd } : {}),
+      },
+    } satisfies WorkerResult,
     usage: {
       ...(result.turnsUsed !== undefined ? { turnsUsed: result.turnsUsed } : {}),
       ...(result.totalCostUsd !== undefined ? { totalCostUsd: result.totalCostUsd } : {}),

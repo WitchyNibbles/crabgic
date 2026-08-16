@@ -75,3 +75,33 @@ export const WorkerResultSchema = z
   .strict();
 
 export type WorkerResult = z.infer<typeof WorkerResultSchema>;
+
+/**
+ * The half of a `WorkerResult` a WORKER may author — and the schema actually
+ * published to the engine as `outputFormat`.
+ *
+ * WHY THIS EXISTS. Until 2026-08-16 the daemon published a hand-written
+ * two-property JSON Schema (`{outcome, summary}`, `required: ["outcome"]`)
+ * while `validateWorkerResult` enforced the full seven-field
+ * `WorkerResultSchema` against the raw structured output. Two schemas that had
+ * to agree, and did not: every worker obeyed the published contract exactly and
+ * every result was then rejected as malformed. Measured on run 97fb3b10, where
+ * a worker wrote correct code and the attempt failed anyway.
+ *
+ * The split is not merely a fix for that mismatch — it is the right boundary.
+ * `id` and `workUnitId` are the HARNESS's facts, and a worker asserting its own
+ * `workUnitId` would be claiming an identity nothing checks; `usage` is the
+ * ENGINE's fact, already carried on the result event; `schemaVersion` is a
+ * constant. Asking a model for any of them invites fabrication, and one of them
+ * is an impersonation vector. A worker reports only what it alone knows: what
+ * happened, and what it saw.
+ */
+export const WorkerAuthoredResultSchema = z
+  .object({
+    outcome: z.enum(WORK_UNIT_ATTEMPT_STATUS_TERMINALS),
+    summary: NonEmptyStringSchema,
+    diagnostics: z.array(NonEmptyStringSchema),
+  })
+  .strict();
+
+export type WorkerAuthoredResult = z.infer<typeof WorkerAuthoredResultSchema>;

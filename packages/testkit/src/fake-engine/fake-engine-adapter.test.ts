@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileEnvelope, type CompiledWorkerProfile, type SessionRef } from "@crabgic/engine-core";
 import type { EngineEvent, EngineResultEvent, EngineToolUseEvent } from "@crabgic/engine-core";
-import { WorkerResultSchema } from "@crabgic/contracts";
+import { WorkerAuthoredResultSchema } from "@crabgic/contracts";
 import { buildAuthorizationEnvelope } from "../fixtures/authorization-envelope.js";
 import { buildTaskPacket } from "../fixtures/task-packet.js";
 import { alwaysAllowAdjudicate } from "./adjudication-layer.js";
@@ -93,13 +93,36 @@ describe("FakeEngineAdapter — ordered EngineEvent replay (work item 5 failing-
     ]);
   });
 
-  it("the normal-path terminal result's structuredOutput conforms to WorkerResultSchema (deliverable 1)", async () => {
+  /**
+   * AMENDED 2026-08-16. This asserted `WorkerResultSchema` — the full
+   * seven-field record — which made the fake engine model an engine handing
+   * back `id`, `workUnitId` and `usage` that a model had invented. Real
+   * structured output is constrained by the `outputFormat` schema the daemon
+   * publishes, which is the worker-AUTHORED subset; the other four fields are
+   * composed by the harness from facts it already holds.
+   *
+   * The old assertion is why the schema mismatch on run 97fb3b10 was invisible:
+   * the fixture produced documents no real worker could produce, so the suite
+   * agreed with a contract production never honoured. The claim is unchanged in
+   * spirit — the terminal result conforms to the schema that governs it — and
+   * corrected in fact.
+   */
+  it("the normal-path terminal result's structuredOutput conforms to WorkerAuthoredResultSchema", async () => {
     const script = buildFakeEngineScript();
     const adapter = new FakeEngineAdapter(script);
     const handle = adapter.spawn(buildTaskPacket(), buildRealProfile(), alwaysAllowAdjudicate);
     const events = await collect(handle.events);
     const result = events.find((e): e is EngineResultEvent => e.type === "result");
-    expect(() => WorkerResultSchema.parse(result?.structuredOutput)).not.toThrow();
+    expect(() => WorkerAuthoredResultSchema.parse(result?.structuredOutput)).not.toThrow();
+  });
+
+  it("does NOT emit the harness's own fields — a worker cannot assert its identity or usage", () => {
+    // The negative control the amended assertion above needs: `.strict()` makes
+    // the parse fail on extras, but only if something would have emitted them.
+    const script = buildFakeEngineScript();
+    expect(Object.keys(script.structuredOutput)).toEqual(
+      expect.arrayContaining(["id", "workUnitId", "usage"]),
+    );
   });
 });
 

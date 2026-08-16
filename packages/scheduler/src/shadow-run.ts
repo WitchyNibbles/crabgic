@@ -92,7 +92,7 @@ export async function runShadowAttempt(options: RunShadowAttemptOptions): Promis
       content: JSON.stringify(event),
     });
     if (event.type === "result") {
-      validation = validateWorkerResult(event);
+      validation = validateWorkerResult(event, options.packet.workUnitId);
     }
   }
 

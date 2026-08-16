@@ -39,11 +39,13 @@
  * and `bootSupervisor`'s teardown order.
  */
 import { join } from "node:path";
+import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import {
   isRunLifecycleAbsorbing,
   IllegalTransitionError,
   CURRENT_SCHEMA_VERSION,
+  WorkerAuthoredResultSchema,
 } from "@crabgic/contracts";
 import type { RunLifecycleState } from "@crabgic/contracts";
 import type {
@@ -124,18 +126,26 @@ const DEFAULT_TARGET_REF = "HEAD";
 // governed.
 
 /**
- * The result shape every worker must return. Deliberately minimal and
- * stable: 13's `validateWorkerResult` is what enforces it against the
- * structured output a worker actually produces.
+ * The result shape every worker must return — DERIVED from the schema the
+ * validator enforces, never restated.
+ *
+ * It used to be a hand-written literal: `{outcome, summary}`, with only
+ * `outcome` required. The validator meanwhile enforced the full seven-field
+ * `WorkerResultSchema`. Two schemas that had to agree and nothing compared
+ * them, so every worker obeyed the contract it was handed and every result was
+ * rejected as malformed. Measured on run 97fb3b10 (2026-08-16): a worker wrote
+ * correct code, reported `{outcome, summary}` exactly as instructed, and the
+ * attempt failed as a `schemaViolation`. No worker could ever have succeeded.
+ *
+ * `z.toJSONSchema` is zod 4's own emitter, so the published document is a
+ * projection of the enforced schema rather than a second description of it.
+ * Exported so `./worker-result-schema.test.ts` can hold it against
+ * `WorkerAuthoredResultSchema`; that test is the thing that makes the two
+ * unable to drift apart again.
  */
-const WORKER_RESULT_SCHEMA: Record<string, unknown> = {
-  type: "object",
-  properties: {
-    outcome: { type: "string", enum: ["succeeded", "failed"] },
-    summary: { type: "string" },
-  },
-  required: ["outcome"],
-};
+export const WORKER_RESULT_SCHEMA: Record<string, unknown> = z.toJSONSchema(
+  WorkerAuthoredResultSchema,
+) as unknown as Record<string, unknown>;
 
 /**
  * Refuses every adjudication by default. roadmap/05 owns the real

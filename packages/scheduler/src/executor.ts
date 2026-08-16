@@ -192,6 +192,32 @@ async function journalSealRefusal(
   });
 }
 
+/**
+ * Records WHY a worker's reported result was rejected as malformed.
+ *
+ * Same discipline and same security bound as `journalSealRefusal`: the reason
+ * reaches the journal BEFORE the `failed` transition, and it carries the
+ * VALIDATOR's diagnostics — never worker-authored prose, which is
+ * attacker-controlled on exactly this path.
+ */
+async function journalWorkerResultRejection(
+  params: ConsumeEventsParams,
+  diagnostics: readonly string[],
+): Promise<void> {
+  await params.journal.appendEntry({
+    type: "adjudication_decision",
+    ...(params.runId !== undefined ? { runId: params.runId } : {}),
+    workUnitId: params.workUnitId,
+    payload: {
+      decision: "worker_result_rejected",
+      rationale: `rejected a reported result: it does not match the WorkerResult schema — ${
+        diagnostics.length > 0 ? diagnostics.join("; ") : "no diagnostics supplied"
+      }`,
+      subjectId: params.workUnitId,
+    },
+  });
+}
+
 /** Shared event-consumption loop between a fresh dispatch and a resume — see file-level doc comment. */
 async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttemptOutcome> {
   for await (const event of params.events) {
@@ -232,9 +258,19 @@ async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttem
     }
 
     if (event.type === "result") {
-      const validation = validateWorkerResult(event);
+      const validation = validateWorkerResult(event, params.workUnitId);
 
       if (validation.kind === "schemaViolation") {
+        // Journaled BEFORE the transition, for the reason the seal-refusal
+        // branch below already states: a crash between the two must leave the
+        // REASON behind, not a bare `failed` nothing accounts for. Until
+        // 2026-08-16 this branch did exactly that — run 97fb3b10's worker
+        // returned `{outcome, summary}` without the required
+        // `schemaVersion`/`id`/`workUnitId`, and the journal recorded a failure
+        // with no cause while the diagnostics were handed to the caller and
+        // discarded. Recovering the reason meant reading this file's branches
+        // against the worker's raw transcript.
+        await journalWorkerResultRejection(params, validation.diagnostics);
         await recordAttempt(
           params.journal,
           params.workUnitId,

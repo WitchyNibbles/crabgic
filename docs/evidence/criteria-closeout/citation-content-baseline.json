@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-16",
-  "generatedAtSha": "74b753683d5dad8c4e2159fecbf0d9c3063bb83a",
+  "generatedAtSha": "2d45a1c6385862d7109b673e36b0085a278759c1",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
@@ -9,7 +9,7 @@
     "anchored": 2640,
     "seededStale": 681,
     "outsideSpan": 804,
-    "repeatText": 528,
+    "repeatText": 531,
     "crossFile": 20,
     "skipped": 610
   },
@@ -2603,7 +2603,7 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@111",
-        "MOVED/collapsed@237!file"
+        "MOVED/collapsed@263!file"
       ]
     },
     "phase-06.json#c6#docs/engine-baseline.md:364": {
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@602!span",
-        "MOVED/collapsed@634!span"
+        "MOVED/collapsed@612!span",
+        "MOVED/collapsed@644!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -5367,8 +5367,8 @@
       "qa": "116ddfc61118",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@327-328!span",
-        "MOVED/collapsed@302!span",
+        "MOVED/collapsed@379-380!span",
+        "MOVED/collapsed@354!span",
         "SKIP-commentary"
       ]
     },
@@ -11821,10 +11821,10 @@
       "qa": "ec309bfba344",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@67,94,120,136,652!span~repeat",
-        "MOVED/collapsed@653!span",
-        "MOVED/collapsed@657!span",
-        "MOVED/collapsed@659!span"
+        "MOVED-AMBIG/collapsed@67,94,120,136,704!span~repeat",
+        "MOVED/collapsed@705!span",
+        "MOVED/collapsed@709!span",
+        "MOVED/collapsed@711!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:599-621": {
@@ -11832,30 +11832,30 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED-AMBIG/collapsed@64,117,387,686,809!span~repeat",
-        "MOVED/collapsed@687!span",
-        "MOVED/collapsed@689!span"
+        "MOVED-AMBIG/collapsed@64,117,439,738,861!span~repeat",
+        "MOVED/collapsed@739!span",
+        "MOVED/collapsed@741!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:623-666": {
       "qa": "0b313dd52618",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@713,748,791!span~repeat",
-        "MOVED-AMBIG/collapsed@178,719!span~repeat",
-        "MOVED-AMBIG/collapsed@726,756!span~repeat",
-        "MOVED/collapsed@727!span",
-        "MOVED-AMBIG/collapsed@728,758!span~repeat"
+        "MOVED-AMBIG/collapsed@266,765,800,843!span~repeat",
+        "MOVED-AMBIG/collapsed@178,771!span~repeat",
+        "MOVED-AMBIG/collapsed@778,808!span~repeat",
+        "MOVED/collapsed@779!span",
+        "MOVED-AMBIG/collapsed@780,810!span~repeat"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:668-691": {
       "qa": "8b644b805462",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@750!span",
-        "MOVED-AMBIG/collapsed@726,756!span~repeat",
-        "MOVED/collapsed@757!span",
-        "MOVED/collapsed@733!span"
+        "MOVED/collapsed@802!span",
+        "MOVED-AMBIG/collapsed@778,808!span~repeat",
+        "MOVED/collapsed@809!span",
+        "MOVED/collapsed@785!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.ts:177-192": {
@@ -11863,7 +11863,7 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@180",
-        "OK/collapsed@184",
+        "OK/collapsed@184,208~repeat",
         "OK/collapsed@188"
       ]
     },
@@ -11871,9 +11871,9 @@
       "qa": "c92e7caae0db",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@270!span",
-        "MOVED/collapsed@280!span",
-        "MOVED-AMBIG/collapsed@238,281,301,312,322,340,414,490!span~repeat"
+        "MOVED/collapsed@306!span",
+        "MOVED/collapsed@316!span",
+        "MOVED-AMBIG/collapsed@274,317,337,348,358,376,450,526!span~repeat"
       ]
     },
     "phase-24.json#c6#docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt": {
@@ -11889,8 +11889,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@714!span",
-        "MOVED-AMBIG/collapsed@720,863!span~repeat",
+        "MOVED/collapsed@724!span",
+        "MOVED-AMBIG/collapsed@730,873!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]
@@ -12046,16 +12046,16 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@127",
-        "OK/collapsed@128,348,445~repeat"
+        "OK/collapsed@128,384,481~repeat"
       ]
     },
     "phase-24.json#c8#packages/scheduler/src/executor.ts:321-325": {
       "qa": "4b00494387ab",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@344!span",
-        "MOVED-AMBIG/collapsed@347,444!span~repeat",
-        "MOVED-AMBIG/collapsed@128,348,445!span~repeat",
+        "MOVED/collapsed@380!span",
+        "MOVED-AMBIG/collapsed@383,480!span~repeat",
+        "MOVED-AMBIG/collapsed@128,384,481!span~repeat",
         "SKIP-short",
         "SKIP-commentary",
         "SKIP-commentary"
@@ -12065,8 +12065,8 @@
       "qa": "ff677c6c8354",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@441!span",
-        "MOVED-AMBIG/collapsed@128,348,445!span~repeat"
+        "MOVED/collapsed@477!span",
+        "MOVED-AMBIG/collapsed@128,384,481!span~repeat"
       ]
     },
     "phase-24.json#c9#docs/evidence/phase-24/closeout-c9-journal-entry-type-13.txt": {
@@ -12142,9 +12142,9 @@
       "qa": "545ef77a69eb",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@183",
-        "OK/collapsed@184",
-        "OK/collapsed@187,411~repeat",
+        "OK/collapsed@183,207~repeat",
+        "OK/collapsed@184,208~repeat",
+        "OK/collapsed@187,211,447~repeat",
         "OK/collapsed@188"
       ]
     }

@@ -61,7 +61,7 @@ export async function replayReproducer(
   };
   for await (const event of handle.events) {
     if (event.type === "result") {
-      validation = validateWorkerResult(event);
+      validation = validateWorkerResult(event, options.packet.workUnitId);
     }
   }
   return validation;
