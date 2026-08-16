@@ -143,9 +143,26 @@ const DEFAULT_TARGET_REF = "HEAD";
  * `WorkerAuthoredResultSchema`; that test is the thing that makes the two
  * unable to drift apart again.
  */
-export const WORKER_RESULT_SCHEMA: Record<string, unknown> = z.toJSONSchema(
-  WorkerAuthoredResultSchema,
-) as unknown as Record<string, unknown>;
+export const WORKER_RESULT_SCHEMA: Record<string, unknown> = ((): Record<string, unknown> => {
+  /**
+   * `$schema` is STRIPPED, and the engine is why. `z.toJSONSchema` stamps
+   * `"$schema": "https://json-schema.org/draft/2020-12/schema"`, and the
+   * engine's `--json-schema` validator refuses a document whose meta-schema it
+   * cannot resolve:
+   *
+   *     Error: --json-schema is not a valid JSON Schema: no schema with key or
+   *     ref "https://json-schema.org/draft/2020-12/schema"
+   *
+   * Measured on run 1387f6d1 (2026-08-16), which died 1.3s in, before the
+   * worker existed. Dropping the annotation changes nothing about what the
+   * document DESCRIBES — every constraint below it is untouched — so this is a
+   * transport concession, not a weakening of the contract.
+   */
+  const { $schema: _unusedMetaSchema, ...schema } = z.toJSONSchema(WorkerAuthoredResultSchema) as {
+    $schema?: unknown;
+  } & Record<string, unknown>;
+  return schema;
+})();
 
 /**
  * Refuses every adjudication by default. roadmap/05 owns the real

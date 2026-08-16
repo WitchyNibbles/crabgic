@@ -54,3 +54,23 @@ describe("the JSON Schema published to workers", () => {
     ).toThrow();
   });
 });
+
+describe("what the engine will actually accept", () => {
+  /**
+   * MEASURED on run 1387f6d1 (2026-08-16). The engine validates the document
+   * handed to `--json-schema` and refuses one whose `$schema` it cannot
+   * resolve: "no schema with key or ref
+   * https://json-schema.org/draft/2020-12/schema". The run died 1.3 seconds in,
+   * before a worker existed — a schema that is correct and unusable.
+   */
+  it("carries no `$schema` annotation the engine cannot resolve", () => {
+    expect(WORKER_RESULT_SCHEMA).not.toHaveProperty("$schema");
+  });
+
+  it("still describes the constraints — stripping the annotation is not a weakening", () => {
+    // The negative control: an empty object would also satisfy the assertion
+    // above, so pin that the document still says something.
+    expect(WORKER_RESULT_SCHEMA.type).toBe("object");
+    expect(Object.keys(WORKER_RESULT_SCHEMA.properties as object)).toContain("outcome");
+  });
+});
