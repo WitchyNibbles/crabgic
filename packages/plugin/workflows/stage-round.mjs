@@ -52,6 +52,30 @@ if (lenses.length === 0) {
   return { stage, dispatched: 0, lensesPlanned: 0, verdicts: [] };
 }
 
+/**
+ * WHICH SUBAGENT A LENS GOES TO — read from the plan, never guessed here.
+ *
+ * Until 2026-08-16 this script hardcoded `eo-domain-reviewer` for every lens of
+ * every stage. Only `audit` plans domain lenses; `research`, `design`, `plan`,
+ * `implement` and `document` plan PIPELINE lenses, which are `eo-reviewer`'s
+ * charter — so nine of the shipped lens names went to a reviewer whose own
+ * definition does not list them, and `eo-reviewer` was dispatched by nothing.
+ *
+ * A script cannot fix that itself: no imports means no `DOMAIN_LENS_IDS` to tell
+ * the families apart. `planStageRound` derives it and the plan carries it, for
+ * the same reason the plan already carries the lens list. An unlabelled lens is
+ * refused rather than defaulted — defaulting is what produced the defect.
+ */
+function reviewerFor(lens) {
+  const reviewer = lens?.reviewer;
+  if (reviewer !== "eo-reviewer" && reviewer !== "eo-domain-reviewer") {
+    throw new Error(
+      `lens ${String(lens?.lens)} carries no reviewer — pipeline.plan is older than this workflow`,
+    );
+  }
+  return reviewer;
+}
+
 const skipped = Array.isArray(plan.skippedLenses) ? plan.skippedLenses : [];
 if (skipped.length > 0) {
   // Stated, never silent. A lens that did not apply is visible with its reason,
@@ -148,7 +172,7 @@ const results = await pipeline(
       label: `${stage}:${lens.lens}`,
       phase: "Review",
       schema: VERDICT_SCHEMA,
-      agentType: "eo-domain-reviewer",
+      agentType: reviewerFor(lens),
     }),
   async (verdict, lens) => {
     if (verdict === null) {
@@ -187,7 +211,7 @@ const results = await pipeline(
               label: `verify:${verdict.lens}`,
               phase: "Verify",
               schema: CONFIRMATION_SCHEMA,
-              agentType: "eo-domain-reviewer",
+              agentType: reviewerFor(lens),
             },
           ).then((confirmation) => ({
             ...finding,

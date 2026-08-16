@@ -59,8 +59,30 @@ describe("the stage-round workflow's contract with the harness", () => {
     expect(code).not.toMatch(/require\(/);
   });
 
-  it("dispatches through the domain reviewer agent", () => {
-    expect(SOURCE).toMatch(/agentType: "eo-domain-reviewer"/);
+  it("takes each lens's reviewer from the plan and never hardcodes one", () => {
+    // WHAT THIS REPLACED, AND WHY. Until 2026-08-16 this asserted
+    // `agentType: "eo-domain-reviewer"` was present in the source — so the test
+    // PASSED on the defect it should have caught. Only the `audit` stage plans
+    // domain lenses; `research`, `design`, `plan`, `implement` and `document`
+    // plan pipeline lenses, which are `eo-reviewer`'s charter. One hardcoded
+    // agent type sent nine lens names to a reviewer whose definition does not
+    // list them, and `eo-reviewer` was dispatched by nothing in the product.
+    //
+    // A literal agent type anywhere in the dispatch is the defect itself, so the
+    // assertion is the absence of one plus the presence of the plan-derived
+    // call. Asserting only `reviewerFor(lens)` would still pass with a
+    // hardcoded fallback sitting beside it.
+    expect(SOURCE).toMatch(/agentType: reviewerFor\(lens\)/);
+    const code = SOURCE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toMatch(/agentType:\s*"/);
+  });
+
+  it("refuses a lens the plan did not label, rather than defaulting one", () => {
+    // Defaulting is what produced the original defect: a lens with no reviewer
+    // silently became a domain reviewer. An older `pipeline.plan` paired with
+    // this workflow must fail loudly instead.
+    expect(SOURCE).toMatch(/carries no reviewer/);
+    expect(SOURCE).toMatch(/throw new Error/);
   });
 
   it("issues each lens its obligation checklist", () => {
