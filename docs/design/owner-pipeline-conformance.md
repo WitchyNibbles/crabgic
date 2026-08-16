@@ -64,6 +64,53 @@ second one is checkable.
 **Score at audit: 7 present, 4 partial, 4 absent, 2 refused.** After the rulings,
 the two refused rows are re-opened and all 17 are in scope for phase 25.
 
+### 3b. Re-audited 2026-08-16 — BUILT vs. DEMONSTRATED
+
+The table above audits what is BUILT. Phase 25 then built most of the gaps, and
+running the result end to end on this repository showed that "built" and "works"
+were separated by six defects no test suite could see. This section is the second
+axis, and it is the one that matters for the owner's condition: **has the step
+ever actually run?**
+
+| #   | Owner's step                   | Built after phase 25                               | Ever RUN, measured                                                                             |
+| --- | ------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | Take requirements              | yes                                                | **YES** — 3 runs, contract + DAG + envelope assembled                                          |
+| 2   | Deep research                  | yes (`ResearchRecord`, `eo-researcher`)            | no                                                                                             |
+| 3   | `AskUserQuestion` to clarify   | yes                                                | **YES** — owner rulings R1–R4, 2026-08-15                                                      |
+| 4   | Per-domain design panel        | yes (`DOMAIN_LENSES`, `eo-domain-reviewer`)        | no                                                                                             |
+| 5   | Research the design            | yes                                                | no                                                                                             |
+| 6   | Owner confirms the design      | yes (`design-gate`, `crabgic design approve`)      | no                                                                                             |
+| 7   | Loop until owner approves      | yes                                                | no                                                                                             |
+| 8   | Autonomous from that point     | yes                                                | **YES** — approval, sealing, dispatch, integration, publish, no human                          |
+| 9   | SDD documents per unit         | yes (`SpecRecord`, `TaskPacket.spec`)              | partial — packets carried specs; no generation loop ran                                        |
+| 10  | Review the documents, loop     | yes                                                | no                                                                                             |
+| 11  | Orchestrate with Workflows     | yes (`pipeline.plan`, `stage-round`, `stage-loop`) | no — never invoked by a manager session                                                        |
+| 12  | Each specialist develops       | yes                                                | **YES** — 29 commands executed, real code, own worktree                                        |
+| 13  | Four evaluators                | yes (4 lenses)                                     | **partial** — 4 real reviewers ran 2026-08-15, dispatched by the operator, not by `stage-loop` |
+| 14  | Loop to zero findings          | yes (4 bounds)                                     | **partial** — 3 rounds, 9 defects, no convergence                                              |
+| 15  | Per-domain audit               | yes (`audit` stage)                                | no                                                                                             |
+| 16  | Main loop ends on clean audits | yes                                                | no                                                                                             |
+| 17  | Documentation loop             | yes (`document` stage, `eo-documenter`)            | no                                                                                             |
+
+**5 run, 3 partial, 9 never run.** The five that ran are the SPINE —
+`intake → approve → dispatch → implement → integrate → publish` — which is the
+half that had to work before any staged loop could mean anything, and which took
+six defect fixes to work at all (`first-completed-run.md`,
+`published-unverified.md`).
+
+**The nine unrun rows are unrun for one reason, and it is not a missing
+capability:** every one of them dispatches reviewer or producer agents through
+`crabgic-stage-loop`, which a manager session invokes. That is engine spend on
+the owner's account, and the owner authorized a _small scoped run_ on 2026-08-15
+while explicitly declining the full pipeline. The surfaces exist, are installed
+in this repository, and are unit-tested; what has never happened is a manager
+session being told to run them.
+
+**And one caveat that outranks the count.** Both completed runs reached
+`published_local` without their acceptance criteria ever being evaluated — see
+`published-unverified.md`. Until that is closed, a green row above means "the
+step executed", never "the step verified anything".
+
 ## 4. The four things that are not simply missing work
 
 These four are the reason this is a design document and not a task list. Each is
