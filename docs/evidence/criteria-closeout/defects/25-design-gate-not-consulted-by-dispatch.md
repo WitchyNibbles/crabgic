@@ -211,3 +211,32 @@ asserts what the record says it asserts, and moved only because a fixture field
 was added above it. What is now weaker is the pointer, and the honest statement
 is that this change set spent a small amount of citation precision to add a
 required field to a shared test fixture.
+
+### Item 4 was attempted twice. What the second attempt learned
+
+The production wiring is **straightforward and was completed** in the attempt:
+`readiness-gate.ts` (the error and the check), `standing-approval.ts`,
+`contract-approve-handler.ts`, `complete-envelope-approval.ts`,
+`run-intake-command.ts`, `real-handlers.ts`, `approve.ts`, `types.ts`,
+`bootstrap.ts` and `build-tool-registry.ts` all typechecked clean. That half
+took one pass and is not the problem.
+
+**The test fixtures are, and a scripted patch cannot do them.** 49 call sites
+across 9 files, and they are heterogeneous in a way a regex cannot see:
+
+- some need `stageCompletions` (an array of records, keyed to the ChangeSet the
+  test built, whose variable name differs per test);
+- others need `stageCompletionsPath` (a string, on a different deps interface
+  one or two layers up);
+- several are nested inside helper factories rather than inline literals, so
+  "insert after the opening brace following the error line" lands in a function
+  signature and produces `TS1109: Expression expected`.
+
+That is exactly what happened, and the attempt was reset rather than repaired.
+
+**Guidance for whoever finishes it: do the fixtures by hand, file by file, and
+typecheck between files.** The production half can be lifted straight from the
+description above. Budget the work by the fixture count, not by the diff size of
+the change that motivates it — the ratio here is roughly ten lines of behaviour
+to four hundred lines of fixture, and reading it the other way is what made this
+look like a tail-end edit twice.
