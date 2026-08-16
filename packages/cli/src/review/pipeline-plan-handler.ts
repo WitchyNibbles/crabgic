@@ -31,18 +31,46 @@ import {
  * `Workflow` script remains the right vehicle for the FAN-OUT once the plan is
  * in hand, and it can carry the plan as its `args`.
  *
- * ⚠️ **THE BOUND, STATED RATHER THAN IMPLIED.** `completedStages` comes from the
+ * ⚠️ ~~**THE BOUND, STATED RATHER THAN IMPLIED.** `completedStages` comes from the
  * caller, because no durable stage-completion record exists yet — production
  * passes `appendEvidence: () => Promise.resolve()` for review verdicts, so a
  * closed stage leaves no journal trace to read back. What this tool therefore
  * removes is the SKIP: a completion set with a hole in it is refused server-side,
  * naming the stage that was jumped. What it does NOT remove is a caller claiming
  * a stage it never ran. That needs a journaled stage-completion record, and it is
- * named in phase 25's risks rather than quietly left to a reader to notice.
+ * named in phase 25's risks rather than quietly left to a reader to notice.~~
+ *
+ * **CLOSED 2026-08-16 by owner ruling R8, work item 3.** The bound above is
+ * struck rather than deleted, per this repository's annotate-never-rewrite
+ * convention, because the reasoning that produced it is still how the residual
+ * came to exist. The record it called for now exists — `StageCompletionRecord`,
+ * written by `review.submit` from its own closure computation — and
+ * `recordedStages` carries it here.
+ *
+ * **When a recorded set is supplied it WINS**, and the caller's `completedStages`
+ * is used for one thing only: telling the caller which of its claims the record
+ * does not support, on `unrecordedClaims`. Silently correcting a caller would
+ * leave it submitting against a stage it thinks is next, reading every refusal as
+ * a bug in the server.
+ *
+ * **Absent is not empty.** An embedder that has not wired the store keeps the
+ * pre-R8 behaviour rather than being told nothing has ever closed. Empty means
+ * nothing closed, which is the fail-safe direction R8 needs; absent means nobody
+ * asked, which is the pre-existing one.
  */
 
 export interface PipelinePlanInput {
+  /**
+   * What the CALLER believes has closed. Retained, and no longer believed when
+   * `recordedStages` is supplied — see the module docblock.
+   */
   readonly completedStages?: readonly string[];
+  /**
+   * What the SERVER has on record as closed, from the stage-completion store.
+   * Owner ruling R8. Supplied by the gateway wrapper, never by a caller: the
+   * tool schema does not expose it, so a session cannot reach this field.
+   */
+  readonly recordedStages?: readonly string[];
   readonly stackEvidence?: unknown;
 }
 
@@ -58,6 +86,17 @@ export interface PipelinePlanResult {
   readonly roundBudget?: number;
   /** True when this stage closes on the owner and no reviewer may close it. */
   readonly ownerGated?: boolean;
+  /**
+   * Stages the caller claimed as complete that the server has no record of —
+   * owner ruling R8.
+   *
+   * Present only when it is non-empty AND a recorded set was supplied, so its
+   * absence never has to be read as either "no disagreement" or "nobody
+   * checked". The plan itself is already computed from the record; this exists
+   * so a caller working from a stale view is TOLD, rather than silently
+   * corrected into submitting against a stage it does not think is next.
+   */
+  readonly unrecordedClaims?: readonly string[];
 }
 
 function isKnownStage(stage: string): stage is PipelineStageId {
@@ -88,7 +127,20 @@ function coerceEvidence(raw: unknown): StackEvidence {
 }
 
 export function runPipelinePlan(input: PipelinePlanInput): PipelinePlanResult {
-  const claimed = input.completedStages ?? [];
+  const claimedByCaller = input.completedStages ?? [];
+  /**
+   * The record wins where there is one. `??` rather than a truthiness test on
+   * purpose: an EMPTY recorded set is a real answer — nothing has closed — and
+   * must not fall through to the caller's claim, which is exactly the case an
+   * attacker or a stale caller would exploit.
+   */
+  const authoritative = input.recordedStages ?? claimedByCaller;
+  const unrecordedClaims =
+    input.recordedStages === undefined
+      ? []
+      : claimedByCaller.filter((stage) => !input.recordedStages?.includes(stage));
+
+  const claimed = authoritative;
   const unknown = claimed.filter((stage) => !isKnownStage(stage));
   if (unknown.length > 0) {
     // Refused rather than ignored. Silently dropping an unrecognized stage would
@@ -103,7 +155,13 @@ export function runPipelinePlan(input: PipelinePlanInput): PipelinePlanResult {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 
-  if (stage === undefined) return { ok: true, finished: true };
+  if (stage === undefined) {
+    return {
+      ok: true,
+      finished: true,
+      ...(unrecordedClaims.length > 0 ? { unrecordedClaims } : {}),
+    };
+  }
 
   const plan = planStageRound(stage, coerceEvidence(input.stackEvidence));
   return {
@@ -115,5 +173,6 @@ export function runPipelinePlan(input: PipelinePlanInput): PipelinePlanResult {
     obligations: plan.obligations,
     roundBudget: roundBudgetFor(stage),
     ownerGated: isOwnerGated(stage),
+    ...(unrecordedClaims.length > 0 ? { unrecordedClaims } : {}),
   };
 }

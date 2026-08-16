@@ -56,6 +56,7 @@ import {
   type CapabilityAuditDeps,
 } from "@crabgic/detect";
 import { resolveRequirements, type ProjectInspectDeps, type Registry } from "@crabgic/supervisor";
+import { completedStageIds } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
@@ -80,7 +81,7 @@ import { runPipelinePlan } from "../review/pipeline-plan-handler.js";
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
-import { recordStageCompletion } from "../review/stage-completion-store.js";
+import { loadStageCompletions, recordStageCompletion } from "../review/stage-completion-store.js";
 import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
 import { loadArtifacts, saveArtifacts } from "../review/artifact-store.js";
 import { loadDesignVerdicts, verdictInForce } from "../review/design-verdict-store.js";
@@ -378,23 +379,50 @@ function buildReviewTools(
     name: PIPELINE_PLAN_TOOL.name,
     description: PIPELINE_PLAN_TOOL.description,
     inputSchema: PIPELINE_PLAN_SHAPE,
-    handler: (args) =>
-      Promise.resolve(
-        jsonResult(
-          runPipelinePlan({
-            ...(args.completedStages !== undefined
-              ? { completedStages: args.completedStages }
-              : {}),
-            ...(args.stackEvidence !== undefined ? { stackEvidence: args.stackEvidence } : {}),
-          }),
-        ),
-      ),
+    handler: async (args) => {
+      /**
+       * Read only when the caller named a change set. Absent is not empty: an
+       * embedder that has not wired the store keeps the pre-R8 behaviour, while
+       * an empty recorded set means nothing has closed, which is the fail-safe
+       * direction R8 depends on.
+       */
+      const recordedStages =
+        args.changeSetId === undefined
+          ? undefined
+          : completedStageIds(
+              await loadStageCompletions(deps.reviewStageCompletionsPath),
+              args.changeSetId,
+            );
+      return jsonResult(
+        runPipelinePlan({
+          ...(args.completedStages !== undefined ? { completedStages: args.completedStages } : {}),
+          ...(recordedStages !== undefined ? { recordedStages } : {}),
+          ...(args.stackEvidence !== undefined ? { stackEvidence: args.stackEvidence } : {}),
+        }),
+      );
+    },
   };
 
   return [reviewSubmit, reviewCalibrate, pipelinePlan];
 }
 
 const PIPELINE_PLAN_SHAPE = {
+  /**
+   * The change set this plan is for — owner ruling R8.
+   *
+   * Optional so an embedder that has not wired the stage-completion store keeps
+   * working. When supplied, the server READS what has actually closed for this
+   * change set and plans from that, using `completedStages` below only to tell
+   * the caller which of its claims the record does not support.
+   */
+  changeSetId: z.string().optional(),
+  /**
+   * What the CALLER believes has closed.
+   *
+   * No longer authoritative when `changeSetId` is supplied. Kept because a
+   * caller's own view is worth reporting a disagreement about, and removing the
+   * field would break every existing caller for no gain.
+   */
   completedStages: z.array(z.string()).optional(),
   /**
    * `unknown`, deliberately: validated by `StackEvidenceSchema` inside the
