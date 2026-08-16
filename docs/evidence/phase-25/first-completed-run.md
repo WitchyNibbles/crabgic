@@ -82,6 +82,10 @@ overreach:
   stage fired, no documentation stage ran. This exercised
   `intake → approve → dispatch → implement → integrate → publish`, which is the
   spine, not the whole pipeline.
+- **The run published work NOBODY VERIFIED**, and the worker self-reported
+  `"summary": "test"` after twelve failed `Bash` calls. That is the more
+  important half of this result and it has its own record:
+  `published-unverified.md`. Read it before citing this page as a success.
 - **The worker still cannot run commands.** `docs/evidence/phase-25/first-worker-output.md`
   records the sandbox failing to initialize (`Failed to create bridge sockets`)
   on this host. This run's acceptance criteria demanded tests; none were run.
