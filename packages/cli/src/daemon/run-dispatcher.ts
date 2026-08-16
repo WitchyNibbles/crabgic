@@ -97,6 +97,7 @@ import {
 import {
   buildTaskPacket,
   driveRun,
+  getParkStatus,
   resumeAttempt,
   type DispatchAttemptOutcome,
   type DriveRunResult,
@@ -265,6 +266,11 @@ type ResumeVerdict =
   | { readonly kind: "resumable" }
   /** Every reachable unit is parked on a session this process no longer holds. */
   | { readonly kind: "strandedParks"; readonly unitIds: readonly string[] }
+  /** Every reachable unit is parked with its rate-limit window still open. */
+  | {
+      readonly kind: "parkedNotDue";
+      readonly units: readonly { readonly unitId: string; readonly resetsAt: number | undefined }[];
+    }
   /** Every unit is terminal and at least one did not succeed — a re-drive has nothing to dispatch. */
   | {
       readonly kind: "terminalDeadEnd";
@@ -295,6 +301,39 @@ function terminalDeadEndReason(
     `outcome (${counts}), so a re-drive has nothing left to dispatch and resuming cannot ` +
     `advance it. Waiting will not change that — cancel the run ` +
     `(\`crabgic cancel ${runId}\`) and dispatch the change set again.`
+  );
+}
+
+/**
+ * The refusal a `parkedNotDue` verdict earns — the one member of PR #46's
+ * register where WAITING IS THE EXIT, so it names the reset time instead of
+ * sending the operator to `cancel`.
+ *
+ * It exists because the opposite was measured: `resume` answered `accepted`,
+ * cut a fresh intake freeze and transitioned nothing, so a "parked → resume"
+ * poll wrote 214 `git_freeze` entries and made no progress while every reply
+ * said yes. A refusal an operator can act on turns that loop into one message.
+ *
+ * The earliest reset is quoted because that is when a re-drive first has
+ * something to do; a unit with no recorded timer is reported as unknown rather
+ * than defaulted to a time nobody journaled.
+ */
+function parkedNotDueReason(
+  runId: string,
+  units: readonly { readonly unitId: string; readonly resetsAt: number | undefined }[],
+): string {
+  const times = units
+    .map((unit) => unit.resetsAt)
+    .filter((resetsAt): resetsAt is number => resetsAt !== undefined);
+  const when =
+    times.length === units.length && times.length > 0
+      ? `not before ${new Date(Math.min(...times) * 1000).toISOString()}`
+      : "at a time this run has not recorded for every unit";
+  return (
+    `run "${runId}" cannot be resumed yet: ${String(units.length)} work unit(s) are parked on a ` +
+    `rate limit whose window has not passed. Re-driving now would freeze the repository again ` +
+    `and re-park them unchanged. Unlike the other refusals, WAITING IS THE FIX — retry ${when}. ` +
+    `The daemon's own park-resume driver retries on that schedule, so no action is needed.`
   );
 }
 
@@ -1182,6 +1221,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   ): Promise<ResumeVerdict> {
     const retained = retainedByRun.get(runId);
     const stranded: string[] = [];
+    const notDue: { unitId: string; resetsAt: number | undefined }[] = [];
     const failedIds: string[] = [];
     const cancelledIds: string[] = [];
     let resumable = false;
@@ -1195,8 +1235,24 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           resumable = true;
           break;
         case "parked:rate_limit":
-          if (retained?.has(unit.id) === true) resumable = true;
-          else stranded.push(unit.id);
+          if (retained?.has(unit.id) !== true) {
+            stranded.push(unit.id);
+            break;
+          }
+          /**
+           * A RETAINED adapter is not on its own a reason to re-drive. Until
+           * the reset window passes, the drive freezes the repository, finds
+           * the unit still limited, and re-parks — measured on the live run
+           * 08f1f1dd, where an operator loop polling "parked → resume" cut 214
+           * intake freezes and advanced nothing while every reply said
+           * `accepted`. The window check belongs HERE, before `beginDriving`,
+           * because the freeze happens inside the drive.
+           */
+          {
+            const status = await getParkStatus(deps.journal, unit.id, nowSeconds(), runId);
+            if (status.readyToResume) resumable = true;
+            else notDue.push({ unitId: unit.id, resetsAt: status.resetsAt });
+          }
           break;
         case "cancelled":
           cancelledIds.push(unit.id);
@@ -1216,6 +1272,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
 
     if (resumable) return { kind: "resumable" };
     if (stranded.length > 0) return { kind: "strandedParks", unitIds: stranded };
+    // Ordered AFTER `strandedParks`: a run holding both has a unit that will
+    // never resume, and telling the operator to wait would be the worse of the
+    // two answers.
+    if (notDue.length > 0) return { kind: "parkedNotDue", units: notDue };
     if (failedIds.length + cancelledIds.length > 0) {
       return { kind: "terminalDeadEnd", failedIds, cancelledIds };
     }
@@ -1430,6 +1490,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           accepted: false,
           reason: terminalDeadEndReason(runId, verdict.failedIds, verdict.cancelledIds),
         };
+      }
+      if (verdict.kind === "parkedNotDue") {
+        release();
+        return { accepted: false, reason: parkedNotDueReason(runId, verdict.units) };
       }
 
       beginDriving(runId, resolved, gate.policy, release);
