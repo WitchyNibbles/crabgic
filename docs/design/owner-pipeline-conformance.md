@@ -92,6 +92,22 @@ ever actually run?**
 | 16  | Main loop ends on clean audits | yes                                                | no                                                                                             |
 | 17  | Documentation loop             | yes (`document` stage, `eo-documenter`)            | no                                                                                             |
 
+_Amended the same day, after driving `pipeline.plan` against the production
+gateway (`pipeline-plan-live.md`) — no engine spend, so it needed no
+authorization._ The DECIDING half of the staged pipeline is now measured on the
+real surface: all nine stages issued in order, with their lens rosters,
+obligation checklists, round budgets and owner-gated flags, terminating on
+`finished`. That moves rows 4, 6, 7, 10, 11, 13, 15 and 17 from "never run" to
+**"server half run, dispatch half unrun"** — the server issues each round
+correctly; no reviewer has answered one through `stage-loop`.
+
+Concretely established there: `implement` issues **all four** evaluators
+(`correctness`, `security`, `compliance`, `clean-code`), `clarify` and
+`design-gate` carry a round budget of **1** — the machine-readable form of "only
+a human closes this" — the `audit` stage ran its domain roster and **named the
+four lenses it skipped**, and the `document` stage exists with `completeness`
+and `readability`.
+
 **5 run, 3 partial, 9 never run.** The five that ran are the SPINE —
 `intake → approve → dispatch → implement → integrate → publish` — which is the
 half that had to work before any staged loop could mean anything, and which took
