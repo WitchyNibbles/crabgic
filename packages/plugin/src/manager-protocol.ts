@@ -66,6 +66,31 @@ export const QUESTION_TOOL_NAME = "AskUserQuestion";
 export const REPORT_TOOL_NAME = "report.render";
 
 /**
+ * The gateway tool that decides what the pipeline runs next
+ * (`packages/cli/src/review/pipeline-plan-handler.ts`).
+ *
+ * roadmap/25 work item 7 moved stage order, lens coverage, obligation
+ * checklists and round budgets OUT of prose and onto the server, because prose
+ * sequencing is a suggestion a model may skip — which is the complaint that
+ * whole phase was written against. Naming the tool here is what makes the move
+ * reach the session: a manager that has never heard of `pipeline.plan` will
+ * reconstruct a stage order from the loop rules it CAN see, and arrive back at
+ * the defect by being reasonable rather than by being careless.
+ */
+export const PIPELINE_PLAN_TOOL_NAME = "pipeline.plan";
+
+/**
+ * The `Workflow` script that drives the rounds
+ * (`packages/plugin/workflows/stage-loop.mjs`).
+ *
+ * It owns HOW MANY TIMES to go round, and nothing else: what a round contains
+ * is `PIPELINE_PLAN_TOOL_NAME`'s, and whether the stage may close is
+ * `review.submit`'s. A loop that decided its own exit would be the caller
+ * grading its own work.
+ */
+export const STAGE_LOOP_WORKFLOW_NAME = "crabgic-stage-loop";
+
+/**
  * The reporting half of the protocol reads its numbers and its glyph
  * vocabulary from `@crabgic/contracts`' `PresentationPolicy` rather than
  * restating them, for the same reason phase 17's templates read their
@@ -239,6 +264,26 @@ export const MANAGER_APPROVAL_GATES: readonly ManagerApprovalGate[] = [
     trigger: "crabgic learn approve",
     what: "promotion of a learning proposal — twice, on two separate invocations",
   },
+  /**
+   * roadmap/25 work item 5, owner ruling R2 — added 2026-08-16.
+   *
+   * The enforcement shipped 2026-08-15: `resolveDesignGate` REPLACES the
+   * closure rule for the `design-gate` stage, the verdict store is CLI-write
+   * only, and the gateway deliberately exposes no tool that can record one. All
+   * of that was already true while this roster still had three entries — so the
+   * one place the manager session is TOLD the gate exists did not mention it.
+   *
+   * A gate nobody announces is a gate the session runs into without being able
+   * to name: it renders the design, gets a closure refusal it has no vocabulary
+   * for, and either loops the design stage pointlessly or reports a stall. The
+   * gate is placed here rather than in the stop conditions for the same reason
+   * the other three are — it is a human ACT the model is structurally unable to
+   * satisfy, not a condition that halts a run.
+   */
+  {
+    trigger: "crabgic design approve",
+    what: "the design for a change set, before any work unit is dispatched",
+  },
 ];
 
 /**
@@ -315,6 +360,10 @@ a disposition (\`${FINDING_DISPOSITIONS.join("`, `")}\`) whatever its severity, 
 stage **may not advance** holding one without; \`advisory\` defers, never disposes. Journal \`accepted-debt\` against the paths
 it concerns; it turns \`blocking\` when a later change set **touches** that code.
 Round ${String(REVIEW_RUNAWAY_GUARD)} is a runaway guard: reaching it means the loop **stalled**; escalate.
+
+**Do not decide what runs next — ask.** Stage order, applicable lenses and round
+budget are the server's, never yours: call \`${PIPELINE_PLAN_TOOL_NAME}\`, then run
+\`${STAGE_LOOP_WORKFLOW_NAME}\`. Pass the plan back **as it came** — editing it makes this loop lie.
 
 **Stop for exactly these, and nothing else:**
 

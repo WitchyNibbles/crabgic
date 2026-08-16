@@ -577,6 +577,87 @@ criteria list is hashed into `docs/evidence/criteria-closeout/criteria-baseline.
 and re-wording it would break the seal to fix a sentence this paragraph already
 corrects. Read the criterion with this note attached.
 
+## Build status — 2026-08-16: ledger Gap 23, and two rosters that had drifted
+
+**Criteria 15 and 17 are now built and green locally. Neither is ticked**, for
+the same reason nothing above is: a tick needs a CI run, and these have only run
+on a developer machine.
+
+**Ledger Gap 23 is written** — "the pipeline's stage roster is generalist and its
+sequencing is prose" — with the coordinated clause landing in `roadmap/10`, `11`,
+`13`, `14` and this file **in the same change**, per the ledger's own rule. Five
+parts: the roster is data at nine stages and the domains with it; sequencing is
+`pipeline.plan`'s and not the script's; the scripts own fan-out and round count
+and never closure; every planned lens carries its reviewer on the wire; and the
+always-loaded protocol block names the surface instead of restating the sequence.
+
+Appended at end of file with no Index row, per the Gap 21/22 precedent. The
+notation-aware anchor census was re-run in both notations across `docs/`,
+`roadmap/`, `packages/`, `e2e/` and `scripts/`: inbound anchors resolve at `:111`,
+`:400-402`, `:714-717` and `:1574`, all above the append point.
+
+**Part 2 corrects the design doc, and the correction is the interesting half.**
+§5.3 chose a `Workflow` script to own stage order and lens coverage. Workflow
+scripts have no imports and no filesystem access, so such a script would have had
+to inline copies of `PIPELINE_STAGES`, `DOMAIN_LENSES` and every stage's exit
+criteria — planting the two-lists-that-must-agree failure at the exact point that
+decides what gets reviewed. `pipeline.plan` serves them instead. §8.4 is closed by
+a different mechanism than §5.3 named, and §5.3 is annotated rather than rewritten.
+
+### Two rosters were advertising something other than what ships
+
+Both were found while grounding Gap 23's part 5 against source, and neither was
+visible to any test — because in both cases the only artifact holding a claim
+about the roster was the roster itself.
+
+| roster                    | shipped | advertised | consequence                                                   |
+| ------------------------- | ------- | ---------- | ------------------------------------------------------------- |
+| skills (`/eo:*`)          | 7       | **6**      | `/eo:pipeline` unannounced — the one skill that DRIVES the pipeline |
+| `MANAGER_APPROVAL_GATES`  | 4 gates | **3**      | the `design-gate` R2 granted was enforced but never announced |
+
+**The skill roster is now derived** from `REQUIRED_SKILL_NAMES` rather than typed
+a second time, so the two lists cannot diverge again; a second test refuses a
+slash command the manifest does not require, closing the other direction — which
+is the direction `docs/evidence/phase-25/pipeline-surface-unreachable.md` found
+the same block failing in, advertising six commands that were not installed.
+
+**The design gate is the more expensive of the two.** Its enforcement shipped
+2026-08-15 and is strong — `resolveDesignGate` REPLACES the closure rule for that
+stage, the verdict store is CLI-write-only, and the gateway exposes no tool that
+can record a verdict. All of that was true while the one place the manager session
+is TOLD the gate exists still listed three gates. A session would have rendered
+the design, received a closure refusal it had no vocabulary for, and either looped
+the design stage pointlessly or reported a stall.
+
+### The protocol block now points at what it does not control
+
+Criterion 15's wording is precise and worth honouring literally: the block must
+stop **describing a sequence it does not control**. It keeps the loop's rules —
+those are model behaviour, and prose is their only delivery path — and adds three
+lines naming `pipeline.plan` and `crabgic-stage-loop` as the owners of stage
+order, lens roster and round budget.
+
+**Naming them is load-bearing, not courteous.** A session that has never heard of
+`pipeline.plan` will reconstruct a stage order from the loop rules it CAN see,
+and arrive back at the defect by being reasonable rather than by being careless.
+The test asserts both halves: that the tool is named, and that the block says the
+decision is not the session's — a block naming `pipeline.plan` while still reading
+as "here is the sequence, follow it" would have added a citation to the defect
+rather than fixing it.
+
+The line cap moved 81 → 85 and the reason is recorded at the assertion, per this
+file's convention on cap raises. It is the raise with the strongest case and the
+one that most needs the scrutiny: the criterion is literally that this block stop
+describing the sequence, and the addition cannot be deferred to
+`skills/pipeline/SKILL.md`, because a session only opens that skill if it already
+knows the pipeline surface exists — and not knowing it exists **is** the defect.
+Drafted at five lines, compressed to three.
+
+**Measured at this tree:** `tsc -b` clean across the workspace; the full suite
+**7530 passing, 695 files, zero failures**. Written RED first: five assertions
+were captured failing against the six-command roster, the three-gate roster and
+the un-annotated block before any implementation existed.
+
 ## Exit criteria
 
 - [ ] `DOMAIN_LENSES` enumerates all eight lenses; `lensesApplicableTo` is

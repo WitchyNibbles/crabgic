@@ -12,7 +12,9 @@ import {
   REVIEW_VERDICTS,
   MANAGER_STOP_CONDITIONS,
   MANAGER_APPROVAL_GATES,
+  PIPELINE_PLAN_TOOL_NAME,
   QUESTION_TOOL_NAME,
+  STAGE_LOOP_WORKFLOW_NAME,
   buildManagerProtocolBlock,
   type ManagerStopCondition,
 } from "./manager-protocol.js";
@@ -75,6 +77,30 @@ describe("approval gates", () => {
     const triggers = MANAGER_APPROVAL_GATES.map((g) => g.trigger);
     expect(triggers).toContain("/eo:approve");
     expect(triggers.some((t) => t.includes("trust review"))).toBe(true);
+  });
+
+  /**
+   * roadmap/25 work item 5 (owner ruling R2): the `design-gate` stage is a
+   * FOURTH approval gate, and the whole point of it is that the model cannot
+   * satisfy it. The enforcement landed — `resolveDesignGate` closes that stage
+   * on a recorded owner verdict and on nothing else, and the gateway exposes no
+   * tool that can write one — but the gate was never added to this roster,
+   * which is the only place the manager session is TOLD it exists.
+   *
+   * A gate the manager does not know about is a gate it will never render and
+   * never wait at; it will run the design stage into a wall it cannot name.
+   * That is the same class of defect as the missing `/eo:pipeline` row in the
+   * installer's block: enforcement built, surface unannounced.
+   */
+  it("includes the design gate — roadmap/25 WI 5, the fourth gate R2 granted", () => {
+    const triggers = MANAGER_APPROVAL_GATES.map((g) => g.trigger);
+    expect(triggers.some((t) => t.includes("design approve"))).toBe(true);
+  });
+
+  it("gives every gate a description of what is under review, never a bare command", () => {
+    for (const gate of MANAGER_APPROVAL_GATES) {
+      expect(gate.what.length, `empty description: ${gate.trigger}`).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -170,8 +196,21 @@ describe("buildManagerProtocolBlock", () => {
     //
     // The cost is real and worth stating: ~81 lines is roughly 930 tokens on
     // every manager turn.
+    //
+    // Raised 81 -> 85 (2026-08-16) for the sequencing paragraph — roadmap/25
+    // exit criterion 15. Same test as every prior raise, and it is the raise
+    // with the strongest case: the criterion is LITERALLY that this block stop
+    // describing a sequence it does not control, and the only way to stop
+    // describing it while still being useful is to point at the surface that
+    // does — `pipeline.plan` and `crabgic-stage-loop`.
+    //
+    // It cannot be deferred to skills/pipeline/SKILL.md, and this is not the
+    // usual hand-wave: a session only opens that skill if it already knows the
+    // pipeline surface exists, and not knowing it exists IS the defect. The
+    // preceding raise's note said "the next addition compresses or goes to the
+    // skill" — it compressed, from five lines to three plus its blank.
     const lines = block.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(81);
+    expect(lines.length).toBeLessThanOrEqual(85);
   });
 
   it("is deterministic — the installer's byte-preserving merge depends on it", () => {
@@ -405,5 +444,52 @@ describe("buildManagerProtocolBlock — the staged review pipeline", () => {
   it("no longer carries the superseded unbounded-loop language", () => {
     expect(block).not.toMatch(/no severity floor/i);
     expect(block).not.toMatch(/until a round finds nothing/i);
+  });
+});
+
+/**
+ * roadmap/25 exit criterion 15 — "`buildManagerProtocolBlock()` no longer
+ * describes a sequence it does not control".
+ *
+ * The block states the review loop's RULES, and those it does own: they are
+ * model behavior and prose is the only delivery path for them. What it must not
+ * do is leave a reader with the impression that stage ORDER, lens COVERAGE and
+ * round BUDGET are also its to interpret. They are not — they are decided
+ * server-side by `pipeline.plan`, and driven by `crabgic-stage-loop`. That was
+ * the whole complaint phase 25 was written against: sequencing that existed
+ * only as prose a model may skip.
+ *
+ * So the block must POINT AT the surface that owns them. A manager session that
+ * is never told `pipeline.plan` exists will reconstruct a stage order from the
+ * rules it can see, which is exactly the failure mode, arrived at by a reader
+ * being reasonable rather than by one being careless.
+ */
+describe("buildManagerProtocolBlock — sequencing it does not own", () => {
+  const block = buildManagerProtocolBlock();
+  const flat = block.replace(/\s+/g, " ");
+
+  it("names the tool that decides what runs next", () => {
+    expect(block).toContain(PIPELINE_PLAN_TOOL_NAME);
+    expect(PIPELINE_PLAN_TOOL_NAME).toBe("pipeline.plan");
+  });
+
+  it("names the driver that runs the rounds", () => {
+    expect(block).toContain(STAGE_LOOP_WORKFLOW_NAME);
+    expect(STAGE_LOOP_WORKFLOW_NAME).toBe("crabgic-stage-loop");
+  });
+
+  /**
+   * The load-bearing half. Naming the tool is not enough: a block that names
+   * `pipeline.plan` while still reading as "here is the sequence, follow it"
+   * has added a citation to the defect rather than fixing it. The block has to
+   * say the decision is not the session's.
+   */
+  it("states that stage order and lens coverage are the server's, not the session's", () => {
+    expect(flat).toMatch(/ask .{0,60}what (stage |)(comes next|runs next)|do not decide/i);
+    expect(flat).toMatch(/never (decide|choose|invent)|not yours|the server(')?s/i);
+  });
+
+  it("keeps the block deterministic once the pipeline surface is named", () => {
+    expect(buildManagerProtocolBlock()).toBe(block);
   });
 });

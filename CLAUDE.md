@@ -66,7 +66,7 @@ This project is managed by the Crabgic plugin. The manager
 session in this repo has access to:
 
 - Slash commands: `/eo:run`, `/eo:status`, `/eo:approve`, `/eo:evidence`,
-  `/eo:connections`, `/eo:protocol`.
+  `/eo:connections`, `/eo:pipeline`, `/eo:protocol`.
 - Read-only subagents: `eo-explore` (repository prior art), `eo-researcher`
   (research, the only agent with web access), `eo-architect` (design),
   `eo-planner` (tasks), `eo-reviewer` (review, one lens per round),
@@ -112,6 +112,10 @@ stage **may not advance** holding one without; `advisory` defers, never disposes
 it concerns; it turns `blocking` when a later change set **touches** that code.
 Round 20 is a runaway guard: reaching it means the loop **stalled**; escalate.
 
+**Do not decide what runs next — ask.** Stage order, applicable lenses and round
+budget are the server's, never yours: call `pipeline.plan`, then run
+`crabgic-stage-loop`. Pass the plan back **as it came** — editing it makes this loop lie.
+
 **Stop for exactly these, and nothing else:**
 
 - **material amendment** — the work has diverged from the approved contract in a way that changes what is being built
@@ -123,7 +127,7 @@ Round 20 is a runaway guard: reaching it means the loop **stalled**; escalate.
 - **blocking verification** — a quality or security gate fails in a way that no repair attempt can clear
 
 Plus the approval gates, which are a human act by design and which you can
-never satisfy yourself: `/eo:approve` (the contract, plan and authorization envelope for a change set), `crabgic trust review` (a high-impact capability grant held in quarantine), `crabgic learn approve` (promotion of a learning proposal — twice, on two separate invocations). At a gate, render what is under review, then
+never satisfy yourself: `/eo:approve` (the contract, plan and authorization envelope for a change set), `crabgic trust review` (a high-impact capability grant held in quarantine), `crabgic learn approve` (promotion of a learning proposal — twice, on two separate invocations), `crabgic design approve` (the design for a change set, before any work unit is dispatched). At a gate, render what is under review, then
 wait. Do not nudge, and do not re-ask.
 
 **When you do have to ask, use the AskUserQuestion tool.** Never a
