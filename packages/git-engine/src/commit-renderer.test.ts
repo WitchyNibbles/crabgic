@@ -3,6 +3,7 @@ import {
   assembleCommitBody,
   assembleCommitSubject,
   renderCommit,
+  wrapCommitFooter,
   type RenderCommitInput,
 } from "./commit-renderer.js";
 
@@ -96,5 +97,82 @@ describe("renderCommit", () => {
     if (result.status === "blocked") {
       expect(result.which).toBe("body");
     }
+  });
+});
+
+/**
+ * COMMITLINT CONFORMANCE — measured on PR #139 (2026-08-16), the first PR made
+ * of worker-authored commits. CI's `commitlint` job rejected it:
+ *
+ *     ✖ subject must not be sentence-case, start-case, pascal-case, upper-case
+ *     ✖ footer's lines must not be longer than 100 characters
+ *
+ * Both come from this renderer, not from that one commit, so EVERY commit a
+ * worker produces fails this repository's own conventional-commit contract.
+ * The system can author code it cannot land.
+ *
+ * `outcome` is sourced from a `WorkUnit`/`Requirement` title — human-written,
+ * and titles are conventionally capitalised — so the renderer has to do the
+ * lowering. The footer lines interpolate `rollbackStrategy` and an owned-path
+ * list, both unbounded, so they have to be wrapped.
+ */
+describe("commitlint conformance", () => {
+  const longInput = {
+    type: "chore" as const,
+    outcome: "Close the three admissibility clean-code advisories",
+    why: "role implementation, 3 declared requirement(s)",
+    risk: "rollback: Revert the integration commit. The change is confined to one module and its test file, and alters no persisted state or schema.",
+    compat:
+      "writes confined to packages/cli/src/review/admissibility.ts, packages/cli/src/review/admissibility.test.ts",
+    verification: "merge-tree preflighted against the integration tip, CAS-landed",
+  };
+
+  it("lowers a sentence-case outcome — commitlint's subject-case rule", () => {
+    expect(assembleCommitSubject(longInput)).toBe(
+      "chore: close the three admissibility clean-code advisories",
+    );
+  });
+
+  it("leaves an identifier's own capitalisation alone — only the FIRST letter lowers", () => {
+    // Lowercasing the whole subject would mangle `TaskPacket` into `taskpacket`,
+    // which is worse than the problem: commitlint objects to sentence-case, not
+    // to capitals anywhere.
+    expect(
+      assembleCommitSubject({ ...longInput, outcome: "Add TaskPacket.spec passthrough" }),
+    ).toBe("chore: add TaskPacket.spec passthrough");
+  });
+
+  it("wraps every footer line to 100 characters — in what actually reaches git", async () => {
+    // Asserted on `renderCommit`'s output, not on `assembleCommitBody`: the
+    // wrap happens after the policy check, and what commitlint reads is the
+    // rendered body.
+    const rendered = await renderCommit(longInput);
+    expect(rendered.status).toBe("rendered");
+    if (rendered.status !== "rendered") return;
+    for (const line of rendered.body.split("\n")) {
+      expect(
+        line.length,
+        `"${line.slice(0, 40)}…" is ${String(line.length)} chars`,
+      ).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("keeps every footer key on a line start, so the trailer stays parseable", async () => {
+    // The negative control for the wrap: a wrap that folded `Compat:` onto the
+    // previous line would satisfy the length rule and destroy the footer.
+    const rendered = await renderCommit(longInput);
+    if (rendered.status !== "rendered") throw new Error("expected a rendered commit");
+    const lines = rendered.body.split("\n");
+    for (const key of ["Why:", "Risk:", "Compat:", "Verification:"]) {
+      expect(lines.some((line) => line.startsWith(key))).toBe(true);
+    }
+  });
+
+  it("PRESERVES hard breaks, so the five-line body guard still fires", () => {
+    // Found while writing the wrap: splitting on /\s+/ collapsed the author's
+    // own newlines, so a genuinely six-line body became one long line and
+    // slipped past the policy. The guard is checked before wrapping AND the
+    // wrap keeps the breaks.
+    expect(wrapCommitFooter("Why: one\ntwo\nthree").split("\n")).toHaveLength(3);
   });
 });

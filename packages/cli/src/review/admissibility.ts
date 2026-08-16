@@ -4,9 +4,17 @@ import { normalizePlannedPath } from "@crabgic/git-engine";
 import { GLOB_METACHARACTER_PATTERN } from "@crabgic/engine-core";
 
 /**
- * The four admissibility bounds that make a zero-findings round REACHABLE.
- * Owner ruling R4 (2026-08-15); `docs/design/owner-pipeline-conformance.md`
- * §4.3; roadmap/25 work item 6.
+ * Owner ruling R4 (2026-08-15) draws FOUR admissibility bounds —
+ * `docs/design/owner-pipeline-conformance.md` §4.3; roadmap/25 work item 6 —
+ * and THIS MODULE implements three of them: scope (BOUND 1), obligation
+ * (BOUND 2) and identity (BOUND 3). The fourth, monotonicity — a repair may
+ * not enlarge the `PlannedWriteSet`, on pain of re-entering the plan stage in
+ * the open — is enforced where a repair's write set is decided, not here; a
+ * pure admissibility function over one round's findings has no round-over-round
+ * write-set history to compare against. Naming it "four bounds" without saying
+ * so would leave a reader counting `BOUND` labels in this file one short and
+ * assuming a bound this module owns went missing, rather than living
+ * elsewhere.
  *
  * THE PROBLEM THIS SOLVES, stated exactly. The owner asked for a loop that ends
  * when the reviewers find no issues, warnings or buts. This repository measured
@@ -105,6 +113,18 @@ function unboundablePath(raw: string): string | undefined {
  * well as files, and comparing only exact strings would make a whole tree
  * inadmissible — silently shrinking the loop, which is the failure this bound is
  * supposed to prevent rather than cause.
+ *
+ * The containment is ONE-DIRECTIONAL — only `plannedPath` is treated as a
+ * directory a finding can sit under; a `findingPath` that is an ancestor of
+ * `plannedPath` does not match. This is not an oversight: only the write set
+ * follows the `PlannedWriteSet` directory-naming convention above, and a
+ * finding is a reviewer's claim about specific code, which this repository's
+ * other bound already requires to name at least one path. Matching the
+ * reverse direction too would let a finding naming any shallow ancestor —
+ * `packages/`, or the repository root — become in-scope for nearly every
+ * change set simply because something is always written somewhere under it,
+ * which restores the unbounded search space this bound exists to close by a
+ * different route than the one it was built to close.
  */
 function touches(findingPath: string, plannedPath: string): boolean {
   if (findingPath === plannedPath) return true;
@@ -298,6 +318,16 @@ export const NO_OBLIGATIONS_ISSUED = "<no obligations were issued to this lens>"
  * everything it owed — and a lens that was never told what it owed has not
  * covered anything. This repository has now paid for that same vacuity at five
  * separate criteria, which is why it is a sentinel and not a comment.
+ *
+ * An answer naming an obligation that was never ISSUED is dropped rather than
+ * flagged. That is safe, not merely silent: this function only ever reports an
+ * entry of `issued` that `answered` fails to cover, so a stray answer cannot
+ * forge coverage for a real obligation the way an empty issued list could —
+ * the two ids would have to collide, and an id that collided would BE the
+ * obligation, not a stray one. What an unissued answer can still signal is an
+ * id that drifted between the issuing and the answering side; that drift
+ * surfaces on its own, as the issued obligation it was meant to cover being
+ * reported unrun, so no separate check is owed here.
  */
 export function unrunObligations(
   issued: readonly string[],
