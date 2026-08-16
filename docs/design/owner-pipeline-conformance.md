@@ -478,10 +478,28 @@ answers the spend question `unattended-run-gap.md` was written to make decidable
 > run, not a standing authorization for unattended runs, and it does not touch the
 > standing `EnvelopePolicy` or Gap 18's argument.
 >
-> **The design gate will stop and wait**, by construction: `crabgic design
+> ~~**The design gate will stop and wait**, by construction: `crabgic design
 approve|reject` is the sole writer and no gateway tool can record a verdict, so
 > this run cannot complete without the owner answering once. That is the one human
-> act inside an otherwise autonomous run, and it is R2 working as ruled.
+> act inside an otherwise autonomous run, and it is R2 working as ruled.~~
+>
+> **CORRECTED 2026-08-16, by measurement — the struck sentence is false.** Struck
+> rather than deleted, per this repository's annotate-never-rewrite convention.
+> The premises are true and the conclusion does not follow from them. `crabgic
+design approve|reject` IS the sole writer, and no gateway tool can record a
+> verdict — but `resolveDesignGate` and `OwnerDesignVerdict` appear **nowhere** in
+> `packages/cli/src/daemon/` or `packages/supervisor/src/`, and the only
+> production reference is `review-submit-handler.ts:659`. The gate decides whether
+> the `design-gate` **review stage** may close; nothing in the dispatch path
+> requires that stage to have closed.
+>
+> **R2 is therefore implemented one layer short of where it was ruled.** The
+> ruling says the gate precedes dispatch. It precedes the closure of a review
+> stage that dispatch has no dependency on, which means skipping it is not a
+> manager forgetting to call a script — it is what starting a run does by
+> default. That is a sharper statement of ledger Gap 23's disclosed residual 1,
+> and it is owed as work rather than accepted here. Measured at
+> `docs/evidence/phase-25/first-staged-round-live.md`, structural finding 2.
 
 ## 7. Reconciliation with settled authorities
 
