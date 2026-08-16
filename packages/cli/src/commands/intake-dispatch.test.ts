@@ -28,6 +28,30 @@ import { EXIT_GENERAL_ERROR, EXIT_OK } from "../exit-codes.js";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` — owner ruling R8.
+ *
+ * These suites assert what the approval commands do once the gate is behind
+ * them; the refusal has its own suite in
+ * `packages/supervisor/src/intake/readiness-gate.test.ts`. Keyed to the
+ * ChangeSet actually under test, so it is a real pass rather than a blanket one.
+ */
+/** The ChangeSet id every intake request in this file declares. */
+const INTAKE_CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
+
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 let journalDir: string;
 let store: JournalStore;
@@ -78,7 +102,7 @@ function baseDeps(): Pick<CliDependencies, "connectClient" | "journal" | "projec
 function fixtureRequest(overrides: { readonly ownedPaths?: string[] } = {}): IntakeRequest {
   return {
     requestKey: "repo:dispatch-test",
-    id: "11111111-1111-4111-8111-111111111111",
+    id: INTAKE_CHANGE_SET_ID,
     createdAt: "2026-01-01T00:00:00.000Z",
     sections: {
       scope: "s",
@@ -126,6 +150,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
       ...baseDeps(),
       connectClient: supervisor.connectClient,
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets: createChangeSetsRegistry(),
         workUnits: createWorkUnitsRegistry(),
@@ -191,6 +217,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
       ...baseDeps(),
       connectClient: supervisor.connectClient,
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets,
         workUnits: createWorkUnitsRegistry(),
@@ -240,6 +268,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
       ...baseDeps(),
       connectClient: supervisor.connectClient,
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets: createChangeSetsRegistry(),
         workUnits: createWorkUnitsRegistry(),
@@ -285,6 +315,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
       // this is a retryable start failure, not a lost approval.
       connectClient: () => Promise.reject(new Error("simulated: no such socket")),
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets,
         workUnits: createWorkUnitsRegistry(),
@@ -336,6 +368,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
         throw new Error("must not dispatch an unapproved change set");
       },
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets,
         workUnits: createWorkUnitsRegistry(),
@@ -388,6 +422,8 @@ describe("dispatchCommand — run, real backend when deps.intake is supplied", (
     const deps: CliDependencies = {
       ...baseDeps(),
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets: createChangeSetsRegistry(),
         workUnits: createWorkUnitsRegistry(),
@@ -438,6 +474,8 @@ describe("dispatchCommand — run, requestKey conflict", () => {
     return {
       ...baseDeps(),
       intake: {
+        // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(INTAKE_CHANGE_SET_ID)),
         journal: store,
         changeSets: createChangeSetsRegistry(),
         workUnits: createWorkUnitsRegistry(),

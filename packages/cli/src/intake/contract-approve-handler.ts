@@ -69,6 +69,12 @@ export interface ContractApproveDeps {
   readonly workUnits: TransitionChangeSetToReadyOptions["workUnits"];
   /** The `Requirement` records the ready transition seals (roadmap/24) — required, so this path cannot approve something it did not seal. */
   readonly requirements: TransitionChangeSetToReadyOptions["requirements"];
+  /**
+   * Which pipeline stages have closed — owner ruling R8. Required for the same
+   * reason `requirements` above is: this path must not approve a ChangeSet
+   * whose design nobody ever saw.
+   */
+  readonly stageCompletions: TransitionChangeSetToReadyOptions["stageCompletions"];
 }
 
 export type ContractApproveResult =
@@ -147,6 +153,7 @@ export async function runContractApprove(
       requirementIds: deps.requirementIds,
       workUnits: deps.workUnits,
       requirements: deps.requirements,
+      stageCompletions: deps.stageCompletions,
     });
     return { approved: true, changeSet: readyChangeSet };
   } catch (err) {

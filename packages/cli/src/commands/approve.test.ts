@@ -24,6 +24,27 @@ import { EXIT_GENERAL_ERROR, EXIT_OK, EXIT_USAGE_ERROR } from "../exit-codes.js"
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies, IntakeDependencies } from "./types.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` — owner ruling R8.
+ *
+ * These suites assert what the approval commands do once the gate is behind
+ * them; the refusal has its own suite in
+ * `packages/supervisor/src/intake/readiness-gate.test.ts`. Keyed to the
+ * ChangeSet actually under test, so it is a real pass rather than a blanket one.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const secretKey = randomBytes(32);
 
@@ -115,6 +136,9 @@ function seededIntake(
     input,
     changeSetId: changeSet.id,
     intake: {
+      // R8: post-gate behaviour; the gate has its own suite in readiness-gate.test.ts.
+      loadStageCompletions: () =>
+        Promise.resolve(changeSets.list().flatMap((cs) => designGateClosed(cs.id))),
       journal: store,
       changeSets,
       workUnits,

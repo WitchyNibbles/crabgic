@@ -15,6 +15,27 @@ import type { ChangeSet, AuthorizationEnvelope } from "@crabgic/contracts";
 import { buildAuthorizationEnvelope, buildChangeSet } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runContractApprove } from "./contract-approve-handler.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` — owner ruling R8.
+ *
+ * Every case here asserts what `contract.approve` does AFTER the design gate
+ * passes; the gate itself is covered in
+ * `packages/supervisor/src/intake/readiness-gate.test.ts`. Keyed to the
+ * ChangeSet under test so it is a real pass, not a blanket one.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const REQ_A = "aaaaaaaa-1111-4111-8111-111111111111";
 const REQ_B = "bbbbbbbb-1111-4111-8111-111111111111";
@@ -71,6 +92,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed("99999999-9999-4999-8999-999999999999"),
       },
     );
 
@@ -116,6 +138,7 @@ describe("runContractApprove", () => {
         envelopes,
         requirementIds: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
         workUnits: [],
       },
     );
@@ -145,6 +168,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
       },
     );
 
@@ -176,6 +200,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
       },
     );
     expect(result.approved).toBe(false);
@@ -217,6 +242,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seedB.id),
       },
     );
 
@@ -233,6 +259,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seedA.id),
       },
     );
     expect(legitimate.approved).toBe(true);
@@ -264,6 +291,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
       },
     );
 
@@ -293,6 +321,7 @@ describe("runContractApprove", () => {
         envelopes,
         requirementIds: [REQ_A, REQ_B],
         requirements: [buildRequirement({ id: REQ_A }), buildRequirement({ id: REQ_B })],
+        stageCompletions: designGateClosed(seed.id),
         workUnits: [{ requirementIds: [REQ_A, REQ_B] }],
       },
     );
@@ -346,6 +375,7 @@ describe("runContractApprove", () => {
         envelopes,
         requirementIds: [REQ_A, REQ_B],
         requirements: [reqA, reqB],
+        stageCompletions: designGateClosed(seed.id),
         workUnits: [{ requirementIds: [REQ_A, REQ_B] }],
       },
     );
@@ -393,6 +423,7 @@ describe("runContractApprove", () => {
         envelopes,
         requirementIds: [REQ_A],
         requirements: [buildRequirement({ id: REQ_A })],
+        stageCompletions: designGateClosed(seed.id),
         workUnits: [{ requirementIds: [REQ_A] }],
       },
     );
@@ -421,6 +452,7 @@ describe("runContractApprove", () => {
       envelopes,
       requirementIds: [REQ_A, REQ_B],
       requirements: [buildRequirement({ id: REQ_A }), buildRequirement({ id: REQ_B })],
+      stageCompletions: designGateClosed(seed.id),
       workUnits: [{ requirementIds: [REQ_A] }],
     };
 
@@ -460,6 +492,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
       },
     );
 
@@ -480,6 +513,7 @@ describe("runContractApprove", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
       },
     );
     expect(retry.approved).toBe(true);
@@ -510,6 +544,7 @@ describe("runContractApprove", () => {
         envelopes,
         requirementIds: [],
         requirements: [],
+        stageCompletions: designGateClosed(seed.id),
         workUnits: [],
         clock,
       },
@@ -536,6 +571,7 @@ describe("runContractApprove", () => {
       envelopes,
       requirementIds: [],
       requirements: [],
+      stageCompletions: designGateClosed(seed.id),
       workUnits: [],
     };
 

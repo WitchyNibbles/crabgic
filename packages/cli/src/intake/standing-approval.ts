@@ -36,6 +36,7 @@
  * edited into a state the schema rejects.
  */
 import type {
+  StageCompletionRecord,
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
@@ -91,6 +92,20 @@ export interface StandingApprovalDeps {
   readonly requirements: Registry<Requirement>;
   /** Reads the project's standing policy. Injected so tests never touch a real XDG state root. */
   readonly loadPolicy: () => LoadPolicyResult;
+  /**
+   * Reads which pipeline stages have closed — owner ruling R8.
+   *
+   * ⚠️ THIS IS THE PATH R8 IS ABOUT. Ledger Gap 18's standing `EnvelopePolicy`
+   * lets a run dispatch with no human in the sequence, so this is exactly where
+   * a design nobody approved would reach a worker. The policy answers "may this
+   * EXECUTE"; the design gate answers "is this worth executing", and they are
+   * different questions.
+   *
+   * A closure rather than a value, matching `loadPolicy` directly above: read
+   * at the moment of the decision, so a design approved while the run was being
+   * assembled counts.
+   */
+  readonly loadStageCompletions: () => Promise<readonly StageCompletionRecord[]>;
 }
 
 export async function applyStandingApproval(
@@ -207,6 +222,7 @@ export async function applyStandingApproval(
     // Resolved from the durable store, never from the caller: the seal must
     // cover the records the rest of the system will actually read back.
     requirements: resolveRequirements(deps.requirements, contract.requirementIds),
+    stageCompletions: await deps.loadStageCompletions(),
   });
 
   return { status: "approved", changeSet: readyChangeSet, policyDigest: loaded.digest };

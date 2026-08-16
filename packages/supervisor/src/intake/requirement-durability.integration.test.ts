@@ -40,6 +40,24 @@ import { resolveRequirements } from "../registries/requirements-registry.js";
 import { computeRequirementId } from "./contract-builder.js";
 import { computeIntentContractId, runIntake, type IntakeRequest } from "./intake-pipeline.js";
 import { transitionChangeSetToReady } from "./readiness-gate.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * R8: the design gate now guards `ready`. These cases assert requirement
+ * DURABILITY across that transition, so they pass the gate rather than re-test
+ * it — the gate has its own suite in `./readiness-gate.test.ts`.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
 const WU_ID = "22222222-1111-4111-8111-111111111111";
@@ -160,6 +178,7 @@ describe("approved requirements survive a process restart (roadmap/24 exit crite
         journal,
         changeSets,
         changeSetId: CHANGE_SET_ID,
+        stageCompletions: designGateClosed(CHANGE_SET_ID),
         requirementIds: declared,
         workUnits: outcome.artifacts.workUnits,
         requirements: resolveRequirements(requirements, declared),
@@ -216,6 +235,7 @@ describe("approved requirements survive a process restart (roadmap/24 exit crite
       journal,
       changeSets,
       changeSetId: CHANGE_SET_ID,
+      stageCompletions: designGateClosed(CHANGE_SET_ID),
       requirementIds: declared,
       workUnits: outcome.artifacts.workUnits,
       requirements: resolveRequirements(requirements, declared),

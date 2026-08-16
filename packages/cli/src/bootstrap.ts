@@ -94,7 +94,10 @@ import { resolveFindingStorePath } from "./review/finding-store.js";
 import { resolveCalibrationStorePath } from "./review/calibration-store.js";
 import { resolveAttestationStorePath } from "./review/attestation-store.js";
 import { resolveArtifactStorePath } from "./review/artifact-store.js";
-import { resolveStageCompletionStorePath } from "./review/stage-completion-store.js";
+import {
+  loadStageCompletions,
+  resolveStageCompletionStorePath,
+} from "./review/stage-completion-store.js";
 import { resolveDesignVerdictStorePath } from "./review/design-verdict-store.js";
 import {
   buildRealInstallerDependencies,
@@ -524,6 +527,10 @@ function buildRealIntakeDependencies(
     // check, not a prompt. Read fresh per call — the owner may have edited the
     // policy since this process started, and a cached grant is a stale grant.
     loadPolicy: () => loadEnvelopePolicy(resolveEnvelopePolicyPath(xdgEnv, projectHash)),
+    // R8. Read at call time, not captured: a design approved after the command
+    // started must count.
+    loadStageCompletions: () =>
+      loadStageCompletions(resolveStageCompletionStorePath(xdgEnv, projectHash)),
   };
 }
 

@@ -23,6 +23,7 @@
  * build-tool-registry.ts`'s identical server-side derivation.
  */
 import type {
+  StageCompletionRecord,
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
@@ -42,6 +43,12 @@ export interface CompleteEnvelopeApprovalDeps {
   /** Durable `Requirement` store (roadmap/24) — the records the ready transition seals. */
   readonly requirements: Registry<Requirement>;
   readonly workUnits: Registry<WorkUnit>;
+  /**
+   * Which pipeline stages have closed — owner ruling R8. Threaded rather than
+   * resolved here: this module is a composition step, and reading durable state
+   * in it would be a second answer to "where is this project's state".
+   */
+  readonly stageCompletions: readonly StageCompletionRecord[];
 }
 
 export async function completeEnvelopeApproval(
@@ -67,6 +74,7 @@ export async function completeEnvelopeApproval(
       workUnits: deps.workUnits.list(),
       requirementIds: contract.requirementIds,
       requirements: resolveRequirements(deps.requirements, contract.requirementIds),
+      stageCompletions: deps.stageCompletions,
     },
   );
 }

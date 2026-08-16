@@ -35,6 +35,24 @@ import { EnvelopePolicySchema } from "@crabgic/contracts";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { runIntakeCommand } from "./run-intake-command.js";
 import { runContractApprove } from "./contract-approve-handler.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * R8: the design gate guards `ready`. These end-to-end cases assert the intake
+ * pipeline's own behaviour, so they pass the gate rather than re-test it — the
+ * gate has its own suite in `packages/supervisor/src/intake/readiness-gate.test.ts`.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 let journalDir: string;
 let store: JournalStore;
@@ -132,6 +150,8 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       intentContracts,
       requirements,
       readIntakeRequest: async () => e2eRequest("e2e:approve", changeSetId),
+      // R8: end-to-end intake cases pass the design gate rather than re-test it.
+      loadStageCompletions: () => Promise.resolve(designGateClosed(changeSetId)),
       loadPolicy: () => ({
         status: "loaded" as const,
         policy: EnvelopePolicySchema.parse({
@@ -175,6 +195,8 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
       intentContracts,
       requirements,
       readIntakeRequest: async () => e2eRequest("e2e:replay", changeSetId),
+      // R8: end-to-end intake cases pass the design gate rather than re-test it.
+      loadStageCompletions: () => Promise.resolve(designGateClosed(changeSetId)),
       loadPolicy: () => ({
         status: "loaded" as const,
         policy: EnvelopePolicySchema.parse({
@@ -211,6 +233,7 @@ describe("intake.e2e — request -> contract -> approval -> run", () => {
         requirementIds: [],
         workUnits: [],
         requirements: [],
+        stageCompletions: designGateClosed(changeSetId),
       },
     );
     expect(replay.approved).toBe(false);

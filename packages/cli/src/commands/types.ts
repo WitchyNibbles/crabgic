@@ -6,6 +6,7 @@
  */
 import type { JournalStore } from "@crabgic/journal";
 import type {
+  StageCompletionRecord,
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
@@ -34,6 +35,14 @@ import type { ConnectionDependencies } from "../connection/connection-commands.j
  * top-level read-only `journal` field.
  */
 export interface IntakeDependencies {
+  /**
+   * Reads which pipeline stages have closed — owner ruling R8.
+   *
+   * A closure rather than a path, matching `loadPolicy`'s shape, so both
+   * approval paths read at the moment of the decision rather than from a value
+   * captured when the command was assembled.
+   */
+  readonly loadStageCompletions: () => Promise<readonly StageCompletionRecord[]>;
   readonly journal: JournalStore;
   readonly changeSets: Registry<ChangeSet>;
   readonly workUnits: Registry<WorkUnit>;
