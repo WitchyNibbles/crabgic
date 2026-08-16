@@ -90,9 +90,10 @@ describe("the pipeline.plan → stage-round/stage-loop seam", () => {
           [...scriptText(script).matchAll(/\blens\??\.([a-zA-Z][a-zA-Z0-9]*)/g)].map((m) => m[1]!),
         ),
       ];
-      expect(read.filter((f) => !emitted.has(f)), `${script} reads unemitted lens fields`).toEqual(
-        [],
-      );
+      expect(
+        read.filter((f) => !emitted.has(f)),
+        `${script} reads unemitted lens fields`,
+      ).toEqual([]);
     },
   );
 

@@ -22,14 +22,14 @@ sufficient to make `/eo:pipeline` inert, and neither currently checked:
 
 ## Acceptance criteria
 
-| id | criterion |
-| --- | --- |
+| id  | criterion                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AC1 | A doctor check fails, with severity `error`, when the marketplace named in `enabledPlugins` is absent from the engine's `known_marketplaces.json` |
-| AC2 | A doctor check fails, with severity `error`, when the plugin named in `enabledPlugins` is absent from `installed_plugins.json` |
-| AC3 | A doctor check fails when the `crabgic` resolved from `PATH` does not expose every tool name the shipped skills reference |
-| AC4 | Each new check carries a `repairStep` naming the exact command that fixes it |
-| AC5 | Each check passes on this checkout as repaired on 2026-08-16, and reddens when the corresponding registry entry is removed |
-| AC6 | No check shells out to the engine's network surface; all evidence is read from local files or a local stdio handshake |
+| AC2 | A doctor check fails, with severity `error`, when the plugin named in `enabledPlugins` is absent from `installed_plugins.json`                    |
+| AC3 | A doctor check fails when the `crabgic` resolved from `PATH` does not expose every tool name the shipped skills reference                         |
+| AC4 | Each new check carries a `repairStep` naming the exact command that fixes it                                                                      |
+| AC5 | Each check passes on this checkout as repaired on 2026-08-16, and reddens when the corresponding registry entry is removed                        |
+| AC6 | No check shells out to the engine's network surface; all evidence is read from local files or a local stdio handshake                             |
 
 ## Non-goals
 

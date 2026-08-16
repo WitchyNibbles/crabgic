@@ -55,10 +55,10 @@ phase 25 entirely.
 
 Measured, by driving `tools/list` over stdio against each binary:
 
-| binary | tools | `pipeline.plan` | `review.submit` | `review.calibrate` | `report.render` |
-| --- | --- | --- | --- | --- | --- |
-| global `crabgic@1.1.2` | 23 | absent | absent | absent | absent |
-| repo build `1.7.0` | 26 | present | present | present | present |
+| binary                 | tools | `pipeline.plan` | `review.submit` | `review.calibrate` | `report.render` |
+| ---------------------- | ----- | --------------- | --------------- | ------------------ | --------------- |
+| global `crabgic@1.1.2` | 23    | absent          | absent          | absent             | absent          |
+| repo build `1.7.0`     | 26    | present         | present         | present            | present         |
 
 The `/eo:pipeline` skill's step 1 is "Call `pipeline.plan` (gateway MCP)". Against
 the binary the project's own `.mcp.json` actually starts, that tool did not exist.
@@ -100,14 +100,14 @@ dispatch points — the review fan-out and the adversarial verifier.
 Only the `audit` stage plans domain lenses. Measured, by driving `pipeline.plan`
 through all nine stages:
 
-| stage | lenses planned | family |
-| --- | --- | --- |
-| `research` | completeness, source-quality, assumption-audit | pipeline |
-| `design` | contract-fit, security, operability | pipeline |
-| `plan` | coverage-of-design, sequencing | pipeline |
+| stage       | lenses planned                                     | family   |
+| ----------- | -------------------------------------------------- | -------- |
+| `research`  | completeness, source-quality, assumption-audit     | pipeline |
+| `design`    | contract-fit, security, operability                | pipeline |
+| `plan`      | coverage-of-design, sequencing                     | pipeline |
 | `implement` | correctness, security **+** compliance, clean-code | **both** |
-| `audit` | testing, target-domain, compliance, clean-code | domain |
-| `document` | completeness, readability | pipeline |
+| `audit`     | testing, target-domain, compliance, clean-code     | domain   |
+| `document`  | completeness, readability                          | pipeline |
 
 `eo-domain-reviewer`'s own definition names eight lenses — `backend`,
 `frontend`, `infrastructure`, `testing`, `product-design`, `target-domain`,
@@ -121,7 +121,7 @@ families in one stage.
 
 **Why the test suite agreed.** `stage-round-workflow.test.ts` asserted
 `expect(SOURCE).toMatch(/agentType: "eo-domain-reviewer"/)` — a fixture that
-encodes the defect, so the test passed *because* the bug was present, and would
+encodes the defect, so the test passed _because_ the bug was present, and would
 have reddened on the fix. The playbook's vacuity pattern, again.
 
 **Repaired.** `planStageRound` now derives `reviewer` per lens from
@@ -146,7 +146,7 @@ install — or predates the repair above — cannot dispatch any of them, and
 `stage-round.mjs` fails at its first `agent()` call with the same error.
 
 This is engine behaviour, not a crabgic defect, and it is stated here because it
-is the reason the nine steps still have not been *executed*: the surface is now
+is the reason the nine steps still have not been _executed_: the surface is now
 reachable, and reaching it requires a session started after the repair.
 
 ## The dogfooding trap this leaves behind
