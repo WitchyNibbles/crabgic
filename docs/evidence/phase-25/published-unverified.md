@@ -106,3 +106,55 @@ attempted commands are on the transcript, and the executed ones are not.
 `docs/deploy-posture.md` marks as an owner scope decision, and it converts today's
 successful run into a refused one — which is correct, and is a decision about
 what the product promises rather than a maintenance task.
+
+---
+
+## Resolved 2026-08-16 — the cause was a 108-byte limit, and the fix changed the outcome
+
+**Root cause, isolated by probe with both controls.** `sun_path` in
+`sockaddr_un` is 108 bytes on Linux; the sandbox creates its bridge sockets
+under `TMPDIR`; the provisioned `TMPDIR` was **101 characters**
+(`<cache>/<projectHash>/worktrees/workers/<work-unit-uuid>/tmp`), leaving seven
+for a socket name. Same strict worker env with a SHORT `TMPDIR` runs `echo`
+fine; with a long one it fails. Nothing about WSL2, the sandbox policy, the
+isolated `HOME`, or detachment was implicated — each was tested and cleared.
+
+`provisionWorkerDirs` now puts `TMP` under the system temp root, keyed by a
+digest of base dir + worker id, so isolation and `0700` are preserved and only
+the length changes.
+
+**What changed in the next run (`bc167a3a`), measured:**
+
+|                            | before (`04a0bf70`) | after (`bc167a3a`)                     |
+| -------------------------- | ------------------- | -------------------------------------- |
+| bridge-socket errors       | 12                  | **0**                                  |
+| `Bash` calls that executed | 0                   | **29**                                 |
+| tests written              | none                | `admissibility.test.ts`, +23 lines     |
+| self-reported summary      | `"test"`            | a real account of all three advisories |
+
+The worker ran `npm run build` and reported it clean. It wrote a test. And it
+reported, unprompted, what it could NOT establish:
+
+> `npm run test` could not be verified: every invocation … fails immediately
+> with `EBUSY: resource busy or locked, rmdir .../coverage` before any test
+> executes — a stale coverage directory.
+
+That is the behaviour the whole design wants: a worker that runs its granted
+commands and distinguishes what it checked from what it could not.
+
+## The finding this document exists for is UNCHANGED
+
+`bc167a3a` reached `published_local` anyway — with its own author stating in the
+result record that the test suite never ran. So the system still publishes on an
+unverified claim; it now publishes on an unverified claim that _says so_, which
+is strictly better evidence and exactly the same guarantee.
+
+Two follow-ons, both open:
+
+- **The publish refusal** (this document's original recommendation) is still the
+  fix, and it is now clearly worth building: the material to refuse on is sitting
+  in the worker's own diagnostics.
+- **`EBUSY … rmdir coverage`** is a new defect of its own — the attempt worktree
+  inherits a `coverage/` directory vitest cannot clear, so `npm run test` cannot
+  run in a worktree at all. Until that is fixed, no gate can verify anything even
+  with the sandbox working.
