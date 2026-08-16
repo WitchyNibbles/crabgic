@@ -158,3 +158,32 @@ Two follow-ons, both open:
   inherits a `coverage/` directory vitest cannot clear, so `npm run test` cannot
   run in a worktree at all. Until that is fixed, no gate can verify anything even
   with the sandbox working.
+
+### The `EBUSY` follow-on, probed: not what it looked like
+
+Re-run by hand in the very worktree that reported it, `vitest` executes fine —
+no `EBUSY`, tests run, coverage is measured. So the failure the worker met was
+**transient**, most likely its own repeated invocations colliding on the
+`coverage/` directory rather than a worktree that cannot run tests.
+
+What the probe DID establish is a harder problem, and it is a design one rather
+than a bug:
+
+```
+ERROR: Coverage for lines (0.48%) does not meet global threshold (80%)
+```
+
+`npm run test` is one of only four grantable command prefixes, and in this
+repository it means **the whole suite with a global 80% coverage gate** — 7500
+tests, several minutes, and a threshold that a filtered run can never satisfy. A
+worker asked to verify a two-file change has no way to use it:
+
+- run it filtered, and the coverage gate fails on the files it did not touch;
+- run it whole, and it spends minutes of a bounded turn budget on a suite that
+  is almost entirely unrelated to its change set.
+
+So even with the sandbox now working, the granted verification command is not
+usable **as configured** by a worker verifying a small change. That is the next
+thing standing between "a worker can run commands" and "a gate can verify work",
+and it is a decision about what commands an envelope should grant — a scoped
+test invocation, or a per-change coverage bound — rather than a defect to patch.
