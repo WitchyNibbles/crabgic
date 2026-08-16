@@ -15,6 +15,17 @@ import type { RateLimitEventPayload } from "./rate-limit-fixtures.js";
 export interface FakeToolCallStep extends FakeToolCall {
   /** Canned tool_result text emitted alongside the toolUse event, when the call is allowed. */
   readonly toolResult?: string;
+  /**
+   * Canned `is_error` flag for that tool_result — the engine's own report of
+   * whether the call errored, which owner ruling R5's observer counts.
+   *
+   * Scriptable, and OMITTED by default, so a script must say a command ran
+   * clean rather than getting it by writing nothing. Absence is what a real
+   * engine sends when it does not report, and the observer treats it as
+   * not-clean; a default of `false` here would let every existing fixture
+   * silently manufacture the evidence R5 exists to require.
+   */
+  readonly toolResultIsError?: boolean;
 }
 
 /**

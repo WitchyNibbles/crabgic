@@ -59,7 +59,7 @@
  * an exported, unconsulted predicate.
  */
 
-import { recordAttempt, type JournalStore } from "@crabgic/journal";
+import { journalAcceptanceEvaluation, recordAttempt, type JournalStore } from "@crabgic/journal";
 import type {
   AdjudicationCallback,
   CompiledWorkerProfile,
@@ -76,6 +76,11 @@ import {
   type TaskPacket,
   type WorkerResult,
 } from "@crabgic/contracts";
+import {
+  buildAcceptanceEvaluation,
+  createAcceptanceObserver,
+  type AcceptanceObserver,
+} from "./acceptance-observer.js";
 import { assertPacketWithinBudget } from "./budgets.js";
 import { assertRepairAllowed, type AttemptEvidenceKind } from "./attempt-policy.js";
 import { assertNotGloballyPaused, parkWorkUnit } from "./parking.js";
@@ -135,6 +140,8 @@ interface ConsumeEventsParams {
    * `runId` was invisible to `@crabgic/supervisor`'s `recoverRun`.
    */
   readonly runId?: string;
+  /** Overridable clock for R5's observation timestamp; defaults to the real wall clock. */
+  readonly now?: () => Date;
 }
 
 /** One requirement whose seal check refused, paired with the typed reason it refused for. */
@@ -218,9 +225,77 @@ async function journalWorkerResultRejection(
   });
 }
 
-/** Shared event-consumption loop between a fresh dispatch and a resume — see file-level doc comment. */
+/**
+ * Writes down what this attempt actually RAN — owner ruling R5.
+ *
+ * Called on EVERY terminal exit from `consumeEvents`, including the failing and
+ * crashing ones, because "what ran" is a fact about the attempt rather than a
+ * property of its verdict. Writing only on success would make the record's
+ * absence ambiguous between "nothing ran" and "the attempt failed", and the
+ * publish gate would then have to guess which.
+ *
+ * ORDER: journaled BEFORE the outcome is returned but AFTER `recordAttempt`, so
+ * a crash between the two loses the observation rather than the attempt's own
+ * terminal transition. Losing the observation fails CLOSED — the gate then sees
+ * nothing and refuses to publish — whereas losing the transition would leave a
+ * run whose state machine cannot advance at all.
+ *
+ * NEVER THROWS INTO THE ATTEMPT PATH. A failure to journal an observation must
+ * not convert a completed attempt into a crash: the observation exists to make a
+ * later gate refuse, and a lost one already makes it refuse. Swallowing here is
+ * therefore fail-closed, which is the only reason it is acceptable — and it is
+ * the reason this is one of the very few `catch` blocks in this file.
+ */
+async function journalAttemptObservation(
+  params: ConsumeEventsParams,
+  observer: AcceptanceObserver,
+): Promise<void> {
+  const record = buildAcceptanceEvaluation({
+    changeSetId: params.criteriaSeal.approvalSeal?.changeSetId,
+    workUnitId: params.workUnitId,
+    sessionId: params.sessionId,
+    requirementIds: params.criteriaSeal.requirements.map((requirement) => requirement.id),
+    invocations: observer.snapshot(),
+    observedAt: (params.now?.() ?? new Date()).toISOString(),
+  });
+  if (record === undefined) return;
+  try {
+    await journalAcceptanceEvaluation(params.journal, record, params.runId);
+  } catch {
+    // Deliberately swallowed — see this function's doc comment for why this is
+    // the fail-closed direction rather than a hidden error.
+  }
+}
+
+/**
+ * Shared event-consumption loop between a fresh dispatch and a resume — see
+ * file-level doc comment.
+ *
+ * Wraps `consumeEventStream` rather than journaling R5's observation inside it,
+ * for one reason: that function has SEVEN terminal returns, and a per-branch
+ * write is a write a future eighth branch forgets. One call site outside the
+ * loop cannot be forgotten, and `./acceptance-observer.test.ts` pins that every
+ * terminal outcome produces a record.
+ *
+ * A THROW out of the stream deliberately writes nothing. That is fail-closed:
+ * no observation means the publish gate refuses, which is the correct answer
+ * when the attempt path itself broke.
+ */
 async function consumeEvents(params: ConsumeEventsParams): Promise<DispatchAttemptOutcome> {
+  const observer = createAcceptanceObserver();
+  const outcome = await consumeEventStream(params, observer);
+  await journalAttemptObservation(params, observer);
+  return outcome;
+}
+
+async function consumeEventStream(
+  params: ConsumeEventsParams,
+  observer: AcceptanceObserver,
+): Promise<DispatchAttemptOutcome> {
   for await (const event of params.events) {
+    // Folded in BEFORE any branch reads the event, so an early terminal return
+    // still carries everything the stream showed up to that point.
+    observer.observe(event);
     if (event.type === "limitSignal") {
       /**
        * ONLY A REFUSAL PARKS. `rate_limit_event` is routine usage TELEMETRY:

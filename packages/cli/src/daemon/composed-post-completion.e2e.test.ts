@@ -108,6 +108,14 @@ const FIXTURE_POLICY = EnvelopePolicySchema.parse({
   id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   createdAt: "2026-01-01T00:00:00.000Z",
   allowedPathPrefixes: [OWNED_PREFIX],
+  /**
+   * R5: the policy has to GRANT the verification command for a worker to be
+   * able to run it. Before the publish gate existed, no case in this file cared
+   * what commands were granted — publication did not depend on any having run.
+   * It does now, and a fixture that granted nothing would be testing a run that
+   * cannot publish for a reason unrelated to what each case asserts.
+   */
+  allowedCommands: ["npm run test"],
   maxWorkerTurnsPerAttempt: 40,
 });
 
@@ -222,6 +230,12 @@ interface BootOptions {
    * second candidate genuinely conflicts with the first once it has integrated.
    */
   readonly collide?: boolean;
+  /**
+   * The worker runs NO granted command and self-reports `succeeded` anyway —
+   * run `04a0bf70`'s shape, and the state every case in this file was in before
+   * owner ruling R5. Used by the case that pins the publish gate refusing.
+   */
+  readonly unverified?: boolean;
 }
 
 /**
@@ -246,6 +260,27 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
           policy: FIXTURE_POLICY,
           digest: "sha256:fixture",
         }),
+        /**
+         * R5: the daemon's default adjudicator is `REFUSE_ALL_ADJUDICATIONS`,
+         * and the FAKE engine consults the adjudication layer for EVERY tool
+         * call — including ones the compiled permission rules already allow. So
+         * with the default, `Bash(npm run test:*)` is granted, permitted by the
+         * permission layer, and then denied by the adjudicator, and no case
+         * here could ever exercise a verified publication.
+         *
+         * That is a fake-engine modelling difference, not a production one: a
+         * real engine does not route a pre-permitted tool through `canUseTool`
+         * (`docs/evidence/…/crabgic-canusetool-shadowed`, the same asymmetry
+         * recorded there). Narrowed to the ONE granted command rather than
+         * allowing everything, so the fixture still fails closed on anything
+         * this change set did not authorize.
+         */
+        adjudicate: (toolName, toolInput) =>
+          Promise.resolve(
+            toolName === "Bash" && toolInput["command"] === "npm run test"
+              ? { behavior: "allow" as const, updatedInput: toolInput }
+              : { behavior: "deny" as const, message: "not granted by this fixture" },
+          ),
         // The ONLY seam: a fake engine that makes REAL edits in the REAL
         // worktree it is handed, then reports success. Worker output is
         // uncommitted — exactly as production leaves it.
@@ -257,6 +292,28 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
           await writeFile(target, `export const unit = "${ctx.workUnit.title}";\n`, "utf8");
           return new FakeEngineAdapter(
             buildFakeEngineScript({
+              /**
+               * R5: the worker RUNS its granted verification command and the
+               * engine reports it clean, so the publish gate has something to
+               * pass on. Deliberately scripted rather than assumed — before
+               * this ruling a worker could reach `published_local` having run
+               * nothing at all, and every case in this file did.
+               *
+               * `options.unverified` scripts the opposite, and one case uses it
+               * to pin that the gate actually refuses.
+               */
+              ...(options.unverified === true
+                ? {}
+                : {
+                    toolCalls: [
+                      {
+                        toolName: "Bash",
+                        toolInput: { command: "npm run test" },
+                        toolResult: "ok",
+                        toolResultIsError: false,
+                      },
+                    ],
+                  }),
               structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
             }),
           );
@@ -386,6 +443,25 @@ function treePaths(ref: string): readonly string[] {
     .filter((line) => line.length > 0);
 }
 
+/**
+ * The `acceptance` tag now carries TWO gates (owner ruling R5), so a filter on
+ * the tag alone returns two records and "the acceptance evidence" is ambiguous.
+ * Each case below says WHICH gate it means.
+ *
+ * Selected by `command`, which is the gate module's own constant, rather than by
+ * array position: position would silently re-point at the other gate if the
+ * risk-tag ordering ever changed, and it is the assertion nobody would notice
+ * going wrong.
+ */
+const SEAL_GATE_COMMAND = "eo-gates: acceptance-criteria seal verification";
+const EVALUATED_GATE_COMMAND = "eo-gates: acceptance-criteria evaluation check";
+
+async function acceptanceEvidence(command: string): Promise<readonly EvidenceRecord[]> {
+  return (await evidenceRecords()).filter(
+    (record) => record.gateTag === "acceptance" && record.command === command,
+  );
+}
+
 describe("a completed run walks to published_local through a fired gate (defect 14-gate-registry-never-composed)", () => {
   it("T1 — one unit: the run publishes, and the acceptance evidence binds the independently-resolved branch tip", async () => {
     const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
@@ -398,6 +474,10 @@ describe("a completed run walks to published_local through a fired gate (defect 
         id: ENVELOPE_ID,
         changeSetId: CHANGE_SET_ID,
         ownedPaths: [`${OWNED_PREFIX}/`],
+        // R5: the envelope has to grant the verification command, or the
+        // compiled profile denies the worker's `Bash` call and the publish gate
+        // refuses for a reason unrelated to what this case asserts.
+        commands: ["npm run test"],
       }),
     });
 
@@ -422,13 +502,19 @@ describe("a completed run walks to published_local through a fired gate (defect 
     const branches = publishedBranches();
     expect(branches).toHaveLength(1);
     const publishedTip = revParse(branches[0]!);
-    const acceptance = (await evidenceRecords()).filter(
-      (record) => record.gateTag === "acceptance",
-    );
+    const acceptance = await acceptanceEvidence(SEAL_GATE_COMMAND);
     expect(acceptance).toHaveLength(1);
     expect(acceptance[0]?.gateVerdict).toBe("passed");
     expect(acceptance[0]?.objectId).toBe(publishedTip);
     expect(acceptance[0]?.changeSetId).toBe(CHANGE_SET_ID);
+
+    // R5's gate fired in the SAME firing, against the SAME candidate, and
+    // passed — which it can only do because this worker actually ran its
+    // granted verification command.
+    const evaluated = await acceptanceEvidence(EVALUATED_GATE_COMMAND);
+    expect(evaluated).toHaveLength(1);
+    expect(evaluated[0]?.gateVerdict).toBe("passed");
+    expect(evaluated[0]?.objectId).toBe(publishedTip);
     // `final_verifying` has no single owning unit — the context omits it.
     expect(acceptance[0]?.workUnitId).toBeUndefined();
 
@@ -470,6 +556,10 @@ describe("a completed run walks to published_local through a fired gate (defect 
         id: ENVELOPE_ID,
         changeSetId: CHANGE_SET_ID,
         ownedPaths: [`${OWNED_PREFIX}/`],
+        // R5: the envelope has to grant the verification command, or the
+        // compiled profile denies the worker's `Bash` call and the publish gate
+        // refuses for a reason unrelated to what this case asserts.
+        commands: ["npm run test"],
       }),
     });
 
@@ -488,12 +578,13 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(paths).toContain(unitFilePath(UNIT_A_ID));
     expect(paths).toContain(unitFilePath(UNIT_B_ID));
 
-    const acceptance = (await evidenceRecords()).filter(
-      (record) => record.gateTag === "acceptance",
-    );
+    const acceptance = await acceptanceEvidence(SEAL_GATE_COMMAND);
     expect(acceptance).toHaveLength(1);
     expect(acceptance[0]?.objectId).toBe(publishedTip);
     expect(acceptance[0]?.gateVerdict).toBe("passed");
+    const evaluated = await acceptanceEvidence(EVALUATED_GATE_COMMAND);
+    expect(evaluated.map((record) => record.gateVerdict)).toStrictEqual(["passed"]);
+    expect(evaluated[0]?.objectId).toBe(publishedTip);
 
     // The security tranche binds to the SAME two-unit tip. Registering six more
     // gates must not introduce a second candidate resolution: every gate in one
@@ -522,6 +613,10 @@ describe("a completed run walks to published_local through a fired gate (defect 
         id: ENVELOPE_ID,
         changeSetId: CHANGE_SET_ID,
         ownedPaths: [`${OWNED_PREFIX}/`],
+        // R5: the envelope has to grant the verification command, or the
+        // compiled profile denies the worker's `Bash` call and the publish gate
+        // refuses for a reason unrelated to what this case asserts.
+        commands: ["npm run test"],
       }),
     });
 
@@ -550,9 +645,7 @@ describe("a completed run walks to published_local through a fired gate (defect 
     // integrated object id the refusal is about — resolved INDEPENDENTLY out
     // of the control clone's own ref store, since a failed run publishes
     // nothing to rev-parse in the user repo.
-    const acceptance = (await evidenceRecords()).filter(
-      (record) => record.gateTag === "acceptance",
-    );
+    const acceptance = await acceptanceEvidence(SEAL_GATE_COMMAND);
     expect(acceptance).toHaveLength(1);
     expect(acceptance[0]?.gateVerdict).toBe("failed");
     expect(acceptance[0]?.exitStatus).toBe(1);
@@ -619,6 +712,10 @@ describe("a completed run walks to published_local through a fired gate (defect 
         id: ENVELOPE_ID,
         changeSetId: CHANGE_SET_ID,
         ownedPaths: [`${OWNED_PREFIX}/`],
+        // R5: the envelope has to grant the verification command, or the
+        // compiled profile denies the worker's `Bash` call and the publish gate
+        // refuses for a reason unrelated to what this case asserts.
+        commands: ["npm run test"],
       }),
     });
 
@@ -642,6 +739,7 @@ describe("a completed run walks to published_local through a fired gate (defect 
     // registered those six gates, which is what proves they fire at
     // `final_verifying` and not merely "somewhere in the pipeline".
     expect((await evidenceRecords()).filter((r) => r.gateTag === "acceptance")).toEqual([]);
+    expect(await acceptanceEvidence(EVALUATED_GATE_COMMAND)).toEqual([]);
     expect(await securityEvidence()).toEqual([]);
     expect(await runTransitions(runId)).toStrictEqual([
       "awaiting_approval",
@@ -670,5 +768,78 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(parsed.resolutionWorkUnits).toHaveLength(1);
     expect(parsed.resolutionWorkUnits[0]?.role).toBe("merge-conflict-resolution");
     expect(parsed.resolutionWorkUnits[0]?.ownedPaths).toEqual([SHARED_FILE_PATH]);
+  }, 180_000);
+
+  /**
+   * ⚠️ T5 — owner ruling R5, and the case this whole ruling exists for.
+   *
+   * The worker is IDENTICAL to T1's in every respect that used to matter: it
+   * makes a real edit in the real worktree, and it reports `succeeded`. The one
+   * difference is that it runs no granted command — which is exactly runs
+   * `04a0bf70` and `bc167a3a` (`docs/evidence/phase-25/published-unverified.md`),
+   * both of which reached `published_local` on a self-report nothing checked.
+   *
+   * T1 and T5 are the same fixture either side of one variable, which is what
+   * makes each of them mean something. Without T5, T1 would pass for a gate that
+   * always passes; without T1, T5 would pass for a gate that always refuses.
+   */
+  it("T5 — a worker that ran NOTHING does not publish, and the refusal names the unverified criteria", async () => {
+    const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
+    await seedApprovalSeal(approved.criteriaHash);
+    seedIntakeState({
+      requirement: approved,
+      workUnits: [unitFixture(UNIT_A_ID, "add the greeting export")],
+      changeSet: changeSetFixture([UNIT_A_ID]),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        ownedPaths: [`${OWNED_PREFIX}/`],
+        // GRANTED, and still unused. The refusal is about what the worker DID,
+        // never about what it was permitted to do — a fixture that withheld the
+        // grant would pass for the wrong reason.
+        commands: ["npm run test"],
+      }),
+    });
+
+    composed = await bootDaemon({ unverified: true });
+    const runId = await dispatchAndSettle(composed);
+
+    // (a) NOT published. The terminal state is `failed`, and the walk reached
+    // `final_verifying` before stopping — so the refusal came from the gate,
+    // not from the run breaking earlier for some unrelated reason.
+    expect(composed.deps.runs.get(runId)?.runState).toBe("failed");
+    expect(await runTransitions(runId)).toStrictEqual([
+      "awaiting_approval",
+      "ready",
+      "running",
+      "verifying",
+      "integrating",
+      "final_verifying",
+      "failed",
+    ]);
+    // (b) and nothing reached the user's repository.
+    expect(publishedBranches()).toEqual([]);
+
+    // (c) the SEAL gate passed. Nothing was tampered with, and it correctly says
+    // so — which is precisely why it could never have caught this, and why R5
+    // needed a second gate rather than a stricter first one.
+    const seal = await acceptanceEvidence(SEAL_GATE_COMMAND);
+    expect(seal.map((record) => record.gateVerdict)).toStrictEqual(["passed"]);
+
+    // (d) R5's gate refused, on the record.
+    const evaluated = await acceptanceEvidence(EVALUATED_GATE_COMMAND);
+    expect(evaluated).toHaveLength(1);
+    expect(evaluated[0]?.gateVerdict).toBe("failed");
+    expect(evaluated[0]?.exitStatus).toBe(1);
+
+    // (e) THE NAMING OBLIGATION, which the ruling is explicit about: a bare
+    // refusal would trade a false pass for an unactionable failure. The
+    // operator-facing channel carries the requirement, its criteria, what the
+    // worker was observed doing, and what would satisfy the gate.
+    const refusal = driveErrors.join(" | ");
+    expect(refusal).toContain(REQ_ID);
+    expect(refusal).toContain(APPROVED_CRITERIA[0]!);
+    expect(refusal).toContain(`work unit ${UNIT_A_ID}: no granted command was invoked`);
+    expect(refusal).toContain("npm run test");
   }, 180_000);
 });

@@ -68,6 +68,61 @@ export const GRANTABLE_COMMAND_PREFIXES = [
 export const GrantableCommandPrefixSchema = z.enum(GRANTABLE_COMMAND_PREFIXES);
 export type GrantableCommandPrefix = z.infer<typeof GrantableCommandPrefixSchema>;
 
+/**
+ * What each grantable prefix ESTABLISHES when it runs and exits clean — owner
+ * ruling R5's vocabulary, and the reason `acceptance-evaluation.ts` can decide
+ * "were the acceptance criteria evaluated" without a judgement that drifts.
+ *
+ *   - `acceptance` — running it exercises the work against its criteria. A
+ *     clean exit is evidence the criteria were EVALUATED (not that they are
+ *     adequate; see `./acceptance-evaluation.ts` for that bound).
+ *   - `integrity` — running it establishes the tree is well-formed. Necessary,
+ *     never sufficient: run `bc167a3a` reported `npm run build` clean and
+ *     stated in its own result record that the suite never ran, and R5 exists
+ *     to refuse exactly that run (`docs/evidence/phase-25/published-unverified.md`).
+ *   - `inspection` — running it reads state and asserts nothing. A worker can
+ *     invoke it a hundred times having verified nothing at all.
+ *
+ * A `Record<GrantableCommandPrefix, …>` LITERAL, deliberately, not a filtered
+ * array: TypeScript rejects both a missing key and a stray one, so widening
+ * `GRANTABLE_COMMAND_PREFIXES` fails `tsc` here until the widener says which
+ * class the new member is. That is the same exhaustiveness mechanism
+ * `JOURNAL_ENTRY_TYPE_DESCRIPTIONS` uses, and it matters more here: a new
+ * prefix silently defaulting to `acceptance` would let a `git log` grant
+ * satisfy the publish gate, and one silently defaulting to `inspection` would
+ * make a genuine test command unable to.
+ */
+export const COMMAND_EVIDENCE_CLASSES = ["acceptance", "integrity", "inspection"] as const;
+export const CommandEvidenceClassSchema = z.enum(COMMAND_EVIDENCE_CLASSES);
+export type CommandEvidenceClass = z.infer<typeof CommandEvidenceClassSchema>;
+
+export const COMMAND_EVIDENCE_CLASS: Readonly<
+  Record<GrantableCommandPrefix, CommandEvidenceClass>
+> = Object.freeze({
+  "npm run test": "acceptance",
+  "npm run build": "integrity",
+  "git status": "inspection",
+  "git diff": "inspection",
+});
+
+/**
+ * Classifies a command string a worker actually invoked.
+ *
+ * Longest-prefix wins, so `npm run test:unit` classifies as the `npm run test`
+ * grant rather than falling through — which is what the compiled `Bash(npm run
+ * test:*)` rule genuinely permits (see the widening note above). A string
+ * matching no grant returns `undefined`: it was not granted, so nothing it did
+ * counts as evidence of anything.
+ */
+export function classifyGrantedCommand(command: string): GrantableCommandPrefix | undefined {
+  let matched: GrantableCommandPrefix | undefined;
+  for (const prefix of GRANTABLE_COMMAND_PREFIXES) {
+    if (!command.startsWith(prefix)) continue;
+    if (matched === undefined || prefix.length > matched.length) matched = prefix;
+  }
+  return matched;
+}
+
 export const EnvelopePolicySchema = z
   .object({
     schemaVersion: SchemaVersionField,

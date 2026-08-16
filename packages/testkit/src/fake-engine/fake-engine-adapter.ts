@@ -127,6 +127,9 @@ async function* replayFakeEngineScript(
       // exactOptionalPropertyTypes: an optional field must be omitted
       // entirely, never explicitly assigned `undefined`.
       ...(step.toolResult !== undefined ? { toolResult: step.toolResult } : {}),
+      ...(step.toolResultIsError !== undefined
+        ? { toolResultIsError: step.toolResultIsError }
+        : {}),
     };
   }
 

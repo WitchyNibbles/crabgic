@@ -427,8 +427,22 @@ function synthesizeRejectedLimitSignal(sessionId: string): EngineLimitSignalEven
 }
 
 /** Extracts the tool_result content blocks' text from a `user` message, keyed by `tool_use_id`. */
-function extractToolResults(content: unknown): ReadonlyMap<string, string> {
-  const results = new Map<string, string>();
+/**
+ * A `tool_result` block, reduced to the two things a consumer can act on: the
+ * text, and whether the engine flagged the call as errored.
+ *
+ * `isError` is `undefined` when the block omits `is_error` or carries a
+ * non-boolean there — never coerced to `false`. Owner ruling R5 counts an
+ * explicit `false` as evidence a granted command ran, so silently inventing one
+ * would manufacture exactly the evidence the ruling exists to require.
+ */
+interface ExtractedToolResult {
+  readonly text: string;
+  readonly isError?: boolean;
+}
+
+function extractToolResults(content: unknown): ReadonlyMap<string, ExtractedToolResult> {
+  const results = new Map<string, ExtractedToolResult>();
   if (!Array.isArray(content)) {
     return results;
   }
@@ -440,11 +454,15 @@ function extractToolResults(content: unknown): ReadonlyMap<string, string> {
       readonly type?: unknown;
       readonly tool_use_id?: unknown;
       readonly content?: unknown;
+      readonly is_error?: unknown;
     };
     if (typed.type !== "tool_result" || typeof typed.tool_use_id !== "string") {
       continue;
     }
-    results.set(typed.tool_use_id, stringifyToolResultContent(typed.content));
+    results.set(typed.tool_use_id, {
+      text: stringifyToolResultContent(typed.content),
+      ...(typeof typed.is_error === "boolean" ? { isError: typed.is_error } : {}),
+    });
   }
   return results;
 }
@@ -536,7 +554,8 @@ export async function* normalizeSdkStream(
           toolUseId,
           toolName: pending.toolName,
           toolInput: pending.toolInput,
-          toolResult,
+          toolResult: toolResult.text,
+          ...(toolResult.isError !== undefined ? { toolResultIsError: toolResult.isError } : {}),
         };
       }
       continue;

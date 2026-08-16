@@ -231,3 +231,92 @@ granted command rather than for one.
 phase 14's gate territory rather than phase 25's, and it touches the tranche
 `docs/deploy-posture.md` records as having no production registration. A
 constant edit would have been a one-line change; this is not one.
+
+---
+
+## RESOLVED 2026-08-16 — the refusal is built, and it refuses both of these runs
+
+R5 is implemented and CI-green. The finding this document exists for is closed:
+`published_local` no longer means "a worker claimed success and its diff merged
+cleanly".
+
+### What now stands between a completed drive and publication
+
+| step    | where                                                  | claim                                                                                  |
+| ------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| observe | `packages/scheduler/src/acceptance-observer.ts`        | which granted commands the ENGINE showed running, and whether each errored             |
+| journal | `packages/journal/src/acceptance-evaluation-anchor.ts` | one record per completed attempt, on `adjudication_decision` (Gap 5's closed thirteen) |
+| refuse  | `packages/gates/src/acceptance-evaluated-gate.ts`      | at `final_verifying`, unless every requirement was evaluated                           |
+
+The observer reads the engine's `toolUse` stream, which `consumeEvents` was
+already iterating past. That stream is the one account of an attempt the attempt
+does not author — which is the whole reason `WorkerResult` could not be the
+input, and the reason both runs below published.
+
+### Both measured runs, re-scored against the built gate
+
+| run        | what it did                                             | old outcome       | under R5                                                     |
+| ---------- | ------------------------------------------------------- | ----------------- | ------------------------------------------------------------ |
+| `04a0bf70` | 12 `Bash` calls, none started; `{"summary":"test"}`     | `published_local` | **refused** — "no granted command was invoked"               |
+| `bc167a3a` | 29 commands ran, `npm run build` clean, suite never ran | `published_local` | **refused** — a clean build is `integrity`, not `acceptance` |
+
+`bc167a3a` is the one that decided the design. A gate accepting "some granted
+command worked" would have passed it, and it is the run whose own author said the
+suite never ran. So only a clean `npm run test` counts, over the closed
+four-member `GRANTABLE_COMMAND_PREFIXES` vocabulary R6 left unchanged.
+
+### The refusal names what went unverified
+
+Verbatim, from the shipped daemon composition:
+
+```
+acceptance-evaluated (acceptance) exit 1: {
+  "refusal": "the acceptance criteria below were never evaluated — no granted
+              acceptance-class command ran clean for them",
+  "unevaluated": [{ "requirementId": "…", "title": "…", "acceptanceCriteria": ["…"] }],
+  "observed": ["work unit …: no granted command was invoked"],
+  "satisfiedBy": ["npm run test"]
+}
+```
+
+`observed` separates "never attempted" from "attempted 12x, 0 clean", because an
+operator does different things about each. That distinction is the reason the
+record keeps both counts rather than a boolean.
+
+### One hole this document did not name, found while building
+
+A change set declaring **no** requirements would have passed the new gate for
+free — "every requirement was evaluated" is a universal quantifier, and over an
+empty set it is vacuously true. It is reachable:
+`transitionChangeSetToReady` refuses an unmapped requirement and a requirement
+with no record to seal, and refuses neither a change set that declares none. So
+the empty basis is refused explicitly, and named as such rather than folded into
+the general refusal.
+
+### ⚠️ What passing the gate still does NOT establish
+
+That the evaluation was ADEQUATE. A filtered suite and a full one look identical
+to this gate. Scoring the evaluation's own quality is R6's per-change coverage
+bound and phase 14's tdd/coverage tranche; neither is claimed here. What is
+closed is the hole that was measured — publication on a self-report that nothing
+checked at all.
+
+A second, narrower bound: `cleanExits` counts tool calls the ENGINE reported as
+not-errored. The harness is not the process that ran the command, so this is the
+engine's report about its own tool call rather than an independently observed
+exit status. It is the strongest signal available at that seam, and — the
+property that matters — it is not worker-authored. An ABSENT `is_error` flag
+counts as not-clean, so an engine that stops reporting makes this gate refuse
+rather than pass.
+
+### Evidence
+
+- `packages/cli/src/daemon/composed-post-completion.e2e.test.ts` — T1 and T5 are
+  the same fixture either side of one variable: T1's worker runs its granted
+  command and publishes, T5's runs nothing and is refused. Neither test means
+  anything without the other.
+- `packages/gates/src/acceptance-evaluated-gate.test.ts` — seven cases including
+  the empty-basis refusal and a positive control.
+- `packages/scheduler/src/acceptance-observer.test.ts` — thirteen cases, including
+  every terminal exit from `consumeEvents` writing a record.
+- Full suite green at the change: **7623 tests, 701 files, zero failures.**

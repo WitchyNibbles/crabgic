@@ -116,6 +116,8 @@ const FIXTURE_POLICY = EnvelopePolicySchema.parse({
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   createdAt: "2026-01-01T00:00:00.000Z",
   allowedPathPrefixes: ["packages/example/src"],
+  /** R5: granted so case C's worker can actually run the command the publish gate now requires. */
+  allowedCommands: ["npm run test"],
   maxWorkerTurnsPerAttempt: 40,
 });
 
@@ -230,14 +232,41 @@ async function bootDaemon(): Promise<ComposedSupervisor> {
         // with no seam — so case C still reddens if the seal gate stops being
         // registered. Real git is covered by `./composed-post-completion.e2e.test.ts`.
         postCompletionGitEffects: createFakePostCompletionGitEffects(),
-        // ALWAYS succeeds — so a `failed` attempt can only be the funnel.
+        /**
+         * ALWAYS succeeds — so a `failed` attempt can only be the funnel.
+         *
+         * R5: it also RUNS its granted verification command now. Without that,
+         * case C's control row would fail at the publish gate rather than
+         * completing, and the suite would stop being able to distinguish "the
+         * seal funnel refused this run" from "every run refuses".
+         */
         createAdapter: () =>
           Promise.resolve(
             new FakeEngineAdapter(
               buildFakeEngineScript({
+                toolCalls: [
+                  {
+                    toolName: "Bash",
+                    toolInput: { command: "npm run test" },
+                    toolResult: "ok",
+                    toolResultIsError: false,
+                  },
+                ],
                 structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
               }),
             ),
+          ),
+        /**
+         * R5: the daemon default refuses every adjudication and the FAKE engine
+         * consults it even for pre-permitted tools, so without this no `Bash`
+         * call could ever run here. Narrowed to the one granted command — see
+         * the same note in `./composed-post-completion.e2e.test.ts`.
+         */
+        adjudicate: (toolName, toolInput) =>
+          Promise.resolve(
+            toolName === "Bash" && toolInput["command"] === "npm run test"
+              ? { behavior: "allow" as const, updatedInput: toolInput }
+              : { behavior: "deny" as const, message: "not granted by this fixture" },
           ),
         onDriveError: (_runId, err) => {
           driveErrors.push(err instanceof Error ? err.message : String(err));
@@ -319,7 +348,12 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
       requirement: tampered,
       workUnit: workUnitFixture(),
       changeSet: changeSetFixture(),
-      envelope: buildAuthorizationEnvelope({ id: ENVELOPE_ID, changeSetId: CHANGE_SET_ID }),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        // R5: see the adapter script — case C now has to VERIFY to publish.
+        commands: ["npm run test"],
+      }),
     });
 
     composed = await bootDaemon();
@@ -355,7 +389,12 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
     seedIntakeState({
       workUnit: workUnitFixture(),
       changeSet: changeSetFixture(),
-      envelope: buildAuthorizationEnvelope({ id: ENVELOPE_ID, changeSetId: CHANGE_SET_ID }),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        // R5: see the adapter script — case C now has to VERIFY to publish.
+        commands: ["npm run test"],
+      }),
     });
 
     composed = await bootDaemon();
@@ -396,7 +435,12 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
         requirementIds: [REQ_ID, ABSENT_REQ_ID],
       }),
       changeSet: changeSetFixture(),
-      envelope: buildAuthorizationEnvelope({ id: ENVELOPE_ID, changeSetId: CHANGE_SET_ID }),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        // R5: see the adapter script — case C now has to VERIFY to publish.
+        commands: ["npm run test"],
+      }),
     });
 
     composed = await bootDaemon();
@@ -421,7 +465,12 @@ describe("the SHIPPED daemon composition verifies a work unit's acceptance bar (
       requirement: approved,
       workUnit: workUnitFixture(),
       changeSet: changeSetFixture(),
-      envelope: buildAuthorizationEnvelope({ id: ENVELOPE_ID, changeSetId: CHANGE_SET_ID }),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        // R5: see the adapter script — case C now has to VERIFY to publish.
+        commands: ["npm run test"],
+      }),
     });
 
     composed = await bootDaemon();

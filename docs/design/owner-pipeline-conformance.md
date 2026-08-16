@@ -543,6 +543,58 @@ layer short of where it was ruled
 > widening of what may execute. Gap 18's argument is untouched, and
 > `expanded_authority` remains unrepresentable in the autonomy settings.
 
+### 6d. Owner ruling R5, as built — 2026-08-16
+
+R5 is implemented. This section records what it actually does, because a ruling
+and its mechanism diverging is the failure mode §6c's own correction documents.
+
+**The shape.** Two halves, at opposite ends of a run:
+
+| half         | where                                             | what it does                                                          |
+| ------------ | ------------------------------------------------- | --------------------------------------------------------------------- |
+| the observer | `packages/scheduler/src/acceptance-observer.ts`   | folds the engine's `toolUse` stream into per-grant invocation tallies |
+| the gate     | `packages/gates/src/acceptance-evaluated-gate.ts` | refuses at `final_verifying` unless every requirement was evaluated   |
+
+The observation is journaled on `adjudication_decision` (Gap 5's closed
+thirteen, the `journalCriteriaSeal` precedent) and read back by the gate. Nothing
+in between is a seam a caller can substitute.
+
+**Why the observer and not `WorkerResult`.** Every field a worker authors is a
+field a worker can be induced to author differently, and both measured runs
+published on exactly such a field. The engine's tool-use stream is the one
+account of an attempt the attempt does not write. It was already flowing through
+`consumeEvents` and was being iterated past.
+
+**What "evaluated" means, over a closed vocabulary.** `GRANTABLE_COMMAND_PREFIXES`
+has four members and R6 reaffirmed it stands unchanged, so each is classified
+once — `npm run test` is `acceptance`, `npm run build` is `integrity`, the two
+git commands are `inspection` — as a `Record` literal `tsc` rejects when the
+vocabulary widens. Only a clean `acceptance`-class run counts, which is what
+refuses run `bc167a3a`: it built cleanly and never ran the suite.
+
+**Fail-closed at every input**, and each is a test rather than an intention: no
+record, another change set's record, another requirement's record, an absent
+`is_error` flag, an attempt with no approval seal, and a journal write that
+throws all leave the requirement unevaluated.
+
+**One thing the ruling did not ask for and this adds.** A change set declaring
+**no** requirements would have passed by vacuous quantification — and it is
+reachable, because `transitionChangeSetToReady` refuses an unmapped requirement
+and never refuses a change set with none. It is refused explicitly and named as
+such.
+
+**⚠️ The bound, stated rather than implied.** Passing establishes that the
+criteria were evaluated. It does **not** establish that they were evaluated
+adequately — a filtered suite and a full one are indistinguishable here. That is
+R6's per-change coverage bound and phase 14's tranche, and this gate does not
+claim to be either. What it closes is the measured hole: publication on a
+self-report that nothing checked.
+
+**The accepted cost, realized.** Both runs in
+`docs/evidence/phase-25/published-unverified.md` would now be refused runs, and
+the fixtures that used to publish without running anything had to start running
+something. That is the ruling working, not a regression.
+
 ## 7. Reconciliation with settled authorities
 
 | authority                          | this document                                                                                                            |

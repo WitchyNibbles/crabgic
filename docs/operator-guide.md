@@ -106,6 +106,39 @@ exactly as §2 describes (approval moved the plan to `ready`; it did not widen t
 process whose environment carries agent-runtime or CI provenance. `docs/security-posture.md`
 records exactly what that does and does not prove.
 
+### 2b. Why a run can finish its work and still not publish
+
+A run reaches `published_local` only if its acceptance criteria were actually
+**evaluated** — not merely if the worker said the work was done. A worker that
+edited files, reported success, and never ran the tests is refused at the last
+gate, and the refusal names what went unchecked:
+
+```
+acceptance-evaluated (acceptance) exit 1: the acceptance criteria below were
+never evaluated — no granted acceptance-class command ran clean for them
+  unevaluated: <requirement id>, <title>, <its acceptance criteria>
+  observed:    work unit <id>: npm run test (acceptance) invoked 12x, 0 clean
+  satisfiedBy: npm run test
+```
+
+Read `observed` first — it says which repair you need:
+
+| what it says                      | what happened                                   | what to do                                           |
+| --------------------------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `no granted command was invoked`  | the worker never tried                          | check the envelope grants `npm run test`             |
+| `invoked Nx, 0 clean`             | it tried and the command never ran              | run that command by hand; the command path is broken |
+| `npm run build … 1 clean` only    | it checked the tree compiles, not that it works | a clean build is not a verified change set           |
+| `[superseded by a later attempt]` | an earlier attempt verified different code      | the repair attempt must re-run the tests itself      |
+
+**The most common cause is that the project declares no `test` script.** Crabgic
+grants `npm run test` only when one exists, so on a project without it a worker
+has nothing to verify with and nothing will publish. That is deliberate — the
+alternative is a terminal state that means "someone said it was fine".
+
+Owner ruling R5, 2026-08-16. The measurement behind it, including the two runs
+that published unverified work before the gate existed, is
+`docs/evidence/phase-25/published-unverified.md`.
+
 ## 3. Checking status
 
 ```

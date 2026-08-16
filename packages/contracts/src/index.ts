@@ -79,6 +79,8 @@ export * from "./presentation/index.js";
 export * from "./contracts/authorization-envelope.js";
 // EnvelopePolicy — the standing approval, and a compiler input (ledger Gap 18).
 export * from "./contracts/envelope-policy.js";
+// AcceptanceEvaluationRecord — what an attempt actually ran (owner ruling R5).
+export * from "./contracts/acceptance-evaluation.js";
 export * from "./contracts/review-verdict.js";
 export * from "./contracts/criterion-attestation.js";
 export * from "./contracts/design-record.js";
