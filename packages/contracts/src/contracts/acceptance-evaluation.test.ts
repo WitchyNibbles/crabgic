@@ -96,9 +96,7 @@ describe("the grantable-command evidence classification", () => {
 describe("AcceptanceEvaluationRecordSchema", () => {
   it("accepts a well-formed record and rejects an unknown member", () => {
     expect(() => AcceptanceEvaluationRecordSchema.parse(record())).not.toThrow();
-    expect(() =>
-      AcceptanceEvaluationRecordSchema.parse({ ...record(), verified: true }),
-    ).toThrow();
+    expect(() => AcceptanceEvaluationRecordSchema.parse({ ...record(), verified: true })).toThrow();
   });
 
   /**
@@ -129,9 +127,9 @@ describe("AcceptanceEvaluationRecordSchema", () => {
 
 describe("unevaluatedRequirements", () => {
   it("reports nothing unevaluated when an acceptance-class command ran clean for the requirement", () => {
-    expect(unevaluatedRequirements([requirement(REQ_A, "A")], [record()], CHANGE_SET)).toStrictEqual(
-      [],
-    );
+    expect(
+      unevaluatedRequirements([requirement(REQ_A, "A")], [record()], CHANGE_SET),
+    ).toStrictEqual([]);
   });
 
   it("reports the requirement with its criteria when no record exists at all", () => {
@@ -151,9 +149,9 @@ describe("unevaluatedRequirements", () => {
         { prefix: "git diff", invocations: 4, cleanExits: 4 },
       ],
     });
-    expect(unevaluatedRequirements([requirement(REQ_A, "A")], [buildOnly], CHANGE_SET)).toHaveLength(
-      1,
-    );
+    expect(
+      unevaluatedRequirements([requirement(REQ_A, "A")], [buildOnly], CHANGE_SET),
+    ).toHaveLength(1);
   });
 
   /**
@@ -164,9 +162,9 @@ describe("unevaluatedRequirements", () => {
     const allFailed = record({
       invocations: [{ prefix: "npm run test", invocations: 12, cleanExits: 0 }],
     });
-    expect(unevaluatedRequirements([requirement(REQ_A, "A")], [allFailed], CHANGE_SET)).toHaveLength(
-      1,
-    );
+    expect(
+      unevaluatedRequirements([requirement(REQ_A, "A")], [allFailed], CHANGE_SET),
+    ).toHaveLength(1);
   });
 
   /**
@@ -204,7 +202,11 @@ describe("unevaluatedRequirements", () => {
       invocations: [{ prefix: "npm run build", invocations: 1, cleanExits: 1 }],
     });
     expect(
-      unevaluatedRequirements([requirement(REQ_A, "A")], [firstAttempt, repairWithoutTests], CHANGE_SET),
+      unevaluatedRequirements(
+        [requirement(REQ_A, "A")],
+        [firstAttempt, repairWithoutTests],
+        CHANGE_SET,
+      ),
     ).toHaveLength(1);
   });
 
@@ -304,8 +306,8 @@ describe("describeObservations", () => {
   });
 
   it("describes only this change set's records", () => {
-    expect(describeObservations([record({ changeSetId: OTHER_CHANGE_SET })], CHANGE_SET)).toStrictEqual(
-      [],
-    );
+    expect(
+      describeObservations([record({ changeSetId: OTHER_CHANGE_SET })], CHANGE_SET),
+    ).toStrictEqual([]);
   });
 });

@@ -123,12 +123,12 @@ never evaluated — no granted acceptance-class command ran clean for them
 
 Read `observed` first — it says which repair you need:
 
-| what it says                     | what happened                             | what to do                                       |
-| -------------------------------- | ----------------------------------------- | ------------------------------------------------ |
-| `no granted command was invoked` | the worker never tried                    | check the envelope grants `npm run test`         |
-| `invoked Nx, 0 clean`            | it tried and the command never ran        | run that command by hand; the command path is broken |
-| `npm run build … 1 clean` only   | it checked the tree compiles, not that it works | a clean build is not a verified change set |
-| `[superseded by a later attempt]`| an earlier attempt verified different code | the repair attempt must re-run the tests itself   |
+| what it says                      | what happened                                   | what to do                                           |
+| --------------------------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `no granted command was invoked`  | the worker never tried                          | check the envelope grants `npm run test`             |
+| `invoked Nx, 0 clean`             | it tried and the command never ran              | run that command by hand; the command path is broken |
+| `npm run build … 1 clean` only    | it checked the tree compiles, not that it works | a clean build is not a verified change set           |
+| `[superseded by a later attempt]` | an earlier attempt verified different code      | the repair attempt must re-run the tests itself      |
 
 **The most common cause is that the project declares no `test` script.** Crabgic
 grants `npm run test` only when one exists, so on a project without it a worker

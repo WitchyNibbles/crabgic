@@ -242,11 +242,11 @@ cleanly".
 
 ### What now stands between a completed drive and publication
 
-| step | where | claim |
-| ---- | ----- | ----- |
-| observe | `packages/scheduler/src/acceptance-observer.ts` | which granted commands the ENGINE showed running, and whether each errored |
+| step    | where                                                  | claim                                                                                  |
+| ------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| observe | `packages/scheduler/src/acceptance-observer.ts`        | which granted commands the ENGINE showed running, and whether each errored             |
 | journal | `packages/journal/src/acceptance-evaluation-anchor.ts` | one record per completed attempt, on `adjudication_decision` (Gap 5's closed thirteen) |
-| refuse | `packages/gates/src/acceptance-evaluated-gate.ts` | at `final_verifying`, unless every requirement was evaluated |
+| refuse  | `packages/gates/src/acceptance-evaluated-gate.ts`      | at `final_verifying`, unless every requirement was evaluated                           |
 
 The observer reads the engine's `toolUse` stream, which `consumeEvents` was
 already iterating past. That stream is the one account of an attempt the attempt
@@ -255,9 +255,9 @@ input, and the reason both runs below published.
 
 ### Both measured runs, re-scored against the built gate
 
-| run | what it did | old outcome | under R5 |
-| --- | ----------- | ----------- | -------- |
-| `04a0bf70` | 12 `Bash` calls, none started; `{"summary":"test"}` | `published_local` | **refused** — "no granted command was invoked" |
+| run        | what it did                                             | old outcome       | under R5                                                     |
+| ---------- | ------------------------------------------------------- | ----------------- | ------------------------------------------------------------ |
+| `04a0bf70` | 12 `Bash` calls, none started; `{"summary":"test"}`     | `published_local` | **refused** — "no granted command was invoked"               |
 | `bc167a3a` | 29 commands ran, `npm run build` clean, suite never ran | `published_local` | **refused** — a clean build is `integrity`, not `acceptance` |
 
 `bc167a3a` is the one that decided the design. A gate accepting "some granted

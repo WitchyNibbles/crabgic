@@ -143,9 +143,7 @@ export function currentAttemptRecords(
   const scoped = records.filter((record) => record.changeSetId === changeSetId);
   const latestSessionByUnit = new Map<string, string>();
   for (const record of scoped) latestSessionByUnit.set(record.workUnitId, record.sessionId);
-  return scoped.filter(
-    (record) => latestSessionByUnit.get(record.workUnitId) === record.sessionId,
-  );
+  return scoped.filter((record) => latestSessionByUnit.get(record.workUnitId) === record.sessionId);
 }
 
 /** One requirement that no record evaluated, with the criteria that went unchecked. */

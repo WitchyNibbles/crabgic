@@ -28,9 +28,7 @@ afterEach(async () => {
   await rm(journalDir, { recursive: true, force: true });
 });
 
-function record(
-  overrides: Partial<AcceptanceEvaluationRecord> = {},
-): AcceptanceEvaluationRecord {
+function record(overrides: Partial<AcceptanceEvaluationRecord> = {}): AcceptanceEvaluationRecord {
   return {
     schemaVersion: 1,
     changeSetId: CHANGE_SET,

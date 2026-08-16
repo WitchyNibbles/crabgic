@@ -2,11 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  createJournalStore,
-  findAcceptanceEvaluations,
-  type JournalStore,
-} from "@crabgic/journal";
+import { createJournalStore, findAcceptanceEvaluations, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildRequirement,
@@ -210,7 +206,12 @@ describe("the executor journals what an attempt actually ran (owner ruling R5)",
     const adapter = new FakeEngineAdapter(
       buildFakeEngineScript({
         toolCalls: [
-          { toolName: "Bash", toolInput: { command: "npm run test" }, toolResult: "ok", toolResultIsError: false },
+          {
+            toolName: "Bash",
+            toolInput: { command: "npm run test" },
+            toolResult: "ok",
+            toolResultIsError: false,
+          },
         ],
         structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
       }),
@@ -247,7 +248,12 @@ describe("the executor journals what an attempt actually ran (owner ruling R5)",
     const adapter = new FakeEngineAdapter(
       buildFakeEngineScript({
         toolCalls: [
-          { toolName: "Bash", toolInput: { command: "npm run test" }, toolResult: "boom", toolResultIsError: true },
+          {
+            toolName: "Bash",
+            toolInput: { command: "npm run test" },
+            toolResult: "boom",
+            toolResultIsError: true,
+          },
         ],
         structuredOutput: buildWorkerResult({ outcome: "succeeded", summary: "test" }),
       }),
@@ -279,7 +285,12 @@ describe("the executor journals what an attempt actually ran (owner ruling R5)",
     const adapter = new FakeEngineAdapter(
       buildFakeEngineScript({
         toolCalls: [
-          { toolName: "Bash", toolInput: { command: "npm run build" }, toolResult: "ok", toolResultIsError: false },
+          {
+            toolName: "Bash",
+            toolInput: { command: "npm run build" },
+            toolResult: "ok",
+            toolResultIsError: false,
+          },
         ],
         structuredOutput: buildWorkerResult({ outcome: "failed" }),
       }),
@@ -304,7 +315,12 @@ describe("the executor journals what an attempt actually ran (owner ruling R5)",
     const adapter = new FakeEngineAdapter(
       buildFakeEngineScript({
         toolCalls: [
-          { toolName: "Bash", toolInput: { command: "npm run test" }, toolResult: "ok", toolResultIsError: false },
+          {
+            toolName: "Bash",
+            toolInput: { command: "npm run test" },
+            toolResult: "ok",
+            toolResultIsError: false,
+          },
         ],
         failure: { kind: "crash", atStepIndex: 1 },
       }),
@@ -329,7 +345,12 @@ describe("the executor journals what an attempt actually ran (owner ruling R5)",
     const adapter = new FakeEngineAdapter(
       buildFakeEngineScript({
         toolCalls: [
-          { toolName: "Bash", toolInput: { command: "npm run test" }, toolResult: "ok", toolResultIsError: false },
+          {
+            toolName: "Bash",
+            toolInput: { command: "npm run test" },
+            toolResult: "ok",
+            toolResultIsError: false,
+          },
         ],
         failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
       }),

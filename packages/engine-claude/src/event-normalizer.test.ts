@@ -850,7 +850,9 @@ describe("normalizeSdkStream — user-message tool_result extraction edge cases 
 
     it("⚠️ leaves the flag ABSENT when the block omits it or sends a non-boolean — never coerced to false", async () => {
       expect((await pairedFor({ content: "ok" }))?.toolResultIsError).toBeUndefined();
-      expect((await pairedFor({ content: "ok", is_error: "yes" }))?.toolResultIsError).toBeUndefined();
+      expect(
+        (await pairedFor({ content: "ok", is_error: "yes" }))?.toolResultIsError,
+      ).toBeUndefined();
     });
   });
 });

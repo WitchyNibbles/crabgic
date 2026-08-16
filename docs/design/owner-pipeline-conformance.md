@@ -550,10 +550,10 @@ and its mechanism diverging is the failure mode §6c's own correction documents.
 
 **The shape.** Two halves, at opposite ends of a run:
 
-| half         | where                                        | what it does                                                       |
-| ------------ | -------------------------------------------- | ------------------------------------------------------------------ |
-| the observer | `packages/scheduler/src/acceptance-observer.ts` | folds the engine's `toolUse` stream into per-grant invocation tallies |
-| the gate     | `packages/gates/src/acceptance-evaluated-gate.ts` | refuses at `final_verifying` unless every requirement was evaluated  |
+| half         | where                                             | what it does                                                          |
+| ------------ | ------------------------------------------------- | --------------------------------------------------------------------- |
+| the observer | `packages/scheduler/src/acceptance-observer.ts`   | folds the engine's `toolUse` stream into per-grant invocation tallies |
+| the gate     | `packages/gates/src/acceptance-evaluated-gate.ts` | refuses at `final_verifying` unless every requirement was evaluated   |
 
 The observation is journaled on `adjudication_decision` (Gap 5's closed
 thirteen, the `journalCriteriaSeal` precedent) and read back by the gate. Nothing

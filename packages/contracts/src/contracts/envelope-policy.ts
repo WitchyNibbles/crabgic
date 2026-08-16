@@ -96,13 +96,14 @@ export const COMMAND_EVIDENCE_CLASSES = ["acceptance", "integrity", "inspection"
 export const CommandEvidenceClassSchema = z.enum(COMMAND_EVIDENCE_CLASSES);
 export type CommandEvidenceClass = z.infer<typeof CommandEvidenceClassSchema>;
 
-export const COMMAND_EVIDENCE_CLASS: Readonly<Record<GrantableCommandPrefix, CommandEvidenceClass>> =
-  Object.freeze({
-    "npm run test": "acceptance",
-    "npm run build": "integrity",
-    "git status": "inspection",
-    "git diff": "inspection",
-  });
+export const COMMAND_EVIDENCE_CLASS: Readonly<
+  Record<GrantableCommandPrefix, CommandEvidenceClass>
+> = Object.freeze({
+  "npm run test": "acceptance",
+  "npm run build": "integrity",
+  "git status": "inspection",
+  "git diff": "inspection",
+});
 
 /**
  * Classifies a command string a worker actually invoked.
