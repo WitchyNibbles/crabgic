@@ -63,9 +63,28 @@ it is worse, because the terminal state reads as a verdict.
 
 ## The two ways to close it, and why only one is right
 
-**Making the sandbox work** is not the fix by itself, and may not be available:
-`Failed to create bridge sockets` is a host-level condition, and disabling the
-sandbox to route around it is a known security regression on this engine — a
+**Making the sandbox work** is not the fix by itself — but it IS available, and
+the first draft of this document was wrong to call it a host-level condition.
+
+_Corrected 2026-08-16, by probe rather than by inference._ The sandbox was run
+directly on this host under the worker's EXACT compiled settings
+(`enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed: false`, no allowed
+domains, no unix sockets, no local binding, `allowWrite` scoped to the working
+directory) and `echo SANDBOX_OK` executed cleanly. It also succeeded with an
+isolated `HOME`, with `XDG_RUNTIME_DIR` unset, and from a `setsid`-detached
+process with stdio ignored — the daemon's own spawn shape. Eight variants, all
+`OK`.
+
+So `Failed to create bridge sockets after 5 attempts` is **not** WSL2 refusing
+the sandbox, and not the compiled policy. It is specific to how crabgic spawns
+its workers, which makes it crabgic's defect to fix rather than an environment
+limitation to design around. What has not yet been isolated is which remaining
+difference causes it — the leading candidate is bridge contention inside a
+long-lived daemon that has already spawned several worker sandboxes ("after 5
+attempts. Restart to retry." reads like collision, not absence).
+
+What stays true is that disabling the sandbox to route around it is a known
+security regression on this engine — a
 sandboxed session auto-allows `Bash` (`autoAllowBashIfSandboxed`), which voids
 the envelope's command allowlist entirely. Trading the allowlist for the ability
 to run tests would be paying for verification with the very authority bound the
