@@ -53,6 +53,24 @@ import { runIntakeCommand } from "./run-intake-command.js";
 import { dispatchCommand } from "../commands/dispatch.js";
 import { createRealRunDispatcher } from "../daemon/run-dispatcher.js";
 import { createFakePostCompletionGitEffects } from "../daemon/test-support/fake-post-completion-git-effects.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * R8: the design gate guards `ready`. These end-to-end cases assert the intake
+ * pipeline's own behaviour, so they pass the gate rather than re-test it — the
+ * gate has its own suite in `packages/supervisor/src/intake/readiness-gate.test.ts`.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const CHANGE_SET_ID = "11111111-1111-4111-8111-111111111111";
 const PLACEHOLDER_CREDENTIAL = "not-a-real-token";
@@ -208,6 +226,10 @@ async function intakeAndApprove() {
     requirements,
     readIntakeRequest: () => Promise.resolve(intakeRequest()),
     loadPolicy: () => ({ status: "loaded", policy: policy(), digest: "sha256:e2e" }),
+    // R8: this end-to-end case drives the WHOLE loop, so it passes the design
+    // gate rather than re-testing it. The gate has its own suite in
+    // packages/supervisor/src/intake/readiness-gate.test.ts.
+    loadStageCompletions: () => Promise.resolve(designGateClosed(CHANGE_SET_ID)),
   });
   const outcome = await commandPromise;
   if (outcome.outcome.status === "conflict") throw new Error("unreachable");
@@ -370,6 +392,11 @@ describe("closed loop — entered through the shipped `run` command", () => {
           policy: standingPolicy,
           digest: "sha256:e2e",
         }),
+        // R8: this case asserts that an IN-POLICY request needs no keystroke.
+        // The design gate is the other half of "no human in the sequence", so
+        // it is passed here rather than re-tested — the refusal has its own
+        // suite in packages/supervisor/src/intake/readiness-gate.test.ts.
+        loadStageCompletions: () => Promise.resolve(designGateClosed(CHANGE_SET_ID)),
       },
     };
 

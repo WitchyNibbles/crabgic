@@ -5,7 +5,12 @@
  * verification (`packages/cli`'s handler) — the ONLY path that ever moves a
  * `ChangeSet` from `awaiting_approval` to `ready`.
  */
-import type { ChangeSet, Requirement } from "@crabgic/contracts";
+import {
+  stageCompleted,
+  type ChangeSet,
+  type Requirement,
+  type StageCompletionRecord,
+} from "@crabgic/contracts";
 import { journalCriteriaSeal, type JournalStore } from "@crabgic/journal";
 import type { Registry } from "../registries/registry.js";
 import { findUnmappedRequirements } from "./dag-builder.js";
@@ -34,6 +39,37 @@ export class UnsealableRequirementError extends Error {
   }
 }
 
+/**
+ * The design gate has not closed for this ChangeSet — owner ruling R8 (2026-08-16).
+ *
+ * Ruling R2 placed the `design-gate` "before dispatch". Measured 2026-08-16, it
+ * was not: `resolveDesignGate` had zero references anywhere in the run path, so
+ * the gate decided only whether a review STAGE could close and nothing consulted
+ * it before dispatching
+ * (`docs/evidence/criteria-closeout/defects/25-design-gate-not-consulted-by-dispatch.md`).
+ *
+ * R8 binds the run path to the PIPELINE rather than to the verdict store
+ * directly, so this asks whether the stage closed — which for that one stage is
+ * answerable only by an `OwnerDesignVerdict`, which only the CLI can write.
+ *
+ * Refused HERE because `transitionChangeSetToReady` is the only path from
+ * `awaiting_approval` to `ready`, and `ready` is what dispatch requires. The
+ * seven stop conditions stay unchanged in number and meaning, and ledger Gap
+ * 18's containment check is untouched: a precondition on dispatch is not a
+ * widening of what may execute.
+ */
+export class DesignGateNotClosedError extends Error {
+  readonly changeSetId: string;
+  constructor(changeSetId: string) {
+    super(
+      `intake: cannot transition to ready — the design-gate stage has not closed for ChangeSet ${changeSetId}. ` +
+        "Run the pipeline's design stage and record the owner's answer with `crabgic design approve`.",
+    );
+    this.name = "DesignGateNotClosedError";
+    this.changeSetId = changeSetId;
+  }
+}
+
 export interface TransitionChangeSetToReadyOptions {
   readonly journal: JournalStore;
   readonly changeSets: Registry<ChangeSet>;
@@ -54,6 +90,20 @@ export interface TransitionChangeSetToReadyOptions {
    * the same trap `RunIntakeCommandDeps.loadPolicy` was fixed for.
    */
   readonly requirements: readonly Requirement[];
+  /**
+   * Which pipeline stages have CLOSED for this ChangeSet — owner ruling R8.
+   *
+   * REQUIRED, for the same reason `requirements` above is: this is the one
+   * funnel both activation paths share, so an optional field would let a caller
+   * that forgot it produce a `ready` ChangeSet whose design nobody approved —
+   * the very defect R8 exists to close, reintroduced one layer up.
+   *
+   * Supplied by the caller because the STORE lives in `packages/cli` and the
+   * package graph runs cli -> supervisor. The PREDICATE (`stageCompleted`) is in
+   * `@crabgic/contracts`, which both already depend on, so the two sides cannot
+   * disagree about what "closed" means even though the storage is not shared.
+   */
+  readonly stageCompletions: readonly StageCompletionRecord[];
 }
 
 /**
@@ -69,6 +119,19 @@ export interface TransitionChangeSetToReadyOptions {
 export async function transitionChangeSetToReady(
   options: TransitionChangeSetToReadyOptions,
 ): Promise<ChangeSet> {
+  /**
+   * Checked FIRST, and before the seal, on the same ordering discipline the
+   * unmapped-requirement check follows: a refused transition must leave no
+   * journal record implying the run got further than it did.
+   *
+   * Absence reads as NOT CLOSED — no records, another ChangeSet's records, some
+   * other stage's records. Refusing to start work nobody approved is the correct
+   * answer whenever the answer is unknown.
+   */
+  if (!stageCompleted(options.stageCompletions, options.changeSetId, "design-gate")) {
+    throw new DesignGateNotClosedError(options.changeSetId);
+  }
+
   const unmapped = findUnmappedRequirements(options.requirementIds, options.workUnits);
   if (unmapped.length > 0) {
     throw new UnmappedRequirementError(unmapped);

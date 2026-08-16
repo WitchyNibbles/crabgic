@@ -461,6 +461,7 @@ export async function runRunCommand(
     requirements: deps.intake.requirements,
     readIntakeRequest: deps.intake.readIntakeRequest,
     loadPolicy: deps.intake.loadPolicy,
+    loadStageCompletions: deps.intake.loadStageCompletions,
   });
 
   // The outcome is decided ONCE, then rendered. The previous shape returned

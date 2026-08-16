@@ -182,6 +182,10 @@ export async function runApproveCommand(
     intentContracts: intake.intentContracts,
     requirements: intake.requirements,
     workUnits: intake.workUnits,
+    // R8: the human typing `crabgic approve` is answering the ENVELOPE
+    // question. The design gate is a separate answer, and this path must not
+    // assume it was given.
+    stageCompletions: await intake.loadStageCompletions(),
   });
 
   if (!approval.approved) {

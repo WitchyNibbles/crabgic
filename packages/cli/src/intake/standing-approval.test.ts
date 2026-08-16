@@ -32,6 +32,26 @@ import {
 } from "@crabgic/testkit";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { applyStandingApproval, type StandingApprovalDeps } from "./standing-approval.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` for the ChangeSet under test — owner ruling R8.
+ *
+ * The standing-approval path is the one R8 is about: it dispatches with no
+ * human in the sequence. These cases assert what it does once the gate has
+ * passed, so they supply a closure rather than re-testing the refusal.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 let journalDir: string;
 let store: JournalStore;
@@ -116,7 +136,18 @@ function seed(
     changeSet,
     envelope,
     requirement,
-    deps: { journal: store, changeSets, workUnits, intentContracts, requirements, loadPolicy },
+    deps: {
+      journal: store,
+      changeSets,
+      workUnits,
+      intentContracts,
+      requirements,
+      loadPolicy,
+      // R8: this suite asserts what the STANDING-APPROVAL path does after the
+      // design gate passes. The gate itself is covered in
+      // packages/supervisor/src/intake/readiness-gate.test.ts.
+      loadStageCompletions: () => Promise.resolve(designGateClosed(changeSet.id)),
+    },
   };
 }
 

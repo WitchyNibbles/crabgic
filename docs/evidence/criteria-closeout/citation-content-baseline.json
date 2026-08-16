@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-16",
-  "generatedAtSha": "bf0e5a3181dfe52472dba030b4c83aeaa3921823",
+  "generatedAtSha": "3036bf6df8540c6cd9ba74e37aacc5d2f1dd4597",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1327,
     "fragments": 3931,
-    "anchored": 2638,
-    "seededStale": 683,
-    "outsideSpan": 805,
+    "anchored": 2585,
+    "seededStale": 736,
+    "outsideSpan": 850,
     "repeatText": 531,
     "crossFile": 20,
     "skipped": 610
@@ -4003,7 +4003,7 @@
       "qa": "beeb5f7aa019",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@64,69,571!span~repeat",
+        "MOVED-AMBIG/collapsed@86,91,593!span~repeat",
         "SKIP-short"
       ]
     },
@@ -4581,7 +4581,7 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "MOVED/collapsed@104!span",
+        "MOVED/collapsed@122!span",
         "SKIP-short",
         "MOVED/collapsed@19!span"
       ]
@@ -4590,7 +4590,7 @@
       "qa": "df0b3f936269",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@153-155!span"
+        "MOVED/collapsed@173-175!span"
       ]
     },
     "phase-11.json#c1#packages/cli/src/intake/intake.e2e.test.ts:221": {
@@ -4647,7 +4647,7 @@
       "qa": "ff256adc6170",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@128",
+        "MOVED/collapsed@151!span",
         "ABSENT@-"
       ]
     },
@@ -4655,17 +4655,17 @@
       "qa": "547fc0010348",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@155",
-        "MOVED/prose@165-167!span",
-        "OK/collapsed@77,123,151,181,270,400,431,466,517!span~repeat"
+        "MOVED/collapsed@179!span",
+        "MOVED/prose@189-191!span",
+        "MOVED-AMBIG/collapsed@99,146,175,206,298,431,463,499,552!span~repeat"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:274": {
       "qa": "f91f70693cf8",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@274",
-        "OK/collapsed@300-301!span"
+        "MOVED/collapsed@302!span",
+        "MOVED/collapsed@329-330!span"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/tool-definitions.test.ts:18": {
@@ -4695,8 +4695,8 @@
       "qa": "473bb2eb81aa",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@242",
-        "OK/collapsed@151-152,270-271,400-401,431-432!span~repeat"
+        "OK/collapsed@269!span",
+        "MOVED-AMBIG/collapsed@175-176,298-299,431-432,463-464!span~repeat"
       ]
     },
     "phase-11.json#c3#packages/supervisor/goldens/authorization-envelope.json": {
@@ -4771,16 +4771,16 @@
       "qa": "503613384eb5",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@405",
-        "OK/collapsed@151-152,270-271,400-401,431-432!span~repeat",
-        "OK/collapsed@441,485!span~repeat"
+        "OK/collapsed@436!span",
+        "OK/collapsed@175-176,298-299,431-432,463-464!span~repeat",
+        "MOVED-AMBIG/collapsed@473,519!span~repeat"
       ]
     },
     "phase-11.json#c4#packages/supervisor/src/intake/readiness-gate.test.ts:124": {
       "qa": "6f069bb51e4c",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@124",
+        "MOVED/collapsed@151!span",
         "SKIP-commentary"
       ]
     },
@@ -4789,15 +4789,15 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "OK/collapsed@50!span",
-        "OK/collapsed@51,121!span~repeat"
+        "MOVED/collapsed@74!span",
+        "MOVED-AMBIG/collapsed@75,148,260!span~repeat"
       ]
     },
     "phase-11.json#c4#packages/supervisor/src/intake/readiness-gate.test.ts:54": {
       "qa": "47f00ef7bc62",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@68!span"
+        "MOVED/collapsed@93!span"
       ]
     },
     "phase-11.json#c5#docs/evidence/phase-11/closeout-c5-project-inspect.txt": {
@@ -9747,11 +9747,11 @@
       "qa": "0cd3b80404c4",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@221",
-        "OK/collapsed@222",
-        "OK/collapsed@232",
-        "MOVED/collapsed@241",
-        "OK/collapsed@242"
+        "MOVED/collapsed@244",
+        "MOVED/collapsed@245!span",
+        "MOVED/collapsed@255!span",
+        "MOVED/collapsed@264!span",
+        "MOVED/collapsed@265!span"
       ]
     },
     "phase-21.json#c1#packages/cli/src/intake/material-amendment-halt.e2e.test.ts:164-219": {
@@ -11566,9 +11566,9 @@
       "qa": "d7055acc9ea8",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@517!span",
-        "MOVED/collapsed@518!span",
-        "MOVED/collapsed@519!span",
+        "MOVED/collapsed@520!span",
+        "MOVED/collapsed@521!span",
+        "MOVED/collapsed@522!span",
         "SKIP-short"
       ]
     },
@@ -11577,33 +11577,33 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "OK/collapsed@165,221~repeat",
-        "OK/collapsed@167",
-        "OK/collapsed@171"
+        "MOVED-AMBIG/collapsed@184,241!span~repeat",
+        "MOVED/collapsed@186!span",
+        "MOVED/collapsed@190!span"
       ]
     },
     "phase-24.json#c1#packages/supervisor/src/intake/requirement-durability.integration.test.ts:173-195": {
       "qa": "d5396d9c2361",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@174",
-        "OK/collapsed@175",
-        "OK/collapsed@180",
-        "OK/collapsed@186",
-        "OK/collapsed@187",
-        "OK/collapsed@190",
-        "OK/collapsed@193"
+        "MOVED/collapsed@193",
+        "MOVED/collapsed@194",
+        "MOVED/collapsed@199!span",
+        "MOVED/collapsed@205!span",
+        "MOVED/collapsed@206!span",
+        "MOVED/collapsed@209!span",
+        "MOVED/collapsed@212!span"
       ]
     },
     "phase-24.json#c1#packages/supervisor/src/intake/requirement-durability.integration.test.ts:198-239": {
       "qa": "252b0b2f5d04",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@228",
-        "OK/collapsed@230",
-        "OK/collapsed@231",
-        "OK/collapsed@237",
-        "OK/collapsed@238"
+        "MOVED/collapsed@248!span",
+        "MOVED/collapsed@250!span",
+        "MOVED/collapsed@251!span",
+        "MOVED/collapsed@257!span",
+        "MOVED/collapsed@258!span"
       ]
     },
     "phase-24.json#c2#docs/evidence/phase-24/closeout-c2-requirement-schema.txt": {
@@ -11731,52 +11731,52 @@
       "qa": "4d94a83285db",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@338,402~repeat",
-        "OK/collapsed@300,353~repeat",
-        "OK/collapsed@358",
-        "OK/collapsed@359",
-        "OK/collapsed@360",
-        "OK/collapsed@362"
+        "MOVED-AMBIG/collapsed@367,433!span~repeat",
+        "MOVED-AMBIG/collapsed@329,383~repeat",
+        "MOVED/collapsed@388!span",
+        "MOVED/collapsed@389!span",
+        "MOVED/collapsed@390!span",
+        "MOVED/collapsed@392!span"
       ]
     },
     "phase-24.json#c4#packages/cli/src/intake/contract-approve-handler.test.ts:372-403": {
       "qa": "db151dc16c24",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@368!span",
-        "OK/collapsed@77,123,151,181,270,400,431,466,517~repeat",
-        "OK/collapsed@152,271,401,432~repeat",
-        "OK/collapsed@338,402~repeat"
+        "OK/collapsed@398",
+        "MOVED-AMBIG/collapsed@99,146,175,206,298,431,463,499,552!span~repeat",
+        "MOVED-AMBIG/collapsed@176,299,432,464!span~repeat",
+        "MOVED-AMBIG/collapsed@367,433!span~repeat"
       ]
     },
     "phase-24.json#c4#packages/cli/src/intake/standing-approval.test.ts:150-171": {
       "qa": "f77adc15e0ce",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@165",
-        "OK/collapsed@168",
-        "OK/collapsed@169",
-        "OK/collapsed@171",
-        "MOVED-AMBIG/collapsed@151,168,312~repeat"
+        "MOVED/collapsed@196!span",
+        "MOVED/collapsed@199!span",
+        "MOVED/collapsed@200!span",
+        "MOVED/collapsed@202!span",
+        "MOVED-AMBIG/collapsed@182,199,343!span~repeat"
       ]
     },
     "phase-24.json#c4#packages/cli/src/intake/standing-approval.test.ts:179-187": {
       "qa": "ade637d08d9d",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@176!span",
-        "OK/collapsed@185,198,210,221,236,246,334,361~repeat",
-        "OK/collapsed@186"
+        "MOVED/collapsed@207!span",
+        "MOVED-AMBIG/collapsed@216,229,241,252,267,277,365,392!span~repeat",
+        "MOVED/collapsed@217!span"
       ]
     },
     "phase-24.json#c4#packages/supervisor/src/intake/readiness-gate.test.ts:80-122": {
       "qa": "3230c3bb5c56",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@97",
-        "OK/collapsed@98",
-        "OK/collapsed@118",
-        "OK/collapsed@51,121~repeat"
+        "MOVED/collapsed@123!span",
+        "MOVED/collapsed@124!span",
+        "MOVED/collapsed@145!span",
+        "MOVED-AMBIG/collapsed@75,148,260!span~repeat"
       ]
     },
     "phase-24.json#c4#packages/supervisor/src/intake/readiness-gate.ts:84-101": {
@@ -11784,10 +11784,10 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "OK/collapsed@84",
-        "OK/collapsed@90",
-        "OK/collapsed@91,100~repeat",
-        "OK/collapsed@101"
+        "MOVED/collapsed@147!span",
+        "MOVED/collapsed@153!span",
+        "MOVED-AMBIG/collapsed@154,163!span~repeat",
+        "MOVED/collapsed@164!span"
       ]
     },
     "phase-24.json#c5#docs/evidence/phase-24/closeout-c5-tamper-reason-journaled.txt": {

@@ -55,6 +55,28 @@ import { buildNotImplementedShape } from "./not-implemented.js";
 import { dispatchCommand } from "./dispatch.js";
 import type { CliDependencies } from "./types.js";
 import { BINARY_NAME, COMMAND_HELP, renderHelp } from "./help.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` — owner ruling R8.
+ *
+ * These snapshots capture the RENDERING of a successful approval, so they pass
+ * the gate rather than re-test it; the refusal has its own suite in
+ * `packages/supervisor/src/intake/readiness-gate.test.ts`. Without this the
+ * commands refuse before emitting any JSON and the snapshot has nothing to
+ * capture.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const PACKAGE_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -948,6 +970,9 @@ function intakeBagFor(request: IntakeRequest, journal: JournalStore) {
     readIntakeRequest: async () => request,
     io: { input: new PassThrough(), output: new PassThrough() },
     loadPolicy: fixturePolicy,
+    // R8: these suites assert POST-gate behaviour; the gate has its own suite.
+    loadStageCompletions: () =>
+      Promise.resolve(designGateClosed("11111111-1111-4111-8111-111111111111")),
   };
 }
 
@@ -1039,6 +1064,11 @@ describe("--json output schema snapshots — approve <digest>", () => {
         loadPolicy: () => {
           throw new Error("approve never reads the standing policy");
         },
+        // R8: `approve` DOES read this one — the design gate is a separate
+        // answer from the envelope approval the human is giving. Empty here, so
+        // these snapshots exercise the refusal path's rendering unchanged.
+        loadStageCompletions: () =>
+          Promise.resolve(designGateClosed("77777777-7777-4777-8777-777777777777")),
         io: { input, output: new PassThrough() },
         resolveTerminal: () => ({ allowed: true }) as const,
       },

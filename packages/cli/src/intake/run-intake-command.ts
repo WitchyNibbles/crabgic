@@ -25,6 +25,7 @@
  * scope note on the deterministic-assembly/live-drafting boundary).
  */
 import type {
+  StageCompletionRecord,
   AuthorizationEnvelope,
   ChangeSet,
   IntentContract,
@@ -59,6 +60,12 @@ export interface RunIntakeCommandDeps {
    * for everything", which meant a caller that forgot it silently got the
    * pre-Gap-18 behaviour instead of an error.
    */
+  /**
+   * Reads which pipeline stages have closed — owner ruling R8. Threaded to
+   * `applyStandingApproval`, which is the path that dispatches with no human in
+   * the sequence.
+   */
+  readonly loadStageCompletions: () => Promise<readonly StageCompletionRecord[]>;
   readonly loadPolicy: () => LoadPolicyResult;
 }
 
@@ -135,6 +142,7 @@ export async function runIntakeCommand(
       intentContracts: deps.intentContracts,
       requirements: deps.requirements,
       loadPolicy: deps.loadPolicy,
+      loadStageCompletions: deps.loadStageCompletions,
     },
   );
   return { outcome, standing };

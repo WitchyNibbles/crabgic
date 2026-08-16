@@ -296,3 +296,76 @@ default, not injected as a field.
 That is the whole remaining task: roughly two dozen fixtures, a handful of which
 are helper signatures rather than literals. It is an afternoon of careful,
 boring work and it does not need another design pass.
+
+---
+
+## RESOLVED 2026-08-16 — item 4 is built
+
+**Dispatch now requires the `design-gate` stage to have closed.** All four of
+R8's work items are complete.
+
+`transitionChangeSetToReady` — the only path from `awaiting_approval` to `ready`,
+and `ready` is what dispatch requires — refuses with `DesignGateNotClosedError`
+unless `stageCompleted(..., "design-gate")` holds for that ChangeSet. Checked
+**before** the criteria seal, on the same ordering discipline the
+unmapped-requirement check follows, so a refused transition leaves no journal
+record implying the run got further than it did.
+
+**The seven stop conditions are unchanged in number and meaning**, and ledger
+Gap 18's containment check is untouched: a precondition on dispatch is not a
+widening of what may execute.
+
+### The chain, end to end
+
+```
+dispatch  ->  ready  ->  design-gate CLOSED  ->  resolveDesignGate
+          ->  OwnerDesignVerdict  ->  written by the CLI alone
+```
+
+Every link is server-decided or owner-written. No gateway tool records a
+verdict, so no session can open the gate for itself.
+
+### Six tests, and the one that makes the rest mean anything
+
+Refuses on an empty store; names the gate in the refusal so an operator knows
+whether to run the design stage or approve the design; refuses a closure
+belonging to a **different** ChangeSet; refuses when some **other** stage closed;
+and leaves no criteria seal behind on refusal.
+
+The sixth is the positive control — the owner's closure for THIS ChangeSet opens
+it. Without that one, all five refusals would pass for a gate that can never be
+opened at all.
+
+### Both approval paths, and the shape that kept it small
+
+| path                                   | takes         | why                                                                 |
+| -------------------------------------- | ------------- | ------------------------------------------------------------------- |
+| `standing-approval` (Gap 18, no human) | a **closure** | already resolves durable state; reads at the moment of the decision |
+| `crabgic approve` (human)              | a **closure** | same, via `IntakeDependencies`                                      |
+| `contract-approve-handler`             | **records**   | is handed its inputs                                                |
+| `complete-envelope-approval`           | **records**   | a composition step, threads what it is given                        |
+
+Following the surrounding convention at each site rather than imposing one shape
+is what cut the cascade from 49 call sites to 24.
+
+`standing-approval.ts` was the point of the exercise and it is now closed: the
+path that dispatches with no human in the sequence asks the design-gate question
+before it moves a ChangeSet to `ready`.
+
+### The cost, stated because it is large
+
+**53 citations moved from `anchored` to `seededStale`** (2638 -> 2585, 683 ->
+736). Adding a required field to nine shared test fixtures shifts lines under
+merged citations, and this check exists to make exactly that visible.
+
+That is fifty-three pointers made less precise, against one for the whole of
+items 1-3. The baseline's own note says seeded stale entries "are not licence to
+add more", so the number is put here rather than left in a count diff. Every
+claim those citations make is unaffected — the tests they point at still exist
+and still assert what the records say — but a reader following one now lands
+near the text rather than on it.
+
+It was not avoidable by writing smaller insertions: the check pins exact line
+positions, so any shift breaks every citation below it in the same file. The
+count is a function of which files were touched, not of how many lines were
+added.

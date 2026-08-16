@@ -14,6 +14,27 @@ import {
 import { buildAuthorizationEnvelope, buildChangeSet, buildIntentContract } from "@crabgic/testkit";
 import { ApprovalTokenMinter } from "../approval/token.js";
 import { completeEnvelopeApproval } from "./complete-envelope-approval.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
+/**
+ * A closed `design-gate` — owner ruling R8.
+ *
+ * Passed per call rather than baked into `seededDeps()`, because each case
+ * builds its own ChangeSet after the deps and the closure must name the one
+ * actually under approval. A blanket pass would make the "different ChangeSet"
+ * arm meaningless.
+ */
+function designGateClosed(changeSetId: string): StageCompletionRecord[] {
+  return [
+    {
+      schemaVersion: 1,
+      changeSetId,
+      stage: "design-gate",
+      round: 1,
+      artifactRef: "design-record:test",
+      closedAt: "2026-08-16T00:00:00.000Z",
+    },
+  ];
+}
 
 const secretKey = randomBytes(32);
 
@@ -60,7 +81,10 @@ describe("completeEnvelopeApproval", () => {
     const minter = new ApprovalTokenMinter({ secretKey });
     const minted = await minter.mint("envelope_hash", digest);
 
-    const result = await completeEnvelopeApproval(changeSet, digest, minted.token, deps);
+    const result = await completeEnvelopeApproval(changeSet, digest, minted.token, {
+      ...deps,
+      stageCompletions: designGateClosed(changeSet.id),
+    });
     expect(result.approved).toBe(true);
     if (!result.approved) throw new Error("unreachable");
     expect(result.changeSet.state).toBe("ready");
@@ -83,7 +107,10 @@ describe("completeEnvelopeApproval", () => {
     const minter = new ApprovalTokenMinter({ secretKey });
     const minted = await minter.mint("envelope_hash", digest);
 
-    const result = await completeEnvelopeApproval(changeSet, digest, minted.token, deps);
+    const result = await completeEnvelopeApproval(changeSet, digest, minted.token, {
+      ...deps,
+      stageCompletions: designGateClosed(changeSet.id),
+    });
     expect(result.approved).toBe(false);
     if (result.approved) throw new Error("unreachable");
     expect(result.reason).toContain("no resolvable IntentContract");
@@ -106,7 +133,10 @@ describe("completeEnvelopeApproval", () => {
 
     const minter = new ApprovalTokenMinter({ secretKey });
     const minted = await minter.mint("envelope_hash", digest);
-    const first = await completeEnvelopeApproval(changeSet, digest, minted.token, deps);
+    const first = await completeEnvelopeApproval(changeSet, digest, minted.token, {
+      ...deps,
+      stageCompletions: designGateClosed(changeSet.id),
+    });
     expect(first.approved).toBe(true);
 
     // A second ChangeSet with the SAME digest, attacked with the spent token.
@@ -120,7 +150,10 @@ describe("completeEnvelopeApproval", () => {
     });
     deps.changeSets.put(changeSet2);
 
-    const replay = await completeEnvelopeApproval(changeSet2, digest, minted.token, deps);
+    const replay = await completeEnvelopeApproval(changeSet2, digest, minted.token, {
+      ...deps,
+      stageCompletions: designGateClosed(changeSet2.id),
+    });
     expect(replay.approved).toBe(false);
   });
 });

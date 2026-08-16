@@ -552,6 +552,10 @@ function buildIntakeTools(
           workUnits: deps.workUnits.list(),
           requirementIds: contract.requirementIds,
           requirements: resolveRequirements(deps.requirements, contract.requirementIds),
+          // R8. The gateway can approve an ENVELOPE; it still cannot approve a
+          // design — no tool writes an OwnerDesignVerdict, so this read can only
+          // reflect what the owner typed on their own terminal.
+          stageCompletions: await loadStageCompletions(deps.reviewStageCompletionsPath),
         }),
       );
     },

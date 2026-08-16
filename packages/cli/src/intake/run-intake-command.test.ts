@@ -14,6 +14,7 @@ import {
 import { EnvelopePolicySchema } from "@crabgic/contracts";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { runIntakeCommand } from "./run-intake-command.js";
+import type { StageCompletionRecord } from "@crabgic/contracts";
 
 let journalDir: string;
 let store: JournalStore;
@@ -76,8 +77,29 @@ function deps(
   changeSets: ReturnType<typeof createChangeSetsRegistry>,
   request: () => Promise<IntakeRequest>,
   loadPolicy: () => LoadPolicyResult = () => STANDING_POLICY,
+  // R8: these suites assert POST-gate behaviour; the gate has its own suite
+  // in packages/supervisor/src/intake/readiness-gate.test.ts.
+  /**
+   * R8: defaults to a PASSING design gate, because these cases assert what the
+   * intake command does once the gate is behind it. The refusal has its own
+   * suite in `packages/supervisor/src/intake/readiness-gate.test.ts`; a default
+   * of `[]` here would silently convert every case in this file into a test of
+   * that refusal.
+   */
+  loadStageCompletions: () => Promise<readonly StageCompletionRecord[]> = () =>
+    Promise.resolve([
+      {
+        schemaVersion: 1,
+        changeSetId: "11111111-1111-4111-8111-111111111111",
+        stage: "design-gate",
+        round: 1,
+        artifactRef: "design-record:test",
+        closedAt: "2026-08-16T00:00:00.000Z",
+      },
+    ]),
 ) {
   return {
+    loadStageCompletions,
     journal: store,
     changeSets,
     workUnits: createWorkUnitsRegistry(),
