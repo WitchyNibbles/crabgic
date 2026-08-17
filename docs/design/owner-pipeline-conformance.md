@@ -595,6 +595,62 @@ self-report that nothing checked.
 the fixtures that used to publish without running anything had to start running
 something. That is the ruling working, not a regression.
 
+### 6e. Owner ruling R6, as built — 2026-08-16
+
+R6 is implemented in `packages/gates`. Recorded here for the same reason §6d is:
+a ruling and its mechanism diverging is the failure §6c's own correction
+documents.
+
+**What changed.** The coverage gate gained a THIRD check, independent of the two
+it already ran:
+
+| check                       | subject                           | can a change set move it? |
+| --------------------------- | --------------------------------- | ------------------------- |
+| greenfield minimum          | the repository's aggregate        | no                        |
+| ratchet                     | the repository's aggregate        | no                        |
+| **R6's changed-line floor** | **this change set's added lines** | **yes**                   |
+
+That is the whole content of "bound coverage to the change, not to the
+repository". The first two ask a question a worker verifying a two-file change
+cannot answer — run the suite filtered and the aggregate collapses over files
+the change never touched (measured at 0.48%), run it whole and a bounded turn
+budget goes to a suite almost entirely unrelated to the work.
+
+**The three pieces**, which are the three `docs/evidence/phase-14/README.md`
+said a future pass would need, built in the order it named them:
+`coverage/changed-lines.ts` (unified diff → per-file added-line set),
+per-line detail restored to the LCOV and Go adapters, and the check itself.
+
+**Two things the ruling did not anticipate, found by measuring rather than by
+reasoning.** Both come from running the real pieces against this repository's own
+`vitest --coverage` output:
+
+- ⚠️ a brand-new source file that no test imports is **absent** from a v8 report,
+  not present at 0%. Every one of its lines would read "not instrumentable" and
+  it would score a perfect 100% for having no tests whatsoever — the exact
+  inversion of the check. Absent source files are counted and refused;
+- the report carries **no test-file sections at all**, so exempting `.test.`
+  paths from that refusal is required, not a nicety. Without it every change set
+  touching a test would be refused for a file the reporter never emits.
+
+**An aggregate-only report is a refusal, not a pass.** istanbul's
+`coverage-summary.json` and coverage.py's `totals` carry no line detail; when a
+diff is supplied and the format cannot answer, the gate refuses and names the
+toolchain. Otherwise a project exempts itself from this ruling by choosing a
+reporter.
+
+**⚠️ What R6 does NOT deliver, stated plainly.** The gate is still not registered
+in the daemon, so nothing in a live run fires it yet. That is not an omission in
+this work — the composition root admits a gate into the daemon process only if it
+executes no stack command, and the daemon composes no coverage report to hand
+it. R6's own ruling disclosed that it lands in that tranche. The consequence
+worth being honest about: **a worker running `npm run test -- <filter>` in this
+repository still meets the global 80% threshold in `vitest.config.ts`**, because
+that threshold belongs to the repository's own test configuration and not to this
+gate. Fixing that for workers needs either a new grantable command prefix — which
+R6 explicitly declined — or roadmap/14 WI6's `TaskPacket` dispatch, which is a
+phase of its own.
+
 ## 7. Reconciliation with settled authorities
 
 | authority                          | this document                                                                                                            |

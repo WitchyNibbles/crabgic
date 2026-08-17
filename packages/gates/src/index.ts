@@ -44,7 +44,21 @@ export { parseGoCoverProfile } from "./coverage/go-cover-adapter.js";
 export { parsePytestCovReport } from "./coverage/pytest-cov-adapter.js";
 export { ecosystemsPresent, selectCoverageAdapter } from "./coverage/adapter-selection.js";
 export type { CoverageAdapterKind } from "./coverage/adapter-selection.js";
-export type { CoverageSummary } from "./coverage/types.js";
+export type { CoverageSummary, FileLineCoverage } from "./coverage/types.js";
+// Owner ruling R6 — coverage bound to the change, not to the repository.
+export { parseChangedLines, changedLineCount } from "./coverage/changed-lines.js";
+export type { ChangedLines } from "./coverage/changed-lines.js";
+export {
+  CHANGED_LINE_COVERAGE_MINIMUM_PCT,
+  INSTRUMENTABLE_EXTENSIONS,
+  isInstrumentablePath,
+  isExcludedFromCoverage,
+  scoreChangedLineCoverage,
+} from "./coverage/changed-line-coverage.js";
+export type {
+  ChangedLineCoverageOutcome,
+  ChangedLineCoverageScore,
+} from "./coverage/changed-line-coverage.js";
 export { getCoverageRatchetFloor, recordCoverageObservation } from "./coverage/ratchet-store.js";
 export type { RatchetFloor, RatchetRecordResult } from "./coverage/ratchet-store.js";
 export { createCoverageGate, GREENFIELD_COVERAGE_MINIMUM_PCT } from "./coverage-gate.js";

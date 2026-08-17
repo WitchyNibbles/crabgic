@@ -405,6 +405,42 @@ precedent):
 
 ## Carry-forwards for reconcile
 
+> **DISCHARGED 2026-08-16 — the changed-line carry-forward below is implemented.**
+> Annotated rather than rewritten, per this repository's annotate-never-rewrite
+> convention: the entry stays as it was written so the gap and its closure are
+> both readable.
+>
+> Owner ruling R6 ("bound coverage to the change, not to the repository") built
+> all three ingredients the entry says a future pass would need, and in the order
+> it named them:
+>
+> | the entry asked for | delivered |
+> | ------------------- | --------- |
+> | (a) a diff/changed-line-set input | `packages/gates/src/coverage/changed-lines.ts` — a real unified-diff parser with hunk cursors, cross-checked against `git diff --numstat` on real repositories |
+> | (b) an adapter carrying per-line hit/miss | `coverage/lcov-adapter.ts` returns the `DA:` detail it used to discard; `coverage/go-cover-adapter.ts` derives per-line from each record's range |
+> | (c) a third gate check scoped to the changed subset | `coverage-gate.ts`, alongside the greenfield-minimum and ratchet checks, at 80% |
+>
+> Two things the entry did not anticipate, both measured against this
+> repository's own real `vitest --coverage` output and pinned in
+> `coverage/changed-line-coverage.integration.test.ts`:
+>
+> - a brand-new source file no test imports is **absent** from a v8 report rather
+>   than present at 0%, so every line of it would read "not instrumentable" and it
+>   would score 100% for having no tests at all. Absent files are counted and the
+>   gate refuses on them;
+> - the report carries **no test-file sections at all**, so exempting `.test.`
+>   paths from that refusal is required rather than a nicety.
+>
+> The aggregate percentages are unchanged, byte for byte, so nothing that
+> depended on them moves. Full ruling and its declined alternative:
+> `docs/design/owner-pipeline-conformance.md` §6b and §6e.
+>
+> **Still open, and not claimed:** production registration. The daemon composes
+> no coverage report and cannot run one in-process
+> (`packages/cli/src/daemon/compose-gate-registry.ts`'s stack-command admission
+> rule), so this gate remains in the tranche `docs/deploy-posture.md` records as
+> unregistered. R6 disclosed that when it was ruled.
+
 - **Changed-line (diff) coverage is UNIMPLEMENTED (named carry-forward, NIT/
   MINOR-2 adversarial-validation round).** roadmap/14 §In scope, "Coverage"
   bullet, states both "≥80% line+branch on greenfield projects" AND "changed
