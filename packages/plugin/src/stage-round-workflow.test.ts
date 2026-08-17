@@ -210,3 +210,54 @@ describe("the stage-loop workflow — the multi-round driver", () => {
     expect(LOOP).toMatch(/verbatim/);
   });
 });
+
+/**
+ * Defect `25-stage-round-answers-no-criterion.md`. The round asked reviewers for
+ * `answeredObligations` and nothing else, so no obligation ever carried the
+ * attestation `review.submit` requires before it will count one as met — and no
+ * stage could close, however clean the artifact.
+ */
+describe("the verdict must carry attestations, not just answered obligations", () => {
+  it("requires attestations in the verdict schema", () => {
+    expect(SOURCE).toMatch(
+      /required: \["lens", "verdict", "answeredObligations", "attestations", "findings"\]/,
+    );
+  });
+
+  it("declares the four attestation fields a reviewer can supply", () => {
+    for (const field of ["criterion", "asserter", "rationale", "artifactAnchor"]) {
+      expect(SOURCE).toContain(field);
+    }
+  });
+
+  it("tells the reviewer that an unattested obligation counts as NOT MET", () => {
+    expect(SOURCE).toMatch(/counts as/);
+    expect(SOURCE).toMatch(/NOT MET server-side/);
+  });
+
+  /**
+   * ⚠️ An attestation must never become a way to wave a finding through — the
+   * reviewer is told explicitly not to attest something it found unmet.
+   */
+  it("forbids attesting an obligation the reviewer found unmet", () => {
+    expect(SOURCE).toMatch(/Do NOT attest an obligation you found unmet/);
+  });
+});
+
+/**
+ * Defect `25-blocking-finding-needs-violates.md`. `review.submit` refuses a
+ * blocking finding that names no exit criterion — "one that violates no stated
+ * criterion is advisory" — and the whole lens verdict is lost with it. The schema
+ * declared `violates` optional, so a reviewer could omit it and did.
+ */
+describe("every finding must name the criterion it violates", () => {
+  it("requires `violates` on a finding", () => {
+    expect(SOURCE).toMatch(
+      /required: \["claim", "paths", "classification", "violates", "evidence"\]/,
+    );
+  });
+
+  it("tells the reviewer the server refuses a blocking finding without it", () => {
+    expect(SOURCE).toMatch(/REFUSES a blocking finding that/);
+  });
+});
