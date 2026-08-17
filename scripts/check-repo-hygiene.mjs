@@ -51,6 +51,12 @@ const TEXT_SOURCE_EXTENSIONS = new Set([
   ".cjs",
   ".css",
   ".html",
+  // LCOV coverage reports. Committed as a test fixture (`packages/gates/src/
+  // coverage/test-support/real-vitest-lcov.info`, real v8 output for owner
+  // ruling R6's changed-line coverage), and a plain-text line-oriented format —
+  // so it is policed like every other text source rather than joining the
+  // unpoliced set by default, which is exactly what this list exists to prevent.
+  ".info",
   ".js",
   ".json",
   ".jsonc",

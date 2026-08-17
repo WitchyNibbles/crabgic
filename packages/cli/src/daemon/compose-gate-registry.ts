@@ -66,6 +66,16 @@
  *     capability store, and journaled green `engine-live` records — none of
  *     which the daemon composes, and the last of which is owner-gated
  *     (`engine-live.yml` has never run).
+ *
+ *     COVERAGE, specifically, and why owner ruling R6 did NOT change this.
+ *     R6 gave that gate a changed-line check (`packages/gates`'
+ *     `coverage/changed-line-coverage.ts`) so it scores the CHANGE rather than
+ *     the repository. What it did not and could not give it is an input: the
+ *     gate takes a `CoverageSummary`, producing one means running the project's
+ *     test suite, and running a stack command in the daemon process is what the
+ *     admission test above forbids. So the gate is better and still absent, and
+ *     the precondition is unchanged — roadmap/14 WI6's `TaskPacket` dispatch.
+ *     Registering it today would mean a handler with nothing to measure.
  *   - 15's performance gate needs a production `getProvisionalContract`, a
  *     twin-worktree A/B measurement runner meeting its own
  *     `MIN_INTERLEAVED_REPETITIONS` methodology floor, and stack commands from
