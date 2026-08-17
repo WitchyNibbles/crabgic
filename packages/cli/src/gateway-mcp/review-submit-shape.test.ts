@@ -91,6 +91,28 @@ describe("review.submit's published descriptor and its validated shape", () => {
   });
 
   /**
+   * ⚠️ Every member a caller must send as JSON must SAY it is an object on the
+   * wire. `z.unknown()` emits `{}` — an untyped member — and a client with no
+   * type signal may serialize it as text: two independent agents driving owner
+   * ruling R7's staged run hit "invalid review verdict: expected object,
+   * received string" and both abandoned the MCP tool for hand-built JSON-RPC.
+   * Defect `25-untyped-wire-members-serialize-as-text.md`.
+   */
+  it("advertises every structured member as type object, never as an untyped {}", () => {
+    const emitted = z.toJSONSchema(z.object(REVIEW_SUBMIT_SHAPE as Record<string, z.ZodTypeAny>), {
+      io: "input",
+    }) as { readonly properties: Record<string, { readonly type?: string }> };
+    for (const member of ["verdict", "design", "plan"]) {
+      expect(emitted.properties[member]?.type, `${member} is untyped on the wire`).toBe("object");
+    }
+    // The array's ITEMS carry the type; the member itself is an array.
+    const attestations = emitted.properties["attestations"] as
+      { readonly type?: string; readonly items?: { readonly type?: string } } | undefined;
+    expect(attestations?.type).toBe("array");
+    expect(attestations?.items?.type).toBe("object");
+  });
+
+  /**
    * Pins the zod-4 behaviour this defect turned on, so a future reader does not
    * have to rediscover it: a bare `z.unknown()` is REQUIRED, and only
    * `.optional()` makes it optional. If a zod upgrade ever changes this, the

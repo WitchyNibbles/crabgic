@@ -454,11 +454,25 @@ const CONTRACT_APPROVE_SHAPE = {
 export const REVIEW_SUBMIT_SHAPE = {
   stage: z.string(),
   changeSetId: z.string(),
-  // `unknown`, deliberately: the verdict is validated by `ReviewVerdictSchema`
-  // inside the handler, where a rejection carries the reason. Re-declaring its
-  // shape here would be a second schema for one document, and the two would
-  // disagree the first time either moved.
-  verdict: z.unknown(),
+  /**
+   * An OBJECT on the wire, with its CONTENT still validated by
+   * `ReviewVerdictSchema` inside the handler — where a rejection carries the
+   * reason, and where re-declaring the shape would be a second schema for one
+   * document that disagreed the first time either moved.
+   *
+   * ⚠️ `z.unknown()` was wrong here for a reason that only shows up over the
+   * wire: it emits `{}` as its JSON Schema — an UNTYPED member — so a client has
+   * no signal that this must be an object and may serialize it as text. Two
+   * independent agents driving owner ruling R7's staged run hit exactly that
+   * ("invalid review verdict: expected object, received string") and both had to
+   * abandon the MCP tool and hand-build JSON-RPC frames against
+   * `crabgic gateway mcp` instead. A tool every caller must bypass is not a tool.
+   *
+   * `looseObject` declares `type: "object"` and constrains nothing else, so the
+   * one-schema-per-document rule above is kept intact. Defect
+   * `docs/evidence/criteria-closeout/defects/25-untyped-wire-members-serialize-as-text.md`.
+   */
+  verdict: z.looseObject({}),
   metCriteria: z.array(z.string()).optional(),
   /**
    * Attributed claims that this stage's JUDGED criteria are met — each naming who
@@ -468,7 +482,7 @@ export const REVIEW_SUBMIT_SHAPE = {
    * validates them inside the handler, where a rejection carries the reason, and a
    * second shape declared here would disagree with it the first time either moved.
    */
-  attestations: z.array(z.unknown()).optional(),
+  attestations: z.array(z.looseObject({})).optional(),
   /**
    * The design and plan artifacts as data, validated inside the handler by
    * `DesignRecordSchema` / `PlanRecordSchema`.
@@ -491,8 +505,8 @@ export const REVIEW_SUBMIT_SHAPE = {
    * `./review-submit-shape.test.ts` now derives both required sets and compares
    * them, so the descriptor and this shape cannot drift apart again in silence.
    */
-  design: z.unknown().optional(),
-  plan: z.unknown().optional(),
+  design: z.looseObject({}).optional(),
+  plan: z.looseObject({}).optional(),
   /**
    * The object id being merged, for `integrate-final-candidate-gate`.
    *
