@@ -172,7 +172,7 @@ while (round <= budget && !closed) {
    * Scripts compose workflows; agents make tool calls. That split is why the
    * dispatch is here and the `review.submit` calls are below.
    */
-  let roundResult = null;
+  let roundResult;
   try {
     roundResult = await workflow({ scriptPath: stageRoundPath }, roundPlan);
   } catch (err) {
