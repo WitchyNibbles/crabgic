@@ -180,6 +180,19 @@ loop. The reviewers converged:
 | 3     | approve              | approve (0 findings) | revise (1 blocking) | 3                              |
 | 4     | approve (0 findings) | approve (0 findings) | revise (1 blocking) | 2 — the third refused          |
 
+> **CORRECTED 2026-08-18**, when the two long-running loop invocations finally returned.
+> The table above was written from a PARTIAL view — the rounds visible while the runs were
+> still going. The complete record is that **each of the two invocations ran NINE rounds**,
+> and every one of the eighteen reported the identical closure reason:
+> `an obligation went unanswered: research-no-silent-assumptions, research-prior-art-checked`,
+> with `lensesSubmitted: 3` throughout.
+>
+> That is stronger evidence for the section below than the four rounds originally recorded,
+> and in the same direction: nine rounds of genuine review, on an artifact that was
+> demonstrably improving, could not move the closure decision by one criterion. Neither run
+> reached the runaway guard of 20 — one stopped on the integrity escalation in §3f, the
+> other on the same wall of undispositioned findings.
+
 **Every blocking finding was correct, and all four were about an artifact I wrote:**
 
 1. the record asserts what the defect record says, twice, with no in-document citation,
@@ -242,3 +255,28 @@ to deny.
 
 R7's grant of engine spend is **not exhausted** — what stopped the run was five defects and
 one design question, not budget.
+
+### 3f. A submitting agent refused a payload it could not attribute
+
+One of the two concurrent loop invocations stopped itself, and its reason is worth
+recording verbatim because the behaviour is the one this pipeline is built to produce:
+
+> while I was preparing the submission, my scratchpad copy of the three verdicts was
+> rewritten by a writer that is not me, with materially different content … I did NOT
+> submit the rewritten content — I submitted the three verdicts verbatim from the
+> dispatching task message. A human should determine who rewrote … since the two differ on
+> whether this stage should close.
+
+**Investigated, and it was this operator's own concurrency.** Two stage-loop runs were in
+flight at once (`wf_a5bb520b-f17`, 44 agents, and `wf_88fa5aa6-73c`, 43 agents, ending 37
+seconds apart) and both staged their verdicts at the same un-namespaced scratchpad
+`verdicts.json`. Two files survive with different mtimes. Same session, same uid, no
+boundary crossed — **not an intrusion and not a security finding**, and the agent's own
+report is careful to attribute the escalation to itself rather than to the server: "NOT the
+server's escalate — the server returned escalate=false."
+
+⚠️ It is filed as a defect anyway (`25-stage-loop-runs-share-one-scratchpad.md`) because in
+THIS pipeline a path collision is a correctness hazard rather than a nuisance: the colliding
+payload was a set of review verdicts that disagreed about whether a stage should close, and
+the collision was silent. What stopped it being a corrupt review record was an agent
+noticing, refusing, and escalating — which is not a control, it is luck with good manners.
