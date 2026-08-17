@@ -34,12 +34,32 @@ const input = args ?? {};
 const completedStages = Array.isArray(input.completedStages) ? input.completedStages : [];
 const changeSetId = typeof input.changeSetId === "string" ? input.changeSetId : "";
 const artifactRef = typeof input.artifactRef === "string" ? input.artifactRef : "";
+const stageRoundPath = typeof input.stageRoundPath === "string" ? input.stageRoundPath : "";
 
 if (changeSetId.length === 0) {
   // Refused rather than defaulted. Every server call below is scoped to a change
   // set, and inventing one would submit a real review against the wrong work.
   log("no changeSetId supplied — refusing to run a stage against an unknown change set");
   return { ok: false, error: "changeSetId is required" };
+}
+
+if (stageRoundPath.length === 0) {
+  /**
+   * REQUIRED, and refused rather than defaulted — defect
+   * `25-stage-loop-cannot-dispatch-a-round.md`.
+   *
+   * This loop reaches `crabgic-stage-round` by PATH, from this script body,
+   * because a plugin workflow is not in the name registry: `workflow(
+   * "crabgic-stage-round")` throws "no workflow with that name" wherever it is
+   * called, which is a property of the runtime and not of any one installation.
+   * Only the caller knows where the plugin is installed.
+   *
+   * Guessing a path would be worse than refusing in the specific way that
+   * matters here: a wrong path either runs some other file or fails in a shape
+   * indistinguishable from a review round that found nothing.
+   */
+  log("no stageRoundPath supplied — refusing to guess where crabgic-stage-round is installed");
+  return { ok: false, error: "stageRoundPath is required (absolute path to stage-round.mjs)" };
 }
 
 const PLAN_SCHEMA = {
@@ -140,23 +160,63 @@ phase("Round");
 while (round <= budget && !closed) {
   const roundPlan = { ...plan, artifactRef, round };
 
+  /**
+   * THE ROUND ITSELF — run from THIS SCRIPT, never asked of an agent.
+   *
+   * Until 2026-08-17 this was an English instruction handed to a subagent
+   * ("Run the `crabgic-stage-round` workflow …"). A subagent has no workflow
+   * runtime, so it could not carry the instruction out in any environment, and
+   * the loop escalated with zero lenses submitted the first time it was invoked
+   * for a real stage. Defect `25-stage-loop-cannot-dispatch-a-round.md`.
+   *
+   * Scripts compose workflows; agents make tool calls. That split is why the
+   * dispatch is here and the `review.submit` calls are below.
+   */
+  let roundResult = null;
+  try {
+    roundResult = await workflow({ scriptPath: stageRoundPath }, roundPlan);
+  } catch (err) {
+    // Named, never swallowed into "the round found nothing" — a round that could
+    // not run and a round that ran clean must never share an outcome.
+    lastReason = `round ${String(round)} could not dispatch: ${err?.message ?? String(err)}`;
+    log(lastReason);
+    break;
+  }
+
+  const verdicts = Array.isArray(roundResult?.verdicts) ? roundResult.verdicts : [];
+  if (verdicts.length === 0) {
+    lastReason = `round ${String(round)} produced no verdicts — nothing to submit`;
+    log(lastReason);
+    break;
+  }
+
   const dispatched = await agent(
     [
-      `Run the \`crabgic-stage-round\` workflow for round ${String(round)} of the`,
-      `\`${stage}\` stage, passing this plan verbatim as its args:`,
+      `Submit these ${String(verdicts.length)} reviewer verdicts for the \`${stage}\``,
+      `stage through the \`review.submit\` gateway tool — ONE call per lens, with`,
+      `stage "${stage}" and changeSetId "${changeSetId}".`,
       "",
-      JSON.stringify(roundPlan),
+      JSON.stringify(verdicts),
       "",
-      "Then submit EVERY verdict it returns through the `review.submit` gateway",
-      `tool, one call per lens, with stage "${stage}" and changeSetId`,
-      `"${changeSetId}". Submit them exactly as the workflow returned them.`,
+      "For each verdict, map its fields onto the tool's arguments:",
+      "  - `verdict`   <- the whole verdict object (an OBJECT, never a JSON string);",
+      "  - `metCriteria` <- its `answeredObligations`;",
+      "  - `attestations` <- its `attestations`, adding to each entry an",
+      "    `assertedAt` ISO-8601 timestamp of now and `round` " + String(round) + ".",
+      "",
+      "⚠️ An obligation submitted WITHOUT a matching attestation is counted as",
+      "NOT MET by the server and holds the stage open — that is the defect this",
+      "mapping exists to close, so do not drop the attestations.",
+      "",
+      "Otherwise submit them EXACTLY as given. Do not edit a verdict, drop a",
+      "finding, or add one: they are the reviewers' answers, and editing them is",
+      "the one way this loop can be made to lie about what was reviewed.",
       "",
       "Return the LAST `review.submit` response, plus how many lenses you",
       "submitted. Do not decide whether the stage closed — report what the",
-      "server said. A lens the workflow reported as `unrun` still counts as not",
-      "submitted, and you must say so rather than quietly submitting fewer.",
+      "server said.",
     ].join("\n"),
-    { label: `${stage}:round-${String(round)}`, phase: "Round", schema: SUBMIT_SCHEMA },
+    { label: `${stage}:submit-${String(round)}`, phase: "Round", schema: SUBMIT_SCHEMA },
   );
 
   if (dispatched === null) {

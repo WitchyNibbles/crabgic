@@ -89,6 +89,31 @@ const VERDICT_SCHEMA = {
     lens: { type: "string" },
     verdict: { type: "string", enum: ["approve", "revise"] },
     answeredObligations: { type: "array", items: { type: "string" } },
+    /**
+     * ⚠️ REQUIRED, and the reason a stage can close at all. `review.submit`
+     * treats a bare id in `metCriteria` as NOT met: a judged criterion needs an
+     * attestation naming who asserts it, why, and where in the artifact to look,
+     * and anything unattested comes back in `unattestedCriteria`.
+     *
+     * Until 2026-08-17 this schema asked only for `answeredObligations`, so the
+     * loop reported every obligation answered and the server correctly refused
+     * closure with "an obligation went unanswered" — the reviewers' answers were
+     * never in a form the server could count. Defect
+     * `25-stage-round-answers-no-criterion.md`.
+     */
+    attestations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          criterion: { type: "string" },
+          asserter: { type: "string" },
+          rationale: { type: "string" },
+          artifactAnchor: { type: "string" },
+        },
+        required: ["criterion", "asserter", "rationale", "artifactAnchor"],
+      },
+    },
     findings: {
       type: "array",
       items: {
@@ -97,6 +122,18 @@ const VERDICT_SCHEMA = {
           claim: { type: "string" },
           paths: { type: "array", items: { type: "string" } },
           classification: { type: "string", enum: ["blocking", "advisory"] },
+          /**
+           * ⚠️ REQUIRED, because `review.submit` REFUSES a blocking finding that
+           * names no exit criterion: "a blocking finding must name the exit
+           * criterion it violates; one that violates no stated criterion is
+           * advisory". Declared optional here until 2026-08-17, so a reviewer's
+           * blocking finding was rejected at the wire and never journaled — the
+           * lens's whole round lost. Defect `25-blocking-finding-needs-violates.md`.
+           *
+           * Required for EVERY finding rather than only for blocking ones: an
+           * advisory that names its criterion costs nothing, and a conditionally
+           * required field is one a reviewer omits on the branch that matters.
+           */
           violates: { type: "string" },
           evidence: {
             type: "object",
@@ -108,11 +145,11 @@ const VERDICT_SCHEMA = {
             required: ["reproduction", "observed", "expected"],
           },
         },
-        required: ["claim", "paths", "classification", "evidence"],
+        required: ["claim", "paths", "classification", "violates", "evidence"],
       },
     },
   },
-  required: ["lens", "verdict", "answeredObligations", "findings"],
+  required: ["lens", "verdict", "answeredObligations", "attestations", "findings"],
 };
 
 const CONFIRMATION_SCHEMA = {
@@ -139,7 +176,25 @@ function reviewPrompt(lens) {
     "than passing it. List every obligation id you answered in",
     "`answeredObligations`.",
     "",
+    "ATTESTATIONS — for every obligation you answered and found MET, add an",
+    "entry to `attestations` with:",
+    "  - `criterion`: the obligation id, exactly as issued;",
+    "  - `asserter`: your lens name;",
+    "  - `rationale`: why it is met, in your own words — not a restatement of",
+    "    the criterion;",
+    "  - `artifactAnchor`: where in the artifact you looked (a path, a heading,",
+    "    or a path:line).",
+    "An obligation listed in `answeredObligations` with no attestation counts as",
+    "NOT MET server-side, because a bare id is a claim with nothing behind it.",
+    "Do NOT attest an obligation you found unmet — raise a finding instead.",
+    "",
     ...obligations.map((o) => `  - ${o}`),
+    "",
+    "EVERY finding must name, in `violates`, the exit-criterion id it breaks —",
+    "one of the obligation ids above. The server REFUSES a blocking finding that",
+    "names none, and the whole verdict is lost with it. If a finding breaks no",
+    "stated criterion, it is advisory by definition, and it still names the",
+    "criterion it bears on.",
     "",
     "ADMISSIBILITY — a finding counts only if it:",
     "  - names the repository paths it concerns (a pathless finding is deferred);",

@@ -450,7 +450,8 @@ const CONTRACT_APPROVE_SHAPE = {
   digest: z.string(),
   token: z.string(),
 };
-const REVIEW_SUBMIT_SHAPE = {
+/** Exported so `./review-submit-shape.test.ts` can compare its required set against the published descriptor's. */
+export const REVIEW_SUBMIT_SHAPE = {
   stage: z.string(),
   changeSetId: z.string(),
   // `unknown`, deliberately: the verdict is validated by `ReviewVerdictSchema`
@@ -476,8 +477,22 @@ const REVIEW_SUBMIT_SHAPE = {
    * second shape declared at the wire boundary would disagree with it the first time
    * either moved.
    */
-  design: z.unknown(),
-  plan: z.unknown(),
+  /**
+   * ⚠️ `.optional()` IS LOAD-BEARING, not decoration. Under zod 4 a bare
+   * `z.unknown()` is NOT optional — `safeParse({})` fails with "expected
+   * nonoptional" — so the MCP SDK derived these as REQUIRED while this tool's
+   * own published descriptor (`../review/tool-definitions.ts`) listed only
+   * `stage`/`changeSetId`/`verdict`. Every caller that obeyed the published
+   * contract was refused, and the stages that legitimately have no design and no
+   * plan — `research` first among them — could not record a verdict at all.
+   *
+   * Measured driving owner ruling R7's staged run; defect
+   * `docs/evidence/criteria-closeout/defects/25-review-submit-requires-a-design-it-cannot-have.md`.
+   * `./review-submit-shape.test.ts` now derives both required sets and compares
+   * them, so the descriptor and this shape cannot drift apart again in silence.
+   */
+  design: z.unknown().optional(),
+  plan: z.unknown().optional(),
   /**
    * The object id being merged, for `integrate-final-candidate-gate`.
    *
