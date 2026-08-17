@@ -280,3 +280,51 @@ THIS pipeline a path collision is a correctness hazard rather than a nuisance: t
 payload was a set of review verdicts that disagreed about whether a stage should close, and
 the collision was silent. What stopped it being a corrupt review record was an agent
 noticing, refusing, and escalating — which is not a control, it is luck with good manners.
+
+### 3g. ⚠️ THE DECISIVE MEASUREMENT — twenty rounds, and the guard fired
+
+The second loop invocation (`wf_88fa5aa6-73c`) returned on 2026-08-18 after **10,576
+seconds and 94 agents**. It ran to the runaway guard:
+
+```
+roundsRun: 20
+stalled  : true
+reason   : "the runaway guard stopped this loop at round 20; it did not converge,
+            and these stand: an obligation went unanswered:
+            research-no-silent-assumptions, research-prior-art-checked"
+```
+
+**CORRECTION, and it is the second time this document has published a round count from
+partial data — recorded rather than quietly amended.** §3e's correction said "each of the
+two invocations ran NINE rounds". That was true of `wf_a5bb520b-f17` and false of this one.
+The complete record is **9 rounds and 20 rounds**. Both corrections were written while a
+run was still in flight; the lesson is that a round count is not a measurement until the
+run returns.
+
+**Why this settles defect `25-stage-loop-never-disposes-a-finding.md`.** The server's own
+accounting, from the loop's own report:
+
+| round | openBlocking | undispositioned |
+| ----- | ------------ | --------------- |
+| 1     | 3            | 6               |
+| 19    | **19**       | **24**          |
+
+The findings grew monotonically for twenty rounds. And the two blockers voiding the
+attestations at round 19 — `b6056996-4b61-437d-bfd8-e6c6f1d02f17` and
+`50a1ab27-ef8d-468b-9245-8921d1701640` — are **the same two named at round 1**. Twenty
+rounds of real review, on an artifact that measurably improved, could not resolve the two
+findings raised before any of it started, because nothing in the loop can dispose of one.
+
+Two things the loop got exactly right while failing:
+
+- it reported the guard as a **STALL**, never as a closed stage — "reaching the guard is a
+  STALL, not a close … the syntactic kill-switch wearing a verdict's clothes";
+- rounds 8 and 17 show the server distinguishing the accumulated backlog from that round's
+  own work: "1 admissible finding(s) have no disposition … ; 1 admissible novel finding(s)
+  this round". The review surface was measuring correctly throughout. Only the loop could
+  not act on it.
+
+**Round 1 also carried the `violates` refusal in the wild** — "that lens was not journaled
+because its blocking finding carries no `violates` field, **and I did not invent one**" —
+which is defect `25-blocking-finding-needs-violates.md`, met by an agent that refused to
+manufacture the missing field to get past a validator.
