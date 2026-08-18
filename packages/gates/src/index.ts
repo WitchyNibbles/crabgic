@@ -61,6 +61,11 @@ export { ecosystemsPresent, selectCoverageAdapter } from "./coverage/adapter-sel
 // The coverage gate's missing INPUT — unblocked by owner decision 2026-08-18.
 export { CONVENTIONAL_LCOV_PATH, readCoverageSummary } from "./coverage/coverage-report.js";
 export type { CoverageReportRead } from "./coverage/coverage-report.js";
+export { COVERAGE_GATE_NAME, registerCoverageGate } from "./coverage-gate-registration.js";
+export type {
+  CoverageGateRegistration,
+  CoverageMeasurement,
+} from "./coverage-gate-registration.js";
 export type { CoverageAdapterKind } from "./coverage/adapter-selection.js";
 export type { CoverageSummary, FileLineCoverage } from "./coverage/types.js";
 // Owner ruling R6 — coverage bound to the change, not to the repository.
