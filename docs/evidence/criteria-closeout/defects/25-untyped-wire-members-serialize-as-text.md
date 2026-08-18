@@ -69,3 +69,21 @@ required set — verified to report `UNTYPED` for all three against the pre-fix 
   against the same server, copying the envelope `live-round-submit.ts:88-100` builds, and
   passing reviewer content through verbatim, is a correct workaround — and both agents said
   so explicitly rather than quietly editing a verdict to make it fit.
+
+## Remediated 2026-08-17 — PR #148
+
+`verdict`, `design`, `plan` and the `attestations` items are declared `z.looseObject({})`
+in `packages/cli/src/gateway-mcp/build-tool-registry.ts`, so each emits `"type": "object"`
+in the JSON Schema a client reads instead of a bare `{}`.
+
+**Pinned by** `packages/cli/src/gateway-mcp/review-submit-shape.test.ts`,
+`it("advertises every structured member as type object, never as an untyped {}")` — it
+calls `z.toJSONSchema` on the real shape and asserts the emitted type per member, plus the
+array/items split for `attestations`. Asserting the emitted schema rather than the zod
+declaration is deliberate: the wire is what the two agents that hit this were reading.
+
+⚠️ **This is the SAME declaration as `25-review-submit-requires-a-design-it-cannot-have.md`,
+two PRs earlier.** That fix corrected optionality and stopped there, although the record's
+own remedy section named the wire shape. The lesson is the one the record carries: a fix
+that addresses half of a shared root leaves the other half looking untouched rather than
+looking open.

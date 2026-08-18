@@ -81,3 +81,27 @@ own-work property the whole review surface exists to deny.
   that the improvements happened.
 - **Not claimed** that any stage previously closed while holding findings. No stage had
   ever closed through this loop at all.
+
+## Remediated 2026-08-18 — PR #149
+
+The loop gained a disposition step, dispatched separately from the review and the submit,
+running only while the stage is still open. It reads the open set from the SERVER's
+findings rather than from its own memory of the round, offers all three dispositions,
+requires `dispositionEvidence` with each, reuses the original finding id, and is told it
+MAY refuse — a finding it cannot verify is left open, which holds the stage open.
+
+**Pinned by** `packages/plugin/src/stage-loop-workflow.test.ts`, under
+`describe("the disposition step (defect 25-stage-loop-never-disposes-a-finding)")` — eight
+assertions, including
+`it("tells the disposer it may refuse, and that refusing holds the stage open")`, which is
+what stops this remedy from becoming a self-clearing loop.
+
+⚠️ **Corrected on the record.** This defect was first filed as "needs an owner ruling on
+the disposition mechanism". That was wrong: `review.submit`'s handler already documents
+that this round's version of a finding supersedes the recorded one, and its response
+already returns the finding set with ids. It was a build task, and building it is what
+closed the first stage.
+
+📎 The measurement that made this decisive: the last loop before the fix ran to the runaway
+guard at **20 rounds**; `openBlocking` grew 3 -> 19, `undispositioned` 6 -> 24, and the two
+blockers voiding the attestations at round 19 were the SAME two raised at round 1.

@@ -82,3 +82,19 @@ so the two cannot drift apart again without something going red.
 - **Not claimed** that any state was corrupted. No verdict was recorded and no
   `review-findings.json` exists under the project's state root — the refusals happened at
   input validation, before the handler ran.
+
+## Remediated 2026-08-17 — PR #146
+
+`design` and `plan` carry `.optional()` in `packages/cli/src/gateway-mcp/build-tool-registry.ts`,
+so the validated shape matches the descriptor `packages/cli/src/review/tool-definitions.ts`
+publishes. The `research` stage recorded three real reviewer verdicts on the same day.
+
+**Pinned by** `packages/cli/src/gateway-mcp/review-submit-shape.test.ts` — it derives the
+required set from BOTH declarations and compares them, so the two cannot drift apart
+again silently, and asserts by name that a submission omitting `design` and `plan` is
+accepted while one omitting `verdict` is still refused.
+
+⚠️ **Scope bound.** This addendum closes the optionality half only. The same declaration
+carried a second fault — those members were UNTYPED on the wire — which is a separate
+record, `25-untyped-wire-members-serialize-as-text.md`, fixed two PRs later. One fix
+stopping at half of a shared root is the thing worth carrying forward here.

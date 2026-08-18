@@ -66,3 +66,21 @@ routing fails at the schema rather than several steps later inside another workf
   and only its explanation needed fixing.
 - **Not claimed** that any round ran with the wrong reviewer. The refusal is fail-closed:
   no lens was dispatched at all.
+
+## Remediated 2026-08-18 — PR #150
+
+`PLAN_SCHEMA` in `packages/plugin/workflows/stage-loop.mjs` declares the per-lens
+`reviewer` and requires it, so the structured-output layer can no longer drop the server's
+routing on the way in. The error message that blamed the server for being "older than this
+workflow" was corrected in the same change.
+
+**Pinned by** `packages/plugin/src/stage-loop-workflow.test.ts`, under
+`describe("the plan schema must not truncate the server's plan")`:
+`it("declares the per-lens reviewer, and requires it")` and
+`it("declares every lens property the round workflow reads")` — the second is the general
+form, so the next property the round workflow starts reading fails here rather than
+vanishing silently.
+
+**The general lesson, worth more than the fix:** a structured-output schema DROPS every
+property it does not name, so an incomplete output schema is a silent edit to data the
+model never chose to change.

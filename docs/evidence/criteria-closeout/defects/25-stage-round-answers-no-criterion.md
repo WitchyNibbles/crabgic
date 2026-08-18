@@ -72,3 +72,16 @@ tests passed, and the composition had never been run. The same shape as
 - **Not claimed** that any stage had previously closed incorrectly. No stage had ever
   closed through this loop at all — this was the first round whose verdicts reached the
   server.
+
+## Remediated 2026-08-17 — PR #146
+
+`attestations` is required in `VERDICT_SCHEMA` (`packages/plugin/workflows/stage-round.mjs`),
+the reviewer prompt states that an unattested obligation counts as NOT MET, and the loop
+stamps each attestation with the round it owns before submitting.
+
+**Pinned by** `packages/plugin/src/stage-round-workflow.test.ts`, under
+`describe("the verdict must carry attestations, not just answered obligations")` — four
+assertions, including `it("forbids attesting an obligation the reviewer found unmet")`,
+which is the one that keeps this from becoming a reviewer grading its own work. The loop
+side is pinned by `stage-loop-workflow.test.ts`,
+`it("passes the attestations through, stamped with the round the loop owns")`.

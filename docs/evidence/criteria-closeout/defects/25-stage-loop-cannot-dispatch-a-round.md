@@ -105,3 +105,19 @@ the agent calls `review.submit`.
   round".
 - **Not claimed** that the fix makes the whole pipeline autonomous. Two stages remain
   owner-gated by design, and the loop returns immediately for both.
+
+## Remediated 2026-08-17 — PR #146
+
+The round is dispatched from the SCRIPT body — `await workflow({ scriptPath: stageRoundPath }, roundPlan)`
+— and `stageRoundPath` is a required argument, refused when absent rather than guessed.
+
+**Pinned by** `packages/plugin/src/stage-loop-workflow.test.ts`, under
+`describe("the round dispatch (defect 25-stage-loop-cannot-dispatch-a-round)")`: it asserts
+the dispatch is by `scriptPath` and never by name, that an agent is never asked to run the
+sibling workflow, that a missing `stageRoundPath` is refused, and that a failed dispatch is
+distinguished from a round that found nothing.
+
+⚠️ **What this did NOT make true.** Fixing the dispatch is what exposed
+`25-plan-schema-strips-the-lens-reviewer.md`: the loop could then reach the lenses and
+refused every one of them. A defect that hides another is not a defect half-fixed, but the
+first round after this PR still ran zero lenses.
