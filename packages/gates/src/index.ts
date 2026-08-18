@@ -43,6 +43,13 @@ export {
   TDD_BASELINE_TIMEOUT_MS,
 } from "./tdd-baseline.js";
 export type { TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";
+// The CONSUMER half — the shape a startup-composed registry can actually register.
+export {
+  latestDispatchBoundarySeq,
+  registerTddGate,
+  TDD_GATE_NAME,
+} from "./tdd-gate-registration.js";
+export type { CandidateTestRun, TddGateRegistration } from "./tdd-gate-registration.js";
 
 // ---- Coverage adapters + ratchet store + gate (work item 3) ----
 export { parseLcovReport } from "./coverage/lcov-adapter.js";
