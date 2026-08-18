@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "1d042e70c63e48acff8f4e3da385de31c9c9c54d",
+  "generatedAtSha": "85046954d896248ec0cc1a476a60af51ae760328",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1359,
     "fragments": 3988,
-    "anchored": 2628,
-    "seededStale": 750,
+    "anchored": 2629,
+    "seededStale": 749,
     "outsideSpan": 860,
     "repeatText": 531,
     "crossFile": 20,
@@ -2598,12 +2598,12 @@
         "SKIP-short"
       ]
     },
-    "phase-06.json#c5#packages/scheduler/src/attempt-policy.ts:111": {
-      "qa": "a09a3ec7d5ea",
+    "phase-06.json#c5#packages/scheduler/src/attempt-policy.ts:111-112": {
+      "qa": "61169fba2259",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@111",
-        "MOVED/collapsed@338!file"
+        "OK/collapsed@112",
+        "OK/collapsed@338!file"
       ]
     },
     "phase-06.json#c6#docs/engine-baseline.md:364": {
@@ -11873,7 +11873,7 @@
       "pins": [
         "MOVED/collapsed@381!span",
         "MOVED/collapsed@391!span",
-        "MOVED-AMBIG/collapsed@349,392,412,423,433,451,525,601!span~repeat"
+        "MOVED-AMBIG/collapsed@349,392,412,423,433,451,530,606!span~repeat"
       ]
     },
     "phase-24.json#c6#docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt": {
@@ -12046,7 +12046,7 @@
       "ref": "OK",
       "pins": [
         "MOVED/collapsed@132!span",
-        "MOVED-AMBIG/collapsed@133,459,556!span~repeat"
+        "MOVED-AMBIG/collapsed@133,459,561!span~repeat"
       ]
     },
     "phase-24.json#c8#packages/scheduler/src/executor.ts:321-325": {
@@ -12054,8 +12054,8 @@
       "ref": "OK",
       "pins": [
         "MOVED/collapsed@455!span",
-        "MOVED-AMBIG/collapsed@458,555!span~repeat",
-        "MOVED-AMBIG/collapsed@133,459,556!span~repeat",
+        "MOVED-AMBIG/collapsed@458,560!span~repeat",
+        "MOVED-AMBIG/collapsed@133,459,561!span~repeat",
         "SKIP-short",
         "SKIP-commentary",
         "SKIP-commentary"
@@ -12065,8 +12065,8 @@
       "qa": "ff677c6c8354",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@552!span",
-        "MOVED-AMBIG/collapsed@133,459,556!span~repeat"
+        "MOVED/collapsed@557!span",
+        "MOVED-AMBIG/collapsed@133,459,561!span~repeat"
       ]
     },
     "phase-24.json#c9#docs/evidence/phase-24/closeout-c9-journal-entry-type-13.txt": {
@@ -12144,7 +12144,7 @@
       "pins": [
         "OK/collapsed@190,214~repeat",
         "OK/collapsed@191,215~repeat",
-        "MOVED-AMBIG/collapsed@194,218,522!span~repeat",
+        "MOVED-AMBIG/collapsed@194,218,527!span~repeat",
         "MOVED/collapsed@195!span"
       ]
     },

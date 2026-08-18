@@ -386,3 +386,169 @@ describe("needsRepairPolicyCheck", () => {
     expect(await needsRepairPolicyCheck(store, WORK_UNIT_ID)).toBe(false);
   });
 });
+
+/**
+ * Owner ruling R4's FOURTH admissibility bound — "a repair may not enlarge the
+ * `PlannedWriteSet`, on pain of re-entering the plan stage in the open"
+ * (`docs/design/owner-pipeline-conformance.md` §4.3; roadmap/25 work item 6).
+ *
+ * ⚠️ WHY THIS LIVES HERE AND NOT IN `admissibility.ts`. That module's own header
+ * says so: it implements bounds 1-3 and the fourth "is enforced where a repair's
+ * write set is decided, not here", because a pure function over one round's
+ * findings has no round-over-round history to compare against. This IS where a
+ * repair is decided — the choke point every repair already passes for its
+ * attempt count and its evidence distinctness.
+ *
+ * The bound was documented as living elsewhere and lived nowhere until this
+ * suite: defect
+ * `docs/evidence/criteria-closeout/defects/25-monotonicity-bound-is-enforced-nowhere.md`
+ * records the search that established it, and phase 25's exit criterion is
+ * unticked because of it.
+ *
+ * WHY IT MATTERS RATHER THAN BEING TIDY. `admissibility.ts` concedes that "a
+ * repair writes new code inside the write set, and new code carries new
+ * obligations", so termination "rests on the repair rate exceeding the
+ * new-obligation rate". Monotonicity is the clause that keeps that qualifier
+ * bounded: without it the write set itself grows under repair, the obligation
+ * space grows with it, and the concession becomes open-ended rather than
+ * empirical.
+ */
+describe("write-set monotonicity (owner ruling R4, bound 4)", () => {
+  const SRC = ["packages/cli/src/a.ts", "packages/cli/src/b.ts"];
+
+  it("records nothing and checks nothing when ownedPaths is omitted (backward-compatible)", async () => {
+    // The pre-existing four-argument call shape, unchanged. Every current
+    // caller that has no packet — `resumeAttempt`'s crash-repair path — keeps
+    // working, and gains no silent guarantee it did not ask for.
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("allows a repair whose write set is IDENTICAL to the prior attempt's", async () => {
+    // The ordinary case, and the positive control for everything below: a
+    // repair that rewrites the same files must not be refused.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, SRC);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, SRC),
+    ).resolves.toBeUndefined();
+  });
+
+  it("allows a repair whose write set is NARROWER than the prior attempt's", async () => {
+    // Narrowing is the direction the bound wants. Refusing it would push a
+    // repair to keep claiming files it no longer touches.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, SRC);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [SRC[0]!]),
+    ).resolves.toBeUndefined();
+  });
+
+  it("REFUSES a repair that adds a path the prior attempt did not own", async () => {
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, SRC);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        ...SRC,
+        "packages/gates/src/c.ts",
+      ]),
+    ).rejects.toThrow(RepairEvidenceRequiredError);
+  });
+
+  it("names the widening path in the refusal, not merely that one exists", async () => {
+    // A refusal that says "the write set grew" sends the reader to diff two
+    // lists by hand. The offending path is what makes it actionable.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, SRC);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    try {
+      await assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        "packages/gates/src/c.ts",
+      ]);
+      expect.unreachable("the widening repair should have been refused");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RepairEvidenceRequiredError);
+      expect((error as RepairEvidenceRequiredError).reason).toBe("writeSetWidened");
+      expect((error as Error).message).toContain("packages/gates/src/c.ts");
+    }
+  });
+
+  it("accepts a file UNDER a directory the prior attempt owned", async () => {
+    // The prior set owns a directory; a repair narrowing to one file inside it
+    // is narrower, not wider. A textual set-difference would refuse this, which
+    // is why the check is containment rather than membership.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, [
+      "packages/cli/src",
+    ]);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        "packages/cli/src/deep/nested.ts",
+      ]),
+    ).resolves.toBeUndefined();
+  });
+
+  it("REFUSES a sibling directory whose name merely shares a prefix", async () => {
+    // The negative control for the row above. A prefix test done on raw strings
+    // admits `packages/cli/src-extra` as a child of `packages/cli/src`, which
+    // would let any path be spelled into scope — the same unbounded-space
+    // failure `admissibility.ts` exists to close.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, [
+      "packages/cli/src",
+    ]);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        "packages/cli/src-extra/x.ts",
+      ]),
+    ).rejects.toThrow(RepairEvidenceRequiredError);
+  });
+
+  it("compares NORMALIZED paths, so a respelling is not a widening", async () => {
+    // `./a//b.ts` and `a/b.ts` are one file. Normalization is the shared
+    // `normalizePlannedPath` from `@crabgic/git-engine` — one implementation,
+    // which is what roadmap/25's own path-normalization criterion requires.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, ["a/b.ts"]);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        "./a//b.ts",
+      ]),
+    ).resolves.toBeUndefined();
+  });
+
+  it("survives a restart, because the prior set is read back from the journal", async () => {
+    // The whole reason this is journaled rather than held in memory: a
+    // supervisor restart between the attempt and its repair must not reset the
+    // bound. A fresh store object over the same directory is that restart.
+    await assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, SRC);
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "dispatched");
+    await recordAttempt(store, WORK_UNIT_ID, SESSION_A, "failed");
+    const restarted = createJournalStore({ journalDir });
+    await expect(
+      assertRepairAllowed(restarted, WORK_UNIT_ID, "workerResultFailure", "d1", undefined, [
+        ...SRC,
+        "packages/gates/src/c.ts",
+      ]),
+    ).rejects.toThrow(RepairEvidenceRequiredError);
+  });
+
+  it("does not constrain the FIRST dispatch, which has nothing prior to widen", async () => {
+    // A work unit's initial write set is decided by the plan, not by this
+    // bound. Refusing here would make the first attempt impossible.
+    await expect(
+      assertRepairAllowed(store, WORK_UNIT_ID, "none", undefined, undefined, [
+        "anything/at/all.ts",
+      ]),
+    ).resolves.toBeUndefined();
+  });
+});

@@ -185,8 +185,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/scheduler/src/attempt-policy.ts:111",
-          "quotedAssertion": "CORROBORATION for \"entering the repair-attempt path\" — the downstream consumer that treats a schemaViolation as retryable evidence: :111 '  \"schemaViolation\",' inside the retryable-evidence set, with the routing at packages/scheduler/src/executor.ts:214 '      if (validation.kind === \"schemaViolation\") {'. Cited as corroboration, NOT as this criterion's bearer: the repair loop is phase 13's scope and phase 06 owns the typed failure that enters it."
+          "ref": "packages/scheduler/src/attempt-policy.ts:111-112",
+          "quotedAssertion": "CORROBORATION for \"entering the repair-attempt path\" — the downstream consumer that treats a schemaViolation as retryable evidence: :112 '  \"schemaViolation\",' inside the retryable-evidence set, with the routing at packages/scheduler/src/executor.ts:338 '      if (validation.kind === \"schemaViolation\") {'. Cited as corroboration, NOT as this criterion's bearer: the repair loop is phase 13's scope and phase 06 owns the typed failure that enters it. — corrected 2026-08-18: two line markers were stale and are updated in place, with the old numbers kept here. `attempt-policy.ts:111` -> `:112`, one down, when the `normalizePlannedPath` import that owner ruling R4's fourth admissibility bound needed was added. `executor.ts:214` -> `:338`, drift from earlier merged work that this pass surfaced rather than caused. The CLAIM is untouched — only the pointers — and the `ref` is widened to cover both, per `docs/evidence/citation-resolver/README.md`."
         },
         {
           "kind": "artifact",
