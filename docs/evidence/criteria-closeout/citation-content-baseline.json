@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "9f74c2703cbf5923dc35ada12a9424271af0cbae",
+  "generatedAtSha": "83ab0f42e5f120ab86cd8b2ea7285090a98c12f5",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2642,
-    "seededStale": 753,
+    "anchored": 2644,
+    "seededStale": 751,
     "outsideSpan": 860,
     "repeatText": 532,
-    "crossFile": 20,
+    "crossFile": 19,
     "skipped": 611
   },
   "citations": {
@@ -10249,10 +10249,10 @@
       "frozen": true
     },
     "phase-22.json#c3#docs/evidence/phase-22/closeout-c3b-type-level-proof-probe.txt": {
-      "qa": "d1a79da203de",
+      "qa": "ae8d3c89fbb6",
       "ref": "OK",
       "pins": [
-        "FILE-MISSING@-!file",
+        "OK/collapsed@271!file",
         "SKIP-commentary",
         "SKIP-log",
         "SKIP-log"
@@ -10592,14 +10592,14 @@
       ]
     },
     "phase-23.json#c1#docs/evidence/phase-23/closeout/c1-generator-fail-closed.txt": {
-      "qa": "58804b264ee9",
+      "qa": "6bb7348f97e6",
       "ref": "OK",
       "pins": [
         "SKIP-log",
         "SKIP-log",
         "SKIP-log",
         "SKIP-log",
-        "FILE-MISSING@-!file"
+        "OK-file/collapsed@304"
       ],
       "frozen": true
     },
