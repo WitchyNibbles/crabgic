@@ -34,8 +34,14 @@ here rather than cross-referenced._
 ### q3 — Does anything else reference either constant, or a third copy of the same threshold?
 
 **Answer:** No other reference to the two test-local `CPU_BUDGET_FRACTION` identifiers exists, but a
-**third, independent private copy of the same 0.01 threshold** exists under a different name, in a
-different package, for a different measurement path.
+**third, independent declaration of the same 0.01 threshold** exists under a different name, in a
+different package, for a different measurement path. Wording correction (round 5, `d57c7c9e`,
+advisory, fixed): this answer previously called that third declaration a "private copy", which its
+own quoted citation contradicts — it is `export const`. It is private only in the weaker sense that
+its consumers are confined to its own package: `grep -rn "SUPERVISOR_IDLE_CPU_FRACTION_BUDGET"
+--include=*.ts .` (excluding `node_modules/`, `dist/`) returns **7 hits in 2 files**, both under
+`e2e/attestation/src/`, and nothing in `packages/supervisor` imports it. That is not the q1 sense of
+"private" (an unexported test-local `const`), and the two are no longer described with one word.
 
 **Citations:**
 
@@ -100,15 +106,43 @@ reviewer; the gap was sourcing, not fact._
 ### q4 — Where should the shared constant live?
 
 **Answer:** `packages/supervisor/src/idle-budget/` has exactly two non-test modules, both already
-re-exported from the package barrel. This repository's established pattern is to declare a shared
-constant once in a PRODUCTION module and import it from both the sibling production module and the
-test — never to export a constant from a `*.test.ts` file.
+re-exported from the package barrel. This repository's dominant pattern — measured below, not
+asserted — is to declare a shared constant once in a PRODUCTION module and import it from both the
+sibling production module and the test. No `*.test.ts` file in this repository exports a constant.
+
+**Directory enumeration, stated so the "exactly two" claim is checkable rather than implied:**
+`ls packages/supervisor/src/idle-budget/` returns **5 files** — `heartbeat-scheduler.ts`,
+`heartbeat-scheduler.test.ts`, `idle-budget.integration.test.ts`, `resource-probe.ts`,
+`resource-probe.test.ts`. Three are `*.test.ts`; the remaining two are the non-test modules named
+below. (Note the third test file, `resource-probe.test.ts`, which q1/q3 do not name because it
+carries no copy of the threshold.)
+
+**Search scope for the `*.test.ts` claim, stated for the same reason:**
+`grep -rnE '^\s*export (const|let|var|\{)' --include=*.test.ts .` (excluding `node_modules/`,
+`dist/`) returns **exactly one hit**, `packages/journal/src/layout/xdg-sole-definition.test.ts:146`,
+which is text inside a template literal used as a fixture, not a module-level export. The
+positive side of the pattern is not a single instance either:
+`grep -rnE 'import \{[^}]*[A-Z][A-Z0-9_]{3,}[^}]*\} from "\./' --include=*.test.ts packages/ e2e/`
+returns **104 hits** — test files importing an upper-case constant from a sibling production module.
+**Counter-example kept rather than elided:** `packages/engine-core/src/footguns/mutation.test.ts`
+exports eight `function`s (`:38`, `:46`, `:59`, `:81`, `:99`, `:122`, `:130`, `:147`). So the
+narrow claim ("no test file exports a _constant_") survives the search; the broader claim ("test
+files never export anything") does not, and is not made.
+
+_Round 5 (`assumption-audit`, blocking, fixed — thirteen findings of one shape, plus three on the
+directory count): this answer previously asserted "established pattern" and "never to export a
+constant from a `*.test.ts` file" as settled repository-wide fact from a single positive prior-art
+instance, and asserted "exactly two non-test modules" with no enumeration — the same defect class
+round 3 fixed for q3's completeness claim, and the reason the Assumptions section's blanket "None"
+could not stand beside it. Both claims are now backed by a stated, re-runnable search, and both
+survived it._
 
 **Citations:**
 
-- `packages/supervisor/src/idle-budget/resource-probe.ts` and `.../heartbeat-scheduler.ts` — the only two non-test files in the directory.
+- `packages/supervisor/src/idle-budget/resource-probe.ts` and `.../heartbeat-scheduler.ts` — the only two non-test files in the directory, per the enumeration above.
 - `packages/supervisor/src/index.ts:79-81` — "`// ---- Idle resource budget probe + heartbeat scheduler (WI6) ----`" / "`export * from "./idle-budget/resource-probe.js";`" / "`export * from "./idle-budget/heartbeat-scheduler.js";`"
-- **Prior art:** `packages/supervisor/src/runtime/xdg-supervisor-layout.ts:35` — "`export const SUPERVISOR_RUNTIME_DIR_MODE = 0o700;`" and `:38` — "`export const SUPERVISOR_SOCKET_MODE = 0o600;`", consumed by the sibling production module `runtime/runtime-dir.ts:28` **and** by `runtime/runtime-dir.test.ts:11` — "`import { SUPERVISOR_RUNTIME_DIR_MODE, SUPERVISOR_SOCKET_MODE } from "./xdg-supervisor-layout.js";`". A live, shipping instance of exactly the shape this change set needs.
+- **Prior art, same directory, inside one of the two candidate homes** (round 5, `42499572`, blocking, fixed — this record previously reached three directories away for its prior art while an exact instance sat in the file it was recommending): `packages/supervisor/src/idle-budget/heartbeat-scheduler.ts:14` — "`export const HEARTBEAT_INTERVAL_MS = 5_000;`", consumed by its own production function at `:31` — "`const intervalMs = options.intervalMs ?? HEARTBEAT_INTERVAL_MS;`" — **and** by the sibling test `idle-budget.integration.test.ts:11` — "`import { createHeartbeatScheduler, HEARTBEAT_INTERVAL_MS } from "./heartbeat-scheduler.js";`", asserted at `:20` — "`expect(HEARTBEAT_INTERVAL_MS).toBe(5_000);`". This is the declare-in-production/import-in-sibling-test shape already live in the exact directory this change set edits, on the exact peer number (the 5 s heartbeat) of the threshold being collapsed.
+- **Prior art, same package, different directory:** `packages/supervisor/src/runtime/xdg-supervisor-layout.ts:35` — "`export const SUPERVISOR_RUNTIME_DIR_MODE = 0o700;`" and `:38` — "`export const SUPERVISOR_SOCKET_MODE = 0o600;`", consumed by the sibling production module `runtime/runtime-dir.ts:28` **and** by `runtime/runtime-dir.test.ts:11` — "`import { SUPERVISOR_RUNTIME_DIR_MODE, SUPERVISOR_SOCKET_MODE } from "./xdg-supervisor-layout.js";`". A live, shipping instance of exactly the shape this change set needs.
 
 ### q5 — Does the barrel need to re-export it?
 
@@ -126,13 +160,32 @@ constrains but does not dictate.
 
 ### q6 — What does the roadmap criterion say about the number?
 
-**Answer:** The roadmap states the bound as `<1% of one core` in prose, twice, in that exact wording.
-It does not name a `CPU_BUDGET_FRACTION` identifier and does not specify a decimal representation.
+**Answer:** The roadmap states the bound as `<1% of one core` in prose **three times**, in that exact
+wording, all in `roadmap/05-supervisor-daemon.md`. It does not specify a decimal representation. It
+**does** name the `CPU_BUDGET_FRACTION` identifier — once, at `:122`, inside the exit-criteria
+checklist's recorded evidence, quoting the assertion rather than setting the number.
+
+**Search scope, stated so both counts are checkable:** `grep -n "<1% of one core"
+roadmap/05-supervisor-daemon.md` returns `:25`, `:51`, `:122`; `grep -rn "CPU_BUDGET"
+roadmap/` returns exactly one line, `05-supervisor-daemon.md:122`.
 
 **Citations:**
 
 - `roadmap/05-supervisor-daemon.md:25` — "`**Idle resource budget:** <100 MiB RSS, <1% of one core, 5 s heartbeats; measured in CI with headroom`"
 - `roadmap/05-supervisor-daemon.md:51` — the same bound restated as the phase exit criterion, "re-measured unchanged as a release gate by 23".
+- `roadmap/05-supervisor-daemon.md:122` — the third occurrence, and the one naming the identifier: "`- [x] Idle budget test green with documented numbers (<100 MiB RSS, <1% of one core, 5 s heartbeat)`" … "`expect(cpuFraction).toBeLessThan(CPU_BUDGET_FRACTION);` (100 MiB / 0.01, `:14-15`)".
+
+**Consequence for this change set, stated because it is not neutral:** `:122` cites
+`idle-budget.integration.test.ts:14-15` **by line number** for the two budget constants. Collapsing
+the constant moves those declarations, so that evidence line goes stale unless it is updated in the
+same change set — exactly the failure mode `docs/verification-playbook.md:991` was written about.
+
+_Round 5 (`assumption-audit`, blocking, fixed — findings `5842579d` and `60f13a2b`): this answer
+said "twice" and "does not name a `CPU_BUDGET_FRACTION` identifier". Both were false, and the second
+was a negative sub-claim carrying no citation of its own and no Assumptions entry. `:122` contains
+both the third verbatim occurrence of the bound and the identifier. The corrected answer also
+surfaces a real consequence the wrong one hid: a line-numbered citation into the file this change
+set edits._
 
 ### q7 — Is there prior art for a duplicated-threshold collapse in this repo?
 
@@ -157,7 +210,8 @@ for every copy of a THRESHOLD, not just of`" a line number. Written directly abo
 
 ## Prior art
 
-- `packages/supervisor/src/runtime/xdg-supervisor-layout.ts:35,38` + `runtime-dir.ts:28` + `runtime-dir.test.ts:11` — the shared-constant pattern.
+- `packages/supervisor/src/idle-budget/heartbeat-scheduler.ts:14` + `:31` + `idle-budget.integration.test.ts:11,20` — the shared-constant pattern, already live **in this change set's own directory**, on the 5 s heartbeat peer of the threshold being collapsed.
+- `packages/supervisor/src/runtime/xdg-supervisor-layout.ts:35,38` + `runtime-dir.ts:28` + `runtime-dir.test.ts:11` — the same pattern, same package, different directory.
 - `packages/supervisor/src/index.ts:15-23` — this package's own prior duplicate-constant collapse.
 - `packages/gates/src/index.ts:8-11`, `packages/supervisor/src/index.ts:10-13` — the barrel exclusion convention.
 - `docs/verification-playbook.md:991` — the "grep every copy of a threshold" rule.

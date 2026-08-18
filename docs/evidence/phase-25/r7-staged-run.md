@@ -328,3 +328,66 @@ Two things the loop got exactly right while failing:
 because its blocking finding carries no `violates` field, **and I did not invent one**" —
 which is defect `25-blocking-finding-needs-violates.md`, met by an agent that refused to
 manufacture the missing field to get past a validator.
+
+---
+
+## 5. STAGE 1 CLOSED — 2026-08-18
+
+After the disposition step landed, the `research` stage **closed**, and the pipeline
+advanced. This is the first stage crabgic has ever closed through its own surface.
+
+```
+LENS assumption-audit -> revise (1 finding)
+LENS completeness     -> approve (0 findings)
+LENS source-quality   -> revise (1 finding)
+SUBMIT   closable=false  lenses=3  openFindings=26
+DISPOSE  disposed=26     leftOpen=0
+         -> ok=true, openBlocking=0, undispositioned=0, stageClosable=true
+```
+
+**One more defect had to be fixed first, and it was created by fixing the last one.**
+`PLAN_SCHEMA` declared each lens as `{lens, obligations}` and a structured-output schema
+DROPS every property it does not name — so the server's per-lens `reviewer` was stripped
+out of the plan before `crabgic-stage-round` saw it, and every lens was refused with
+"carries no reviewer — pipeline.plan is older than this workflow". The server was not old;
+the schema was lossy. It stayed invisible while the loop could not pass its own plan
+through; fixing the dispatch is what surfaced it
+(`25-plan-schema-strips-the-lens-reviewer.md`).
+
+### The disposition was checked rather than believed
+
+⚠️ **26 of 26 disposed `fixed`, 0 left open, is exactly the shape the anti-sycophancy guard
+exists to catch**, so it was verified independently rather than accepted:
+
+| the disposer claimed                                        | checked by                                | result                                                    |
+| ----------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------- |
+| it made real edits this round                               | `git diff` on the artifact                | **64 insertions, 10 deletions** of substantive correction |
+| `SUPERVISOR_IDLE_CPU_FRACTION_BUDGET` has 7 hits in 2 files | `grep -rn`                                | **exactly 7, exactly 2**                                  |
+| the directory holds 5 files, 3 of them tests                | `ls`                                      | **exact**                                                 |
+| the stage may now close                                     | `pipeline.plan` with `research` completed | **advanced to `clarify`**                                 |
+
+Its own reasoning was the right shape too: it reported that "the 26 findings collapse to 7
+distinct defects; 22 of them are near-duplicate restatements of three", said it "re-ran
+every search the record claims" rather than trusting a prior round's note, and named the
+four findings that required real edits this round.
+
+One of those edits is worth quoting, because it is the kind a padding pass never makes:
+q3 called the third declaration a "private copy", and the disposer corrected it because
+**the record's own quoted citation shows `export const`** — a self-contradiction between a
+claim and the evidence cited for it, in a document that had already survived four review
+rounds.
+
+## 6. The run is now at the FIRST OWNER GATE
+
+```
+pipeline.plan(completedStages: ["research"])
+  -> stage: "clarify", ownerGated: true, roundBudget: 1, lenses: []
+```
+
+`roundBudget: 1` with no lenses is the machine-readable form of "no review round can close
+this; a human does". The loop returns immediately for such a stage rather than looping on a
+person, which is `stage-loop.mjs`'s own documented behaviour.
+
+**This is where R7 stops without the owner**, and it stops here by design rather than by
+defect: `clarify` and `design-gate` are the two stages the ruling itself calls "the one
+human act inside an otherwise autonomous run".

@@ -235,6 +235,47 @@ describe("the submit step must not stage verdicts on disk", () => {
   });
 });
 
+/**
+ * Defect `25-plan-schema-strips-the-lens-reviewer.md`. A structured-output schema
+ * drops every property it does not declare, so an incomplete `PLAN_SCHEMA` is a
+ * SILENT EDIT of the server's plan — the exact hazard this loop's own docblock
+ * names, arriving as an omission.
+ */
+describe("the plan schema must not truncate the server's plan", () => {
+  const planSchema = SOURCE.slice(
+    SOURCE.indexOf("const PLAN_SCHEMA"),
+    SOURCE.indexOf("const SUBMIT_SCHEMA"),
+  );
+
+  /** `crabgic-stage-round`'s `reviewerFor` refuses a lens without it, so a plan missing it dispatches nothing. */
+  it("declares the per-lens reviewer, and requires it", () => {
+    expect(planSchema).toMatch(/reviewer: \{ type: "string" \}/);
+    expect(planSchema).toMatch(/required: \["lens", "obligations", "reviewer"\]/);
+  });
+
+  /**
+   * Derived from the sibling script rather than hard-coded: every `lens.<prop>`
+   * that `stage-round.mjs` actually reads must be declared here, so adding a new
+   * one there cannot silently truncate the plan again.
+   */
+  it("declares every lens property the round workflow reads", () => {
+    const round = readFileSync(
+      join(resolvePluginRoot(), "workflows", "stage-round.mjs"),
+      "utf8",
+    ).replace(/\/\*[\s\S]*?\*\//g, "");
+    const read = new Set(
+      [...round.matchAll(/\blens\?\.(\w+)|\blens\.(\w+)/g)].map((m) => m[1] ?? m[2]),
+    );
+    for (const prop of read) {
+      if (prop === "lens") continue; // the id itself, declared as `lens`
+      expect(
+        planSchema,
+        `stage-round reads lens.${String(prop)}; PLAN_SCHEMA must declare it`,
+      ).toContain(`${String(prop)}:`);
+    }
+  });
+});
+
 describe("what the loop must never decide for itself", () => {
   it("takes closure from the server's response, never from its own judgement", () => {
     // `stageClosable` is `review.submit`'s answer. A loop that computed it would

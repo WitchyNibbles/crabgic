@@ -70,7 +70,10 @@ function reviewerFor(lens) {
   const reviewer = lens?.reviewer;
   if (reviewer !== "eo-reviewer" && reviewer !== "eo-domain-reviewer") {
     throw new Error(
-      `lens ${String(lens?.lens)} carries no reviewer — pipeline.plan is older than this workflow`,
+      `lens ${String(lens?.lens)} carries no reviewer. Either pipeline.plan is older than ` +
+        `this workflow, or the caller's own schema dropped the field on the way here — ` +
+        `a structured-output schema silently removes any property it does not declare, ` +
+        `which is what crabgic-stage-loop's PLAN_SCHEMA did until 2026-08-18.`,
     );
   }
   return reviewer;
