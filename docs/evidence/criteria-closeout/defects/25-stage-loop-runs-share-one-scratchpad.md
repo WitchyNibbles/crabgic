@@ -63,3 +63,20 @@ message, which is the copy the agent correctly fell back to.
 - **Not claimed** that concurrent stage-loop runs are otherwise supported. Running two at
   once was this operator's doing, not a documented mode; the defect is that the collision
   is silent rather than refused.
+
+## Status 2026-08-18 — still OPEN, and what was and was not done
+
+**Not remediated.** The remedy this record names — scope the staging path by run — is not
+built.
+
+What PR #146's follow-ups did instead was remove the need for the file on the happy path:
+`packages/plugin/workflows/stage-loop.mjs` now tells the submitting agent to submit
+straight from its own message and says why, pinned by
+`packages/plugin/src/stage-loop-workflow.test.ts`,
+`describe("the submit step must not stage verdicts on disk")`.
+
+⚠️ **That is a narrower fix than it looks, and it is why this row stays `open`.** An
+instruction in a prompt is not a namespace. Any agent that decides to stage intermediate
+work — for a large verdict set, or to survive a retry — lands on the same un-namespaced
+path, and the collision this record measured recurs with nothing to catch it. The
+convention itself is unchanged.

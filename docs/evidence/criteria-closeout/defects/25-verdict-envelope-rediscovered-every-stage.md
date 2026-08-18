@@ -61,3 +61,20 @@ would make the server treat two lenses' verdicts as one document.
   it and said so; no reviewer content was edited in any of the three stages.
 - **Not claimed** that `ReviewVerdictSchema` should be relaxed. Those fields are what make a
   verdict a record rather than a message, and `id`/`createdAt` cannot come from the script.
+
+## Remediated 2026-08-18 — PR #151
+
+The loop's submit step names all six fields `ReviewVerdictSchema` requires —
+`schemaVersion`, `id`, `createdAt`, `stage`, `artifactRef`, `round` — states that a fresh
+`id` is needed per lens, and says the envelope is the loop's own facts rather than the
+reviewer's judgement.
+
+**Pinned by** `packages/plugin/src/stage-loop-workflow.test.ts`, under
+`describe("the submit step supplies the verdict envelope")` — three assertions over the
+submit prompt's text.
+
+⚠️ **A bound this addendum will not overstate.** That test's field list is a literal copied
+into the test, not read from `ReviewVerdictSchema`. If a seventh required field is ever
+added to the schema, the test stays green and the loop rediscovers the refusal exactly as
+this record describes. The remedy that would close it — deriving the list from the schema —
+is not built, and is the honest residue of this record.

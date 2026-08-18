@@ -40,3 +40,14 @@ refuses a blocking finding without it and that the whole verdict is lost with it
 
 - **Not claimed** that the server's rule is wrong. "A blocking finding must name the exit
   criterion it violates" is the rule that keeps taste out of the blocking channel.
+
+## Remediated 2026-08-17 — PR #146
+
+`violates` is required on EVERY finding, not only on blocking ones, and the reviewer prompt
+states that the server refuses a blocking finding without it and that the whole verdict is
+lost with it.
+
+**Pinned by** `packages/plugin/src/stage-round-workflow.test.ts`, under
+`describe("every finding must name the criterion it violates")`:
+`it("requires \`violates\` on a finding")` and
+`it("tells the reviewer the server refuses a blocking finding without it")`.

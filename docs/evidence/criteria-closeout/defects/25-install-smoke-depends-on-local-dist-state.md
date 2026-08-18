@@ -89,3 +89,29 @@ misquoted by anyone who does not already know that.
   check passes and says so with a file count.
 - **Not claimed** that the scanner is wrong to refuse an undeclared `@crabgic/*` import.
   That rule is correct; what is missing is a precondition on what it is reading.
+
+## Remediated in two parts — 2026-08-18
+
+**Items 1 and 2 — PR #149.** Block comments are stripped before the specifier patterns run,
+a specifier containing whitespace now FAILS the check saying the artifact is not what it
+thinks rather than reporting invented imports, and the comment that blamed a
+`packages/cli` `prepack` was corrected to name the root `npm run build`.
+
+**Item 3 — this change.** `.github/workflows/ci.yml` gains a `packaging` job that checks
+out clean, runs `npm ci` and the full `npm run build`, then runs `check:tarball` and
+`check:install-smoke`. `check:package-graph` — the third member of `check:all` that ran
+nowhere — joins `meta-checks`, which needs no build. All three checks are now measured on a
+clean checkout on every push, which is the state in which their verdicts mean anything
+about the repository.
+
+📎 Verified before wiring, on a full `npm run build` at `dbd4ad5`:
+`check-package-graph-acyclic: PASS — 18 workspace packages, dependency graph is a DAG`;
+`check-published-tarball: PASS — 37 files, 1706 kB unpacked, no tests/sources included`;
+`check-install-smoke: PASS — crabgic@1.7.0 installs from a packed tarball into a clean
+project`. A check wired into CI without first being run on the state it will measure is a
+red build proposed as a fix.
+
+⚠️ **What is still not true.** The check remains readable from a dirty tree, and running it
+locally after `tsc -b` alone will still fail with a correct-but-misleading verdict. CI now
+provides a state whose answer can be quoted; nothing prevents a local answer being quoted
+instead, which is how PRs #144 and #145 acquired their wrong note.

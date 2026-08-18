@@ -203,3 +203,34 @@ record's fix first.
   measures the channel. What the channel currently holds is the sibling record's subject.
 
 **Evidence:** `docs/evidence/phase-23/release-evidence-lane-channels.txt`.
+
+## Instance 1 remediated 2026-08-18 — steps 1 and 2 of the four
+
+`.github/workflows/ci.yml` gains a `packaging` job — clean checkout, `npm ci`, the full
+`npm run build`, then `check:tarball` and `check:install-smoke`. `check:package-graph`
+joins `meta-checks`, which runs on `npm ci` alone and does not build. The three scripts
+this record measured as invocable only by a human typing `check:all` now run on every push.
+
+**A new job rather than steps on `unit-test+coverage`**, which the remedy offered as the
+alternative: that job is a two-arch matrix, and packing one tarball twice measures the same
+bytes twice. The bundling is also arch-independent — it is `tsc -b && bundle:types &&
+bundle:cli` — so the second arm would buy nothing for its minutes.
+
+📎 **The added cost, measured rather than estimated**, on a warm `dist` at `dbd4ad5`:
+`check:package-graph` **0s**, `check:tarball` **1s**, `check:install-smoke` **13s** (it
+packs, installs into a scratch project outside the workspace, and compiles a TypeScript
+consumer). The `packaging` job's own `npm ci` and `npm run build` dominate that; the checks
+themselves are cheap enough that the `paths:` filter the remedy offered as a fallback is
+not needed.
+
+⚠️ **Measured LOCALLY, not on both CI arches.** The remedy asked for the minutes to be
+measured before committing to it. What is above is one x86 laptop. The job is single-arch,
+so the arch question the remedy raised does not arise for it — but the number that will
+appear in CI is the runner's, not this one.
+
+⚠️ **What this does NOT close.** Instance 2 and instance 3 are untouched: `e2e/release` and
+`e2e/attestation` still have no per-push channel, which is remedy step 3, and it is blocked
+on the sibling record as that step states. Remedy step 4 — retire `check:all` or make it the
+CI entry point — is also not done: `check:all` remains a thirteen-link chain a human runs,
+and it now agrees with CI on three more links than it did, which narrows the gap without
+closing it. **This record stays open on those.**
