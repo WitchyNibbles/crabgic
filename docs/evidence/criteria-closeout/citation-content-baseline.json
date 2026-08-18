@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "85046954d896248ec0cc1a476a60af51ae760328",
+  "generatedAtSha": "296583e031469e4c1d10e4bf9ddd901e358d2f09",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
-    "citations": 1359,
-    "fragments": 3988,
-    "anchored": 2629,
+    "citations": 1367,
+    "fragments": 4005,
+    "anchored": 2646,
     "seededStale": 749,
     "outsideSpan": 860,
     "repeatText": 531,
@@ -12248,6 +12248,35 @@
         "OK/collapsed@95"
       ]
     },
+    "phase-25.json#c16#docs/threat-model.md:408-439": {
+      "qa": "be90a173a31a",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@408"
+      ]
+    },
+    "phase-25.json#c16#packages/engine-core/src/compiler/permission-profile.test.ts:105-118": {
+      "qa": "a8382818ed19",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@106"
+      ]
+    },
+    "phase-25.json#c16#packages/engine-core/src/footguns/property.test.ts:144-152": {
+      "qa": "56e9d33586c1",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@144"
+      ]
+    },
+    "phase-25.json#c16#packages/plugin/src/agent-roster.test.ts:74-93": {
+      "qa": "e10d6c4f87bd",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@74",
+        "OK/collapsed@83"
+      ]
+    },
     "phase-25.json#c17#docs/interface-ledger.md:1772-1790": {
       "qa": "ef0e1be5c979",
       "ref": "OK",
@@ -12395,6 +12424,42 @@
         "OK/collapsed@214",
         "OK/collapsed@241",
         "OK/collapsed@198"
+      ]
+    },
+    "phase-25.json#c9#packages/cli/src/review/admissibility.test.ts:164-191": {
+      "qa": "a3f5b7967ba7",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@164",
+        "OK/collapsed@173"
+      ]
+    },
+    "phase-25.json#c9#packages/cli/src/review/admissibility.test.ts:45-98": {
+      "qa": "344feb9ffd4a",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@45",
+        "OK/collapsed@50"
+      ]
+    },
+    "phase-25.json#c9#packages/cli/src/review/admissibility.test.ts:99-145": {
+      "qa": "b4a7d174cfcd",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@99",
+        "OK/collapsed@111",
+        "OK/collapsed@121"
+      ]
+    },
+    "phase-25.json#c9#packages/scheduler/src/attempt-policy.test.ts:416-554": {
+      "qa": "df3dae567540",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@416",
+        "OK/collapsed@452",
+        "OK/collapsed@498",
+        "OK/collapsed@430",
+        "OK/collapsed@482"
       ]
     }
   }
