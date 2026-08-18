@@ -56,6 +56,7 @@ import { createFakePostCompletionGitEffects } from "./test-support/fake-post-com
 const NO_ATTEMPTS = {
   worktreePathFor: (): string | undefined => undefined,
   grantedCommandsFor: (): readonly string[] | undefined => undefined,
+  diffAgainstBase: (): Promise<string | undefined> => Promise.resolve(undefined),
 };
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
@@ -292,6 +293,7 @@ describe("fail-closed: an empty gate registry never publishes", () => {
         workUnitRegistry: workUnitRegistry(units),
         registry: composeGateRegistry({
           attempts: NO_ATTEMPTS,
+          projectId: "fixture-project",
           requirements: requirementsRegistry([]),
           workUnits: workUnitRegistry(units),
         }),

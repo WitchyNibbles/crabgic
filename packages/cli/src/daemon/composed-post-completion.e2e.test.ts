@@ -176,7 +176,27 @@ async function initProjectRepo(): Promise<void> {
       {
         name: "crabgic-e2e-fixture",
         private: true,
-        scripts: { test: `grep -rq 'export const unit' ${OWNED_PREFIX}` },
+        scripts: {
+          /**
+           * ⚠️ ONE COMMAND, TWO PIECES OF EVIDENCE — which is how a real project
+           * works and why the fixture models it that way. The EXIT STATUS is the
+           * TDD gate's red/green signal; the lcov report it writes is the
+           * coverage gate's input. A fixture that emitted no report would be
+           * refused by the coverage gate for being unmeasured, which is that
+           * gate working, not a fixture gap.
+           *
+           * The report is generated from the tracked files under the owned
+           * prefix, one `DA:` per line, so it covers whatever the scripted
+           * worker actually wrote — including T4's overwrite of `base.ts`. A
+           * hard-coded report would stop matching the diff the moment a case
+           * changed what it writes.
+           */
+          test:
+            `grep -rq 'export const unit' ${OWNED_PREFIX} && mkdir -p coverage && ` +
+            `for f in $(git ls-files ${OWNED_PREFIX}); do ` +
+            `echo "SF:$f"; awk '{print "DA:" NR ",1"}' "$f"; echo end_of_record; ` +
+            `done > coverage/lcov.info`,
+        },
       },
       null,
       2,
