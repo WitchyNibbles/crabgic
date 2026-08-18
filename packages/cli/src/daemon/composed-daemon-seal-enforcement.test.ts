@@ -88,6 +88,11 @@ import {
   FakeEngineAdapter,
 } from "@crabgic/testkit";
 import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
+import type { PostCompletionGitEffects } from "./post-completion-git-effects.js";
+import {
+  createTddFixtureWorktree,
+  markFixtureWorktreeGreen,
+} from "../test-support/tdd-fixture-worktree.js";
 import { createRealRunDispatcher, type RealRunDispatcherOptions } from "./run-dispatcher.js";
 
 const PROJECT_HASH = "sealenforce0001";
@@ -224,14 +229,40 @@ async function bootDaemon(): Promise<ComposedSupervisor> {
           run: () => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }),
         } as never,
         prepareRun: () => Promise.resolve("a".repeat(40)),
-        createAttemptWorktree: () => Promise.resolve(join(root, "worktree")),
+        /**
+         * A REAL directory now, carrying a real `package.json` — see
+         * `../test-support/tdd-fixture-worktree.ts`. The composed registry
+         * registers the TDD gate, which is satisfied only by a red baseline
+         * captured before dispatch plus a candidate that is now green, and the
+         * harness establishes both by actually running the granted command
+         * here. A path that is not a directory can no longer reach publication,
+         * and should not be able to.
+         */
+        createAttemptWorktree: () => createTddFixtureWorktree(join(root, "worktree")),
         // The GIT half of the post-completion pipeline, faked for the same
         // reason every other git seam here is: this suite has no repository.
         // The gate registry, the `final_verifying` firing and the
         // verdict → lifecycle mapping are NOT faked — they are production code
         // with no seam — so case C still reddens if the seal gate stops being
         // registered. Real git is covered by `./composed-post-completion.e2e.test.ts`.
-        postCompletionGitEffects: createFakePostCompletionGitEffects(),
+        postCompletionGitEffects: ((): PostCompletionGitEffects => {
+          const base = createFakePostCompletionGitEffects();
+          return {
+            ...base,
+            /**
+             * Flips the fixture worktree green as it collects — standing in for
+             * the edit a real worker would have made. The fake engine writes
+             * nothing, so without this there is no moment at which the tree
+             * changes and no honest way to model the red → green transition the
+             * TDD gate exists to check. The ORDERING is real: after the
+             * attempt, before verification.
+             */
+            collectCandidate: async (collectInput) => {
+              await markFixtureWorktreeGreen(join(root, "worktree"));
+              return base.collectCandidate(collectInput);
+            },
+          };
+        })(),
         /**
          * ALWAYS succeeds — so a `failed` attempt can only be the funnel.
          *

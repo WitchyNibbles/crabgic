@@ -453,16 +453,6 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
   /**
-   * THE gate registry — one instance per dispatcher, built unconditionally, with
-   * no option to substitute it. This is the production composition root phase
-   * 14's registry never had (defect `14-gate-registry-never-composed.md`:
-   * `createGateRegistry` had zero production call sites). Deleting this line
-   * makes `fireFinalCandidateVerification`'s `requireAtLeastOne` throw and every
-   * completed run fail closed, which is what the deletion probe measures.
-   */
-  const gateRegistry = composeGateRegistry(deps);
-
-  /**
    * The detached drives themselves, keyed by runId — the promise half of what
    * `inFlight` only ever tracked as a claim. `inFlight` answers "is this
    * change set spoken for"; this answers "is anything still WRITING", which is
@@ -510,6 +500,59 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const clearRetainedRun = (runId: string): void => {
     retainedByRun.delete(runId);
   };
+
+  /**
+   * What the TDD gate reads when it fires — see `./compose-gate-registry.ts`'s
+   * `AttemptSurface`.
+   *
+   * ⚠️ RESOLVED ON EVERY CALL, never cached. The registry is built once for the
+   * dispatcher's whole life; a value captured here would be a snapshot from
+   * before any run existed. Both members walk the SAME registries the dispatch
+   * path itself reads, so the gate cannot be told a different story about a
+   * run's authorization than the packet builder was.
+   */
+  const attempts = {
+    /**
+     * LAST match wins. Work-unit ids are stable across runs of the same change
+     * set, so the same id can appear under more than one runId after a retry;
+     * `retainedByRun` is insertion-ordered, so the most recent run's worktree —
+     * the one the firing is about — is the one that survives the scan.
+     */
+    worktreePathFor(workUnitId: string): string | undefined {
+      let found: string | undefined;
+      for (const perUnit of retainedByRun.values()) {
+        const retained = perUnit.get(workUnitId);
+        if (retained !== undefined) found = retained.worktreePath;
+      }
+      return found;
+    },
+    /**
+     * The APPROVED envelope's own grants, resolved through the change set the
+     * firing names. `undefined` for an unknown change set or an unavailable
+     * envelope — the gate turns that into a blocking verdict rather than
+     * running an ungranted command, which is the same refusal `resolveRun`
+     * makes before it will dispatch at all.
+     */
+    grantedCommandsFor(changeSetId: string): readonly string[] | undefined {
+      const changeSet = deps.changeSets.get(changeSetId);
+      if (changeSet === undefined) return undefined;
+      return deps.envelopes.get(changeSet.authorizationEnvelopeId)?.commands;
+    },
+  };
+
+  /**
+   * THE gate registry — one instance per dispatcher, built unconditionally, with
+   * no option to substitute it. This is the production composition root phase
+   * 14's registry never had (defect `14-gate-registry-never-composed.md`:
+   * `createGateRegistry` had zero production call sites). Deleting this line
+   * makes `fireFinalCandidateVerification`'s `requireAtLeastOne` throw and every
+   * completed run fail closed, which is what the deletion probe measures.
+   *
+   * Built AFTER `retainedByRun` because the attempt surface above closes over
+   * it. The registry outlives every run; the surface is how a startup-composed
+   * gate reaches run-scoped state without a second registry per run.
+   */
+  const gateRegistry = composeGateRegistry({ ...deps, attempts });
 
   /**
    * Evicts retained adapters for runs that can no longer resume. The settle

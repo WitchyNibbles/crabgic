@@ -133,9 +133,14 @@ export function selectAcceptanceCommand(grantedCommands: readonly string[]): str
  * and reports a non-zero status — but the caller distinguishes that case, since
  * a timed-out run is not evidence that a test failed.
  */
-type CommandRun =
-  | { readonly ran: true; readonly exitStatus: number }
-  | { readonly ran: false; readonly reason: string };
+/**
+ * One attempted execution of the granted command. `ran: false` means nothing
+ * was executed to completion — a spawn failure, a timeout, or no grant at all —
+ * and is never interchangeable with a non-zero exit status.
+ */
+export type CommandRun =
+  | { readonly ran: true; readonly command: string; readonly exitStatus: number }
+  | { readonly ran: false; readonly command?: string; readonly reason: string };
 
 async function runToExitStatus(
   command: string,
@@ -156,8 +161,8 @@ async function runToExitStatus(
       child.on("exit", (code) =>
         resolve(
           code === null
-            ? { ran: false, reason: `killed by signal after ${String(timeoutMs)}ms` }
-            : { ran: true, exitStatus: code },
+            ? { ran: false, command, reason: `killed by signal after ${String(timeoutMs)}ms` }
+            : { ran: true, command, exitStatus: code },
         ),
       );
       // ⚠️ A spawn failure is NOT a failing test. `cwd` may not exist, or the
@@ -167,11 +172,33 @@ async function runToExitStatus(
         resolve({ ran: false, reason: `could not start: ${err.message}` }),
       );
     });
-    if (timedOut) return { ran: false, reason: `timed out after ${String(timeoutMs)}ms` };
+    if (timedOut) return { ran: false, command, reason: `timed out after ${String(timeoutMs)}ms` };
     return run;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Runs the run's granted `acceptance` command in `worktreePath` and reports what
+ * happened — the ONE execution path both halves of the protocol use.
+ *
+ * ⚠️ SHARED ON PURPOSE. The red half (`captureTddBaseline`, below) and the green
+ * half (the TDD gate's candidate run, `packages/cli`'s composition root) must
+ * measure with the same code. Two runners would be two definitions of "the
+ * suite passed", free to drift — and this gate's whole claim is that the command
+ * which failed at base is the one that passes now.
+ */
+export async function runGrantedAcceptanceCommand(input: {
+  readonly grantedCommands: readonly string[];
+  readonly worktreePath: string;
+  readonly timeoutMs?: number;
+}): Promise<CommandRun> {
+  const command = selectAcceptanceCommand(input.grantedCommands);
+  if (command === undefined) {
+    return { ran: false, reason: "the envelope grants no acceptance-class command" };
+  }
+  return runToExitStatus(command, input.worktreePath, input.timeoutMs ?? TDD_BASELINE_TIMEOUT_MS);
 }
 
 /**
@@ -194,11 +221,11 @@ export async function captureTddBaseline(input: TddBaselineInput): Promise<TddBa
   const command = selectAcceptanceCommand(input.grantedCommands);
   if (command === undefined) return { kind: "noAcceptanceCommand" };
 
-  const run = await runToExitStatus(
-    command,
-    input.worktreePath,
-    input.timeoutMs ?? TDD_BASELINE_TIMEOUT_MS,
-  );
+  const run = await runGrantedAcceptanceCommand({
+    grantedCommands: input.grantedCommands,
+    worktreePath: input.worktreePath,
+    ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+  });
   if (!run.ran) return { kind: "didNotRun", command, reason: run.reason };
   const exitStatus = run.exitStatus;
   if (exitStatus === 0) return { kind: "notRed", command, exitStatus };

@@ -33,6 +33,18 @@ import {
   composeGateRegistry,
 } from "./compose-gate-registry.js";
 
+/**
+ * An `AttemptSurface` that can answer nothing — the correct default for tests
+ * about composition rather than about the TDD gate. Every member returning
+ * `undefined` makes that gate fail closed, which is what an unmeasurable
+ * candidate SHOULD produce; a stub that answered would be this test file
+ * asserting against a fiction.
+ */
+const NO_ATTEMPTS = {
+  worktreePathFor: (): string | undefined => undefined,
+  grantedCommandsFor: (): readonly string[] | undefined => undefined,
+};
+
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_CHANGE_SET_ID = "33333333-3333-4333-8333-333333333333";
 const UNIT_A = "44444444-4444-4444-8444-444444444444";
@@ -111,6 +123,7 @@ describe("the registered gate set is pinned", () => {
    */
   it("registers EXACTLY the security-fixture manifest plus both acceptance gates — nothing else", () => {
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -127,12 +140,22 @@ describe("the registered gate set is pinned", () => {
       ...REQUIRED_SECURITY_FIXTURE_IDS,
     ]);
     expect(new Set(registry.list().map((gate) => gate.tag))).toStrictEqual(
-      new Set(["security", "acceptance"]),
+      new Set(["security", "acceptance", "tdd"]),
     );
-    // The deferred tranches are ABSENT, not merely undocumented. UNCHANGED by
-    // Batch M — these are the residual it did not close.
+    /**
+     * `tdd` JOINED 2026-08-18 and is the only family this constant has grown
+     * since. It is registered `perWorkUnit`, so it is the one composed gate
+     * `fireAll` skips — asserted here so the marker is pinned at the
+     * composition root and not only where it is set.
+     */
+    expect(registry.list("tdd").map((gate) => gate.name)).toStrictEqual(["tdd-evidence"]);
+    expect(registry.list("tdd")[0]?.perWorkUnit).toBe(true);
+    expect(registry.list("acceptance").every((gate) => !gate.perWorkUnit)).toBe(true);
+    expect(registry.list("security").every((gate) => !gate.perWorkUnit)).toBe(true);
+    // The deferred tranches are ABSENT, not merely undocumented. `tdd` left
+    // this list when the harness gained the ability to run a granted test
+    // command; the rest still have no backend to measure with.
     expect(registry.list("performance")).toEqual([]);
-    expect(registry.list("tdd")).toEqual([]);
     expect(registry.list("coverage")).toEqual([]);
     expect(registry.list("flake")).toEqual([]);
     expect(registry.list("engine-conformance")).toEqual([]);
@@ -151,6 +174,7 @@ describe("the registered gate set is pinned", () => {
 describe("the security-fixture manifest is registered as a standing, blocking gate set", () => {
   it("registers EVERY manifest entry under the shared `security` tag, named by fixture id", () => {
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -165,6 +189,7 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
 
   it("lists in GATE_RISK_TAGS order, not registration order — the acceptance gates register FIRST and LAST but list together, last", () => {
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -182,13 +207,20 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
     // registers LAST of all and still lists inside the `acceptance` block,
     // beside a gate registered first — so this asserts the tag grouping, not an
     // insertion order that happens to agree with it.
+    //
+    // `tdd` is index 9 in `GATE_RISK_TAGS` — after all nine section keys — so
+    // it lists LAST of all, behind the `acceptance` block, even though it
+    // registers before `acceptance-evaluated`. That is a second, independent
+    // witness to the same claim.
     const names = registry.list().map((gate) => gate.name);
-    expect(names.slice(-2)).toStrictEqual(["criteria-seal", "acceptance-evaluated"]);
-    expect(names.slice(0, -2)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
+    expect(names.slice(-1)).toStrictEqual(["tdd-evidence"]);
+    expect(names.slice(-3, -1)).toStrictEqual(["criteria-seal", "acceptance-evaluated"]);
+    expect(names.slice(0, -3)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
   });
 
   it("FIRES every one of them through the composed registry, each emitting its own EvidenceRecord bound to the candidate", async () => {
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -235,6 +267,7 @@ describe("the composed requirements reader", () => {
     });
 
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: requirements([first, second]),
       // Two units, one requirement each — a per-unit reader would verify one.
       workUnits: units([
@@ -286,6 +319,7 @@ describe("the composed requirements reader", () => {
 
     const registryStore = requirements([approved]);
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       requirements: registryStore,
       workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
     });
@@ -312,6 +346,7 @@ describe("the composed requirements reader", () => {
       criteriaHashes: { [REQ_1]: "sha256:whatever" },
     });
     const registry = composeGateRegistry({
+      attempts: NO_ATTEMPTS,
       // `requirements.json` holds nothing; the unit declares an id anyway.
       requirements: requirements([]),
       workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),

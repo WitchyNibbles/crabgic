@@ -39,10 +39,11 @@ export type { TddGateInput } from "./tdd-gate.js";
 // The PRODUCER half — owner decision 2026-08-18, "harness runs it pre-dispatch".
 export {
   captureTddBaseline,
+  runGrantedAcceptanceCommand,
   selectAcceptanceCommand,
   TDD_BASELINE_TIMEOUT_MS,
 } from "./tdd-baseline.js";
-export type { TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";
+export type { CommandRun, TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";
 // The CONSUMER half — the shape a startup-composed registry can actually register.
 export {
   latestDispatchBoundarySeq,

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "5432bdfed0585d305d5ae026ffa7d7b2752b3e15",
+  "generatedAtSha": "d92725c2c05376080a3b0bad0be43a69dd028e04",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
-    "fragments": 4005,
-    "anchored": 2646,
-    "seededStale": 749,
-    "outsideSpan": 856,
-    "repeatText": 531,
+    "fragments": 4006,
+    "anchored": 2642,
+    "seededStale": 753,
+    "outsideSpan": 860,
+    "repeatText": 532,
     "crossFile": 20,
-    "skipped": 610
+    "skipped": 611
   },
   "citations": {
     "phase-00.json#c1#docs/engine-baseline.md:12": {
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@630!span",
-        "MOVED/collapsed@662!span"
+        "MOVED/collapsed@673!span",
+        "MOVED/collapsed@705!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -4581,7 +4581,7 @@
       "ref": "OK",
       "pins": [
         "ABSENT@-",
-        "MOVED/collapsed@152!span",
+        "MOVED/collapsed@157!span",
         "SKIP-short",
         "MOVED/collapsed@19!span"
       ]
@@ -5860,16 +5860,17 @@
         "SKIP-commentary"
       ]
     },
-    "phase-14.json#c6#packages/gates/src/registry.ts:53-63": {
-      "qa": "a336cbd70123",
+    "phase-14.json#c6#packages/gates/src/registry.ts:89-99": {
+      "qa": "95ec9076fdac",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@60",
-        "OK/collapsed@61",
-        "OK/collapsed@62",
-        "OK/collapsed@53",
-        "OK/collapsed@54",
-        "OK/collapsed@55"
+        "OK/collapsed@96",
+        "OK/collapsed@97",
+        "OK/collapsed@86,98~repeat",
+        "OK/collapsed@89",
+        "OK/collapsed@90",
+        "OK/collapsed@91",
+        "SKIP-short"
       ]
     },
     "phase-14.json#c7#docs/evidence/phase-14/closeout-c3-c8-core-suites.txt": {
@@ -11889,8 +11890,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@742!span",
-        "MOVED-AMBIG/collapsed@748,936!span~repeat",
+        "MOVED/collapsed@785!span",
+        "MOVED-AMBIG/collapsed@791,979!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]
@@ -11992,10 +11993,10 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "OK/collapsed@53",
-        "OK/collapsed@54",
-        "OK/collapsed@55",
-        "OK/collapsed@79,91~repeat"
+        "MOVED/collapsed@89!span",
+        "MOVED/collapsed@90!span",
+        "MOVED/collapsed@91!span",
+        "MOVED-AMBIG/collapsed@118,130,142!span~repeat"
       ]
     },
     "phase-24.json#c8#docs/evidence/phase-24/closeout-c8-type-fixture-bites.txt": {

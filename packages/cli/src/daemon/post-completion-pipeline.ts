@@ -284,6 +284,60 @@ export async function runPostCompletionPipeline(
       };
     }
     if (collected.status === "nothing-to-commit") continue;
+
+    /**
+     * ⚠️ PER-WORK-UNIT GATES FIRE HERE, AT `verifying`, AND NOWHERE ELSE.
+     *
+     * Some checks can only judge one attempt. The TDD gate is the first: the
+     * ordering boundary it reads is a `work_unit_transition`, so it needs a
+     * `workUnitId` — which a `final_verifying` context has none of, by design
+     * (`@crabgic/gates`' `GateContext`). Those gates declare `perWorkUnit` and
+     * `fireAll` skips them; this is their firing site, and between the two
+     * every registered gate fires exactly once per candidate.
+     *
+     * AGAINST THE UNIT'S OWN COLLECTED OBJECT ID, not the integrated tip. This
+     * firing judges what this unit produced; final-candidate verification
+     * judges the integration, re-measured, trusting nothing from here.
+     *
+     * `requireAtLeastOne` for the same reason final-candidate verification uses
+     * it: `allGatesPassed([])` is vacuously true, so a mis-wired registry would
+     * publish having verified nothing per-unit at all.
+     */
+    let perUnitResults: readonly GateFireResult[];
+    try {
+      perUnitResults = await deps.registry.firePerWorkUnit(
+        {
+          stage: "verifying",
+          changeSetId,
+          objectId: collected.objectId,
+          workUnitId: workUnit.id,
+          journal: deps.journal,
+        },
+        { requireAtLeastOne: true },
+      );
+    } catch (err) {
+      // FAIL CLOSED, mirroring the final-candidate catch below: a throw here
+      // means the run's per-unit verification basis is unusable, not that this
+      // candidate is bad. Mapped to a run state rather than allowed to
+      // propagate, so the run settles with a reason an operator can act on.
+      await transition("failed");
+      return {
+        status: "failed",
+        reason: `per-work-unit verification could not run for "${workUnit.id}": ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      };
+    }
+    if (!allGatesPassed(perUnitResults)) {
+      await transition("failed");
+      return {
+        status: "failed",
+        reason:
+          `work unit "${workUnit.id}" failed per-work-unit verification of ${collected.objectId}: ` +
+          describeGateFailures(perUnitResults),
+      };
+    }
+
     candidates.push({ workUnit, objectId: collected.objectId });
   }
   await deps.onStep?.("after-collect");
