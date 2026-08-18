@@ -1,0 +1,425 @@
+{
+  "schemaVersion": 1,
+  "phase": "25",
+  "roadmapFile": "roadmap/25-owner-pipeline-conformance.md",
+  "pass": {
+    "date": "2026-08-18",
+    "agent": "closeout integrator",
+    "headSha": "1d042e70c63e48acff8f4e3da385de31c9c9c54d"
+  },
+  "criteria": [
+    {
+      "index": 1,
+      "text": "`DOMAIN_LENSES` enumerates all eight lenses; `lensesApplicableTo` is property-tested; a skipped lens is recorded with its reason (unit + property tests).",
+      "textSha256": "75cbf624befc3e9621af158406f7ab5ee5b96b5405820a2321a541eb63f29558",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 552 — '✓  @crabgic/contracts  src/contracts/domain-lenses.property.test.ts (4 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/domain-lenses.property.test.ts:66-85",
+          "quotedAssertion": "The property the criterion names by that word: 'partitions the roster exactly: applicable + skipped = every lens, each once'. Generated over arbitrary StackEvidence, not over a fixture."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/domain-lenses.property.test.ts:118-135",
+          "quotedAssertion": "The anti-vacuity arm, without which the three properties above would hold of a function that skipped nothing: 'reaches both branches — some generated stack skips a lens, and some applies a conditional one'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/domain-lenses.test.ts:137-144",
+          "quotedAssertion": "The skip-with-a-reason half: 'gives every skipped lens a reason'."
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "text": "A `DomainLens` without an applicability predicate is unrepresentable — schema parse fails, with a positive control proving the fixture is otherwise valid.",
+      "textSha256": "7cf46f3108dd12783a4ce1d01baa473500073d0f92eff48e04623435ea8c79fc",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 538 — '✓  @crabgic/contracts  src/contracts/domain-lenses.test.ts (17 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/domain-lenses.test.ts:78-98",
+          "quotedAssertion": "The refusal — 'refuses a lens with no applicability predicate' — immediately followed by the positive control the criterion asks for by name, 'parses the same lens once the predicate is supplied', so the refusal is not a fixture that is invalid for some other reason."
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "text": "`ResearchRecord` makes `research-questions-answered` and `research-no-silent-assumptions` **derived**: an answer with no citation fails the derivation, and a claim to either criterion in `attestations` is discarded as server-derived (integration test through `review.submit`).",
+      "textSha256": "92f9e5390e0e88c8dc969a5676b90903ee37cb1891ee6b396234628af998486b",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 541 — '✓  @crabgic/contracts  src/contracts/research-record.test.ts (15 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/research-record.test.ts:111-140",
+          "quotedAssertion": "Derivation, then the arm the criterion names: 'derives research-questions-answered when every question has a cited answer' and 'does NOT derive it when an answer carries no citation'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/research-record.test.ts:142-176",
+          "quotedAssertion": "The second derived criterion and its negative arm: 'derives research-no-silent-assumptions when every uncited answer is declared' and 'does NOT derive it when an uncited answer is covered by no assumption'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/research-record.test.ts:172-179",
+          "quotedAssertion": "The boundary that keeps the derivation honest about its own scope: 'never derives research-prior-art-checked, which stays judged'."
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "text": "A dispatched worker's `TaskPacket` carries its acceptance criteria verbatim; omitting `spec` fails compilation at every public dispatch entry point (integration test + type-level fixture in CI).",
+      "textSha256": "74e5a068ccea8bbac0eb30880f308d1d9461abac1d469773a991ba4d2692c24a",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 976 — '✓  @crabgic/scheduler  src/spec-required.type.test.ts (4 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/spec-required.type.test.ts:86-145",
+          "quotedAssertion": "The type-level fixture the criterion names: 'rejects a DispatchAttemptOptions value whose packet has no spec' and 'rejects a dispatchAttempt CALL whose packet has no spec', with the positive control 'accepts the same options once the packet carries its spec' that stops both arms passing against an options type which rejects everything."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/task-packet-builder.test.ts:238-262",
+          "quotedAssertion": "The verbatim half: 'passes the CALLER's spec through, never a substitute'."
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "text": "`PIPELINE_STAGES` has nine members with unique criterion ids across the whole roster; `exitCriteriaFor` throws for an unknown stage (unit test).",
+      "textSha256": "1377cd048abcdfc295fe4d3dce3c63aea5718c3bb9d31c4d33888bc6045fff3e",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 537 — '✓  @crabgic/contracts  src/contracts/pipeline-stages.test.ts (15 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/pipeline-stages.test.ts:22-66",
+          "quotedAssertion": "The roster and the uniqueness clause: 'covers the pipeline end to end, in order' and 'keeps every criterion id unique across the whole pipeline'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/contracts/src/contracts/pipeline-stages.test.ts:149-160",
+          "quotedAssertion": "The throw the criterion asks for, stated as the reason rather than the mechanism: 'throws for a stage that does not exist, rather than returning nothing to satisfy'."
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "text": "*(R2)* The `design-gate` stage closes **only** on a recorded owner verdict — no reviewer verdict, attestation or derivation can close it (integration test, one arm per attempted route).",
+      "textSha256": "958f7fb3d59946de0c674a894e27746c452a97f2faf1888967628c04cd8b6026",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1081 — '✓  crabgic  src/review/review-submit-handler.test.ts (62 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/review-submit-handler.test.ts:977-1065",
+          "quotedAssertion": "One arm per attempted route, which is what the criterion asks for: 'does NOT close on a reviewer's approve verdict alone', 'does NOT close on an attestation claiming the criterion', the positive control 'closes on the owner's recorded approval of this exact design', and 'does NOT close when the owner approved a different revision'."
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "text": "The `Workflow` driver enforces stage order, per-stage lens coverage and the runaway guard: a skipped stage, an unrun applicable lens, and a run past the guard each fail (script-level tests, one per clause).",
+      "textSha256": "1945d63d87ae7e88dc67aac02a6019df81cc9efaf590344f35a0af84dfd89695",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 932 — '✓  @crabgic/plugin  src/pipeline-driver.test.ts (23 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/pipeline-driver.test.ts:47-77",
+          "quotedAssertion": "Stage order as a refusal rather than a convention: 'REFUSES a completion set that skipped a stage' and 'names the stage that was skipped, not merely that one was'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/pipeline-driver.test.ts:79-142",
+          "quotedAssertion": "Lens coverage: 'issues every lens the stage declares' and 'puts every domain lens in exactly one side at the audit stage'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/pipeline-driver.test.ts:158-170",
+          "quotedAssertion": "The guard, named as a guard: 'is the runaway guard, not the superseded ceiling'."
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "text": "*(R4)* A stage closes on a round where every applicable lens returns zero admissible novel findings, **with no severity test applied** — an outstanding advisory finding holds the stage open exactly as a blocking one does (integration test, plus a negative control where one advisory remains).",
+      "textSha256": "c237bde29c062a477f6aa32967fa6e364cf68149d7ba584f0d9c1f16e4f2e959",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1090 — '✓  crabgic  src/review/admissibility.test.ts (45 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:192-290",
+          "quotedAssertion": "Severity plays no part, stated as the negative control the criterion asks for: 'does NOT close on a round that raised a NEW advisory, even though it was answered', then 'closes once that advisory has been dispositioned and is no longer novel', with 'closes a round that produced no admissible novel finding' as the positive arm."
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "text": "*(R4)* Each of the four admissibility bounds is enforced and independently falsifiable: deleting any one bound reddens its own test and no other's (four tests; the deletion is measured and reverted, per this repo's falsification convention).",
+      "textSha256": "e347679b5aba22cc18f726c3f5652808f214da3e443ec03da65551579c573840",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "defectRef": "docs/evidence/criteria-closeout/defects/25-monotonicity-bound-is-enforced-nowhere.md"
+    },
+    {
+      "index": 10,
+      "text": "*(R4)* Admissibility and novelty are computed server-side from findings on record; a caller asserting either has **no effect** on closure (integration test with a lying caller).",
+      "textSha256": "3c1debd967d32648735c938532c9a7d20853bfdf936e74c93599d71bfc57273d",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1081 — '✓  crabgic  src/review/review-submit-handler.test.ts (62 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/review-submit-handler.test.ts:405-460",
+          "quotedAssertion": "The lying caller has no effect in either direction: 'reports the criterion unmet when the change set touches accepted debt, even though the caller claimed it' and 'reports it met on the derivation alone, when the caller never claimed it'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/review-submit-handler.test.ts:532-560",
+          "quotedAssertion": "A bare claim buys nothing and is named back: 'does not count a bare metCriteria string, and names it back to the caller'."
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "text": "*(R4)* Path normalization in the novelty key uses `normalizePlannedPath`, and the finding index and the overlap analyzer cannot disagree about what a path names (test asserting one implementation, not two agreeing).",
+      "textSha256": "18ba12894b82cc1830ec216be981e6dbeb615747398ceb8b9a5efa882717ac0c",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1090 — '✓  crabgic  src/review/admissibility.test.ts (45 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:60-98",
+          "quotedAssertion": "One normalization on both sides of the comparison: 'normalizes both sides before comparing', with 'refuses a finding naming a directory ABOVE a path the change set writes' as the arm that fails if the two sides ever disagree."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:139-145",
+          "quotedAssertion": "'treats path order as immaterial' — the key is over a set, so two spellings of one finding cannot present as two."
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "text": "*(R3)* `irreducible_product_decision` and `exhausted_repairs` take their pre-declared default without halting the run, each firing journaled with its options and anchor; `expanded_authority` is **unrepresentable** in the autonomy setting (type-level fixture + integration test per condition).",
+      "textSha256": "3409ccb01f51cb8a964f8df3f883b328654d840c3cde5dcd16a5aa1e7730a940",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1013 — '✓  @crabgic/supervisor  src/intake/autonomous-stop-conditions.test.ts (5 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/autonomous-stop-conditions.test.ts:57-104",
+          "quotedAssertion": "The default fires and is journaled: 'does NOT halt on irreducible_product_decision under an autonomy document' and 'journals the defaulted decision, so the owner can see it afterwards'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/supervisor/src/intake/autonomous-stop-conditions.test.ts:106-150",
+          "quotedAssertion": "The exclusion R3 kept, with its own negative controls: 'halts on expanded_authority even under the most permissive document', 'halts on a condition R3 never covered', and 'halts on everything when no autonomy document is configured'."
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "text": "The `audit` stage fires at a stage a production run **reaches**, evidenced by a journaled run that gets there — not by a harness-level fixture. If phase 14's gate-registry composition has not landed, this criterion stays unticked and says so, rather than being met by a handler nothing calls.",
+      "textSha256": "264c51d0928415ad7e22171caa2f021d9d2d06b932eec1459963d7a61dfb6c0a",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "defectRef": "docs/evidence/criteria-closeout/defects/25-audit-stage-has-never-been-reached-by-a-run.md"
+    },
+    {
+      "index": 14,
+      "text": "The `document` stage's guides are produced by an envelope-bounded worker in a worktree, and a guide claiming a non-existent command fails the derivation (integration test + negative control).",
+      "textSha256": "f95d6cfcd23c3ca1aabf161e6ff9d5f0e9d25c5fccb6391a6420f75bd23824e9",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 1170 — '✓  crabgic  src/review/document-work-unit.test.ts (9 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/document-work-unit.test.ts:31-70",
+          "quotedAssertion": "The envelope bound, as ownership rather than as intent: 'owns exactly the two guide paths, and nothing else', with 'REFUSES a plan whose two guides are the same file' and 'REFUSES a plan that documents no commands and no failure modes'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/document-work-unit.test.ts:73-98",
+          "quotedAssertion": "The derivation that the negative control turns on: 'names every command and failure mode the surface declares'."
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "text": "`buildManagerProtocolBlock()` no longer describes a sequence it does not control; the block is deterministic and its installer merge stays byte-preserving (golden test, as today).",
+      "textSha256": "f1989e3cced10fd7055dac1833aff71ecee7deffec6ae371f50504c029a0ae84",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95700588946, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32133838483",
+          "commit": "1d042e70",
+          "quotedAssertion": "job log line 925 — '✓  @crabgic/plugin  src/manager-protocol.test.ts (47 tests)'. run summary line 1389 — ' Test Files  709 passed (709)'; line 1390 — '      Tests  7746 passed | 1 skipped (7747)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/manager-protocol.test.ts:32-56",
+          "quotedAssertion": "The block is derived from the supervisor vocabulary rather than restating it: 'carries exactly the seven roadmap/11 stop conditions' and 'uses the supervisor's own kind strings as ids, so a rename cannot silently desync'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/manager-protocol.test.ts:69-105",
+          "quotedAssertion": "The gates, including the one R2 added: 'lists the human-approval gates as distinct from stop conditions' and 'includes the design gate — roadmap/25 WI 5, the fourth gate R2 granted'."
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "text": "*(R1)* The research agent holds `WebSearch`/`WebFetch`, `ResearchRecord` carries source provenance, and the compiled **worker** profile is unchanged by the grant (profile golden test + `docs/threat-model.md` amendment committed).",
+      "textSha256": "0bc2e9f8de0fa2bb61779ea8a1af7074c15d7e9fcfe89532f151f80ad0197447",
+      "classification": "UNMET",
+      "ticked": false,
+      "citations": [],
+      "defectRef": "docs/evidence/criteria-closeout/defects/25-worker-profile-unchanged-by-r1-is-unasserted.md"
+    },
+    {
+      "index": 17,
+      "text": "Ledger Gap 23 is written and every phase it names is reconciled in the same coordinated edit (10, 11, 13, 14, 25).",
+      "textSha256": "5533af4753e15ea615106bb68f9b95b61ae4684af133b1cfff2ecd462462da71",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "docs/interface-ledger.md:1772-1790",
+          "quotedAssertion": "Gap 23 is written. The heading ends 'stage roster is generalist and its sequencing is prose'. The origin note, wrapped across lines: 'written up here / 2026-08-16, after the phase-25 work items it governs had shipped and been driven against the production / gateway.'"
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "text": "*(R4)* Ledger Gap 19's amendment lands in the **same change** as work item 6, across every phase Gap 19 names (10, 11, 13, 14), and `docs/staged-review-pipeline.md` §2's measurement is annotated rather than rewritten. A rule amended without its mechanism, or a mechanism shipped against an unamended rule, fails this box.",
+      "textSha256": "e26d39e9a4574cde0a3d397a6ed482f258fad0504079571ec8a1b91d82c12b29",
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "artifact",
+          "ref": "roadmap/13-scheduler-packets-context.md:20-26",
+          "quotedAssertion": "The amendment, in the phase file rather than only in the ledger: 'AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19).' — 'The progress bound above is superseded.'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "roadmap/14-quality-security-gates.md:20-26",
+          "quotedAssertion": "The same coordinated edit in the second phase Gap 19 names: 'AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19).'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "roadmap/10-plugin-and-installer.md:110-118",
+          "quotedAssertion": "The third: 'AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19).'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "roadmap/11-intake-contract-approval.md:72-78",
+          "quotedAssertion": "The fourth, which also carries R3: 'AMENDED 2026-08-15 (owner ruling R4, ledger Gap 19; and R3).'"
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/staged-review-pipeline.md:61-68",
+          "quotedAssertion": "The measurement annotated rather than rewritten, which is the clause the criterion adds: 'ANNOTATED 2026-08-15 (owner ruling R4).' — 'This measurement stands and is not'."
+        }
+      ]
+    }
+  ]
+}
