@@ -95,6 +95,37 @@ export interface RunDriverDependencies {
    */
   readonly resolveCriteriaSeal: (ctx: WorkerDispatchContext) => Promise<AttemptCriteriaSeal>;
   readonly compileProfile: (ctx: WorkerDispatchContext) => Promise<CompiledWorkerProfile>;
+  /**
+   * Captures this attempt's pre-dispatch TDD baseline — owner decision
+   * 2026-08-18, "harness runs it pre-dispatch".
+   *
+   * ⚠️ CALLED STRICTLY BEFORE THE `dispatched` TRANSITION, AND THAT ORDERING IS
+   * THE WHOLE POINT. 14's `createTddGate` accepts a red baseline only if it was
+   * journaled at a seq strictly BELOW the candidate attempt's own dispatch
+   * boundary — without that cut, a baseline written after the fact (including
+   * the gate's own earlier failing verdict) is indistinguishable in the journal
+   * from a genuine one. This loop writes that boundary entry, so this loop is
+   * the only place the ordering can be guaranteed rather than hoped for.
+   *
+   * REQUIRED, deliberately, exactly like `resolveCriteriaSeal`: an optional
+   * seam is satisfied by every caller that forgot it, and the daemon is the
+   * caller that must not. It receives the very `TaskPacket` about to be
+   * dispatched, because the packet is what declares the gates this attempt owes
+   * and carries the frozen `baseObjectId` the baseline is red against —
+   * re-deriving either would be a second copy free to drift.
+   *
+   * WHY THE IMPLEMENTATION IS NOT HERE. Producing the baseline means calling
+   * `@crabgic/gates`' `captureRedBaseline`, and `@crabgic/gates` depends on THIS
+   * package rather than the reverse (roadmap/14 consumes from 13). So this
+   * package declares the obligation and `packages/cli` — which depends on both —
+   * discharges it. The same direction `firePacketGates` resolved for the firing
+   * half.
+   *
+   * A THROW REFUSES THE DISPATCH. The harness could not establish what it is
+   * about to judge against, so the attempt must not run: a worker dispatched
+   * with no evidence basis produces a candidate no gate can later read.
+   */
+  readonly captureBaseline: (ctx: WorkerDispatchContext, packet: TaskPacket) => Promise<void>;
   /** Role -> model alias. Defaults to `./router.ts`'s balanced-default map. */
   readonly resolveModel?: (role: string) => string;
   /** Epoch-SECONDS clock (matching `EngineLimitSignalEvent.resetsAt`, docs/engine-baseline.md §8) used for the global-pause window check. Defaults to the real wall clock. */
@@ -206,6 +237,11 @@ async function runOneAttempt(
     deps.buildPacket(ctx),
     deps.compileProfile(ctx),
   ]);
+  // BEFORE `runDispatch`, never inside it: `dispatchAttempt` journals the
+  // `dispatched` transition that IS the gate's ordering boundary, so anything
+  // captured after this line can never count as a baseline for this attempt.
+  // A throw here propagates and the attempt is never dispatched.
+  await deps.captureBaseline(ctx, packet);
   return runDispatch(adapter, packet, profile, ctx, deps);
 }
 

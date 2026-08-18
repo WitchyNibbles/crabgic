@@ -105,6 +105,7 @@ import {
   type DriveRunResult,
   type WorkerDispatchContext,
 } from "@crabgic/scheduler";
+import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { composeGateRegistry } from "./compose-gate-registry.js";
 import {
@@ -800,6 +801,51 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
               envelope,
             }).packet,
           );
+        },
+        /**
+         * The PRE-DISPATCH TDD BASELINE — owner decision 2026-08-18, "harness
+         * runs it pre-dispatch", and the production caller
+         * `captureRedBaseline` never had.
+         *
+         * ⚠️ MEASURED BEFORE THIS EXISTED: `captureRedBaseline` had zero
+         * production call sites and `@crabgic/scheduler` journaled no
+         * `evidence_pointer` entry of any kind, so no run could ever produce
+         * the red half of the red-before-green pair. `implement-tests-first`
+         * was therefore underivable for every change set
+         * (`../review/gate-criteria.ts` refuses to presume a missing verdict
+         * green), which is where owner ruling R7's staged run stopped.
+         *
+         * THE WORKTREE COMES FROM `retainedWorkers`, NOT A SECOND `git
+         * worktree add`. `createAdapter` above is the one place that creates
+         * and provisions an attempt's worktree, and the driver resolves it
+         * before calling this seam, so the entry is present. A missing entry
+         * is a REFUSAL rather than a fresh worktree: cutting a second one here
+         * would run the baseline against a tree the worker never sees.
+         *
+         * THE COMMAND COMES FROM THE APPROVED ENVELOPE, and
+         * `captureTddBaseline` filters it to the `acceptance` class itself. An
+         * envelope granting no test command authorizes no test run, so nothing
+         * is executed and no baseline is journaled — the gate then fails closed,
+         * which is the correct direction and the one the operating protocol's
+         * "expanded authority" refusal demands.
+         */
+        captureBaseline: async (ctx, packet): Promise<void> => {
+          const retained = retainedWorkers.get(ctx.workUnit.id);
+          if (retained === undefined) {
+            throw new Error(
+              `run dispatcher: no worktree retained for work unit "${ctx.workUnit.id}" — ` +
+                `refusing to capture a TDD baseline against a tree the worker will not see`,
+            );
+          }
+          await captureTddBaseline({
+            journal: deps.journal,
+            changeSetId: changeSet.id,
+            workUnitId: ctx.workUnit.id,
+            requirementIds: [...ctx.workUnit.requirementIds],
+            baseObjectId: packet.baseObjectId,
+            worktreePath: retained.worktreePath,
+            grantedCommands: envelope.commands,
+          });
         },
         createAdapter: async (ctx) => {
           const worktreePath =

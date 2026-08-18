@@ -36,6 +36,13 @@ export {
 // ---- TDD-evidence gate (work item 2) ----
 export { captureRedBaseline, createTddGate, hasRedBaseline } from "./tdd-gate.js";
 export type { TddGateInput } from "./tdd-gate.js";
+// The PRODUCER half — owner decision 2026-08-18, "harness runs it pre-dispatch".
+export {
+  captureTddBaseline,
+  selectAcceptanceCommand,
+  TDD_BASELINE_TIMEOUT_MS,
+} from "./tdd-baseline.js";
+export type { TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";
 
 // ---- Coverage adapters + ratchet store + gate (work item 3) ----
 export { parseLcovReport } from "./coverage/lcov-adapter.js";
