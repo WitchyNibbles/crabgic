@@ -391,3 +391,58 @@ person, which is `stage-loop.mjs`'s own documented behaviour.
 **This is where R7 stops without the owner**, and it stops here by design rather than by
 defect: `clarify` and `design-gate` are the two stages the ruling itself calls "the one
 human act inside an otherwise autonomous run".
+
+## 7. STAGES 7–9 ARE NOT BLOCKED BY THE GATE ANY MORE — they are blocked by this run's own history
+
+Measured 2026-08-18, after PR #160 wired roadmap/14 WI6 (`main` at `8605760`).
+
+`pipeline.plan(completedStages: [research, clarify, design, design-gate, plan, implement])`
+answers `stage: "implement"`, `unrecordedClaims: ["implement"]` — the server has no record
+of stage 6 closing, and its four obligations are:
+
+| obligation                         | decided by                        |
+| ---------------------------------- | --------------------------------- |
+| `implement-gates-pass`             | journaled gate verdicts (derived) |
+| `implement-tests-first`            | journaled `tdd` verdict (derived) |
+| `implement-task-done-criteria-met` | an attestation                    |
+| `no-open-debt-in-touched-paths`    | the finding store (derived)       |
+
+### The journal, counted rather than assumed
+
+Every `evidence_pointer` in this project's journal
+(`$XDG_STATE_HOME/crabgic/47ea4ed1d22b4abf/journal/segments/*.ndjson`), grouped by
+`(changeSetId, gateTag, gateVerdict)`:
+
+```
+7  (2b6e9d18-7c40-4a55-9e31-8f0d24b7a611, security,   passed)
+7  (8c02e5b1-9a74-4d38-b6f2-1e5307ca9b83, security,   passed)
+1  (2b6e9d18-7c40-4a55-9e31-8f0d24b7a611, acceptance, passed)
+1  (8c02e5b1-9a74-4d38-b6f2-1e5307ca9b83, acceptance, passed)
+```
+
+**Zero `tdd` verdicts. Zero verdicts of ANY tag for `7d3f8a21-…`, this run's own change
+set.** The two change sets that have verdicts are the two that were genuinely dispatched
+through the daemon.
+
+### What that means, stated precisely
+
+⚠️ Before PR #160 the derived criteria were underivable because **no gate could ever mint a
+`tdd` verdict** — `captureRedBaseline` and `createTddGate` both had zero production call
+sites. That is fixed: the gate is registered in the composed registry and fires per work
+unit in the collect loop.
+
+What is left is a different and smaller thing: **R7's implementation work was performed by
+hand, not dispatched through the daemon**, so no run ever fired a gate against its change
+set. A criterion derived from journaled evidence cannot be satisfied by a change set that
+generated none, and it must not be — that refusal is the whole point of deriving it rather
+than believing `metCriteria`.
+
+So stages 7–9 close only once this change set is DISPATCHED as a real run. That is an
+engine-spending act, and the standing authorization on record is free-CI-only, so it is an
+owner decision rather than a step this loop may take.
+
+### Not a defect, and deliberately not filed as one
+
+No record is filed against this. The pipeline is behaving exactly as designed: it is
+refusing to record a gate result for work no gate saw. Filing it would put a bookkeeping
+entry in the claim-space for a system that is telling the truth.
