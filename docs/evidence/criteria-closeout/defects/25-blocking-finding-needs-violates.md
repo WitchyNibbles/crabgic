@@ -49,5 +49,5 @@ lost with it.
 
 **Pinned by** `packages/plugin/src/stage-round-workflow.test.ts`, under
 `describe("every finding must name the criterion it violates")`:
-`it("requires \`violates\` on a finding")` and
-`it("tells the reviewer the server refuses a blocking finding without it")`.
+the assertion that `violates` is required on a finding, and the assertion that the reviewer
+is told the server refuses a blocking finding without it.
