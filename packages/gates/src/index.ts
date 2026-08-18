@@ -220,3 +220,9 @@ export {
   registerAcceptanceEvaluatedGate,
 } from "./acceptance-evaluated-gate.js";
 export type { AcceptanceEvaluatedGateOptions } from "./acceptance-evaluated-gate.js";
+
+/**
+ * The wire between a dispatched `TaskPacket`'s declared gates and the gates that actually fire.
+ * Exported because the composition root owns dispatch; this package only honours the declaration.
+ */
+export { firePacketGates, UnhonourableGateError } from "./packet-gates.js";
