@@ -87,6 +87,20 @@ contracts satisfied rather than skipped, measured on a quiet host (15)"`" — th
 
 This record surfaces the third copy as a fact found by the search — it does not decide the scope.
 
+> **RULED by the owner 2026-08-18, at the `clarify` stage: TWO SITES ONLY.** The collapse covers
+> the two declarations under `packages/supervisor/src/idle-budget/` and does not reach
+> `e2e/attestation`'s `SUPERVISOR_IDLE_CPU_FRACTION_BUDGET`.
+>
+> The reasoning the option carried, recorded because the rejected alternative was defensible:
+> merging the third would couple phase 23's release gate to phase 05's test constant, against two
+> roadmap clauses that deliberately keep them apart — `roadmap/15:38` places the supervisor idle
+> budget out of 15's scope, "never routed through `packages/perf`", and `roadmap/05:38` says the
+> same from the other side.
+>
+> **Disclosed cost, accepted with the ruling:** a third copy of the same 0.01 stays live. The
+> defect record's precondition says "apply it to BOTH sites" and there are three; that sentence is
+> now known to be under-counted, and this record is where that is written down.
+
 _Round 4 (`assumption-audit`, blocking, fixed): this paragraph described what the
 `e2e/attestation` module doc says without citing it, while the Assumptions section claimed
 blanket citation coverage. Same rule as round 3, one paragraph over: an answered claim needs
