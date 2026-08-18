@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeSettingsJson } from "./settings-merge.js";
+import { APPROVAL_DENY_RULES, mergeSettingsJson } from "./settings-merge.js";
 import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
 import { OUTPUT_STYLE_SETTINGS_VALUE } from "./output-style-writer.js";
 
@@ -11,6 +11,11 @@ const FULLY_INSTALLED = {
   sessionUrl: false,
   statusLine: { ...STATUSLINE_SETTINGS_ENTRY },
   outputStyle: OUTPUT_STYLE_SETTINGS_VALUE,
+  // Added 2026-08-18 with the approval deny rules. Spread from the exported
+  // constant rather than retyped: a literal copy here would be a second source
+  // of truth for a security list this file does not own, and it would keep
+  // passing while the real rules drifted.
+  permissions: { deny: [...APPROVAL_DENY_RULES] },
 };
 
 describe("mergeSettingsJson — add-only defaults", () => {
@@ -113,5 +118,102 @@ describe("mergeSettingsJson — monotonicity: never touches a key already presen
     const result = mergeSettingsJson(existing, PLUGIN);
     expect(result.settings.someUserKey).toEqual({ nested: true });
     expect(result.settings.anotherKey).toEqual([1, 2, 3]);
+  });
+});
+
+/**
+ * ⚠️ THE APPROVAL DENY RULES — owner ruling 2026-08-18, and the one place this
+ * merge deliberately does NOT follow its own add-only rule.
+ *
+ * MEASURED, and it is why the ruling exists. `packages/cli/src/approval/prompt.ts`'s
+ * `readConfirmation` reads one line from `io.input` and checks no TTY — its own
+ * doc says "'yes' followed by end-of-input confirms" — and this repository's
+ * `.claude/settings.json` declares no `permissions` block at all. So a manager
+ * session could satisfy any approval gate by piping `yes` into the CLI. The
+ * gates are documented as "a human act by design and which you can never
+ * satisfy yourself"; against this agent they were procedural.
+ *
+ * The fix uses the primitive that already exists: a permission DENY is enforced
+ * by the harness, not by the agent's cooperation, so the approval surface can
+ * only be reached the way the ruling wants — asked in Claude Code, answered by
+ * a person.
+ *
+ * ⚠️ HONEST BOUND, stated here rather than left for a reviewer to find. These
+ * rules match COMMAND PREFIXES. They do not stop `npx crabgic …`, a direct
+ * `node …/bin.js` invocation, or any other spelling of the same program. This
+ * is defence in depth that raises the cost and removes the accidental path; it
+ * is not a boundary, and `docs/deploy-posture.md` must not claim otherwise.
+ */
+describe("approval deny rules — tightening, and exempt from add-only", () => {
+  it("adds every approval deny rule to a settings file that has no permissions block", () => {
+    const { settings, changed } = mergeSettingsJson({}, PLUGIN);
+
+    expect(changed).toBe(true);
+    const deny = (settings["permissions"] as { deny?: string[] }).deny ?? [];
+    for (const rule of APPROVAL_DENY_RULES) expect(deny).toContain(rule);
+  });
+
+  /**
+   * ⚠️ THE EXCEPTION, and the whole point of this suite. Every other key here is
+   * add-only: present means untouched. A `permissions` block that already exists
+   * would therefore have kept the hole open forever. Monotonicity forbids
+   * LOOSENING a security key; adding a deny is the opposite operation.
+   */
+  it("UNIONS into an existing permissions.deny rather than leaving it alone", () => {
+    const { settings, changed } = mergeSettingsJson(
+      { permissions: { deny: ["Bash(rm:*)"], allow: ["Bash(ls:*)"] } },
+      PLUGIN,
+    );
+
+    expect(changed).toBe(true);
+    const permissions = settings["permissions"] as { deny: string[]; allow: string[] };
+    // The operator's own rule survives...
+    expect(permissions.deny).toContain("Bash(rm:*)");
+    // ...and so does everything they allowed: this merge only ever tightens.
+    expect(permissions.allow).toStrictEqual(["Bash(ls:*)"]);
+    for (const rule of APPROVAL_DENY_RULES) expect(permissions.deny).toContain(rule);
+  });
+
+  it("does not duplicate a rule the operator already wrote", () => {
+    const first = APPROVAL_DENY_RULES[0]!;
+    const { settings } = mergeSettingsJson({ permissions: { deny: [first] } }, PLUGIN);
+
+    const deny = (settings["permissions"] as { deny: string[] }).deny;
+    expect(deny.filter((rule) => rule === first)).toHaveLength(1);
+  });
+
+  /**
+   * Idempotence, asserted through `changed` rather than through the value: an
+   * installer that reported a change on every run would make its own drift
+   * detector cry wolf, and this file already pays that cost for the add-only
+   * keys.
+   */
+  it("reports NO change when every rule is already present", () => {
+    const seeded = mergeSettingsJson({}, PLUGIN).settings;
+
+    expect(mergeSettingsJson(seeded, PLUGIN).changed).toBe(false);
+  });
+
+  /**
+   * The rules must name the real command surface. Derived from `parse-command.ts`'s
+   * own verbs rather than retyped: `crabgic approve`, `design approve`,
+   * `learn approve`, `trust approve` and `trust review` are the five gates the
+   * operating protocol lists as human acts.
+   */
+  it("covers every approval verb the CLI actually parses", () => {
+    for (const verb of [
+      "approve",
+      "design approve",
+      "learn approve",
+      "trust approve",
+      "trust review",
+    ]) {
+      expect(APPROVAL_DENY_RULES.some((rule) => rule.includes(verb))).toBe(true);
+    }
+  });
+
+  /** The signing key is the other way to forge an approval: mint a token yourself. */
+  it("denies reading the approval signing key", () => {
+    expect(APPROVAL_DENY_RULES.some((rule) => rule.includes("approval-signing.key"))).toBe(true);
   });
 });

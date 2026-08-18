@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "83ab0f42e5f120ab86cd8b2ea7285090a98c12f5",
+  "generatedAtSha": "4414a168a70fdd35eabe065960e240f29a3e5eec",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2644,
-    "seededStale": 751,
+    "anchored": 2642,
+    "seededStale": 753,
     "outsideSpan": 860,
     "repeatText": 532,
-    "crossFile": 19,
+    "crossFile": 20,
     "skipped": 611
   },
   "citations": {
@@ -4181,11 +4181,11 @@
         "OK/collapsed@57,164~repeat"
       ]
     },
-    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:74": {
-      "qa": "91ec372877f7",
+    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:135": {
+      "qa": "4441f48fcb73",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@74"
+        "OK/collapsed@135"
       ]
     },
     "phase-10.json#c3#docs/evidence/phase-10/closeout-c3-mcp-entry-golden.txt": {
@@ -4554,17 +4554,17 @@
         "MOVED-AMBIG/collapsed@69,79!span~repeat"
       ]
     },
-    "phase-10.json#c8#packages/cli/src/installer/settings-merge.ts:31-38": {
-      "qa": "ab0a1e899109",
+    "phase-10.json#c8#packages/cli/src/installer/settings-merge.ts:93-100": {
+      "qa": "b3616a27b54a",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@32",
-        "OK/collapsed@33",
-        "OK/collapsed@34,38,48,62,76,79~repeat",
+        "OK/collapsed@93",
+        "OK/collapsed@94",
+        "OK/collapsed@90,95,99,109,123,137,140~repeat",
         "SKIP-short",
-        "OK/collapsed@36",
-        "OK/collapsed@37",
-        "OK/collapsed@34,38,48,62,76,79~repeat",
+        "OK/collapsed@97",
+        "OK/collapsed@98",
+        "OK/collapsed@90,95,99,109,123,137,140~repeat",
         "SKIP-short"
       ]
     },
@@ -10249,10 +10249,10 @@
       "frozen": true
     },
     "phase-22.json#c3#docs/evidence/phase-22/closeout-c3b-type-level-proof-probe.txt": {
-      "qa": "ae8d3c89fbb6",
+      "qa": "d1a79da203de",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@271!file",
+        "FILE-MISSING@-!file",
         "SKIP-commentary",
         "SKIP-log",
         "SKIP-log"
@@ -10592,14 +10592,14 @@
       ]
     },
     "phase-23.json#c1#docs/evidence/phase-23/closeout/c1-generator-fail-closed.txt": {
-      "qa": "6bb7348f97e6",
+      "qa": "58804b264ee9",
       "ref": "OK",
       "pins": [
         "SKIP-log",
         "SKIP-log",
         "SKIP-log",
         "SKIP-log",
-        "OK-file/collapsed@304"
+        "FILE-MISSING@-!file"
       ],
       "frozen": true
     },

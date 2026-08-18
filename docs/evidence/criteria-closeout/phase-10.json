@@ -141,8 +141,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/installer/settings-merge.ts:74",
-          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:74 — 'if (!(\"enabledPlugins\" in merged)) {' — the implementation the property fuzzes: presence-guarded, so the monotonicity rule is \"a key present as ANY value, of ANY type, is never touched\", which is why the wrong-typed arm above is a real branch and not a hypothetical (Ref and marker corrected 2026-08-11, from `settings-merge.ts:59`. Pure line drift: this change inserted the add-only `outputStyle` key — the installer-written output style, engine-baseline §23 — fifteen lines above it. The quoted line is unchanged in text and in meaning.)"
+          "ref": "packages/cli/src/installer/settings-merge.ts:135",
+          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:135 — 'if (!(\"enabledPlugins\" in merged)) {' — the implementation the property fuzzes: presence-guarded, so the monotonicity rule is \"a key present as ANY value, of ANY type, is never touched\", which is why the wrong-typed arm above is a real branch and not a hypothetical (Ref and marker corrected 2026-08-11, from `settings-merge.ts:59`. Pure line drift: this change inserted the add-only `outputStyle` key — the installer-written output style, engine-baseline §23 — fifteen lines above it. The quoted line is unchanged in text and in meaning.)"
         },
         {
           "kind": "artifact",
@@ -436,8 +436,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/cli/src/installer/settings-merge.ts:31-38",
-          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:31-38 — 'if (!(\"attribution\" in merged)) {' / 'merged.attribution = { commit: \"\", pr: \"\" };' / 'changed = true;' / '}' / 'if (!(\"sessionUrl\" in merged)) {' / 'merged.sessionUrl = false;' / 'changed = true;' / '}' — the production writer behind the on-disk assertion, add-only so a project that already set either key keeps its own value"
+          "ref": "packages/cli/src/installer/settings-merge.ts:93-100",
+          "quotedAssertion": "packages/cli/src/installer/settings-merge.ts:93-100 — 'if (!(\"attribution\" in merged)) {' / 'merged.attribution = { commit: \"\", pr: \"\" };' / 'changed = true;' / '}' / 'if (!(\"sessionUrl\" in merged)) {' / 'merged.sessionUrl = false;' / 'changed = true;' / '}' — the production writer behind the on-disk assertion, add-only so a project that already set either key keeps its own value"
         },
         {
           "kind": "artifact",
