@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "296583e031469e4c1d10e4bf9ddd901e358d2f09",
+  "generatedAtSha": "3479269389ca0f2902980d926d3055e3f0d6ce40",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4005,
     "anchored": 2646,
     "seededStale": 749,
-    "outsideSpan": 860,
+    "outsideSpan": 856,
     "repeatText": 531,
     "crossFile": 20,
     "skipped": 610
@@ -2196,26 +2196,26 @@
         "OK-file/collapsed@355"
       ]
     },
-    "phase-05.json#c6#packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts:18": {
-      "qa": "71ee0ebab5d4",
+    "phase-05.json#c6#packages/supervisor/src/idle-budget/heartbeat-scheduler.test.ts:9-40": {
+      "qa": "3b95121d5d17",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@39!span"
+        "OK/collapsed@37"
       ]
     },
-    "phase-05.json#c6#packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:19": {
-      "qa": "7b1510e17b8a",
+    "phase-05.json#c6#packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:12-46": {
+      "qa": "afae3791c7eb",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@20!span"
+        "OK/collapsed@44-45",
+        "OK/collapsed@24"
       ]
     },
-    "phase-05.json#c6#packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:23": {
-      "qa": "878d55b6d794",
+    "phase-05.json#c6#packages/supervisor/src/idle-budget/idle-budget.integration.test.ts:12-46#2": {
+      "qa": "1cc87d443af9",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@45-46!span",
-        "OK/collapsed@25!span"
+        "OK/collapsed@19"
       ]
     },
     "phase-05.json#c7#docs/evidence/phase-05/closeout-c7-no-change-set-operation.txt": {

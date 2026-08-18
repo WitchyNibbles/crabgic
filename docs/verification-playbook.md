@@ -1010,6 +1010,15 @@ directions:
   `packages/perf/src/stats/decision-engine.property.test.ts` — all timeouts, never assertion
   failures.
 
+  > **Dated correction 2026-08-18.** The sentence above stays verbatim; the state it describes does
+  > not. The two private `CPU_BUDGET_FRACTION = 0.01` copies were collapsed into one exported
+  > constant in `packages/supervisor/src/idle-budget/resource-probe.ts`. **The ruling this entry
+  > teaches is unaffected and is exactly why the collapse happened** — grepping for every copy of a
+  > THRESHOLD is what found the second site, and then a third (`e2e/attestation`'s
+  > `SUPERVISOR_IDLE_CPU_FRACTION_BUDGET`, deliberately left alone by owner ruling). A guard test now
+  > fails if a private copy reappears under `src/idle-budget/`, so this lesson is enforced there
+  > rather than only recorded.
+
 Neither list is authoritative on its own. Read both, and add a new sighting to **both**.
 
 ## ⚠️ AMENDED 2026-08-07 — §🧹 THE PROSE IS UNCHECKED IS NOW HALF-TRUE

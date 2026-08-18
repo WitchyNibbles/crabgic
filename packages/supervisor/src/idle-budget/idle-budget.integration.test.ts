@@ -9,10 +9,9 @@
  */
 import { describe, expect, it } from "vitest";
 import { createHeartbeatScheduler, HEARTBEAT_INTERVAL_MS } from "./heartbeat-scheduler.js";
-import { cpuFractionBetween, sampleResourceUsage } from "./resource-probe.js";
+import { CPU_BUDGET_FRACTION, cpuFractionBetween, sampleResourceUsage } from "./resource-probe.js";
 
 const RSS_BUDGET_BYTES = 100 * 1024 * 1024; // <100 MiB
-const CPU_BUDGET_FRACTION = 0.01; // <1% of one core
 const SUSTAINED_WINDOW_MS = 1_500;
 
 describe("idle resource budget — sustained no-op window, real 5s-paced heartbeats", () => {
