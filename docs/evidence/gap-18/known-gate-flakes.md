@@ -123,6 +123,21 @@ run failed BOTH `heartbeat-scheduler.test.ts:39` at **1.0388%** and
 second site has already been widened once (300 ms to 2000 ms, commit `e1eaa31`, recorded in no list
 until now) and breached anyway.
 
+> **Dated correction 2026-08-18 — the paragraph above stays verbatim and one clause of it stopped
+> being true.** "Each file carries its own private `CPU_BUDGET_FRACTION = 0.01`" was accurate when
+> written and is not now: both private copies were collapsed into one exported
+> `CPU_BUDGET_FRACTION` in `packages/supervisor/src/idle-budget/resource-probe.ts`, imported by both
+> sites, with `one-cpu-budget-declaration.test.ts` making the reappearance of a private copy a red
+> test. The line numbers moved with it — the two assertion sites are now
+> `heartbeat-scheduler.test.ts:37` and `idle-budget.integration.test.ts:45`.
+>
+> **What did NOT change, and is the reason this row stays open:** the VALUE, both measurement
+> windows, and every breach recorded above. The collapse is a refactor; recalibrating the bound is
+> a measurement, and it is still owed —
+> `docs/evidence/criteria-closeout/defects/05-idle-budget-arm-not-calibrated-for-its-channel.md`.
+> What the collapse does buy this row is that a remedy now has ONE number to change instead of two,
+> which is the half of "must cover both" that was mechanical.
+
 ⇒ **THIS ROW'S FREQUENCY DESCRIPTION IS NOW WRONG AND IS THE POINT.** "Seen red once", above, is
 left verbatim. On the developer host on 2026-08-07 the arm breached in **two of three consecutive
 plain full-suite runs** — red 1.6977%, green, red 3.2330% — none under artificial load, with the

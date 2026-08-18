@@ -6,9 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { createHeartbeatScheduler } from "./heartbeat-scheduler.js";
-import { cpuFractionBetween, sampleResourceUsage } from "./resource-probe.js";
-
-const CPU_BUDGET_FRACTION = 0.01; // <1% of one core
+import { CPU_BUDGET_FRACTION, cpuFractionBetween, sampleResourceUsage } from "./resource-probe.js";
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
