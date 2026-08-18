@@ -66,12 +66,14 @@ export class PacketEnvelopeViolationError extends Error {
 }
 
 /** Why a repair attempt was refused — see `RepairEvidenceRequiredError`. */
-export type RepairRefusalReason = "noNewEvidence" | "attemptsExhausted" | "evidenceNotDistinct";
+export type RepairRefusalReason =
+  "noNewEvidence" | "attemptsExhausted" | "evidenceNotDistinct" | "writeSetWidened";
 
 function repairRefusalMessage(
   workUnitId: string,
   reason: RepairRefusalReason,
   priorDispatchCount: number,
+  offendingPaths: readonly string[],
 ): string {
   switch (reason) {
     case "noNewEvidence":
@@ -92,6 +94,17 @@ function repairRefusalMessage(
         "— repeating an unsuccessful action requires GENUINELY new evidence, not a re-citation of " +
         "the same evidence"
       );
+    // Owner ruling R4's fourth admissibility bound. The offending paths are
+    // NAMED rather than counted: a refusal that says only "the write set grew"
+    // sends the reader to diff two lists by hand, and this one fires at the
+    // moment a repair is about to be dispatched.
+    case "writeSetWidened":
+      return (
+        `work unit ${workUnitId}: repair attempt refused — it would ENLARGE the planned write ` +
+        "set, which owner ruling R4 forbids: a repair that widens its own scope re-enters the " +
+        "plan stage in the open, and the obligations the review loop is bounded over grow with " +
+        `it. Paths no prior attempt owned: ${offendingPaths.join(", ")}`
+      );
   }
 }
 
@@ -111,8 +124,10 @@ export class RepairEvidenceRequiredError extends Error {
     readonly workUnitId: string,
     readonly reason: RepairRefusalReason,
     readonly priorDispatchCount: number,
+    /** Only ever non-empty for `writeSetWidened` — the paths no prior attempt owned. */
+    readonly offendingPaths: readonly string[] = [],
   ) {
-    super(repairRefusalMessage(workUnitId, reason, priorDispatchCount));
+    super(repairRefusalMessage(workUnitId, reason, priorDispatchCount, offendingPaths));
     this.name = "RepairEvidenceRequiredError";
   }
 }

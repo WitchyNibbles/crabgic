@@ -99,3 +99,52 @@ rather than an owner ruling — this record does not ask for one.
   overlap and successive-attempt monotonicity are different questions over the same data
   type, and merging them would give one module two reasons to change.
 - **Not claimed** that the criterion can be ticked with three of four bounds. It says four.
+
+## Remediated 2026-08-18 — remedy 1, in `assertRepairAllowed`
+
+The bound is built at the choke point this record named as the smaller option:
+`packages/scheduler/src/attempt-policy.ts`. A repair whose `ownedPaths` are not covered by the
+previous attempt's is refused with a new typed reason, `writeSetWidened`, and the offending
+paths are NAMED in the message rather than counted.
+
+**Three decisions worth recording, because each was a place the check could have been wrong:**
+
+1. **Containment, not set membership.** A prior set owning `packages/cli/src` must admit
+   `packages/cli/src/deep/nested.ts` — narrowing, not widening. A textual set difference would
+   refuse it and push repairs into keeping claims on files they no longer touch.
+2. **Segment-wise, never `startsWith`.** A raw prefix test admits
+   `packages/cli/src-extra/x.ts` as a child of `packages/cli/src`, which lets any path be
+   spelled into scope. That is the unbounded-search-space failure `admissibility.ts` exists to
+   close, arriving through the back door, and it has its own test.
+3. **The initial attempt now RECORDS its write set.** `assertRepairAllowed` used to return
+   early for `priorDispatches === 0`, so there was never a baseline for the first repair to be
+   bounded against. The early return became a flag: the evidence checks still skip, the record
+   still happens.
+
+Normalization is `@crabgic/git-engine`'s `normalizePlannedPath` — the same function the overlap
+analyzer and the novelty key use. Roadmap/25 asks for one implementation rather than two that
+agree, and this is a third caller of it rather than a fourth copy.
+
+**Scope bound, stated plainly.** `resumeAttempt`'s crash-repair path does not pass a write set,
+so the bound does not run there. That is not a hole: resume holds a session rather than a
+packet and rebuilds no write set, so it has nothing it could widen. `ownedPaths` is optional
+for exactly that reason, in the same shape `evidenceDetail` already had.
+
+### The four bounds, each deleted and measured — roadmap/25's own requirement
+
+Every deletion reverted. Suites run together (`packages/cli/src/review` and
+`packages/scheduler/src`, 512 tests) so that "and no other's" is measured rather than assumed.
+
+| bound deleted                              | tests reddened | any of the others? |
+| ------------------------------------------ | -------------- | ------------------ |
+| 1, scope — `admissibilityOf` always admits | 12             | none               |
+| 2, obligation — `unrunObligations` -> `[]` | 4              | none               |
+| 3, identity — `findingKey` uses the id     | 8              | none               |
+| 4, monotonicity — widening set discarded   | 4              | none               |
+
+⚠️ The load-bearing half of that table is the right-hand column. Bound 4's deletion reddened
+nothing in `packages/cli/src/review`, and the deletions of bounds 1-3 reddened nothing in
+`packages/scheduler/src` — which is what makes the four bounds independently falsifiable rather
+than four names for one check.
+
+Full suite after the change: **709 files, 7757 tests, zero failures.**

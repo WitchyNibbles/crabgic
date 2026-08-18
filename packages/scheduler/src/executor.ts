@@ -501,6 +501,11 @@ export async function dispatchAttempt(
     // Run-scoped: this run's own repair budget, so a retry as a new run
     // does not inherit a prior run's exhausted count (`attempt-policy.ts`).
     options.runId,
+    // Owner ruling R4's fourth admissibility bound: a repair may not enlarge
+    // the planned write set. This is the only entry point that HAS one —
+    // `resumeAttempt` holds a session rather than a packet and rebuilds no
+    // write set, so it has nothing to widen.
+    options.packet.ownedPaths,
   );
 
   const handle = options.adapter.spawn(options.packet, options.profile, options.adjudicate);
