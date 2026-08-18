@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { CONVENTIONAL_LCOV_PATH } from "@crabgic/gates";
 
 /**
  * A worktree fixture that models a genuine RED → GREEN transition, for suites
@@ -26,6 +27,12 @@ import { join } from "node:path";
  * which the tree changes and no honest way for a suite to model the transition
  * the gate exists to check. Flipping it from a git effect keeps the ordering
  * real: it happens after the attempt, before verification.
+ *
+ * ⚠️ IT ALSO EMITS A COVERAGE REPORT. The coverage gate refuses a candidate it
+ * could not measure, so a fixture whose command leaves no `coverage/lcov.info`
+ * cannot reach publication either. The report is written by the same command
+ * whose exit status the TDD gate reads, which is exactly how a real project
+ * works — one test invocation, two pieces of evidence.
  *
  * NOT A BYPASS. The command genuinely runs, in a genuine directory, through the
  * same child-process path production uses; only the reason it changes verdict
@@ -54,7 +61,15 @@ export async function createTddFixtureWorktree(worktreePath: string): Promise<st
       {
         name: "crabgic-tdd-fixture",
         private: true,
-        scripts: { test: `test -f ${FIXTURE_GREEN_MARKER}` },
+        scripts: {
+          /**
+           * Two things, because two gates read this one command's effects: the
+           * exit status is the TDD gate's red/green signal, and the lcov report
+           * it emits is the coverage gate's input. Written on every run, so it
+           * always describes the tree as it stands rather than a stale pass.
+           */
+          test: `test -f ${FIXTURE_GREEN_MARKER} && mkdir -p coverage && printf 'SF:src/fixture.ts\\nDA:1,1\\nBRDA:1,0,0,1\\nend_of_record\\n' > ${CONVENTIONAL_LCOV_PATH}`,
+        },
       },
       null,
       2,

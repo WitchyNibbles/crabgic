@@ -107,9 +107,13 @@ import {
   ACCEPTANCE_EVALUATED_GATE_NAME,
   createGateRegistry,
   registerAcceptanceEvaluatedGate,
+  registerCoverageGate,
   registerCriteriaSealGate,
   registerSecurityFixtureManifest,
   registerTddGate,
+  COVERAGE_GATE_NAME,
+  readCoverageSummary,
+  type CoverageMeasurement,
   REQUIRED_SECURITY_FIXTURE_IDS,
   runGrantedAcceptanceCommand,
   TDD_GATE_NAME,
@@ -153,10 +157,12 @@ export const COMPOSED_GATE_NAMES: readonly string[] = Object.freeze([
   ...REQUIRED_SECURITY_FIXTURE_IDS,
   "criteria-seal",
   ACCEPTANCE_EVALUATED_GATE_NAME,
+  // `coverage` is index 10 in `GATE_RISK_TAGS`, one past `tdd` — see below.
   // `tdd` is index 9 in `GATE_RISK_TAGS` — after all nine IntentContract
   // sections — so it lands last in `list()` order regardless of when it is
   // registered below.
   TDD_GATE_NAME,
+  COVERAGE_GATE_NAME,
 ]);
 
 /**
@@ -180,6 +186,21 @@ export interface AttemptSurface {
   worktreePathFor(workUnitId: string): string | undefined;
   /** The commands the named change set's APPROVED `AuthorizationEnvelope` grants. Never a default and never a superset. */
   grantedCommandsFor(changeSetId: string): readonly string[] | undefined;
+  /**
+   * The unified diff from the run's frozen base to `candidateObjectId` — owner
+   * ruling R6's input, and what turns the coverage gate from a question about
+   * the repository into a question about the change.
+   *
+   * ⚠️ NOT `git diff` IN THE WORKTREE. Per-work-unit gates fire AFTER
+   * `collectCandidate` has committed the attempt's edits, so the worktree is
+   * clean by then and a working-tree diff would report that nothing changed.
+   * The two object ids are what still hold the change at that point.
+   *
+   * `undefined` when the run's base is not known to this dispatcher — a
+   * re-drive after a restart. The coverage gate reports the changed-line check
+   * as not run rather than as passed.
+   */
+  diffAgainstBase(changeSetId: string, candidateObjectId: string): Promise<string | undefined>;
 }
 
 /** What the registry needs from the daemon's dependency bundle — a narrow slice, so this cannot reach for anything else. */
@@ -188,6 +209,14 @@ export type GateRegistryDependencies = Pick<
   "requirements" | "workUnits"
 > & {
   readonly attempts: AttemptSurface;
+  /**
+   * The stable project identity the coverage RATCHET floor is scoped to.
+   *
+   * A floor is a property of the project and must survive across change sets —
+   * that is what makes it a ratchet rather than a per-run threshold. The daemon's
+   * own project hash is the identity that lasts.
+   */
+  readonly projectId: string;
 };
 
 /**
@@ -301,6 +330,36 @@ async function runCandidateSuite(
   return { command: run.command, exitStatus: run.exitStatus };
 }
 
+/**
+ * This candidate's coverage measurement: the report its own test run left
+ * behind, plus the diff to score it against.
+ *
+ * ⚠️ IT READS A REPORT IT DID NOT PRODUCE, and the ordering that makes that safe
+ * is `GATE_RISK_TAGS`', not this file's. `firePerWorkUnit` flattens the tag map
+ * in vocabulary order, and `tdd` (index 9) precedes `coverage` (index 10) — so
+ * the TDD gate's candidate run has already executed the granted command in this
+ * worktree by the time this runs, and the report is on disk. Running the suite a
+ * second time here would double every attempt's cost to re-derive a file that is
+ * already there.
+ *
+ * If that ordering ever changes, this returns `undefined` and the gate REFUSES
+ * rather than passing — the failure is loud, not silent. `./compose-gate-registry.test.ts`
+ * pins the order directly so it cannot drift unnoticed.
+ */
+async function loadCandidateCoverage(
+  attempts: AttemptSurface,
+  context: GateContext,
+): Promise<CoverageMeasurement | undefined> {
+  const workUnitId = context.workUnitId;
+  if (workUnitId === undefined) return undefined;
+  const worktreePath = attempts.worktreePathFor(workUnitId);
+  if (worktreePath === undefined) return undefined;
+  const report = await readCoverageSummary(worktreePath);
+  if (report === undefined) return undefined;
+  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  return { summary: report.summary, ...(diffText !== undefined ? { diffText } : {}) };
+}
+
 export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistry {
   const registry = createGateRegistry();
   registerCriteriaSealGate(registry, {
@@ -340,6 +399,30 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
    * `workUnitId` by design. `./post-completion-pipeline.ts` fires it by tag,
    * once per collected candidate, at `verifying`.
    */
+  /**
+   * The coverage gate — owner ruling R6's check, given the input it never had.
+   *
+   * It clears the admission test on the SAME stated exception the TDD gate does:
+   * producing a `CoverageSummary` means running the project's own test command,
+   * which the harness may now do within the approved envelope. Before that this
+   * file recorded the gate as "better and still absent … registering it today
+   * would mean a handler with nothing to measure".
+   *
+   * ⚠️ AND IT IS STRICTER THAN WHAT IT REPLACES. An unmeasured candidate is
+   * refused, so a project whose granted command emits no lcov report cannot
+   * publish through crabgic. That is the point — the alternative is a gate any
+   * project can exempt itself from by not configuring a reporter.
+   */
+  registerCoverageGate(registry, {
+    /**
+     * The RATCHET's scope, and deliberately not the change-set id: a floor is a
+     * property of the project and has to survive across change sets, which is
+     * the whole point of a ratchet. `changeSetRequirementIds`' own registry is
+     * not stable enough either — this is the daemon's project identity.
+     */
+    projectId: () => deps.projectId,
+    loadCoverage: (context) => loadCandidateCoverage(deps.attempts, context),
+  });
   registerTddGate(registry, {
     requirementIds: (context): readonly string[] =>
       context.workUnitId === undefined

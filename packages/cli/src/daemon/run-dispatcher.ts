@@ -511,6 +511,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * path itself reads, so the gate cannot be told a different story about a
    * run's authorization than the packet builder was.
    */
+  /**
+   * Each in-flight run's frozen base and control clone, keyed by change set —
+   * what `attempts.diffAgainstBase` needs and the gate context does not carry.
+   * Written once per drive, beside `retainedByRun`, and read at gate-firing time
+   * for the same reason: the registry outlives every run.
+   */
+  const runBaseByChangeSetId = new Map<
+    string,
+    { readonly baseObjectId: string; readonly controlDir: string }
+  >();
+
   const attempts = {
     /**
      * LAST match wins. Work-unit ids are stable across runs of the same change
@@ -538,6 +549,45 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       if (changeSet === undefined) return undefined;
       return deps.envelopes.get(changeSet.authorizationEnvelopeId)?.commands;
     },
+    /**
+     * `git diff <frozen base> <candidate>` in the control clone — owner ruling
+     * R6's input for the coverage gate.
+     *
+     * ⚠️ TWO OBJECT IDS, NOT A WORKING-TREE DIFF. Per-work-unit gates fire after
+     * `collectCandidate` has committed the attempt's edits, so the worktree is
+     * clean by then and `git diff` there would report that nothing changed. The
+     * object ids still hold the change.
+     *
+     * `undefined` when this dispatcher does not know the run's base — a re-drive
+     * after a restart. The coverage gate then reports the changed-line check as
+     * NOT RUN rather than as passed, which is `coverage-gate.ts`'s own stated
+     * treatment of a missing diff.
+     */
+    async diffAgainstBase(
+      changeSetId: string,
+      candidateObjectId: string,
+    ): Promise<string | undefined> {
+      const base = runBaseByChangeSetId.get(changeSetId);
+      if (base === undefined) return undefined;
+      try {
+        const result = await plumbing.run(["diff", base.baseObjectId, candidateObjectId], {
+          cwd: base.controlDir,
+          allowFailure: true,
+        });
+        return result.exitCode === 0 ? result.stdout : undefined;
+      } catch {
+        /**
+         * ⚠️ SWALLOWED, and only here. A diff that cannot be produced — git
+         * missing, the control clone gone — is an ABSENT OPTIONAL INPUT, and
+         * `coverage-gate.ts` already rules on what that means: "NOT a pass — a
+         * check that was never asked", reported in those words on the verdict.
+         * Letting it throw instead makes the whole run unpublishable over a
+         * git hiccup, which is a harsher answer than the gate's own design
+         * gives. The aggregate floor and the ratchet still apply.
+         */
+        return undefined;
+      }
+    },
   };
 
   /**
@@ -552,7 +602,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * it. The registry outlives every run; the surface is how a startup-composed
    * gate reaches run-scoped state without a second registry per run.
    */
-  const gateRegistry = composeGateRegistry({ ...deps, attempts });
+  const gateRegistry = composeGateRegistry({ ...deps, attempts, projectId: projectHash });
 
   /**
    * Evicts retained adapters for runs that can no longer resume. The settle
@@ -721,6 +771,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         return frozen.freeze.baseObjectId;
       })
     )(runId, changeSet);
+
+    /**
+     * Recorded HERE, the one place this run's frozen base is known, so the
+     * coverage gate can ask for `git diff <base> <candidate>` when it fires —
+     * long after this scope has returned. Keyed by change set because that is
+     * what a `GateContext` carries; a run id would be unreachable from the gate.
+     */
+    runBaseByChangeSetId.set(changeSet.id, { baseObjectId, controlDir });
 
     // Compiled once: the profile is a pure function of the envelope, and
     // every worker in this run runs under the same authorization.

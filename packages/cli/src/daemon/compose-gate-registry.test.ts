@@ -43,6 +43,7 @@ import {
 const NO_ATTEMPTS = {
   worktreePathFor: (): string | undefined => undefined,
   grantedCommandsFor: (): readonly string[] | undefined => undefined,
+  diffAgainstBase: (): Promise<string | undefined> => Promise.resolve(undefined),
 };
 
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
@@ -124,6 +125,7 @@ describe("the registered gate set is pinned", () => {
   it("registers EXACTLY the security-fixture manifest plus both acceptance gates — nothing else", () => {
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -140,7 +142,7 @@ describe("the registered gate set is pinned", () => {
       ...REQUIRED_SECURITY_FIXTURE_IDS,
     ]);
     expect(new Set(registry.list().map((gate) => gate.tag))).toStrictEqual(
-      new Set(["security", "acceptance", "tdd"]),
+      new Set(["security", "acceptance", "tdd", "coverage"]),
     );
     /**
      * `tdd` JOINED 2026-08-18 and is the only family this constant has grown
@@ -150,13 +152,22 @@ describe("the registered gate set is pinned", () => {
      */
     expect(registry.list("tdd").map((gate) => gate.name)).toStrictEqual(["tdd-evidence"]);
     expect(registry.list("tdd")[0]?.perWorkUnit).toBe(true);
+    /**
+     * `coverage` JOINED 2026-08-18, on the same stated exception to the
+     * no-stack-command rule: producing a `CoverageSummary` means running the
+     * project's own test command, which the harness may now do within the
+     * approved envelope. Also `perWorkUnit` — it scores ONE unit's change.
+     */
+    expect(registry.list("coverage").map((gate) => gate.name)).toStrictEqual([
+      "changed-line-coverage",
+    ]);
+    expect(registry.list("coverage")[0]?.perWorkUnit).toBe(true);
     expect(registry.list("acceptance").every((gate) => !gate.perWorkUnit)).toBe(true);
     expect(registry.list("security").every((gate) => !gate.perWorkUnit)).toBe(true);
-    // The deferred tranches are ABSENT, not merely undocumented. `tdd` left
-    // this list when the harness gained the ability to run a granted test
-    // command; the rest still have no backend to measure with.
+    // The deferred tranches are ABSENT, not merely undocumented. `tdd` and
+    // `coverage` left this list when the harness gained the ability to run a
+    // granted test command; the rest still have no backend to measure with.
     expect(registry.list("performance")).toEqual([]);
-    expect(registry.list("coverage")).toEqual([]);
     expect(registry.list("flake")).toEqual([]);
     expect(registry.list("engine-conformance")).toEqual([]);
   });
@@ -175,6 +186,7 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
   it("registers EVERY manifest entry under the shared `security` tag, named by fixture id", () => {
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -190,6 +202,7 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
   it("lists in GATE_RISK_TAGS order, not registration order — the acceptance gates register FIRST and LAST but list together, last", () => {
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -213,14 +226,17 @@ describe("the security-fixture manifest is registered as a standing, blocking ga
     // registers before `acceptance-evaluated`. That is a second, independent
     // witness to the same claim.
     const names = registry.list().map((gate) => gate.name);
-    expect(names.slice(-1)).toStrictEqual(["tdd-evidence"]);
-    expect(names.slice(-3, -1)).toStrictEqual(["criteria-seal", "acceptance-evaluated"]);
-    expect(names.slice(0, -3)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
+    // `tdd` is index 9 and `coverage` index 10, both after all nine section
+    // keys — so they list LAST, in that order, behind the `acceptance` block.
+    expect(names.slice(-2)).toStrictEqual(["tdd-evidence", "changed-line-coverage"]);
+    expect(names.slice(-4, -2)).toStrictEqual(["criteria-seal", "acceptance-evaluated"]);
+    expect(names.slice(0, -4)).toStrictEqual([...REQUIRED_SECURITY_FIXTURE_IDS]);
   });
 
   it("FIRES every one of them through the composed registry, each emitting its own EvidenceRecord bound to the candidate", async () => {
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: requirements([]),
       workUnits: units([]),
     });
@@ -268,6 +284,7 @@ describe("the composed requirements reader", () => {
 
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: requirements([first, second]),
       // Two units, one requirement each — a per-unit reader would verify one.
       workUnits: units([
@@ -320,6 +337,7 @@ describe("the composed requirements reader", () => {
     const registryStore = requirements([approved]);
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       requirements: registryStore,
       workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
     });
@@ -347,6 +365,7 @@ describe("the composed requirements reader", () => {
     });
     const registry = composeGateRegistry({
       attempts: NO_ATTEMPTS,
+      projectId: "fixture-project",
       // `requirements.json` holds nothing; the unit declares an id anyway.
       requirements: requirements([]),
       workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
