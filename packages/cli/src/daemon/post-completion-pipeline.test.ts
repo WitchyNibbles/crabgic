@@ -46,6 +46,18 @@ import {
 } from "./post-completion-pipeline.js";
 import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
 
+/**
+ * An `AttemptSurface` that can answer nothing — the correct default for tests
+ * about composition rather than about the TDD gate. Every member returning
+ * `undefined` makes that gate fail closed, which is what an unmeasurable
+ * candidate SHOULD produce; a stub that answered would be this test file
+ * asserting against a fiction.
+ */
+const NO_ATTEMPTS = {
+  worktreePathFor: (): string | undefined => undefined,
+  grantedCommandsFor: (): readonly string[] | undefined => undefined,
+};
+
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
 const UNIT_A = "33333333-3333-4333-8333-333333333333";
@@ -139,9 +151,34 @@ async function run(options: {
   );
 }
 
+/**
+ * Registers one always-passing PER-WORK-UNIT gate, so the collect loop's own
+ * `requireAtLeastOne` firing is satisfied. Separate from the final-candidate
+ * gate because the two firings are disjoint by construction: `fireAll` skips
+ * `perWorkUnit` registrants and `firePerWorkUnit` fires only those, so a
+ * registry needs one of each to reach publication at all.
+ */
+function withPerUnitPass(registry: GateRegistry): GateRegistry {
+  registry.register(
+    "tdd",
+    "per-unit-always-passes",
+    () =>
+      Promise.resolve({
+        passed: true,
+        command: "test: per-unit always passes",
+        exitStatus: 0,
+        toolchainFingerprint: "test",
+        artifactDigests: [],
+        detail: "{}",
+      }),
+    { perWorkUnit: true },
+  );
+  return registry;
+}
+
 /** A registry with one always-passing gate — enough to satisfy `requireAtLeastOne` without asserting anything about the seal gate. */
 function passingRegistry(): GateRegistry {
-  const registry = createGateRegistry();
+  const registry = withPerUnitPass(createGateRegistry());
   registry.register("acceptance", "always-passes", () =>
     Promise.resolve({
       passed: true,
@@ -213,11 +250,22 @@ describe("fail-closed: an empty gate registry never publishes", () => {
     // Derived from the registry under test, never a hardcoded production gate
     // name: an assertion that hardcodes one passes for the wrong reason the day
     // the roster changes.
-    for (const name of passingRegistry()
+    //
+    // FILTERED to the gates that actually fire at `final_verifying`. A
+    // `perWorkUnit` registrant is skipped by `fireAll` and fired in the collect
+    // loop instead, so naming it in a rationale about FINAL-candidate coverage
+    // would be the record over-claiming what that firing checked — the exact
+    // failure this rationale exists to prevent, inverted.
+    const finalCandidateGates = passingRegistry()
       .list()
-      .map((gate) => gate.name)) {
+      .filter((gate) => !gate.perWorkUnit);
+    expect(finalCandidateGates.length, "the filter left nothing to assert").toBeGreaterThan(0);
+    for (const name of finalCandidateGates.map((gate) => gate.name)) {
       expect(String(coverage?.rationale)).toContain(name);
     }
+    // The per-unit gates are NOT named here, and that is the claim: this record
+    // is about the integrated candidate's own verification.
+    expect(String(coverage?.rationale)).not.toContain("per-unit-always-passes");
     // And it must say, in terms, that acceptance criteria were not among them.
     expect(String(coverage?.rationale)).toMatch(/acceptance criteria/i);
   });
@@ -243,6 +291,7 @@ describe("fail-closed: an empty gate registry never publishes", () => {
         requirements: requirementsRegistry([]),
         workUnitRegistry: workUnitRegistry(units),
         registry: composeGateRegistry({
+          attempts: NO_ATTEMPTS,
           requirements: requirementsRegistry([]),
           workUnits: workUnitRegistry(units),
         }),
@@ -260,7 +309,7 @@ describe("fail-closed: an empty gate registry never publishes", () => {
 describe("a failing gate refuses publication and names the gate", () => {
   it("settles failed, publishes nothing, and carries the handler's own detail", async () => {
     await seedRunningRun();
-    const registry = createGateRegistry();
+    const registry = withPerUnitPass(createGateRegistry());
     registry.register("acceptance", "always-fails", () =>
       Promise.resolve({
         passed: false,
@@ -617,7 +666,7 @@ describe("errors that are not lifecycle outcomes", () => {
 
   it("stringifies a non-Error thrown by a gate handler", async () => {
     await seedRunningRun();
-    const registry = createGateRegistry();
+    const registry = withPerUnitPass(createGateRegistry());
     registry.register("acceptance", "throws-a-string", () => {
       throw "gate threw a bare string";
     });

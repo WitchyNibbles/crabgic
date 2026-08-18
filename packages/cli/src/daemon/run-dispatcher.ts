@@ -105,6 +105,7 @@ import {
   type DriveRunResult,
   type WorkerDispatchContext,
 } from "@crabgic/scheduler";
+import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { composeGateRegistry } from "./compose-gate-registry.js";
 import {
@@ -452,16 +453,6 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const nowSeconds = options.nowSeconds ?? (() => Math.floor(Date.now() / 1000));
 
   /**
-   * THE gate registry — one instance per dispatcher, built unconditionally, with
-   * no option to substitute it. This is the production composition root phase
-   * 14's registry never had (defect `14-gate-registry-never-composed.md`:
-   * `createGateRegistry` had zero production call sites). Deleting this line
-   * makes `fireFinalCandidateVerification`'s `requireAtLeastOne` throw and every
-   * completed run fail closed, which is what the deletion probe measures.
-   */
-  const gateRegistry = composeGateRegistry(deps);
-
-  /**
    * The detached drives themselves, keyed by runId — the promise half of what
    * `inFlight` only ever tracked as a claim. `inFlight` answers "is this
    * change set spoken for"; this answers "is anything still WRITING", which is
@@ -509,6 +500,59 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const clearRetainedRun = (runId: string): void => {
     retainedByRun.delete(runId);
   };
+
+  /**
+   * What the TDD gate reads when it fires — see `./compose-gate-registry.ts`'s
+   * `AttemptSurface`.
+   *
+   * ⚠️ RESOLVED ON EVERY CALL, never cached. The registry is built once for the
+   * dispatcher's whole life; a value captured here would be a snapshot from
+   * before any run existed. Both members walk the SAME registries the dispatch
+   * path itself reads, so the gate cannot be told a different story about a
+   * run's authorization than the packet builder was.
+   */
+  const attempts = {
+    /**
+     * LAST match wins. Work-unit ids are stable across runs of the same change
+     * set, so the same id can appear under more than one runId after a retry;
+     * `retainedByRun` is insertion-ordered, so the most recent run's worktree —
+     * the one the firing is about — is the one that survives the scan.
+     */
+    worktreePathFor(workUnitId: string): string | undefined {
+      let found: string | undefined;
+      for (const perUnit of retainedByRun.values()) {
+        const retained = perUnit.get(workUnitId);
+        if (retained !== undefined) found = retained.worktreePath;
+      }
+      return found;
+    },
+    /**
+     * The APPROVED envelope's own grants, resolved through the change set the
+     * firing names. `undefined` for an unknown change set or an unavailable
+     * envelope — the gate turns that into a blocking verdict rather than
+     * running an ungranted command, which is the same refusal `resolveRun`
+     * makes before it will dispatch at all.
+     */
+    grantedCommandsFor(changeSetId: string): readonly string[] | undefined {
+      const changeSet = deps.changeSets.get(changeSetId);
+      if (changeSet === undefined) return undefined;
+      return deps.envelopes.get(changeSet.authorizationEnvelopeId)?.commands;
+    },
+  };
+
+  /**
+   * THE gate registry — one instance per dispatcher, built unconditionally, with
+   * no option to substitute it. This is the production composition root phase
+   * 14's registry never had (defect `14-gate-registry-never-composed.md`:
+   * `createGateRegistry` had zero production call sites). Deleting this line
+   * makes `fireFinalCandidateVerification`'s `requireAtLeastOne` throw and every
+   * completed run fail closed, which is what the deletion probe measures.
+   *
+   * Built AFTER `retainedByRun` because the attempt surface above closes over
+   * it. The registry outlives every run; the surface is how a startup-composed
+   * gate reaches run-scoped state without a second registry per run.
+   */
+  const gateRegistry = composeGateRegistry({ ...deps, attempts });
 
   /**
    * Evicts retained adapters for runs that can no longer resume. The settle
@@ -800,6 +844,51 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
               envelope,
             }).packet,
           );
+        },
+        /**
+         * The PRE-DISPATCH TDD BASELINE — owner decision 2026-08-18, "harness
+         * runs it pre-dispatch", and the production caller
+         * `captureRedBaseline` never had.
+         *
+         * ⚠️ MEASURED BEFORE THIS EXISTED: `captureRedBaseline` had zero
+         * production call sites and `@crabgic/scheduler` journaled no
+         * `evidence_pointer` entry of any kind, so no run could ever produce
+         * the red half of the red-before-green pair. `implement-tests-first`
+         * was therefore underivable for every change set
+         * (`../review/gate-criteria.ts` refuses to presume a missing verdict
+         * green), which is where owner ruling R7's staged run stopped.
+         *
+         * THE WORKTREE COMES FROM `retainedWorkers`, NOT A SECOND `git
+         * worktree add`. `createAdapter` above is the one place that creates
+         * and provisions an attempt's worktree, and the driver resolves it
+         * before calling this seam, so the entry is present. A missing entry
+         * is a REFUSAL rather than a fresh worktree: cutting a second one here
+         * would run the baseline against a tree the worker never sees.
+         *
+         * THE COMMAND COMES FROM THE APPROVED ENVELOPE, and
+         * `captureTddBaseline` filters it to the `acceptance` class itself. An
+         * envelope granting no test command authorizes no test run, so nothing
+         * is executed and no baseline is journaled — the gate then fails closed,
+         * which is the correct direction and the one the operating protocol's
+         * "expanded authority" refusal demands.
+         */
+        captureBaseline: async (ctx, packet): Promise<void> => {
+          const retained = retainedWorkers.get(ctx.workUnit.id);
+          if (retained === undefined) {
+            throw new Error(
+              `run dispatcher: no worktree retained for work unit "${ctx.workUnit.id}" — ` +
+                `refusing to capture a TDD baseline against a tree the worker will not see`,
+            );
+          }
+          await captureTddBaseline({
+            journal: deps.journal,
+            changeSetId: changeSet.id,
+            workUnitId: ctx.workUnit.id,
+            requirementIds: [...ctx.workUnit.requirementIds],
+            baseObjectId: packet.baseObjectId,
+            worktreePath: retained.worktreePath,
+            grantedCommands: envelope.commands,
+          });
         },
         createAdapter: async (ctx) => {
           const worktreePath =

@@ -24,6 +24,7 @@ import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import {
   buildFakeEngineScript,
   buildTaskPacket,
+  buildEvidenceRecord,
   buildWorkerResult,
   buildWorkUnit,
   FakeEngineAdapter,
@@ -94,6 +95,9 @@ function buildDeps(
     // No requirements of its own, so nothing to verify — the correct default
     // for driver tests that are not about roadmap/24's seal.
     resolveCriteriaSeal: () => Promise.resolve({ requirements: [], approvalSeal: undefined }),
+    // No-op by default: these tests are about the loop, not about the
+    // baseline. The three arms that ARE about it override this.
+    captureBaseline: () => Promise.resolve(),
     buildPacket: (ctx) => Promise.resolve(buildTaskPacket({ workUnitId: ctx.workUnit.id })),
     createAdapter: (ctx) => {
       observed.dispatchOrder.push(ctx.workUnit.id);
@@ -728,5 +732,136 @@ describe("driveRun — an all-terminal DAG reports how it actually ended", () =>
 
     expect([...result.statusById.values()]).toEqual(["succeeded", "succeeded"]);
     expect(result.stopped).toBe("completed");
+  });
+});
+
+/**
+ * ⚠️ THE PRE-DISPATCH BASELINE SEAM — owner decision 2026-08-18, "harness runs
+ * it pre-dispatch".
+ *
+ * `@crabgic/gates`' `createTddGate` accepts a red baseline only if it was
+ * journaled STRICTLY BEFORE the candidate attempt's own dispatch boundary — the
+ * `work_unit_transition: dispatched` entry this loop writes. That ordering is
+ * the whole anti-forgery property (`tdd-gate.ts`'s `beforeSeq` doc comment:
+ * without it, the gate's own earlier failing verdict is indistinguishable in
+ * the journal from a genuine baseline). So a seam that merely runs "somewhere
+ * around" the dispatch is worthless; it has to run before that entry exists,
+ * and these tests assert the SEQ relation rather than the call order.
+ *
+ * The seam is REQUIRED, not optional, for the same reason `resolveCriteriaSeal`
+ * is: an optional one is satisfied by every caller that forgot it, and the
+ * daemon is the caller that must not.
+ */
+describe("driveRun — pre-dispatch TDD baseline capture", () => {
+  async function seqOf(
+    predicate: (entry: { readonly type: string; readonly payload: unknown }) => boolean,
+  ): Promise<number | undefined> {
+    for await (const entry of journal.queryEntries({})) {
+      if (predicate(entry)) return entry.seq;
+    }
+    return undefined;
+  }
+
+  it("journals the baseline STRICTLY BEFORE the attempt's dispatched transition", async () => {
+    const observed: Observed = { dispatchOrder: [], cancelled: [] };
+    const liveWorkers: LiveWorkerMap = new Map();
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), observed, liveWorkers),
+      captureBaseline: async (ctx) => {
+        await journal.appendEntry({
+          type: "evidence_pointer",
+          changeSetId: CHANGE_SET_ID,
+          workUnitId: ctx.workUnit.id,
+          payload: buildEvidenceRecord({ changeSetId: CHANGE_SET_ID, workUnitId: ctx.workUnit.id }),
+        });
+      },
+    };
+
+    await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID })],
+      },
+      deps,
+    );
+
+    const baselineSeq = await seqOf((entry) => entry.type === "evidence_pointer");
+    const dispatchedSeq = await seqOf(
+      (entry) =>
+        entry.type === "work_unit_transition" &&
+        (entry.payload as { status?: string }).status === "dispatched",
+    );
+    expect(baselineSeq, "no baseline entry was journaled at all").toBeDefined();
+    expect(dispatchedSeq, "no dispatched transition was journaled at all").toBeDefined();
+    expect(baselineSeq!).toBeLessThan(dispatchedSeq!);
+  });
+
+  /**
+   * The seam receives the PACKET, not just the context. It has to: the packet
+   * is what declares the gates this attempt owes and carries the frozen
+   * `baseObjectId` the baseline is red against. A ctx-only seam would force the
+   * implementation to re-derive both, and re-derivation is where the two copies
+   * drift.
+   */
+  it("hands the seam the very packet that will be dispatched", async () => {
+    const observed: Observed = { dispatchOrder: [], cancelled: [] };
+    const liveWorkers: LiveWorkerMap = new Map();
+    const seen: { workUnitId?: string; packetWorkUnitId?: string } = {};
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), observed, liveWorkers),
+      captureBaseline: (ctx, packet) => {
+        seen.workUnitId = ctx.workUnit.id;
+        seen.packetWorkUnitId = packet.workUnitId;
+        return Promise.resolve();
+      },
+    };
+
+    await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID })],
+      },
+      deps,
+    );
+
+    expect(seen.workUnitId).toBe(A);
+    expect(seen.packetWorkUnitId).toBe(A);
+  });
+
+  /**
+   * ⚠️ Fail closed. A baseline capture that throws means the harness could not
+   * establish what it is about to judge against, so the attempt must NOT be
+   * dispatched — the alternative is a worker running with no evidence basis and
+   * a gate that later has nothing to read. Asserting "no dispatched transition
+   * exists" is what makes this stronger than asserting the run merely reported
+   * a failure.
+   */
+  it("does NOT dispatch the attempt when baseline capture throws", async () => {
+    const observed: Observed = { dispatchOrder: [], cancelled: [] };
+    const liveWorkers: LiveWorkerMap = new Map();
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), observed, liveWorkers),
+      captureBaseline: () => Promise.reject(new Error("baseline capture failed")),
+    };
+
+    await expect(
+      driveRun(
+        {
+          runId: RUN_ID,
+          changeSetId: CHANGE_SET_ID,
+          workUnits: [buildWorkUnit({ id: A, changeSetId: CHANGE_SET_ID })],
+        },
+        deps,
+      ),
+    ).rejects.toThrow(/baseline capture failed/);
+
+    const dispatchedSeq = await seqOf(
+      (entry) =>
+        entry.type === "work_unit_transition" &&
+        (entry.payload as { status?: string }).status === "dispatched",
+    );
+    expect(dispatchedSeq, "an attempt was dispatched despite the baseline failing").toBeUndefined();
   });
 });

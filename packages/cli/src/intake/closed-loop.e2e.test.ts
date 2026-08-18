@@ -83,6 +83,11 @@ import { runIntakeCommand } from "./run-intake-command.js";
 import { dispatchCommand } from "../commands/dispatch.js";
 import { createRealRunDispatcher } from "../daemon/run-dispatcher.js";
 import { createFakePostCompletionGitEffects } from "../daemon/test-support/fake-post-completion-git-effects.js";
+import type { PostCompletionGitEffects } from "../daemon/post-completion-git-effects.js";
+import {
+  createTddFixtureWorktree,
+  markFixtureWorktreeGreen,
+} from "../test-support/tdd-fixture-worktree.js";
 import type { StageCompletionRecord } from "@crabgic/contracts";
 /**
  * R8: the design gate guards `ready`. These end-to-end cases assert the intake
@@ -320,7 +325,11 @@ function buildDispatcher(
     loadPolicy: () => ({ status: "loaded", policy: loadedPolicy, digest: "sha256:e2e" }),
     // Git boundary seams: no clone, no freeze, no `worktree add`.
     prepareRun: () => Promise.resolve("a".repeat(40)),
-    createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+    // A REAL directory now — the composed registry registers the TDD
+    // gate, which is satisfied only by a red baseline captured before
+    // dispatch plus a candidate that is now green, and the harness
+    // establishes both by running the granted command here.
+    createAttemptWorktree: () => createTddFixtureWorktree(join(dir, "worktree")),
     createAdapter: () =>
       Promise.resolve(
         new FakeEngineAdapter(
@@ -338,7 +347,20 @@ function buildDispatcher(
     // The gate registry, the `final_verifying` firing and the
     // verdict -> lifecycle mapping have NO seam, so the loop below still closes
     // through a genuinely fired gate. Real git: `../daemon/composed-post-completion.e2e.test.ts`.
-    postCompletionGitEffects: createFakePostCompletionGitEffects(),
+    postCompletionGitEffects: ((): PostCompletionGitEffects => {
+      const base = createFakePostCompletionGitEffects();
+      return {
+        ...base,
+        // Flips the fixture worktree green as it collects, standing in for the
+        // edit a real worker would have made. The fake engine writes nothing,
+        // so without this there is no moment at which the tree changes and no
+        // honest way to model the red -> green transition the TDD gate checks.
+        collectCandidate: async (collectInput) => {
+          await markFixtureWorktreeGreen(join(dir, "worktree"));
+          return base.collectCandidate(collectInput);
+        },
+      };
+    })(),
   });
 
   return { dispatcher, runs };
@@ -393,7 +415,11 @@ describe("closed loop — entered through the shipped `run` command", () => {
       auth: { kind: "oauthToken", token: PLACEHOLDER_CREDENTIAL },
       loadPolicy: () => ({ status: "loaded", policy: standingPolicy, digest: "sha256:e2e" }),
       prepareRun: () => Promise.resolve("a".repeat(40)),
-      createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+      // A REAL directory now — the composed registry registers the TDD
+      // gate, which is satisfied only by a red baseline captured before
+      // dispatch plus a candidate that is now green, and the harness
+      // establishes both by running the granted command here.
+      createAttemptWorktree: () => createTddFixtureWorktree(join(dir, "worktree")),
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
@@ -405,7 +431,20 @@ describe("closed loop — entered through the shipped `run` command", () => {
         ),
       adjudicate: ALLOW_VERIFICATION_ONLY,
       // Same git-boundary seam as the sibling cases; the gate firing is real.
-      postCompletionGitEffects: createFakePostCompletionGitEffects(),
+      postCompletionGitEffects: ((): PostCompletionGitEffects => {
+        const base = createFakePostCompletionGitEffects();
+        return {
+          ...base,
+          // Flips the fixture worktree green as it collects, standing in for the
+          // edit a real worker would have made. The fake engine writes nothing,
+          // so without this there is no moment at which the tree changes and no
+          // honest way to model the red -> green transition the TDD gate checks.
+          collectCandidate: async (collectInput) => {
+            await markFixtureWorktreeGreen(join(dir, "worktree"));
+            return base.collectCandidate(collectInput);
+          },
+        };
+      })(),
     });
 
     // The ONLY fake: the UDS hop. `run.dispatch` lands on the same real
@@ -527,7 +566,11 @@ describe("closed loop — request -> contract -> approval -> a driven run", () =
       auth: { kind: "oauthToken", token: PLACEHOLDER_CREDENTIAL },
       loadPolicy: () => ({ status: "absent" }),
       prepareRun: () => Promise.resolve("a".repeat(40)),
-      createAttemptWorktree: () => Promise.resolve(join(dir, "worktree")),
+      // A REAL directory now — the composed registry registers the TDD
+      // gate, which is satisfied only by a red baseline captured before
+      // dispatch plus a candidate that is now green, and the harness
+      // establishes both by running the granted command here.
+      createAttemptWorktree: () => createTddFixtureWorktree(join(dir, "worktree")),
     });
 
     const outcome = await dispatcher.dispatch(CHANGE_SET_ID);

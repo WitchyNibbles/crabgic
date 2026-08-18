@@ -36,6 +36,21 @@ export {
 // ---- TDD-evidence gate (work item 2) ----
 export { captureRedBaseline, createTddGate, hasRedBaseline } from "./tdd-gate.js";
 export type { TddGateInput } from "./tdd-gate.js";
+// The PRODUCER half — owner decision 2026-08-18, "harness runs it pre-dispatch".
+export {
+  captureTddBaseline,
+  runGrantedAcceptanceCommand,
+  selectAcceptanceCommand,
+  TDD_BASELINE_TIMEOUT_MS,
+} from "./tdd-baseline.js";
+export type { CommandRun, TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";
+// The CONSUMER half — the shape a startup-composed registry can actually register.
+export {
+  latestDispatchBoundarySeq,
+  registerTddGate,
+  TDD_GATE_NAME,
+} from "./tdd-gate-registration.js";
+export type { CandidateTestRun, TddGateRegistration } from "./tdd-gate-registration.js";
 
 // ---- Coverage adapters + ratchet store + gate (work item 3) ----
 export { parseLcovReport } from "./coverage/lcov-adapter.js";

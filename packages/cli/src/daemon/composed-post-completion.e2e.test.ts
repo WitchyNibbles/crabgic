@@ -37,6 +37,7 @@
  *     ever holds, so a cached per-unit object id cannot satisfy it.
  */
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -144,8 +145,46 @@ async function initProjectRepo(): Promise<void> {
   await mkdir(join(projectDir, OWNED_PREFIX), { recursive: true });
   await writeFile(join(projectDir, "README.md"), "# fixture project\n", "utf8");
   await writeFile(join(projectDir, OWNED_PREFIX, "base.ts"), "export const base = 1;\n", "utf8");
+  /**
+   * ⚠️ A REAL DECLARED TEST COMMAND, because the composed registry now registers
+   * the TDD gate and the harness satisfies it by actually running the command
+   * the envelope grants (`npm run test`, the one `GRANTABLE_COMMAND_PREFIXES`
+   * classifies `acceptance`).
+   *
+   * The script asks whether the owned directory contains the marker the
+   * scripted worker writes. At base it does not, so the pre-dispatch run exits
+   * non-zero and the red baseline is genuine; the worker then writes it, so the
+   * same command exits clean at the candidate. Nothing is stubbed — the red and the
+   * green come from the tree actually changing, which is the transition the
+   * gate exists to check.
+   *
+   * ⚠️ A CONTENT PROBE, and the two things it had to survive, both measured.
+   * A count of the owned directory failed T4, whose colliding units OVERWRITE
+   * the committed `base.ts` instead of adding to it, so the count never moved.
+   * `git status --porcelain` failed every case: the per-work-unit gate fires
+   * AFTER `collectCandidate` has committed the worker's edit, so the tree is
+   * clean again by the time it runs. Only the CONTENT the worker wrote survives
+   * both a commit and an overwrite.
+   *
+   * T5's worker deliberately writes NOTHING, so the tree stays clean, the
+   * candidate stays red, and it cannot publish. That is the case reading
+   * correctly, not a fixture gap.
+   */
+  await writeFile(
+    join(projectDir, "package.json"),
+    JSON.stringify(
+      {
+        name: "crabgic-e2e-fixture",
+        private: true,
+        scripts: { test: `grep -rq 'export const unit' ${OWNED_PREFIX}` },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
   runFixtureGit(projectDir, ["init", "-q", "-b", "main"]);
-  runFixtureGit(projectDir, ["add", "--", "README.md", OWNED_PREFIX]);
+  runFixtureGit(projectDir, ["add", "--", "README.md", "package.json", OWNED_PREFIX]);
   runFixtureGit(projectDir, ["commit", "-q", "-m", "initial commit", "--no-verify"], {
     env: GIT_FIXTURE_IDENTITY_ENV,
   });
@@ -284,13 +323,23 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
         // The ONLY seam: a fake engine that makes REAL edits in the REAL
         // worktree it is handed, then reports success. Worker output is
         // uncommitted — exactly as production leaves it.
-        createAdapter: async (ctx, worktreePath) => {
+        createAdapter: (ctx, worktreePath) => {
           const relative =
             options.collide === true ? SHARED_FILE_PATH : unitFilePath(ctx.workUnit.id);
           const target = join(worktreePath, relative);
-          await mkdir(dirname(target), { recursive: true });
-          await writeFile(target, `export const unit = "${ctx.workUnit.title}";\n`, "utf8");
-          return new FakeEngineAdapter(
+          /**
+           * ⚠️ WRITTEN AT SPAWN, NOT AT ADAPTER CONSTRUCTION, and the difference
+           * is load-bearing. The driver builds the adapter and captures this
+           * attempt's pre-dispatch TDD baseline in that order, so an edit made
+           * while the adapter is being CONSTRUCTED lands before the baseline
+           * runs — the fixture's declared test command would already be green
+           * at base, no red baseline would be captured, and the TDD gate would
+           * refuse every case in this file. Measured: it did.
+           *
+           * Spawning is when a worker starts doing work, so that is when the
+           * edit belongs. Synchronous because `spawn` is.
+           */
+          const adapter = new FakeEngineAdapter(
             buildFakeEngineScript({
               /**
                * R5: the worker RUNS its granted verification command and the
@@ -317,6 +366,13 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
               structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
             }),
           );
+          const spawn = adapter.spawn.bind(adapter);
+          adapter.spawn = (spawnPacket, profile, adjudicateCall) => {
+            mkdirSync(dirname(target), { recursive: true });
+            writeFileSync(target, `export const unit = "${ctx.workUnit.title}"\n`, "utf8");
+            return spawn(spawnPacket, profile, adjudicateCall);
+          };
+          return Promise.resolve(adapter);
         },
         ...(options.onPipelineStep !== undefined
           ? { onPostCompletionStep: options.onPipelineStep }
