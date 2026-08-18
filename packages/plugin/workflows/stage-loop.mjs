@@ -78,8 +78,26 @@ const PLAN_SCHEMA = {
         properties: {
           lens: { type: "string" },
           obligations: { type: "array", items: { type: "string" } },
+          /**
+           * ⚠️ DECLARED, AND REQUIRED, because a structured-output schema DROPS
+           * every property it does not name. `reviewer` was missing here, so the
+           * server's per-lens routing was silently stripped out of the plan
+           * before `crabgic-stage-round` ever saw it, and that workflow refused
+           * every lens with "carries no reviewer — pipeline.plan is older than
+           * this workflow". The server was not old; this schema was lossy.
+           *
+           * It stayed hidden while the round was dispatched by an agent that
+           * could not run the sub-workflow and re-fetched the plan itself. The
+           * moment the loop actually passed ITS OWN plan through, the truncation
+           * surfaced. Defect
+           * `docs/evidence/criteria-closeout/defects/25-plan-schema-strips-the-lens-reviewer.md`.
+           *
+           * This is the loop's own stated hazard — "editing it makes this loop
+           * lie" — arriving as an omission rather than an edit.
+           */
+          reviewer: { type: "string" },
         },
-        required: ["lens", "obligations"],
+        required: ["lens", "obligations", "reviewer"],
       },
     },
     skippedLenses: {
