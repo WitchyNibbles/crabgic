@@ -5,7 +5,7 @@
   "pass": {
     "date": "2026-08-18",
     "agent": "closeout integrator",
-    "headSha": "1d042e70c63e48acff8f4e3da385de31c9c9c54d"
+    "headSha": "296583e031469e4c1d10e4bf9ddd901e358d2f09"
   },
   "criteria": [
     {
@@ -220,10 +220,37 @@
       "index": 9,
       "text": "*(R4)* Each of the four admissibility bounds is enforced and independently falsifiable: deleting any one bound reddens its own test and no other's (four tests; the deletion is measured and reverted, per this repo's falsification convention).",
       "textSha256": "e347679b5aba22cc18f726c3f5652808f214da3e443ec03da65551579c573840",
-      "classification": "UNMET",
-      "ticked": false,
-      "citations": [],
-      "defectRef": "docs/evidence/criteria-closeout/defects/25-monotonicity-bound-is-enforced-nowhere.md"
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95710846082, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32137086392",
+          "commit": "296583e0",
+          "quotedAssertion": "job log line 961 — '✓  @crabgic/scheduler  src/attempt-policy.test.ts (33 tests)'. run summary line 1377 — ' Test Files  709 passed (709)'; line 1378 — '      Tests  7756 passed | 1 skipped (7757)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/scheduler/src/attempt-policy.test.ts:416-554",
+          "quotedAssertion": "Bound 4, built 2026-08-18 because it was enforced nowhere: 'write-set monotonicity (owner ruling R4, bound 4)'. The refusals — 'REFUSES a repair that adds a path the prior attempt did not own' and 'REFUSES a sibling directory whose name merely shares a prefix' — with the positive controls that stop them passing against a check which refuses everything: 'allows a repair whose write set is IDENTICAL to the prior attempt' and 'accepts a file UNDER a directory the prior attempt owned'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:45-98",
+          "quotedAssertion": "Bound 1, named as a bound: 'bound 1 — scope', with 'refuses a finding about code this change set does not touch'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:164-191",
+          "quotedAssertion": "Bound 2: 'bound 2 — obligation', with 'treats an EMPTY obligation list as unmet, not as satisfied'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/cli/src/review/admissibility.test.ts:99-145",
+          "quotedAssertion": "Bound 3: 'bound 3 — identity', with 'collapses a reworded claim that says the same thing' and 'separates two genuinely different claims'."
+        }
+      ]
     },
     {
       "index": 10,
@@ -368,10 +395,37 @@
       "index": 16,
       "text": "*(R1)* The research agent holds `WebSearch`/`WebFetch`, `ResearchRecord` carries source provenance, and the compiled **worker** profile is unchanged by the grant (profile golden test + `docs/threat-model.md` amendment committed).",
       "textSha256": "0bc2e9f8de0fa2bb61779ea8a1af7074c15d7e9fcfe89532f151f80ad0197447",
-      "classification": "UNMET",
-      "ticked": false,
-      "citations": [],
-      "defectRef": "docs/evidence/criteria-closeout/defects/25-worker-profile-unchanged-by-r1-is-unasserted.md"
+      "classification": "EVIDENCE-EXISTS",
+      "ticked": true,
+      "citations": [
+        {
+          "kind": "ci-run",
+          "ref": "CI / unit-test+coverage (ubuntu-latest), job 95710846082, step \"test with 80% line+branch coverage gate\"",
+          "url": "https://github.com/WitchyNibbles/crabgic/actions/runs/32137086392",
+          "commit": "296583e0",
+          "quotedAssertion": "job log line 741 — '✓  @crabgic/engine-core  src/footguns/property.test.ts (8 tests)'. run summary line 1377 — ' Test Files  709 passed (709)'; line 1378 — '      Tests  7756 passed | 1 skipped (7757)'. The named suite really executed in this job at this record's own base commit."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/plugin/src/agent-roster.test.ts:74-93",
+          "quotedAssertion": "The grant and its negative arm: 'gives eo-researcher WebSearch and WebFetch' and 'gives NO other agent either tool'."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/footguns/property.test.ts:144-152",
+          "quotedAssertion": "The worker-profile clause, evidenced by a PROPERTY rather than the golden pin the criterion names — stronger, because a golden file pins one profile and this pins the invariant: 'compileEnvelope — property: mandatory denies survive any envelope (≥10k cases)'. `MANDATORY_FIXED_DENY` holds both web tools."
+        },
+        {
+          "kind": "test",
+          "ref": "packages/engine-core/src/compiler/permission-profile.test.ts:105-118",
+          "quotedAssertion": "The unit-level counterpart: 'mandatory tool/command denies are always present, regardless of envelope content'."
+        },
+        {
+          "kind": "artifact",
+          "ref": "docs/threat-model.md:408-439",
+          "quotedAssertion": "The amendment committed, dated to the ruling: 'AMENDED 2026-08-15 (owner ruling R1) — manager-side web research', which names the new exposure as an input rather than a capability and declines to claim it closed."
+        }
+      ]
     },
     {
       "index": 17,

@@ -402,3 +402,38 @@ above still holds for them. And it does not speak to deploy certification, which
 > certified, no broad `Read`/`Grep`/`Glob` allow rule permitted, and the live lane still never run.
 > It is a scope ruling, not a new measurement: no surface here was re-reviewed for it, Open item 7
 > still holds, and deploy certification still lives solely in `docs/deploy-posture.md`.
+
+---
+
+### AMENDED 2026-08-15 (owner ruling R1) — manager-side web research
+
+**Appended at end of file, deliberately, rather than inserted into §2 or §3.** The surfaces above
+are cited by line from merged closeout records; inserting there moved six of them in a first
+attempt at this amendment, and a document whose text cannot be added to without invalidating
+pointers into it gets amended less often than it should. Nothing above this line is edited.
+
+Owner ruling R1 granted `WebSearch` and `WebFetch` to ONE agent, `eo-researcher`, **manager-side
+only** (`docs/design/owner-pipeline-conformance.md` §4.1). This is the amendment that ruling
+obliges (`roadmap/25-owner-pipeline-conformance.md`, work item 9). It concerns the boundary
+between §2's worker runtime and the manager session, and it changes neither surface's mitigations.
+
+**What is unchanged, and is asserted rather than asserted-about.** `WebFetch` and `WebSearch`
+remain in the envelope compiler's `MANDATORY_FIXED_DENY`, and `compileEnvelope` is property-tested
+over **≥10k generated envelopes** to emit every mandatory deny for each one
+(`packages/engine-core/src/footguns/property.test.ts`). The grant did not widen the compiled
+worker profile, and no envelope can widen it — which is §3's existing elevation-of-privilege
+mitigation, unchanged and still binding.
+
+**What is new is an INPUT, not a capability.** Fetched web content is untrusted input that reaches
+a manager-side proposal: it is authored by whoever controls the page, it arrives inside a
+`ResearchRecord`, and that record is read by a human at the contract and design gates.
+
+| STRIDE                 | Threat scenario                                                                                                                                                             | Mitigation                                                                                                                                                                                                                                                                                                                         | Residual                                                                                                                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tampering              | A fetched page carries prompt-injection text aimed at the manager session — instructions to widen an envelope, skip a gate, or write a particular conclusion into a design. | The research agent is READ-ONLY (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`; no `Write`, `Edit` or `Bash`), so nothing it reads can act; the approval gates it feeds are human acts no model can satisfy; and `expanded_authority` never takes an autonomous default under ruling R3, so a widening instruction always halts. | An injected conclusion that is merely PLAUSIBLE is stopped by nothing here — it is caught, if at all, by the human reading the record at the gate. That is a judgement dependency, and no control in this file closes it. |
+| Spoofing               | A page impersonates authoritative vendor documentation and is cited as though it were.                                                                                      | `ResearchRecord` requires source provenance on every web citation — the URL and a `retrievedAt` timestamp — and refuses one without it; an uncited answer must be declared as an assumption or the record fails its own derivation server-side.                                                                                    | Provenance records WHERE a claim came from; it does not adjudicate whether the source is authoritative. A convincing impersonation is recorded accurately and is still wrong.                                             |
+| Information disclosure | A search query composed from the change intent leaks project detail to a third-party search provider.                                                                       | The grant is manager-side only, so no worker composes a query; queries are composed from the approved contract rather than from repository contents, and the worker deny above is what keeps this to one surface.                                                                                                                  | Whatever the manager puts in a query does leave the machine. This is inherent to granting web research at all, and the ruling accepted it knowingly rather than as an oversight.                                          |
+
+**Deliberately NOT claimed:** that prompt injection through fetched content is closed. It is
+**bounded** — read-only agent, human gates, no autonomous authority widening — and the residual
+column above says where it still bites.

@@ -683,10 +683,10 @@ the un-annotated block before any implementation existed.
       admissible novel findings, **with no severity test applied** — an outstanding
       advisory finding holds the stage open exactly as a blocking one does
       (integration test, plus a negative control where one advisory remains). — **Evidence (2026-08-18):** `packages/cli/src/review/admissibility.test.ts:192-290` — a new advisory holds the stage open, then closes once dispositioned; no severity test anywhere.
-- [ ] *(R4)* Each of the four admissibility bounds is enforced and independently
+- [x] *(R4)* Each of the four admissibility bounds is enforced and independently
       falsifiable: deleting any one bound reddens its own test and no other's
       (four tests; the deletion is measured and reverted, per this repo's
-      falsification convention). — **UNMET (2026-08-18), the fourth bound is enforced nowhere:** `docs/evidence/criteria-closeout/defects/25-monotonicity-bound-is-enforced-nowhere.md`. Three bounds are enforced and tested; monotonicity is disclaimed by `admissibility.ts` as living elsewhere, and there is no elsewhere.
+      falsification convention). — **Evidence (2026-08-18):** the fourth bound was enforced nowhere and is now built — `packages/scheduler/src/attempt-policy.test.ts:416-554`, with bounds 1-3 at `packages/cli/src/review/admissibility.test.ts:45-98`, `:164-191`, `:99-145`. All four deleted and measured together over 512 tests: 12 / 4 / 8 / 4 tests reddened, and no deletion reddened another bound's test — which is what makes them four bounds rather than four names for one check.
 - [x] *(R4)* Admissibility and novelty are computed server-side from findings on
       record; a caller asserting either has **no effect** on closure (integration
       test with a lying caller). — **Evidence (2026-08-18):** `packages/cli/src/review/review-submit-handler.test.ts:405-460` — a caller claim is ignored in both directions — and `:532-560`, where a bare claim is named back.
@@ -707,9 +707,9 @@ the un-annotated block before any implementation existed.
 - [x] `buildManagerProtocolBlock()` no longer describes a sequence it does not
       control; the block is deterministic and its installer merge stays byte-preserving
       (golden test, as today). — **Evidence (2026-08-18):** `packages/plugin/src/manager-protocol.test.ts:32-56` (derived from the supervisor vocabulary, not restated) and `:69-105` (the gates, including the one R2 added).
-- [ ] *(R1)* The research agent holds `WebSearch`/`WebFetch`, `ResearchRecord`
+- [x] *(R1)* The research agent holds `WebSearch`/`WebFetch`, `ResearchRecord`
       carries source provenance, and the compiled **worker** profile is unchanged
-      by the grant (profile golden test + `docs/threat-model.md` amendment committed). — **Open defect (2026-08-18), one clause of three unasserted:** the agent grant and the provenance field are tested; nothing asserts the compiled WORKER profile is unchanged by the grant. `docs/evidence/criteria-closeout/defects/25-worker-profile-unchanged-by-r1-is-unasserted.md`.
+      by the grant (profile golden test + `docs/threat-model.md` amendment committed). — **Evidence (2026-08-18):** `packages/plugin/src/agent-roster.test.ts:74-93` (the grant, and that no other agent holds either tool); `packages/engine-core/src/footguns/property.test.ts:144-152` — the worker-profile clause held by a ≥10k-case PROPERTY rather than a golden pin, which is stronger since a golden file pins one profile and this pins the invariant; and `docs/threat-model.md:408-439`, the R1 amendment, which was genuinely missing until this date.
 - [x] Ledger Gap 23 is written and every phase it names is reconciled in the same
       coordinated edit (10, 11, 13, 14, 25). — **Evidence (2026-08-18):** `docs/interface-ledger.md:1772-1790` — Gap 23 is written, and its origin note records that it followed the shipped work rather than preceding it.
 - [x] *(R4)* Ledger Gap 19's amendment lands in the **same change** as work item 6,
