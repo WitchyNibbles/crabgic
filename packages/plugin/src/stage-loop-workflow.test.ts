@@ -150,6 +150,91 @@ describe("the submit mapping (defect 25-stage-round-answers-no-criterion)", () =
   });
 });
 
+/**
+ * Defect `25-stage-loop-never-disposes-a-finding.md`, measured at TWENTY rounds:
+ * `openBlocking` grew 3 -> 19 and the two blockers voiding the attestations at
+ * round 19 were the same two raised at round 1. A stage that ever raised one
+ * finding could never close, however completely the artifact was repaired.
+ */
+describe("the disposition step (defect 25-stage-loop-never-disposes-a-finding)", () => {
+  const disposePrompt =
+    [...CODE.matchAll(/agent\(\s*\[([\s\S]*?)\]\.join/g)]
+      .map((m) => m[1] ?? "")
+      .find((p) => p.includes("Dispose of the")) ?? "";
+
+  it("has a disposition step at all", () => {
+    expect(disposePrompt.length).toBeGreaterThan(0);
+  });
+
+  it("reads the open set from the SERVER's findings, not from its own memory of the round", () => {
+    expect(CODE).toMatch(/openFindings/);
+    expect(CODE).toMatch(/!finding\.disposition/);
+  });
+
+  it("offers all three dispositions, not just `fixed`", () => {
+    for (const disposition of ["fixed", "refuted", "accepted-debt"]) {
+      expect(disposePrompt).toContain(disposition);
+    }
+  });
+
+  /** `review.submit` rejects a disposition with no evidence — "what stops a finding being filed and forgotten". */
+  it("requires evidence with every disposition", () => {
+    expect(disposePrompt).toMatch(/dispositionEvidence/);
+  });
+
+  /** Same id supersedes the recorded finding; a new id files a second one. */
+  it("says the ORIGINAL finding id must be reused", () => {
+    expect(disposePrompt).toMatch(/ORIGINAL/);
+    expect(disposePrompt).toMatch(/a new id files a second finding/);
+  });
+
+  /**
+   * ⚠️ THE ANTI-SYCOPHANCY GUARD. A step that marked everything `fixed` to make
+   * the round pass is the shortcut the defect record explicitly refuses, and it
+   * would manufacture the caller-grades-its-own-work property the review surface
+   * exists to deny. Leaving a finding open is the fail-closed direction.
+   */
+  it("tells the disposer it may refuse, and that refusing holds the stage open", () => {
+    expect(disposePrompt).toMatch(/Do NOT dispose of a finding you cannot verify/);
+    expect(disposePrompt).toMatch(/holds the stage open/);
+    expect(disposePrompt).toMatch(/Marking everything .?fixed.? to make/);
+  });
+
+  /** A fresh dispatch, so neither the reviewer nor the submitter disposes of its own work. */
+  it("disposes from its own dispatch, distinct from the review and the submit", () => {
+    expect(CODE).toMatch(/:dispose-/);
+    expect(CODE).toMatch(/:submit-/);
+  });
+
+  /** Never runs on a stage the server already closed — there would be nothing to answer. */
+  it("only runs while the stage is still open", () => {
+    expect(CODE).toMatch(/if \(!closed && undisposed\.length > 0\)/);
+  });
+});
+
+/**
+ * Defect `25-stage-loop-runs-share-one-scratchpad.md`: two concurrent invocations
+ * staged their verdicts at the same un-namespaced path and one agent read the
+ * other's. It was caught only because that agent noticed and refused — which is
+ * not a control, it is luck with good manners.
+ */
+describe("the submit step must not stage verdicts on disk", () => {
+  const submitPrompt =
+    [...CODE.matchAll(/agent\(\s*\[([\s\S]*?)\]\.join/g)]
+      .map((m) => m[1] ?? "")
+      .find((p) => p.includes("review.submit")) ?? "";
+
+  it("tells the submitter to submit straight from its own message", () => {
+    expect(submitPrompt).toMatch(/Submit STRAIGHT FROM THIS MESSAGE/);
+    expect(submitPrompt).toMatch(/Do not stage the verdicts in a file/);
+  });
+
+  /** The reason, not just the rule — a bare prohibition is one a future editor removes. */
+  it("says why, so the instruction survives an edit", () => {
+    expect(submitPrompt).toMatch(/concurrent runs/);
+  });
+});
+
 describe("what the loop must never decide for itself", () => {
   it("takes closure from the server's response, never from its own judgement", () => {
     // `stageClosable` is `review.submit`'s answer. A loop that computed it would

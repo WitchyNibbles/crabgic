@@ -102,8 +102,39 @@ const SUBMIT_SCHEMA = {
     escalate: { type: "boolean" },
     escalationReason: { type: "string" },
     lensesSubmitted: { type: "number" },
+    /**
+     * The server's own finding set, returned VERBATIM from the last
+     * `review.submit` response's `findings`. This is what the disposition step
+     * below acts on — without it the loop cannot know what is outstanding, and a
+     * stage that ever raised a finding can never close. Defect
+     * `25-stage-loop-never-disposes-a-finding.md`.
+     */
+    openFindings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          claim: { type: "string" },
+          classification: { type: "string" },
+          disposition: { type: "string" },
+        },
+        required: ["id", "claim"],
+      },
+    },
   },
-  required: ["stageClosable", "lensesSubmitted"],
+  required: ["stageClosable", "lensesSubmitted", "openFindings"],
+};
+
+/** What a disposition round returns — how many it disposed, and how many it deliberately did not. */
+const DISPOSE_SCHEMA = {
+  type: "object",
+  properties: {
+    disposed: { type: "number" },
+    leftOpen: { type: "number" },
+    notes: { type: "string" },
+  },
+  required: ["disposed", "leftOpen"],
 };
 
 phase("Plan");
@@ -212,9 +243,16 @@ while (round <= budget && !closed) {
       "finding, or add one: they are the reviewers' answers, and editing them is",
       "the one way this loop can be made to lie about what was reviewed.",
       "",
+      "⚠️ Submit STRAIGHT FROM THIS MESSAGE. Do not stage the verdicts in a file",
+      "first. Two concurrent runs of this loop once wrote their verdicts to the",
+      "same scratchpad path and one agent read the other's — caught only because",
+      "it noticed and refused. The payload above is the authoritative copy and",
+      "needs no intermediate. Defect",
+      "`25-stage-loop-runs-share-one-scratchpad.md`.",
+      "",
       "Return the LAST `review.submit` response, plus how many lenses you",
-      "submitted. Do not decide whether the stage closed — report what the",
-      "server said.",
+      "submitted, plus its `findings` array VERBATIM as `openFindings`. Do not",
+      "decide whether the stage closed — report what the server said.",
     ].join("\n"),
     { label: `${stage}:submit-${String(round)}`, phase: "Round", schema: SUBMIT_SCHEMA },
   );
@@ -236,6 +274,65 @@ while (round <= budget && !closed) {
 
   closed = dispatched.stageClosable === true;
   lastReason = dispatched.closureReason ?? (closed ? "closed" : "no reason given");
+
+  /**
+   * THE DISPOSITION STEP — defect `25-stage-loop-never-disposes-a-finding.md`.
+   *
+   * Without this the loop was monotonic: findings accumulated every round and a
+   * stage that ever raised one could never close, however completely the
+   * artifact was repaired. Measured at twenty rounds, `openBlocking` 3 -> 19,
+   * with the two blockers voiding the attestations at round 19 being the same
+   * two raised at round 1.
+   *
+   * ⚠️ WHY A SEPARATE, FRESH AGENT AND NOT THE REVIEWER OR THE SUBMITTER. A
+   * reviewer disposing of its own finding is the caller grading its own work,
+   * which is what this whole surface exists to deny; the submitter is holding
+   * the verdicts and must not also decide they are answered. So this is its own
+   * dispatch, with its own instruction to VERIFY against the artifact.
+   *
+   * ⚠️ AND IT MUST BE ABLE TO SAY NO. A step that marked everything `fixed`
+   * would be the shortcut the defect record explicitly refuses. Leaving a
+   * finding undispositioned holds the stage open, which is the fail-closed
+   * direction, and the prompt says so.
+   */
+  const undisposed = (dispatched.openFindings ?? []).filter(
+    (finding) => finding !== null && typeof finding === "object" && !finding.disposition,
+  );
+  if (!closed && undisposed.length > 0) {
+    const outcome = await agent(
+      [
+        `Dispose of the ${String(undisposed.length)} open finding(s) below for the`,
+        `\`${stage}\` stage of ${artifactRef} (change set ${changeSetId}).`,
+        "",
+        JSON.stringify(undisposed),
+        "",
+        "For EACH finding, open the artifact and the paths it names and decide:",
+        "  - `fixed`        — the artifact now does what the finding asked. Say WHAT",
+        "    changed, quoting the text that satisfies it.",
+        "  - `refuted`      — the finding is wrong. Say what you checked that shows it.",
+        "  - `accepted-debt`— real, and deliberately not addressed in this change set.",
+        "    Requires the paths it concerns.",
+        "",
+        "Submit them through `review.submit` for this stage, in ONE call, as the",
+        "`verdict`'s `findings` array — each entry carrying the finding's ORIGINAL",
+        "`id` plus `disposition` and `dispositionEvidence`. Same id is how the",
+        "server supersedes the recorded finding; a new id files a second finding.",
+        "",
+        "⚠️ Do NOT dispose of a finding you cannot verify from the artifact. Leave",
+        "it out: an undispositioned finding holds the stage open, which is the",
+        "correct outcome when you do not know. Marking everything `fixed` to make",
+        "the round pass is the one failure this step exists to prevent.",
+        "",
+        "Report how many you disposed and how many you deliberately left open.",
+      ].join("\n"),
+      { label: `${stage}:dispose-${String(round)}`, phase: "Round", schema: DISPOSE_SCHEMA },
+    );
+    if (outcome !== null) {
+      log(
+        `round ${String(round)}: disposed ${String(outcome.disposed)}, left ${String(outcome.leftOpen)} open`,
+      );
+    }
+  }
 
   if (dispatched.escalate === true) {
     // The server said this loop stalled. Continuing would burn the rest of the

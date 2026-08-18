@@ -34,12 +34,28 @@ prose as module specifiers.
 **Reproduced identically on clean `main`** in a separate git worktree with its own build —
 so it is a property of the check, not of any branch.
 
-## Root cause
+## Root cause — isolated 2026-08-18, and the check's own comment is wrong about it
 
-The check's own comment says `npm pack` fires `packages/cli`'s `prepack`, "which is what
-replaces `dist`". When the workspace `dist` is in a state where that bundling does not
-produce the published artifact, the scanner runs over the wrong bytes and reports whatever
-it finds. It has no assertion that what it scanned is a bundle.
+Two independent faults, both now fixed.
+
+**1. The scanner matched prose inside comments.** Its specifier patterns are
+`/\bfrom\s*["']…["']/` applied to raw file text, so a JSDoc sentence containing
+`from "our region"` is read as an import of a package called `our region`. An UNBUNDLED
+`dist` retains its comments; the bundled one does not. That is the whole explanation for
+the nonsense list. Block comments are now stripped before matching, and a specifier
+containing whitespace — which no package name can — now FAILS the check saying the artifact
+is not what it thinks, instead of reporting invented imports.
+
+**2. ⚠️ The comment blames a `prepack` that does not exist.** The check says "`npm pack`
+fires packages/cli's `prepack`, which is what replaces `dist`". `packages/cli/package.json`
+declares **no `prepack` and no `postpack`**. The bundling is the ROOT `npm run build`
+(`tsc -b && npm run bundle:types && npm run bundle:cli`), and nothing fires it during
+`npm pack`.
+
+So the real precondition is: **run `npm run build`, not `tsc -b`, before this check.** After
+`tsc -b` alone the packed artifact is per-file tsc output that genuinely imports
+`@crabgic/*`; after `npm run build` the check passes. Both verdicts were "correct" about
+different bytes, which is exactly why quoting either as a fact about `main` was wrong.
 
 ⚠️ **And it does not run in CI.** `check:install-smoke` and `check:tarball` are members of
 `check:all` but are absent from `.github/workflows/ci.yml`, so nothing measures this on a
@@ -55,11 +71,15 @@ misquoted by anyone who does not already know that.
 
 ## Remedy
 
-1. **Assert the artifact before scanning it.** If the packed `dist` is not the bundled
-   output `prepack` produces, the check should FAIL saying so, rather than scanning it and
-   reporting invented imports. **Effort: S.**
-2. **Wire it into CI**, where the checkout is clean and the build is reproducible, so its
+1. ~~**Assert the artifact before scanning it.**~~ **DONE.** Block comments are stripped
+   before matching, and an impossible specifier (one containing whitespace) fails the check
+   with what was actually scanned, rather than being reported as a missing dependency.
+2. **Correct the stale `prepack` comment** to name `npm run build`. **Effort: XS**, and it
+   is the sentence that sent two readers — including this one, twice — to the wrong
+   conclusion.
+3. **Wire it into CI**, where the checkout is clean and the build is reproducible, so its
    verdict means something about the repository rather than about a laptop. **Effort: XS.**
+   Still open: `check:install-smoke` and `check:tarball` remain absent from `ci.yml`.
 
 **Ticket-ready:** yes.
 
