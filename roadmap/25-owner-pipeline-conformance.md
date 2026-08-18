@@ -660,63 +660,63 @@ the un-annotated block before any implementation existed.
 
 ## Exit criteria
 
-- [ ] `DOMAIN_LENSES` enumerates all eight lenses; `lensesApplicableTo` is
-      property-tested; a skipped lens is recorded with its reason (unit + property tests).
-- [ ] A `DomainLens` without an applicability predicate is unrepresentable — schema
-      parse fails, with a positive control proving the fixture is otherwise valid.
-- [ ] `ResearchRecord` makes `research-questions-answered` and
+- [x] `DOMAIN_LENSES` enumerates all eight lenses; `lensesApplicableTo` is
+      property-tested; a skipped lens is recorded with its reason (unit + property tests). — **Evidence (2026-08-18):** `packages/contracts/src/contracts/domain-lenses.property.test.ts:66-135` — four properties over generated `StackEvidence`, including the anti-vacuity arm (`:118-135`) that fails against a function skipping nothing. Falsified by measurement, both mutants reverted. Skip reasons: `domain-lenses.test.ts:137-144`.
+- [x] A `DomainLens` without an applicability predicate is unrepresentable — schema
+      parse fails, with a positive control proving the fixture is otherwise valid. — **Evidence (2026-08-18):** `packages/contracts/src/contracts/domain-lenses.test.ts:78-98` — the refusal, then the positive control this criterion asks for by name.
+- [x] `ResearchRecord` makes `research-questions-answered` and
       `research-no-silent-assumptions` **derived**: an answer with no citation
       fails the derivation, and a claim to either criterion in `attestations` is
-      discarded as server-derived (integration test through `review.submit`).
-- [ ] A dispatched worker's `TaskPacket` carries its acceptance criteria verbatim;
+      discarded as server-derived (integration test through `review.submit`). — **Evidence (2026-08-18):** `packages/contracts/src/contracts/research-record.test.ts:111-179` — each derivation with its uncited-answer arm, plus `:172-179` keeping `research-prior-art-checked` judged.
+- [x] A dispatched worker's `TaskPacket` carries its acceptance criteria verbatim;
       omitting `spec` fails compilation at every public dispatch entry point
-      (integration test + type-level fixture in CI).
-- [ ] `PIPELINE_STAGES` has nine members with unique criterion ids across the
-      whole roster; `exitCriteriaFor` throws for an unknown stage (unit test).
-- [ ] *(R2)* The `design-gate` stage closes **only** on a recorded owner verdict —
+      (integration test + type-level fixture in CI). — **Evidence (2026-08-18):** `packages/scheduler/src/spec-required.type.test.ts:86-145` — `@ts-expect-error` at both dispatch entry points, with a positive control; making `spec` optional produces TS2578. Verbatim half: `packages/scheduler/src/task-packet-builder.test.ts:238-262`.
+- [x] `PIPELINE_STAGES` has nine members with unique criterion ids across the
+      whole roster; `exitCriteriaFor` throws for an unknown stage (unit test). — **Evidence (2026-08-18):** `packages/contracts/src/contracts/pipeline-stages.test.ts:22-66` (roster and unique ids) and `:149-160` (`exitCriteriaFor` throws).
+- [x] *(R2)* The `design-gate` stage closes **only** on a recorded owner verdict —
       no reviewer verdict, attestation or derivation can close it (integration test,
-      one arm per attempted route).
-- [ ] The `Workflow` driver enforces stage order, per-stage lens coverage and the
+      one arm per attempted route). — **Evidence (2026-08-18):** `packages/cli/src/review/review-submit-handler.test.ts:977-1065` — one arm per attempted route, with the owner-approval positive control and a revision-drift arm.
+- [x] The `Workflow` driver enforces stage order, per-stage lens coverage and the
       runaway guard: a skipped stage, an unrun applicable lens, and a run past the
-      guard each fail (script-level tests, one per clause).
-- [ ] *(R4)* A stage closes on a round where every applicable lens returns zero
+      guard each fail (script-level tests, one per clause). — **Evidence (2026-08-18):** `packages/plugin/src/pipeline-driver.test.ts:47-77` (order), `:79-142` (lens coverage), `:158-170` (the guard, named as a guard).
+- [x] *(R4)* A stage closes on a round where every applicable lens returns zero
       admissible novel findings, **with no severity test applied** — an outstanding
       advisory finding holds the stage open exactly as a blocking one does
-      (integration test, plus a negative control where one advisory remains).
+      (integration test, plus a negative control where one advisory remains). — **Evidence (2026-08-18):** `packages/cli/src/review/admissibility.test.ts:192-290` — a new advisory holds the stage open, then closes once dispositioned; no severity test anywhere.
 - [ ] *(R4)* Each of the four admissibility bounds is enforced and independently
       falsifiable: deleting any one bound reddens its own test and no other's
       (four tests; the deletion is measured and reverted, per this repo's
-      falsification convention).
-- [ ] *(R4)* Admissibility and novelty are computed server-side from findings on
+      falsification convention). — **UNMET (2026-08-18), the fourth bound is enforced nowhere:** `docs/evidence/criteria-closeout/defects/25-monotonicity-bound-is-enforced-nowhere.md`. Three bounds are enforced and tested; monotonicity is disclaimed by `admissibility.ts` as living elsewhere, and there is no elsewhere.
+- [x] *(R4)* Admissibility and novelty are computed server-side from findings on
       record; a caller asserting either has **no effect** on closure (integration
-      test with a lying caller).
-- [ ] *(R4)* Path normalization in the novelty key uses `normalizePlannedPath`, and
+      test with a lying caller). — **Evidence (2026-08-18):** `packages/cli/src/review/review-submit-handler.test.ts:405-460` — a caller claim is ignored in both directions — and `:532-560`, where a bare claim is named back.
+- [x] *(R4)* Path normalization in the novelty key uses `normalizePlannedPath`, and
       the finding index and the overlap analyzer cannot disagree about what a path
-      names (test asserting one implementation, not two agreeing).
-- [ ] *(R3)* `irreducible_product_decision` and `exhausted_repairs` take their
+      names (test asserting one implementation, not two agreeing). — **Evidence (2026-08-18):** `packages/cli/src/review/admissibility.test.ts:60-98` — one normalization on both sides — and `:139-145`, path order immaterial.
+- [x] *(R3)* `irreducible_product_decision` and `exhausted_repairs` take their
       pre-declared default without halting the run, each firing journaled with its
       options and anchor; `expanded_authority` is **unrepresentable** in the
-      autonomy setting (type-level fixture + integration test per condition).
+      autonomy setting (type-level fixture + integration test per condition). — **Evidence (2026-08-18):** `packages/supervisor/src/intake/autonomous-stop-conditions.test.ts:57-104` (default fires and is journaled) and `:106-150` (`expanded_authority` halts, plus two negative controls).
 - [ ] The `audit` stage fires at a stage a production run **reaches**, evidenced by
       a journaled run that gets there — not by a harness-level fixture. If phase 14's
       gate-registry composition has not landed, this criterion stays unticked and
-      says so, rather than being met by a handler nothing calls.
-- [ ] The `document` stage's guides are produced by an envelope-bounded worker in a
+      says so, rather than being met by a handler nothing calls. — **Left unticked (2026-08-18), as this criterion instructs:** phase 14's gate-registry composition has not landed and no authorized run has reached the stage. `docs/evidence/criteria-closeout/defects/14-gate-registry-never-composed.md`.
+- [x] The `document` stage's guides are produced by an envelope-bounded worker in a
       worktree, and a guide claiming a non-existent command fails the derivation
-      (integration test + negative control).
-- [ ] `buildManagerProtocolBlock()` no longer describes a sequence it does not
+      (integration test + negative control). — **Evidence (2026-08-18):** `packages/cli/src/review/document-work-unit.test.ts:31-70` — ownership bounded to exactly the two guide paths, with two refusals — and `:73-98` for the derivation the negative control turns on.
+- [x] `buildManagerProtocolBlock()` no longer describes a sequence it does not
       control; the block is deterministic and its installer merge stays byte-preserving
-      (golden test, as today).
+      (golden test, as today). — **Evidence (2026-08-18):** `packages/plugin/src/manager-protocol.test.ts:32-56` (derived from the supervisor vocabulary, not restated) and `:69-105` (the gates, including the one R2 added).
 - [ ] *(R1)* The research agent holds `WebSearch`/`WebFetch`, `ResearchRecord`
       carries source provenance, and the compiled **worker** profile is unchanged
-      by the grant (profile golden test + `docs/threat-model.md` amendment committed).
-- [ ] Ledger Gap 23 is written and every phase it names is reconciled in the same
-      coordinated edit (10, 11, 13, 14, 25).
-- [ ] *(R4)* Ledger Gap 19's amendment lands in the **same change** as work item 6,
+      by the grant (profile golden test + `docs/threat-model.md` amendment committed). — **Open defect (2026-08-18), one clause of three unasserted:** the agent grant and the provenance field are tested; nothing asserts the compiled WORKER profile is unchanged by the grant. `docs/evidence/criteria-closeout/defects/25-worker-profile-unchanged-by-r1-is-unasserted.md`.
+- [x] Ledger Gap 23 is written and every phase it names is reconciled in the same
+      coordinated edit (10, 11, 13, 14, 25). — **Evidence (2026-08-18):** `docs/interface-ledger.md:1772-1790` — Gap 23 is written, and its origin note records that it followed the shipped work rather than preceding it.
+- [x] *(R4)* Ledger Gap 19's amendment lands in the **same change** as work item 6,
       across every phase Gap 19 names (10, 11, 13, 14), and
       `docs/staged-review-pipeline.md` §2's measurement is annotated rather than
       rewritten. A rule amended without its mechanism, or a mechanism shipped
-      against an unamended rule, fails this box.
+      against an unamended rule, fails this box. — **Evidence (2026-08-18):** the same dated amendment in all four phases Gap 19 names — `roadmap/10-plugin-and-installer.md:110-118`, `roadmap/11-intake-contract-approval.md:72-78`, `roadmap/13-scheduler-packets-context.md:20-26`, `roadmap/14-quality-security-gates.md:20-26` — and `docs/staged-review-pipeline.md:61-68`, where the measurement is ANNOTATED rather than rewritten.
 > **Owner ruling R5, 2026-08-16 — DELIVERED, and deliberately NOT a checkbox.**
 > A run whose acceptance criteria were never evaluated no longer reaches
 > `published_local`, and the refusal names every unevaluated requirement with its

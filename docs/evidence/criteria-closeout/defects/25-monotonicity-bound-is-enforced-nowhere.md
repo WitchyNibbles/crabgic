@@ -1,5 +1,12 @@
 # 25 — R4's fourth admissibility bound is documented as living elsewhere, and lives nowhere
 
+**Criterion (verbatim):**
+
+<!-- prettier-ignore -->
+> *(R4)* Each of the four admissibility bounds is enforced and independently falsifiable:
+> deleting any one bound reddens its own test and no other's (four tests; the deletion is
+> measured and reverted, per this repo's falsification convention).
+
 **Phase:** 25 — owner-pipeline conformance (`roadmap/25-owner-pipeline-conformance.md`,
 work item 6). Surface: `packages/cli/src/review/admissibility.ts`, and the absence of a
 counterpart in `packages/scheduler`.

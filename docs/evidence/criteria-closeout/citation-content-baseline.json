@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-17",
-  "generatedAtSha": "5aec142d03726e2d99a68698c2aa27f751a6f827",
+  "generatedAt": "2026-08-18",
+  "generatedAtSha": "1d042e70c63e48acff8f4e3da385de31c9c9c54d",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
-    "citations": 1327,
-    "fragments": 3931,
-    "anchored": 2571,
+    "citations": 1359,
+    "fragments": 3988,
+    "anchored": 2628,
     "seededStale": 750,
     "outsideSpan": 860,
     "repeatText": 531,
@@ -12146,6 +12146,255 @@
         "OK/collapsed@191,215~repeat",
         "MOVED-AMBIG/collapsed@194,218,522!span~repeat",
         "MOVED/collapsed@195!span"
+      ]
+    },
+    "phase-25.json#c1#packages/contracts/src/contracts/domain-lenses.property.test.ts:118-135": {
+      "qa": "f28d72b7c126",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@124"
+      ]
+    },
+    "phase-25.json#c1#packages/contracts/src/contracts/domain-lenses.property.test.ts:66-85": {
+      "qa": "94872f2d11d7",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@66"
+      ]
+    },
+    "phase-25.json#c1#packages/contracts/src/contracts/domain-lenses.test.ts:137-144": {
+      "qa": "1ae6c3356759",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@137"
+      ]
+    },
+    "phase-25.json#c10#packages/cli/src/review/review-submit-handler.test.ts:405-460": {
+      "qa": "bab116a1fae6",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@413",
+        "OK/collapsed@443"
+      ]
+    },
+    "phase-25.json#c10#packages/cli/src/review/review-submit-handler.test.ts:532-560": {
+      "qa": "417fd1a643b2",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@532"
+      ]
+    },
+    "phase-25.json#c11#packages/cli/src/review/admissibility.test.ts:139-145": {
+      "qa": "6b88763c37d2",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@139"
+      ]
+    },
+    "phase-25.json#c11#packages/cli/src/review/admissibility.test.ts:60-98": {
+      "qa": "d39038929d08",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@67",
+        "OK/collapsed@74"
+      ]
+    },
+    "phase-25.json#c12#packages/supervisor/src/intake/autonomous-stop-conditions.test.ts:106-150": {
+      "qa": "7c28f112f67d",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@106",
+        "OK/collapsed@125",
+        "OK/collapsed@143"
+      ]
+    },
+    "phase-25.json#c12#packages/supervisor/src/intake/autonomous-stop-conditions.test.ts:57-104": {
+      "qa": "25c6065c9a20",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@57",
+        "OK/collapsed@75"
+      ]
+    },
+    "phase-25.json#c14#packages/cli/src/review/document-work-unit.test.ts:31-70": {
+      "qa": "2a8798de1628",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@35",
+        "OK/collapsed@45",
+        "OK/collapsed@54"
+      ]
+    },
+    "phase-25.json#c14#packages/cli/src/review/document-work-unit.test.ts:73-98": {
+      "qa": "2576e3a2a565",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@73"
+      ]
+    },
+    "phase-25.json#c15#packages/plugin/src/manager-protocol.test.ts:32-56": {
+      "qa": "486e66697d1a",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@32",
+        "OK/collapsed@36"
+      ]
+    },
+    "phase-25.json#c15#packages/plugin/src/manager-protocol.test.ts:69-105": {
+      "qa": "473263e5e6d8",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@69",
+        "OK/collapsed@95"
+      ]
+    },
+    "phase-25.json#c17#docs/interface-ledger.md:1772-1790": {
+      "qa": "ef0e1be5c979",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@1772",
+        "OK-pieces/collapsed@1774,1775,1776"
+      ]
+    },
+    "phase-25.json#c18#docs/staged-review-pipeline.md:61-68": {
+      "qa": "2ce2b178ab45",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@61",
+        "OK/collapsed@61"
+      ]
+    },
+    "phase-25.json#c18#roadmap/10-plugin-and-installer.md:110-118": {
+      "qa": "0650ea944989",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@113"
+      ]
+    },
+    "phase-25.json#c18#roadmap/11-intake-contract-approval.md:72-78": {
+      "qa": "5cb7e8e28851",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@72"
+      ]
+    },
+    "phase-25.json#c18#roadmap/13-scheduler-packets-context.md:20-26": {
+      "qa": "6b3a82f2617d",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@20",
+        "OK/collapsed@20"
+      ]
+    },
+    "phase-25.json#c18#roadmap/14-quality-security-gates.md:20-26": {
+      "qa": "186c73a5d5a1",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@20"
+      ]
+    },
+    "phase-25.json#c2#packages/contracts/src/contracts/domain-lenses.test.ts:78-98": {
+      "qa": "12f1d87d9ef8",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@78",
+        "OK/collapsed@88"
+      ]
+    },
+    "phase-25.json#c3#packages/contracts/src/contracts/research-record.test.ts:111-140": {
+      "qa": "f56903c3ecf0",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@111",
+        "OK/collapsed@124"
+      ]
+    },
+    "phase-25.json#c3#packages/contracts/src/contracts/research-record.test.ts:142-176": {
+      "qa": "780bb213363f",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@142",
+        "OK/collapsed@155"
+      ]
+    },
+    "phase-25.json#c3#packages/contracts/src/contracts/research-record.test.ts:172-179": {
+      "qa": "a11c9cf12f8c",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@172"
+      ]
+    },
+    "phase-25.json#c4#packages/scheduler/src/spec-required.type.test.ts:86-145": {
+      "qa": "d887e7f0d5ca",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@86",
+        "OK/collapsed@106",
+        "OK/collapsed@133"
+      ]
+    },
+    "phase-25.json#c4#packages/scheduler/src/task-packet-builder.test.ts:238-262": {
+      "qa": "8a3a8d62ec6c",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@238"
+      ]
+    },
+    "phase-25.json#c5#packages/contracts/src/contracts/pipeline-stages.test.ts:149-160": {
+      "qa": "89270bd366ba",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@155"
+      ]
+    },
+    "phase-25.json#c5#packages/contracts/src/contracts/pipeline-stages.test.ts:22-66": {
+      "qa": "f7fca8d031a2",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@22",
+        "OK/collapsed@58"
+      ]
+    },
+    "phase-25.json#c6#packages/cli/src/review/review-submit-handler.test.ts:977-1065": {
+      "qa": "9a0e2de364b4",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@986",
+        "OK/collapsed@1001",
+        "OK/collapsed@1024",
+        "OK/collapsed@1037"
+      ]
+    },
+    "phase-25.json#c7#packages/plugin/src/pipeline-driver.test.ts:158-170": {
+      "qa": "52464899a83d",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@159"
+      ]
+    },
+    "phase-25.json#c7#packages/plugin/src/pipeline-driver.test.ts:47-77": {
+      "qa": "c2d55dd51bd1",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@61",
+        "OK/collapsed@67"
+      ]
+    },
+    "phase-25.json#c7#packages/plugin/src/pipeline-driver.test.ts:79-142": {
+      "qa": "204fb46ff0d6",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@80",
+        "OK/collapsed@113"
+      ]
+    },
+    "phase-25.json#c8#packages/cli/src/review/admissibility.test.ts:192-290": {
+      "qa": "1726ccd0b5f1",
+      "ref": "OK",
+      "pins": [
+        "OK/collapsed@214",
+        "OK/collapsed@241",
+        "OK/collapsed@198"
       ]
     }
   }
