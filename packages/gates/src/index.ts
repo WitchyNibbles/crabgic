@@ -58,6 +58,9 @@ export { parseIstanbulSummary } from "./coverage/istanbul-adapter.js";
 export { parseGoCoverProfile } from "./coverage/go-cover-adapter.js";
 export { parsePytestCovReport } from "./coverage/pytest-cov-adapter.js";
 export { ecosystemsPresent, selectCoverageAdapter } from "./coverage/adapter-selection.js";
+// The coverage gate's missing INPUT — unblocked by owner decision 2026-08-18.
+export { CONVENTIONAL_LCOV_PATH, readCoverageSummary } from "./coverage/coverage-report.js";
+export type { CoverageReportRead } from "./coverage/coverage-report.js";
 export type { CoverageAdapterKind } from "./coverage/adapter-selection.js";
 export type { CoverageSummary, FileLineCoverage } from "./coverage/types.js";
 // Owner ruling R6 — coverage bound to the change, not to the repository.
