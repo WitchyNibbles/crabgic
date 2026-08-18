@@ -44,8 +44,26 @@ export interface GateVerdict {
 
 export type GateHandler = (context: GateContext) => Promise<GateVerdict>;
 
+/** Registration-time properties of a gate, as distinct from its per-firing inputs. */
+export interface GateRegistrationOptions {
+  /**
+   * This gate judges ONE work unit's attempt and cannot judge the integrated
+   * candidate as a whole, so `fireAll` — the final-candidate re-verification
+   * primitive — skips it. `fireByTag` still fires it: that is its firing path.
+   *
+   * ⚠️ A PROPERTY OF THE REGISTRATION, NOT OF THE TAG, and deliberately so.
+   * Excluding the `tdd` TAG at `final_verifying` would redden
+   * `./final-candidate.test.ts:112`, which registers its own stub under that tag
+   * and is cited by phase 14's closed exit criterion 8. A registrant declares
+   * this about itself; the vocabulary is untouched.
+   */
+  readonly perWorkUnit?: boolean;
+}
+
 export interface RegisteredGate {
   readonly tag: GateRiskTag;
   readonly name: string;
   readonly handler: GateHandler;
+  /** See `GateRegistrationOptions.perWorkUnit`. Always present on a listed gate, so a composition root can audit what fires where without guessing at an absent field. */
+  readonly perWorkUnit: boolean;
 }

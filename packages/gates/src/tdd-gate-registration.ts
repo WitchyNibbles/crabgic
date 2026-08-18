@@ -105,7 +105,7 @@ function refuse(command: string, fingerprint: string, detail: string): GateVerdi
  * Each of those is a state in which passing would mint a verdict nobody earned.
  */
 export function registerTddGate(registry: GateRegistry, options: TddGateRegistration): void {
-  registry.register("tdd", TDD_GATE_NAME, async (context): Promise<GateVerdict> => {
+  const handler = async (context: GateContext): Promise<GateVerdict> => {
     const command = "eo-gates: red-before-green TDD evidence";
 
     const workUnitId = context.workUnitId;
@@ -167,5 +167,18 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
         ? `red-baseline confirmed before dispatch; candidate is green for ${String(requirementIds.length)} requirement(s)`
         : `red-baseline confirmed before dispatch, but the candidate is still failing`,
     };
-  });
+  };
+
+  /**
+   * ⚠️ `perWorkUnit`, so `fireAll` — final-candidate re-verification — skips
+   * this gate. It judges ONE attempt against ONE dispatch boundary, and a
+   * `final_verifying` context carries no `workUnitId` by design, so firing it
+   * there would fail every run closed. It fires through `fireByTag`, once per
+   * collected candidate, at `verifying`.
+   *
+   * The `workUnitId === undefined` refusal above stays as defence in depth: the
+   * marker governs `fireAll`, and nothing stops a caller invoking `fireByTag`
+   * with a context that has no unit.
+   */
+  registry.register("tdd", TDD_GATE_NAME, handler, { perWorkUnit: true });
 }
