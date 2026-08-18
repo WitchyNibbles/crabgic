@@ -13,5 +13,15 @@
   "outputStyle": "Crabgic",
   "enabledPlugins": {
     "crabgic@crabgic-marketplace": true
+  },
+  "permissions": {
+    "deny": [
+      "Bash(crabgic approve:*)",
+      "Bash(crabgic design approve:*)",
+      "Bash(crabgic learn approve:*)",
+      "Bash(crabgic trust approve:*)",
+      "Bash(crabgic trust review:*)",
+      "Read(**/approval-signing.key)"
+    ]
   }
 }

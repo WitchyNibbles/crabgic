@@ -12,6 +12,43 @@
 import { STATUSLINE_SETTINGS_ENTRY } from "./statusline-writer.js";
 import { OUTPUT_STYLE_SETTINGS_VALUE } from "./output-style-writer.js";
 
+/**
+ * The permission DENY rules that make an approval gate a human act again.
+ *
+ * ⚠️ WHY THESE EXIST, MEASURED 2026-08-18. The operating protocol calls the
+ * approval gates "a human act by design and which you can never satisfy
+ * yourself". Against a manager session that was not true:
+ * `../approval/prompt.ts`'s `readConfirmation` reads one line from `io.input`
+ * and checks no TTY — its own doc records that "'yes' followed by end-of-input
+ * confirms" — and this project shipped no `permissions` block at all. Piping
+ * `yes` into the CLI satisfied every gate.
+ *
+ * A permission deny is enforced by the ENGINE rather than by the agent's
+ * cooperation, so it is the one control here an instruction cannot talk its way
+ * past. With the CLI path closed, the gate is reached the way owner ruling
+ * 2026-08-18 intends: asked in Claude Code, answered by a person, recorded by
+ * the harness.
+ *
+ * ⚠️ AN HONEST BOUND, and it belongs here rather than in a summary. These match
+ * COMMAND PREFIXES. They do not stop `npx crabgic …`, a direct `node …/bin.js`,
+ * or any other spelling of the same program, and they do nothing about a
+ * process that writes the state files directly. This is defence in depth: it
+ * removes the accidental path and raises the cost of the deliberate one. It is
+ * not a boundary, and `docs/deploy-posture.md` must not describe it as one.
+ *
+ * The five commands are the gates the protocol itself lists, spelled as
+ * `../argv/parse-command.ts` parses them. The sixth rule covers the other way
+ * to forge an approval — reading the signing key and minting a token.
+ */
+export const APPROVAL_DENY_RULES: readonly string[] = Object.freeze([
+  "Bash(crabgic approve:*)",
+  "Bash(crabgic design approve:*)",
+  "Bash(crabgic learn approve:*)",
+  "Bash(crabgic trust approve:*)",
+  "Bash(crabgic trust review:*)",
+  "Read(**/approval-signing.key)",
+]);
+
 export interface SettingsMergeResult {
   readonly settings: Record<string, unknown>;
   readonly changed: boolean;
@@ -28,6 +65,30 @@ export function mergeSettingsJson(
 ): SettingsMergeResult {
   const merged: Record<string, unknown> = { ...existing };
   let changed = false;
+
+  /**
+   * ⚠️ THE ONE KEY THIS MERGE TIGHTENS RATHER THAN MERELY ADDS.
+   *
+   * Every other key here is add-only: present means untouched, which trivially
+   * satisfies "never loosen a security key already present". That rule would
+   * have left the approval hole open forever in any project whose
+   * `permissions` block already existed for an unrelated reason.
+   *
+   * Monotonicity forbids LOOSENING. Adding a deny is the opposite operation, so
+   * the rules are UNIONED in: the operator's own deny entries survive, their
+   * `allow` list is never read or written, and nothing is ever removed. A rule
+   * already present is not duplicated, so a second run reports no change.
+   */
+  const permissions = isPlainObject(merged.permissions) ? { ...merged.permissions } : {};
+  const existingDeny = Array.isArray(permissions.deny)
+    ? permissions.deny.filter((rule): rule is string => typeof rule === "string")
+    : [];
+  const missingDeny = APPROVAL_DENY_RULES.filter((rule) => !existingDeny.includes(rule));
+  if (missingDeny.length > 0) {
+    permissions.deny = [...existingDeny, ...missingDeny];
+    merged.permissions = permissions;
+    changed = true;
+  }
 
   if (!("attribution" in merged)) {
     merged.attribution = { commit: "", pr: "" };

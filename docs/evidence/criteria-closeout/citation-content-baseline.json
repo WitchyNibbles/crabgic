@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-18",
-  "generatedAtSha": "83ab0f42e5f120ab86cd8b2ea7285090a98c12f5",
+  "generatedAtSha": "33af6fd658ccb8c74351f1399df88f7deeca1535",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
@@ -4181,11 +4181,11 @@
         "OK/collapsed@57,164~repeat"
       ]
     },
-    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:74": {
-      "qa": "91ec372877f7",
+    "phase-10.json#c2#packages/cli/src/installer/settings-merge.ts:135": {
+      "qa": "4441f48fcb73",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@74"
+        "OK/collapsed@135"
       ]
     },
     "phase-10.json#c3#docs/evidence/phase-10/closeout-c3-mcp-entry-golden.txt": {
@@ -4554,17 +4554,17 @@
         "MOVED-AMBIG/collapsed@69,79!span~repeat"
       ]
     },
-    "phase-10.json#c8#packages/cli/src/installer/settings-merge.ts:31-38": {
-      "qa": "ab0a1e899109",
+    "phase-10.json#c8#packages/cli/src/installer/settings-merge.ts:93-100": {
+      "qa": "b3616a27b54a",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@32",
-        "OK/collapsed@33",
-        "OK/collapsed@34,38,48,62,76,79~repeat",
+        "OK/collapsed@93",
+        "OK/collapsed@94",
+        "OK/collapsed@90,95,99,109,123,137,140~repeat",
         "SKIP-short",
-        "OK/collapsed@36",
-        "OK/collapsed@37",
-        "OK/collapsed@34,38,48,62,76,79~repeat",
+        "OK/collapsed@97",
+        "OK/collapsed@98",
+        "OK/collapsed@90,95,99,109,123,137,140~repeat",
         "SKIP-short"
       ]
     },

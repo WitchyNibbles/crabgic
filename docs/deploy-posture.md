@@ -366,3 +366,55 @@ more.
 
 Dated rulings, appended. Annotate; never rewrite. Only an owner ruling flips the certification line
 at the top, and only measurement — not argument — discharges the blocking item.
+
+---
+
+## AMENDED 2026-08-18 (owner ruling) — what the approval gates actually enforce
+
+The operating protocol describes the approval gates — `/eo:approve`, `crabgic trust review`,
+`crabgic learn approve`, `crabgic design approve` — as "a human act by design and which you can
+never satisfy yourself". Against a **manager session** that was not true, and this document should
+not have implied otherwise.
+
+### The measurement
+
+- `packages/cli/src/approval/prompt.ts`'s `readConfirmation` reads one line from `io.input` and
+  checks no TTY. Its own doc comment records the consequence: "EOF terminates the final line: 'yes'
+  followed by end-of-input confirms."
+- This project shipped **no `permissions` block at all** in `.claude/settings.json`.
+
+A manager session holding `Bash` could therefore satisfy any approval gate by piping `yes` into the
+command. **This was not proved by doing it** — performing the act the agent must never perform is
+not an acceptable proof, and the code path decides the question without it.
+
+### What changed
+
+Six permission **deny** rules are now written by the installer, and are present in this repository's
+own settings:
+
+```
+Bash(crabgic approve:*)          Bash(crabgic design approve:*)
+Bash(crabgic learn approve:*)    Bash(crabgic trust approve:*)
+Bash(crabgic trust review:*)     Read(**/approval-signing.key)
+```
+
+A permission deny is enforced by the ENGINE rather than by the agent's cooperation, which is what
+makes it different in kind from an instruction. The sixth rule covers the other route to a forged
+approval: read the signing key and mint a token.
+
+The gate is now reached the way the ruling intends — asked in Claude Code through `AskUserQuestion`,
+whose answer is harness-supplied and cannot be authored by the agent.
+
+### ⚠️ What this does NOT establish
+
+These rules match **command prefixes**. They do not stop `npx crabgic …`, a direct
+`node …/dist/bin.js`, or a process that writes the state files directly. This is defence in depth:
+it removes the accidental path and raises the cost of the deliberate one.
+
+**It is not a boundary, and nothing in this document should be read as certifying one.** Under the
+single-tenant, trusted-operator scope this document already certifies, the manager runs at the same
+uid with filesystem reach, so approval integrity rests on operator trust — as it did before, and as
+it will until something outside the agent's reach signs the human's answer.
+
+**This annotation does not move the certification line.** It corrects a claim that was stronger than
+the control behind it.
