@@ -94,12 +94,19 @@ try {
 
   // (2) Every bare import the INSTALLED package emits must be declared.
   //
-  // Scanned from `node_modules/crabgic`, not from the workspace `dist`:
-  // packages/cli's `postpack` restores the workspace build immediately after
-  // packing (so sibling packages keep typechecking against tsc's per-file
-  // declarations), which means `dist` no longer holds the published artifact
-  // by the time this runs. The installed copy is both the real thing and the
-  // one a user would get.
+  // Scanned from `node_modules/crabgic`, not from the workspace `dist`: the
+  // installed copy is both the real thing and the one a user would get.
+  //
+  // ⚠️ PRECONDITION, corrected 2026-08-18. This comment used to say `npm pack`
+  // fires packages/cli's `prepack`, "which is what replaces `dist`".
+  // `packages/cli/package.json` declares no `prepack` and no `postpack`. The
+  // bundling is the ROOT `npm run build` (`tsc -b && bundle:types &&
+  // bundle:cli`), and `npm pack` does not fire it. So this check requires a
+  // full `npm run build` beforehand — after `tsc -b` alone the packed artifact
+  // is per-file tsc output that genuinely imports `@crabgic/*`, and the check
+  // correctly fails on bytes nobody publishes. That stale sentence sent two
+  // readers to the wrong conclusion about `main`; defect
+  // `docs/evidence/criteria-closeout/defects/25-install-smoke-depends-on-local-dist-state.md`.
   const installedDist = join(project, "node_modules", manifest.name, "dist");
   const emittedImports = new Set();
   function scan(dir) {
@@ -107,7 +114,14 @@ try {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) scan(full);
       else if (entry.name.endsWith(".js")) {
-        const source = readFileSync(full, "utf-8");
+        // Block comments are STRIPPED before matching. Without this the
+        // patterns below match prose inside a JSDoc block — an unbundled
+        // `dist` retains its comments, and a sentence like "derived from
+        // \"our region\"" was reported as an undeclared package. Observed
+        // reporting "our region", "unreachable" and "failed because the
+        // directory is gone" as imports. Defect
+        // `docs/evidence/criteria-closeout/defects/25-install-smoke-depends-on-local-dist-state.md`.
+        const source = readFileSync(full, "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
         // Static `from "x"` and dynamic `import("x")` only. The specifier must
         // be a BARE package name: relative/absolute paths are the bundle's own
         // chunks, and `$` excludes template-literal interpolations like
@@ -131,6 +145,25 @@ try {
     }
   }
   scan(installedDist);
+
+  // A package name cannot contain a space. If one does, this is not reading what
+  // it thinks it is reading, and reporting its contents as "undeclared imports"
+  // sends the reader chasing packages that do not exist — which is how this
+  // check's output came to be misquoted in two merged PR bodies. Refuse, and say
+  // what was actually scanned.
+  const impossible = [...emittedImports].filter((pkg) => /\s/.test(pkg));
+  if (impossible.length > 0) {
+    fail(
+      `the scan of ${installedDist} produced specifiers that cannot be package names ` +
+        `(${impossible
+          .slice(0, 3)
+          .map((p) => JSON.stringify(p))
+          .join(", ")}). That means the ` +
+        "packed artifact is not the bundle `prepack` produces, so this check cannot judge it. " +
+        "Rebuild and re-pack rather than trusting either verdict.",
+    );
+  }
+
   const undeclared = [...emittedImports].filter((pkg) => !declared.has(pkg));
   if (undeclared.length > 0) {
     fail(
