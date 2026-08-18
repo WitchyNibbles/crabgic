@@ -276,6 +276,39 @@ describe("the plan schema must not truncate the server's plan", () => {
   });
 });
 
+/**
+ * Defect `25-verdict-envelope-rediscovered-every-stage.md`. `ReviewVerdictSchema`
+ * requires six envelope fields the reviewer does not produce, so a verdict
+ * submitted as handed over is REFUSED WHOLE — attestations and findings with it.
+ * Three stages in a row, the submitting agent hit the refusal and repaired it by
+ * hand; the loop knows every one of those fields and never said so.
+ */
+describe("the submit step supplies the verdict envelope", () => {
+  const submitPrompt =
+    [...CODE.matchAll(/agent\(\s*\[([\s\S]*?)\]\.join/g)]
+      .map((m) => m[1] ?? "")
+      .find((p) => p.includes("review.submit")) ?? "";
+
+  it("names every envelope field ReviewVerdictSchema requires", () => {
+    for (const field of ["schemaVersion", "id", "createdAt", "stage", "artifactRef", "round"]) {
+      expect(submitPrompt, `envelope field ${field} is not named`).toContain(field);
+    }
+  });
+
+  /** A reused id would make the server treat two lenses' verdicts as one document. */
+  it("requires a fresh id per lens", () => {
+    expect(submitPrompt).toMatch(/never reused across lenses/);
+  });
+
+  /**
+   * The envelope must be understood as the LOOP's facts, or a submitter may
+   * think it is being asked to edit what the reviewer said.
+   */
+  it("says the envelope is the loop's facts, not the reviewer's judgement", () => {
+    expect(submitPrompt).toMatch(/not the reviewer's judgement/);
+  });
+});
+
 describe("what the loop must never decide for itself", () => {
   it("takes closure from the server's response, never from its own judgement", () => {
     // `stageClosable` is `review.submit`'s answer. A loop that computed it would
