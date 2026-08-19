@@ -61,6 +61,13 @@ export { ecosystemsPresent, selectCoverageAdapter } from "./coverage/adapter-sel
 // The coverage gate's missing INPUT — unblocked by owner decision 2026-08-18.
 export { CONVENTIONAL_LCOV_PATH, readCoverageSummary } from "./coverage/coverage-report.js";
 export type { CoverageReportRead } from "./coverage/coverage-report.js";
+// Owner ruling 2026-08-18 — red-before-green as a discrimination check.
+export { isTestFilePath, selectChangedTestFiles } from "./coverage/changed-tests.js";
+export { captureRedBaselineForChangedTests } from "./red-baseline-from-tests.js";
+export type {
+  ChangedTestsBaselineInput,
+  ChangedTestsBaselineOutcome,
+} from "./red-baseline-from-tests.js";
 export { COVERAGE_GATE_NAME, registerCoverageGate } from "./coverage-gate-registration.js";
 export type {
   CoverageGateRegistration,
