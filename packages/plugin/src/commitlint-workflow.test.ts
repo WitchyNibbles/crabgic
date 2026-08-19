@@ -92,7 +92,9 @@ describe("the commitlint job lints the subject a squash merge will write", () =>
     expect(job, "the title must reach the step via `env:`").toMatch(
       /env:\s*\n\s+PR_TITLE:\s*\$\{\{\s*github\.event\.pull_request\.title\s*\}\}/,
     );
-    const runLines = job.split("\n").filter((line) => /run:/.test(line) || /^\s+\S.*\$\{\{/.test(line));
+    const runLines = job
+      .split("\n")
+      .filter((line) => /run:/.test(line) || /^\s+\S.*\$\{\{/.test(line));
     for (const line of runLines) {
       expect(line, `a run: line interpolates the PR title directly: ${line.trim()}`).not.toMatch(
         /run:.*\$\{\{[^}]*pull_request\.title/,
