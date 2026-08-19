@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-18",
-  "generatedAtSha": "33af6fd658ccb8c74351f1399df88f7deeca1535",
+  "generatedAt": "2026-08-19",
+  "generatedAtSha": "5b83a2d5b1d2543c77bb341adb70a7b9a090cb9b",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2644,
-    "seededStale": 751,
-    "outsideSpan": 860,
+    "anchored": 2625,
+    "seededStale": 770,
+    "outsideSpan": 879,
     "repeatText": 532,
     "crossFile": 19,
     "skipped": 611
@@ -5683,7 +5683,7 @@
       "qa": "cfc89848f84c",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@76-81"
+        "MOVED/collapsed@87-92!span"
       ]
     },
     "phase-14.json#c3#packages/gates/src/requirement-resolution.test.ts:65-66": {
@@ -5864,12 +5864,12 @@
       "qa": "95ec9076fdac",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@96",
-        "OK/collapsed@97",
-        "OK/collapsed@86,98~repeat",
+        "MOVED/collapsed@117!span",
+        "MOVED/collapsed@118!span",
+        "MOVED-AMBIG/collapsed@86,119!span~repeat",
         "OK/collapsed@89",
         "OK/collapsed@90",
-        "OK/collapsed@91",
+        "MOVED/collapsed@103!span",
         "SKIP-short"
       ]
     },
@@ -5923,9 +5923,9 @@
       "pins": [
         "SKIP-commentary",
         "OK/collapsed@29",
-        "OK/collapsed@51",
-        "OK/collapsed@52",
-        "OK/collapsed@55",
+        "MOVED/collapsed@62!span",
+        "MOVED/collapsed@63!span",
+        "MOVED/collapsed@66!span",
         "OK/collapsed@17!span",
         "OK/collapsed@18!span",
         "OK/collapsed@19!span"
@@ -9835,10 +9835,10 @@
       "qa": "eca8e9b70841",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@48",
-        "OK/collapsed@51",
-        "OK/collapsed@52",
-        "OK/collapsed@55"
+        "MOVED/collapsed@58!span",
+        "MOVED/collapsed@62!span",
+        "MOVED/collapsed@63!span",
+        "MOVED/collapsed@66!span"
       ]
     },
     "phase-21.json#c2#packages/gates/src/remote-verification-e2e.test.ts:187-199": {
@@ -11983,9 +11983,9 @@
       "pins": [
         "SKIP-commentary",
         "OK/collapsed@29",
-        "OK/collapsed@51",
-        "OK/collapsed@52",
-        "OK/collapsed@55"
+        "MOVED/collapsed@62!span",
+        "MOVED/collapsed@63!span",
+        "MOVED/collapsed@66!span"
       ]
     },
     "phase-24.json#c7#packages/gates/src/registry.ts:53-79": {
@@ -11995,8 +11995,8 @@
         "SKIP-commentary",
         "MOVED/collapsed@89!span",
         "MOVED/collapsed@90!span",
-        "MOVED/collapsed@91!span",
-        "MOVED-AMBIG/collapsed@118,130,142!span~repeat"
+        "MOVED/collapsed@103!span",
+        "MOVED-AMBIG/collapsed@139,151,163!span~repeat"
       ]
     },
     "phase-24.json#c8#docs/evidence/phase-24/closeout-c8-type-fixture-bites.txt": {
@@ -12092,10 +12092,10 @@
       "qa": "bf7d8f9ecc4e",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@51",
-        "OK/collapsed@52",
-        "OK/collapsed@32,53~repeat",
-        "OK/collapsed@55"
+        "MOVED/collapsed@62!span",
+        "MOVED/collapsed@63!span",
+        "MOVED-AMBIG/collapsed@32,64!span~repeat",
+        "MOVED/collapsed@66!span"
       ]
     },
     "phase-24.json#c9#packages/journal/src/codec/journal-payloads.ts:101-125": {

@@ -135,7 +135,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
 
     const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
 
-    expect(result?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(result?.evidence.gateVerdict).toBeUndefined();
     expect(result?.verdict.detail).toMatch(/red-baseline/i);
   });
 
@@ -170,7 +174,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
 
     const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
 
-    expect(result?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(result?.evidence.gateVerdict).toBeUndefined();
   });
 
   /**
@@ -200,7 +208,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
 
     const result = await fireOnce({ requirementIds: [REQ_A, REQ_B], candidateExitStatus: 0 });
 
-    expect(result?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(result?.evidence.gateVerdict).toBeUndefined();
     expect(result?.verdict.detail).toContain(REQ_B);
   });
 
@@ -224,7 +236,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
       requireAtLeastOne: true,
     });
 
-    expect(results[0]?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(results[0]?.evidence.gateVerdict).toBeUndefined();
     // ⚠️ `/per-work-unit/` and not `/work unit/`: with the guard deleted the
     // firing still fails, but on the BOUNDARY refusal, whose message also names
     // a work unit. The loose pattern passed against the mutation — measured —
@@ -243,7 +259,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
 
     const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
 
-    expect(result?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(result?.evidence.gateVerdict).toBeUndefined();
     expect(result?.verdict.detail).toMatch(/dispatch/i);
   });
 
@@ -258,7 +278,11 @@ describe("registerTddGate — the red-before-green check, read from the context 
 
     const result = await fireOnce({ requirementIds: [], candidateExitStatus: 0 });
 
-    expect(result?.verdict.passed).toBe(false);
+    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
+    // not be established, so the record carries NO `gateVerdict` and
+    // `implement-tests-first` stays underivable — while the run is not blocked by
+    // a check that never ran.
+    expect(result?.evidence.gateVerdict).toBeUndefined();
     expect(result?.verdict.detail).toMatch(/requirement/i);
   });
 });

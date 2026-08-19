@@ -45,7 +45,18 @@ export async function emitEvidence(
     // baseline exists, so a consumer scoring exit status reads that failure as a
     // pass. Every firing goes through this one function, so every firing carries
     // its verdict — and anything WITHOUT one is, by construction, not a firing.
-    gateVerdict: verdict.passed ? "passed" : "failed",
+    /**
+     * OMITTED for an inconclusive firing, and that absence is load-bearing:
+     * `@crabgic/cli`'s `deriveGateCriteria` reads a gate-tagged record with no
+     * verdict as UNPROVEN rather than green, so a check that could not run
+     * leaves its criterion underivable instead of silently satisfying it.
+     */
+    ...(verdict.inconclusive === true
+      ? {}
+      : {
+          // prettier-ignore
+          gateVerdict: verdict.passed ? "passed" : "failed",
+        }),
   });
 
   await journal.appendEntry({
