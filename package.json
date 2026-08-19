@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "build": "tsc -b && npm run bundle:types && npm run bundle:cli",
+    "census": "node scripts/repo-census.mjs",
     "build:clean": "tsc -b --clean",
     "typecheck": "tsc -b",
     "test": "vitest run --coverage",
