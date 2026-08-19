@@ -2,19 +2,19 @@
   {
     "probe": "sessions.preassigned-session-id",
     "expectation": "--session-id <uuid> is honored: the result's session_id equals the requested uuid, and a transcript file is created at that id",
-    "observed": "requested=0fbd173a-2669-4f64-9342-5c1e86927172, result.session_id=0fbd173a-2669-4f64-9342-5c1e86927172, transcript found=true",
+    "observed": "requested=2780522e-e019-49d4-a682-3a154036cfa5, result.session_id=2780522e-e019-49d4-a682-3a154036cfa5, transcript found=true",
     "verdict": "PASS"
   },
   {
     "probe": "sessions.kill9-resume-continuity",
     "expectation": "after kill -9 mid-run, `--resume <same session-id>` from the same cwd continues with prior context intact; the killed run's fixture carries a non-empty crash-truncated stream-json prefix",
-    "observed": "crash-stream prefix captured before SIGKILL: 19 event line(s); resume result=\"42\"; contains \"42\"=true",
+    "observed": "crash-stream prefix captured before SIGKILL: 21 event line(s); resume result=\"42\"; contains \"42\"=true",
     "verdict": "PASS"
   },
   {
     "probe": "sessions.fork-session-isolation",
     "expectation": "--fork-session (with --resume) creates a new session id, carries prior context into the fork, and leaves the ORIGINAL transcript file byte-identical",
-    "observed": "original transcript unchanged=true; fork got new session_id=true (4707bf71-1579-454f-b1ac-624037d034bc); fork recalled context=true; fork has its own transcript file=true",
+    "observed": "original transcript unchanged=true; fork got new session_id=true (6a828a8c-b2ff-45fc-9f8c-f22b9dc8e884); fork recalled context=true; fork has its own transcript file=true",
     "verdict": "PASS"
   },
   {

@@ -15,14 +15,14 @@ import type { ProcessProbeFn } from "../process-probe.js";
  * `docs/engine-baseline.md`'s headline "Accepted range" / §10's own recorded
  * accepted range — cited here verbatim, never re-derived from memory. Update
  * this constant only by cross-reference to a re-verified
- * `docs/engine-baseline.md`. Currently `2.1.207–2.1.220` (re-baselined
- * 2026-07-24 to 2.1.218, then 2026-07-25 to 2.1.220). NOTE: this constant is
+ * `docs/engine-baseline.md`. Currently `2.1.207–2.1.224` (re-baselined
+ * 2026-07-24 to 2.1.218, then 2026-07-25 to 2.1.220, then 2026-08-19 to 2.1.224 by a FULL suite re-run). NOTE: this constant is
  * a deliberate cross-reference copy, not an import of `@crabgic/engine-claude`'s
  * `ACCEPTED_ENGINE_VERSION_RANGE` (roadmap/09 §Risks) — it had drifted stale
  * at `2.1.210` through the 2026-07-24 re-baseline, which is exactly the
  * failure mode that arrangement invites; re-check it on every re-baseline.
  */
-export const ENGINE_BASELINE_ACCEPTED_RANGE = { min: "2.1.207", max: "2.1.220" } as const;
+export const ENGINE_BASELINE_ACCEPTED_RANGE = { min: "2.1.207", max: "2.1.224" } as const;
 
 function parseSemverTriple(version: string): readonly [number, number, number] {
   const match = /(\d+)\.(\d+)\.(\d+)/.exec(version);

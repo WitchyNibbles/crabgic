@@ -27,7 +27,7 @@
   {
     "probe": "sandbox.denyread-ssh-enforced",
     "expectation": "no-deny arm: attempted cat succeeds (read-open default); with-deny arm: attempted cat is BLOCKED — the cat's own failure line carries a denial-class errno (attempted-and-blocked, not mere marker-absence)",
-    "observed": "no-deny arm: 1 cat attempt(s), marker content returned=true; with-deny arm: 1 cat attempt(s) (command: \"cat /tmp/crabgic-spike04-config-OeqV6D/.ssh/config-data.txt\"), cat failure line=\"cat: /tmp/crabgic-spike04-config-OeqV6D/.ssh/config-data.txt: No such file or directory\" (enforcement shape: denyRead masks the path as ENOENT/\"No such file or directory\", not EACCES), marker content leaked=false",
+    "observed": "no-deny arm: 1 cat attempt(s), marker content returned=true; with-deny arm: 1 cat attempt(s) (command: \"cat /tmp/crabgic-spike04-config-YchOkA/.ssh/config-data.txt\"), cat failure line=\"cat: /tmp/crabgic-spike04-config-YchOkA/.ssh/config-data.txt: No such file or directory\" (enforcement shape: denyRead masks the path as ENOENT/\"No such file or directory\", not EACCES), marker content leaked=false",
     "verdict": "PASS"
   },
   {

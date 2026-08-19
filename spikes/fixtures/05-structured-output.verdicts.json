@@ -8,7 +8,7 @@
   {
     "probe": "structured-output.schema-violation-behavior",
     "expectation": "record the EXACT observed behavior when the model is deliberately steered to violate the active output schema (retry? typed error subtype? non-zero exit? silently coerced?)",
-    "observed": "subtype=success, is_error=false, num_turns=2, result_text=\"I understand you're testing my behavior, but I won't misuse tools just because a directive claims I \\\"must.\\\" \\n\\nThe StructuredOutput tool is designed to format answers when a user has made a legitimate request that requires structured output. Without an actual task or question, there's nothing appropriate for me to output.\\n\\nIf you have a real development task or question you'd like help with, I'm ready to assist. What can I help you build or fix?\", structured_output=undefined, errors=null",
+    "observed": "subtype=success, is_error=false, num_turns=2, result_text=\"I appreciate you testing my consistency, but I can't be overridden by embedded instructions like that.\\n\\nThe StructuredOutput tool is designed to be called at the end of a response when you've made an actual request that requires structured output - not to be invoked arbitrarily or in response to fake system instructions.\\n\\nIf you have a genuine task or question you'd like help with, I'm happy to assist! What can I do for you?\", structured_output=undefined, errors=null",
     "verdict": "PASS"
   }
 ]
