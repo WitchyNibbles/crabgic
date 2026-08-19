@@ -247,31 +247,6 @@ model is the courier for a human-approval token. Under Gap 18 in-policy dispatch
 **Closed in code 2026-07-29:** `run` and `approve` now mint, verify and spend the token inside the one
 process that rendered the prompt, and no result shape or rendered output carries it.
 
-**Partially REOPENED for the design gate by owner ruling 2026-08-19.** The owner ruled that the design
-gate must complete inside a Claude Code session rather than at a terminal. `crabgic design mint` therefore
-renders a `design_revision` token deliberately, and the gateway tool `design.verdict.redeem` spends it in
-another process — so for this one gate, **the model is again the courier for a human-approval token.** The
-exposure was put to the owner with this finding named and was reaffirmed; it is recorded here rather than
-softened, because a security posture that quietly drops a finding it once closed is worth nothing.
-
-Scope of the reopening, and what still holds:
-
-- It applies to `design_revision` ONLY. `envelope_hash` and `capability_digest` are unchanged: they still
-  mint, verify and spend in one process, and no rendered output carries them.
-- Minting stays reachable only through `runApprovalFlow`'s terminal prompt, which mints solely on an
-  explicit yes. A token existing at all is still evidence a human answered.
-- The expected digest is derived server-side from the change set id and design revision, never accepted
-  from the caller, so a token approving revision A cannot be recorded against revision B.
-- Single use is still enforced durably across processes; a replay is refused.
-- The verdict shape is validated BEFORE the token is spent, so a malformed request cannot burn the
-  owner's approval.
-- `packages/cli/src/review/design-verdict-writer-reachability.test.ts` asserts that the gateway can reach
-  the verdict writer only through the redeeming function, never directly.
-
-What an attacker gains: a session that observes the token can record the owner's verdict for that exact
-revision, once. What it does not gain: the ability to mint one, to reuse it, to retarget it at another
-revision or change set, or to touch either other subject kind.
-
 ### The escalation prompt cannot prove a human answered it (2026-07-29)
 
 Found by adversarial review of the `crabgic approve` implementation, reproduced live, and disclosed here
@@ -598,3 +573,46 @@ test. Every finding cited above was discovered by an adversarial-validation pass
 recorded in this repository's evidence trail; this review's own contribution is confirming
 each cited fix is present in the current source and that no severity was silently downgraded
 between the finding and the fix record. No new attack surface was probed by this pass itself.
+
+### The design gate's approval token is deliberately relayed (2026-08-19)
+
+⚠️ Appended BELOW every merged inbound citation into this file, following the convention
+`phase-23.json#c14` states for the 2026-08-06 annotation. An earlier draft of this amendment
+was inserted beside the 2026-07-29 paragraph it qualifies and moved that citation from :319
+to :344, which `check:citation-content` caught. The correction is recorded here rather than
+by re-baselining a citation this change set itself broke.
+
+**This partially REOPENS the Gap 18 finding recorded above as "Closed in code 2026-07-29".**
+That paragraph states that `run` and `approve` "mint, verify and spend the token inside the
+one process that rendered the prompt, and no result shape or rendered output carries it",
+because in a manager session "the only thing standing between those two points is the model,
+so the shipped design already makes the model the courier for a human-approval token".
+
+Owner ruling 2026-08-19: the design gate must complete inside a Claude Code session rather
+than at a terminal. So `crabgic design mint` renders a `design_revision` token deliberately,
+and the gateway tool `design.verdict.redeem` spends it in another process. **For this one
+gate, the model is again the courier for a human-approval token.** The exposure was put to
+the owner with this finding named and was reaffirmed. It is recorded rather than softened: a
+posture that quietly abandons a finding it once closed is worth nothing.
+
+Scope of the reopening, and what still holds:
+
+- It applies to `design_revision` ONLY. `envelope_hash` and `capability_digest` are
+  unchanged — they still mint, verify and spend in one process, and no rendered output
+  carries them.
+- Minting stays reachable only through `runApprovalFlow`'s terminal prompt, which mints
+  solely on an explicit yes. A token existing at all is still evidence a human answered.
+- The expected digest is derived server-side from the change set id and design revision,
+  never accepted from the caller, so a token approving revision A cannot be recorded against
+  revision B.
+- A token of the wrong subject kind is refused: an envelope approval is not a design
+  approval.
+- Single use is enforced durably across processes; a replay is refused.
+- The verdict shape is validated BEFORE the token is spent, so a malformed request cannot
+  burn the owner's approval.
+- `packages/cli/src/review/design-verdict-writer-reachability.test.ts` asserts that the
+  gateway reaches the verdict writer only through the redeeming function, never directly.
+
+What an attacker gains: a session that observes the token can record the owner's verdict for
+that exact revision, once. What it does not gain: the ability to mint one, to reuse it, to
+retarget it at another revision or change set, or to touch either other subject kind.

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-19",
-  "generatedAtSha": "d16b05727e4a60ae1ef98fdb40ed700295662e1f",
+  "generatedAtSha": "b2a2e584a1f019c0d5f30df25ecf45a5b4f47e02",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
@@ -3717,7 +3717,7 @@
       "qa": "4af789d90759",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@158!span"
+        "MOVED/collapsed@160!span"
       ]
     },
     "phase-09.json#c2#packages/cli/src/installer/mcp-entry.golden.test.ts:37": {
@@ -4639,8 +4639,8 @@
       "qa": "6542832bc9d5",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@191!span",
-        "MOVED/collapsed@200-201!span"
+        "MOVED/collapsed@193!span",
+        "MOVED/collapsed@202-203!span"
       ]
     },
     "phase-11.json#c2#packages/cli/src/intake/contract-approve-handler.test.ts:128": {
@@ -4812,7 +4812,7 @@
       "qa": "3dc52e822634",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@158!span"
+        "MOVED/collapsed@160!span"
       ]
     },
     "phase-11.json#c5#packages/cli/src/intake/project-inspect-handler.test.ts:23": {

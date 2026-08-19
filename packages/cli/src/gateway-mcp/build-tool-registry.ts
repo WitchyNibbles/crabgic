@@ -405,7 +405,6 @@ function buildReviewTools(
     },
   };
 
-
   /**
    * ⚠️ THE ONE GATEWAY PATH TO A DESIGN VERDICT, and it is not a write — it is
    * a REDEMPTION. This handler cannot reach `recordDesignVerdict`; it can only

@@ -22,7 +22,7 @@
  * Run:  node docs/evidence/phase-26/config-input-probe.mjs
  * Exits non-zero if a config-only edit stops changing the emitted output.
  */
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -80,7 +80,55 @@ rmSync(root, { recursive: true, force: true });
 console.log(`emitted with declarationMap:false -> ${withoutMap.join(", ")}`);
 console.log(`emitted with declarationMap:true  -> ${withMap.join(", ")}`);
 
+/**
+ * SECOND CLAIM, from blind spot 7: `.tsbuildinfo` records the compiler version
+ * and INVALIDATES on mismatch. Round 13 flagged that as uncited and covered by
+ * no assumption. Asserted here rather than cited, because it is reproducible in
+ * a second and this record has already been burned once by trusting a
+ * reviewer's report of an experiment.
+ */
+const incrRoot = mkdtempSync(join(tmpdir(), "tsbuildinfo-"));
+mkdirSync(join(incrRoot, "src"), { recursive: true });
+writeFileSync(join(incrRoot, "src", "index.ts"), "export const n: number = 1;\n");
+writeFileSync(
+  join(incrRoot, "tsconfig.json"),
+  JSON.stringify(
+    {
+      compilerOptions: {
+        composite: true,
+        outDir: "./out",
+        rootDir: "./src",
+        tsBuildInfoFile: "./out/.tsbuildinfo",
+      },
+      include: ["src"],
+    },
+    null,
+    2,
+  ),
+);
+const build = (args) => execFileSync(TSC, args, { cwd: incrRoot, encoding: "utf8", stdio: "pipe" });
+build(["-b", "."]);
+const upToDate = build(["-b", ".", "--dry"]);
+
+const infoPath = join(incrRoot, "out", ".tsbuildinfo");
+const info = JSON.parse(readFileSync(infoPath, "utf8"));
+const realVersion = info.version;
+writeFileSync(infoPath, JSON.stringify({ ...info, version: "0.0.0-not-a-real-version" }));
+const afterTamper = build(["-b", ".", "--dry"]);
+rmSync(incrRoot, { recursive: true, force: true });
+
+const invalidates = /would build/i.test(afterTamper) && /up to date/i.test(upToDate);
+console.log(`\n.tsbuildinfo version recorded          : ${realVersion}`);
+console.log(`--dry before tampering                 : ${upToDate.trim().split("\n").pop()}`);
+console.log(`--dry after version tampering          : ${afterTamper.trim().split("\n").pop()}`);
+
 const changed = JSON.stringify(withoutMap) !== JSON.stringify(withMap);
+if (!invalidates) {
+  console.error(
+    "\nFAIL - tampering with .tsbuildinfo's recorded version did not invalidate the build, so blind spot 7's claim no longer holds here.",
+  );
+  process.exit(1);
+}
 if (!changed) {
   console.error(
     "\nFAIL - editing ONLY the descendant config changed nothing, so blind spot 9's premise no longer holds here.",
