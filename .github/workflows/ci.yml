@@ -208,6 +208,24 @@ jobs:
       - name: lint PR commits
         if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: lint the subject a squash merge will write
+        # The range step above lints the BRANCH commits. A squash merge keeps
+        # none of them: GitHub writes one commit whose subject is this PR's
+        # title with ` (#<number>)` appended. That subject is linted by
+        # nothing before the merge button -- and on 2026-08-19 it put a
+        # 108-character header on `main` (commit cf67bd2) from a 100-character
+        # title that had passed the step above. `main` cannot be made green
+        # again without rewriting published history, so the subject is checked
+        # here, while the title can still be edited.
+        #
+        # PR_TITLE arrives via `env:` and NOT via `${{ }}` inside `run:`: a
+        # title is attacker-controlled text, and direct interpolation is
+        # substituted before the shell parses the line.
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: printf '%s (#%s)\n' "$PR_TITLE" "$PR_NUMBER" | npx commitlint --verbose
       - name: lint pushed commit
         if: github.event_name == 'push'
         run: npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }} --verbose
