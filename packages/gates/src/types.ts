@@ -40,6 +40,24 @@ export interface GateVerdict {
   readonly detail: string;
   /** Set by the flake gate (`../flake-gate.ts`) for a rerun-then-pass result — "never silently green" (roadmap/14 §In scope, "Flake policy"). Other gates leave this `undefined`. */
   readonly unstable?: boolean;
+  /**
+   * ⚠️ THE THIRD STATE: this gate RAN and established nothing.
+   *
+   * `passed` is a claim about the candidate. `inconclusive` says no claim was
+   * made — the check's own precondition could not be met, so the gate never got
+   * as far as asking the question. It blocks nothing, and it proves nothing.
+   *
+   * `../evidence.ts` emits the record with NO `gateVerdict` when this is set,
+   * which is exactly the shape `@crabgic/cli`'s `deriveGateCriteria` treats as
+   * unproven: "a gate-tagged record with no verdict is unproven rather than
+   * presumed green." Reporting `passed: true` instead would derive the
+   * criterion as MET on a check that never ran.
+   *
+   * It OVERRIDES `passed`, in both directions. A gate that could not establish
+   * its precondition has not failed the candidate — it has failed to ask — so a
+   * handler may set `passed: false` alongside this and still block nothing.
+   */
+  readonly inconclusive?: boolean;
 }
 
 export type GateHandler = (context: GateContext) => Promise<GateVerdict>;

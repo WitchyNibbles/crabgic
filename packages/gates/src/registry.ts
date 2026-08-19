@@ -88,8 +88,29 @@ export function createGateRegistry(): GateRegistry {
 
   async function fireOne(gate: RegisteredGate, context: GateContext): Promise<GateFireResult> {
     const verdict = await gate.handler(context);
+    /**
+     * ⚠️ An INCONCLUSIVE firing is normalised to `passed: true` HERE, once,
+     * rather than at each of the several places that read `verdict.passed`.
+     *
+     * `allGatesPassed`, the post-completion pipeline's per-unit check and every
+     * future consumer all ask the same question — "does this block?" — and an
+     * inconclusive gate does not. Leaving `passed: false` on the record and
+     * asking each reader to remember the exception is how one of them forgets.
+     * The DETAIL still says what happened, and the emitted `EvidenceRecord`
+     * still carries no `gateVerdict`, so nothing is proved by the
+     * normalisation.
+     */
     const evidence = await emitEvidence(context.journal, context, gate.tag, verdict);
-    return { tag: gate.tag, name: gate.name, verdict, evidence };
+    /**
+     * The RECORD is emitted from the raw verdict above — `emitEvidence` reads
+     * `inconclusive` itself and omits `gateVerdict` — and only the RETURNED
+     * verdict is normalised, because `passed` is what decides blocking.
+     */
+    const effective =
+      verdict.inconclusive === true && !verdict.passed
+        ? { ...verdict, passed: true as const }
+        : verdict;
+    return { tag: gate.tag, name: gate.name, verdict: effective, evidence };
   }
 
   return {

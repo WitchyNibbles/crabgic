@@ -78,10 +78,26 @@ export async function latestDispatchBoundarySeq(
   return latest;
 }
 
-/** A blocking verdict rather than a throw, so `emitEvidence` still journals the refusal — a gate that throws leaves no record that it refused. */
-function refuse(command: string, fingerprint: string, detail: string): GateVerdict {
+/**
+ * A verdict rather than a throw, so `emitEvidence` still journals it — a gate
+ * that throws leaves no record that it refused.
+ *
+ * ⚠️ INCONCLUSIVE, NOT FAILED, and owner ruling 2026-08-18 is why. Every caller
+ * of this helper is a case where the check's own PRECONDITION could not be met:
+ * no work unit, no dispatch boundary, no declared requirement, no red baseline.
+ * None of those is a finding about the candidate's code.
+ *
+ * MEASURED: treating them as failures blocked every real run. A healthy
+ * repository is green at base, so no red baseline is ever captured, so the gate
+ * refused — the gate was satisfiable only when the repository was already
+ * broken. `inconclusive` blocks nothing and, because the emitted record carries
+ * no `gateVerdict`, still proves nothing: `implement-tests-first` stays
+ * underivable, which is the honest answer for a check that did not run.
+ */
+function unestablished(command: string, fingerprint: string, detail: string): GateVerdict {
   return {
     passed: false,
+    inconclusive: true,
     command,
     exitStatus: 1,
     toolchainFingerprint: fingerprint,
@@ -110,7 +126,7 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
 
     const workUnitId = context.workUnitId;
     if (workUnitId === undefined) {
-      return refuse(
+      return unestablished(
         command,
         DEFAULT_FINGERPRINT,
         "the TDD gate is per-work-unit and this firing carries no work unit — failing closed",
@@ -119,7 +135,7 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
 
     const requirementIds = options.requirementIds(context);
     if (requirementIds.length === 0) {
-      return refuse(
+      return unestablished(
         command,
         DEFAULT_FINGERPRINT,
         `work unit "${workUnitId}" declares no requirement, so no red baseline could be red ` +
@@ -129,7 +145,7 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
 
     const boundary = await latestDispatchBoundarySeq(context.journal, workUnitId);
     if (boundary === undefined) {
-      return refuse(
+      return unestablished(
         command,
         DEFAULT_FINGERPRINT,
         `no dispatch boundary is journaled for work unit "${workUnitId}", so "before dispatch" ` +
@@ -144,7 +160,7 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
       }
     }
     if (missing.length > 0) {
-      return refuse(
+      return unestablished(
         command,
         DEFAULT_FINGERPRINT,
         `no red-baseline EvidenceRecord precedes this attempt's dispatch for requirement(s) ` +
