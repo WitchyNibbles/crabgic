@@ -77,9 +77,26 @@ exactly how it went wrong. `scripts/check-claim-scope.mjs` now flags that
 mismatch mechanically, and flagged THIS section on its first run:
 
 ```
-git ls-files | xargs grep -ln "mtime"        # 8 files, bundle-types.mjs among them
-git ls-files | xargs grep -ln "mtimeMs\|statSync"   # 39 files
+git ls-files | xargs grep -ln "mtime"              # 28 files (2026-08-19)
+git ls-files | xargs grep -ln "mtimeMs\|statSync"  # 53 files (2026-08-19)
 ```
+
+`scripts/bundle-types.mjs` is in both. Every other hit is documentation, a test,
+or an unrelated use of `mtime` — a temp-directory sweep cutoff, a generic
+`FsStat` field, a git index side effect — and none is a second build-staleness
+comparison. **Read the whole 28 before trusting that sentence**; it is the point
+of quoting the command.
+
+⚠️ **Two defects here, both found by round 11's source-quality lens, and both
+mine.** The record first claimed **8** and **39**. Neither reproduced: the
+command as written has no `docs/` filter and returns 28, while the 8 came from a
+run that DID filter `docs/` and whose filter was dropped in transcription. And
+the filtered count had itself drifted from 8 to 12 as this change set added
+files. **A count is a measurement with a timestamp; the command is the
+reproducible part.** The counts above are therefore dated, and the unfiltered
+command is quoted deliberately — narrowing a universal negative's corpus to
+exclude `docs/` is the very move `scripts/check-claim-scope.mjs` exists to
+refuse.
 
 Nothing detects it: `packages/cli/src/doctor/checks/` holds **15** non-test
 check files and none reads a build timestamp — `checksum-drift.ts` and
@@ -179,7 +196,7 @@ Not rebuild. Not error. Not report a package that has no `dist` at all: a packag
 that has never been built is not stale, and reporting it would make the check
 noisy on a fresh clone, which is how a check gets ignored.
 
-⚠️ **Eight blind spots, each measured rather than feared.** They belong here, in
+⚠️ **Nine blind spots, each measured rather than feared.** They belong here, in
 the section a reader consults for limits, and not only in Corrections:
 
 1. **It cannot see its own staleness.** `bundle:cli` copies plugin assets with
@@ -268,6 +285,32 @@ the section a reader consults for limits, and not only in Corrections:
    survives the clean, `bundle-types.mjs` skips regeneration, `bundle-cli.mjs`
    copies it in with a fresh mtime. **The check says clean before and after.**
 
+9. **An `extends` chain walked UPWARD misses a config that extends DOWNWARD.**
+   `packages/cli/tsconfig.dts.json` declares `"extends": "./tsconfig.json"` — a
+   descendant. Walking up from `packages/cli/tsconfig.json` reaches
+   `tsconfig.base.json` and stops, so assumption 5's remedy never reaches it. It
+   is not among the root's **19** references either, so assumption 4 misses it
+   too. And it is load-bearing: `scripts/bundle-types.mjs:83-84` hands it to
+   `dts-bundle-generator` as `--project`, producing `.dts-cache/index.d.ts`,
+   which `bundle-cli.mjs:153` copies to the **published**
+   `packages/cli/dist/index.d.ts`.
+
+   Counterexample, **run rather than argued** (round 11, assumption-audit): add
+   `"stripInternal": true` to `tsconfig.dts.json` alone and the emitted
+   declarations lose a type. No `.ts` source moves, no unit `tsconfig.json`
+   moves, `tsconfig.base.json` does not move, no `dist` file moves. The check
+   reports clean for all 19 units while the published type surface is the old
+   one.
+
+   ⚠️ **The prior art this record adopts shares this blind spot.**
+   `bundle-types.mjs`'s `newestSourceMtime()` walks only `.ts` files under
+   `packages/*/` (`:43-54`), so it never stats ANY `.json` — including the very
+   config that steers its own generator. Touching `tsconfig.dts.json` does not
+   invalidate its cache. Q2 calls that predicate "exactly the comparison this
+   record proposes"; it is, and it carries this hole with it. **`npm run census`
+   surfaces both offenders today**, in its `configInputsOutsideProjectGraph`
+   bucket.
+
 ## Prior art checked
 
 - **`packages/cli/src/doctor/checks/`** — the 15 existing checks establish
@@ -305,6 +348,25 @@ the section a reader consults for limits, and not only in Corrections:
   already worked around in this codebase**, by moving the artifact out of `dist`
   into a cache the clobbering step does not touch. A design that does not read
   this file is re-deriving a lesson the repository has already paid for.
+
+- **`scripts/repo-census.mjs` — the enumeration half is ALREADY BUILT, tested and
+  in `check:all`'s neighbourhood.** Added after round 10 precisely because this
+  record's Q2 answer was wrong, it computes the discriminators assumptions 4-6
+  spent five rounds deriving by hand:
+
+  | census output                     | re-derives                                                                       |
+  | --------------------------------- | -------------------------------------------------------------------------------- |
+  | `referencedButNotWorkspace`       | assumption 4 — 19 references vs 18 workspaces, i.e. `e2e/report`                 |
+  | `configInputsOutsideProjectGraph` | assumption 5 — `tsconfig.base.json`, extended by all 19, a project in none       |
+  | `sourceClaimedByNothing`          | Q2's own miss — `scripts/` claimed by no tsconfig                                |
+  | `claimedOnlyByString`             | the shell-string reachability that hides `bundle-types.mjs` and `bundle-cli.mjs` |
+
+  ⚠️ **This record applied that standard to itself and then failed it.** It
+  condemns omitting `bundle-types.mjs` as prior art — "a design that does not
+  read this file is re-deriving a lesson the repository has already paid for" —
+  and then omitted `repo-census.mjs`, which exists _because of this record's own
+  defect_. Found by round 11's completeness lens. **The design should call the
+  census rather than re-derive its sets**, and must say which it does.
 
 - **The wider ecosystem** — `tsc -b`'s `.tsbuildinfo` is the canonical staleness
   oracle and is strictly better than mtimes, but reading it means parsing an
@@ -369,8 +431,11 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
    never write, because `noEmit: true` suppresses emission. **The discriminator
    is "a unit that emits compiled output", and in this repository that set is
    exactly the `references` array.**
-5. **A unit's build inputs are NOT confined to its `src/` tree.** Its own
-   `tsconfig.json` and the whole `extends` chain are inputs too. Measured:
+5. **A unit's build inputs are NOT confined to its `src/` tree, and a unit may
+   have MORE THAN ONE project config.** The input set is _every `tsconfig*.json`
+   a build program hands to a compiler for this unit_ — not "its `tsconfig.json`
+   and its `extends` chain", which is what an earlier version of this assumption
+   said and which provably misses a shipped config (blind spot 9). Measured:
    **19 of 19** in-scope units declare `"extends": "../../tsconfig.base.json"`,
    and that file sits at the repository root — outside every unit's `src/`.
    A comparison that walks only `src` is therefore not a comparison of the
@@ -399,7 +464,7 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
 
 ⚠️ **Concretely, not abstractly.** An earlier draft hedged here at the level of
 "mtime comparison may not suffice for a general build system", which reads as a
-hypothetical while eight PROVEN, always-present failure modes sat further down
+hypothetical while nine PROVEN, always-present failure modes sat further down
 the page. They are named in Q5 above and repeated here because this is the other
 section a design-stage reader consults for limits:
 
@@ -430,7 +495,12 @@ section a design-stage reader consults for limits:
   `.tsbuildinfo`; assumption 6 states it rather than pretending otherwise;
 - it **is blind to the middle tier** — `packages/cli/.dts-cache/` is gitignored
   and is neither `src` nor `dist`, so it is invisible at both ends, and it
-  survives the `rm -rf dist` a reader performs when the check fires.
+  survives the `rm -rf dist` a reader performs when the check fires;
+- it **misses a config that extends DOWNWARD**. `packages/cli/tsconfig.dts.json`
+  extends `./tsconfig.json`, so an upward `extends` walk never reaches it, yet
+  it steers the published `.d.ts` (`bundle-types.mjs:83-84` →
+  `bundle-cli.mjs:153`). Closable: enumerate every `tsconfig*.json` a build
+  program hands to a compiler, which `npm run census` already lists.
 
 What it DOES establish: the repository currently asks nothing at all, and a
 newest-mtime-beneath-root comparison would have caught the specific measured
