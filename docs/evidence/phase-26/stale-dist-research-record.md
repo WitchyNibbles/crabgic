@@ -22,7 +22,8 @@ dist/index.js  21:37     src/coverage-gate-registration.ts  21:46
 ```
 
 ⚠️ **Reported, not reproducible — cite them that way.** These mtimes, the "83
-failures", the "6 of 6" in Q1 and Q3's "green on the same commit" were read during the
+failures", the "6 of 6" in Q1, Q3's "green on the same commit", and the opening
+paragraph's "2 in 9" rate, "npm contention" and "blocked two pushes" were read during the
 session that hit this and were NOT logged to a committed file at the time.
 `./stale-dist-incident.md` carries what can still be shown and states plainly
 what it cannot: a reader "cannot re-derive the specific counts". Nothing
@@ -348,6 +349,38 @@ the section a reader consults for limits, and not only in Corrections:
    surfaces both offenders today**, in its `configInputsOutsideProjectGraph`
    bucket.
 
+**Q6. When does it actually fire?**
+
+⚠️ **Not asked for fourteen rounds, and the honest answer is: it would not.**
+Every earlier version of this record answered placement as a code shape —
+"composed into the doctor registry" — and never asked at what moment a developer
+would see it run. Measured 2026-08-19:
+
+- `grep -rn "doctor" package.json .github/workflows/*.yml` returns **no
+  invocation** — one code comment and nothing else;
+- `check:all` chains **14** sub-checks and none is `doctor`;
+- there is no `.husky`, no `lefthook`, and no non-sample hook in `.git/hooks`.
+
+So implement this record exactly, replay the founding incident — edit
+`packages/gates/src`, switch branch, run `npm test` — and `crabgic doctor` is
+never invoked, the check never executes, and the 83 failures recur unwarned.
+**The closing claim that a newest-mtime comparison "would have caught" the
+failure is true of the comparison and false of the shipped experience.**
+
+**The record's own prior art already had the answer and it was not read for
+this.** `scripts/bundle-types.mjs:70` fires because it sits inside
+`npm run build` (`package.json:15`). This record adopts that comparison's shape
+and drops the property that makes it fire.
+
+This is not blind spot 4. That one is "a stale `packages/cli/dist` runs a doctor
+registry predating the check" — the check exists but is the wrong version. This
+is: the check is current, correct, and simply never invoked.
+
+**The design must therefore state its trigger**, and a doctor check alone does
+not qualify. Wiring it into `check:all`, or a `pretest` script, or declaring
+"doctor only, and therefore only when asked" are all defensible — choosing none
+of them is not.
+
 ## Prior art checked
 
 - **`packages/cli/src/doctor/checks/`** — the 15 existing checks establish
@@ -450,33 +483,32 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
    carries the measurement and the withdrawn cost claim.
 
 2. **A touched-but-unchanged source file produces a false warning.** Accepted
-   deliberately, and a warning that is occasionally unnecessary is cheaper than
-   the two hours this cost. But the stated reason for rejecting the alternative
-   was wrong. Content hashing every source file is **somewhat** more expensive,
-   not "far more". Measured over the 19 units (2026-08-19, warm cache):
+   deliberately: a warning that is occasionally unnecessary is cheaper than the
+   two hours this cost.
 
-   | operation                                      | files | time        |
-   | ---------------------------------------------- | ----- | ----------- |
-   | `stat` every `src` file                        | 1521  | **5.4 ms**  |
-   | SHA-256 every `src` file (9.5 MB)              | 1521  | **26.8 ms** |
-   | the walk this record proposes (`src` + `dist`) | 6603  | **18.5 ms** |
+   ⚠️ **The reason for rejecting the alternative was wrong TWICE, and cost is
+   not the argument at all.** The original text said content hashing every source
+   file "costs far more than the question is worth" — uncited. Round 13 replaced
+   that with a measured 1.45x — also uncited, and mislabelled "warm cache" when
+   the figures were in fact a cold first run. Round 14 caught that, so the
+   measurement became a committed probe, and **the probe refuted the claim it was
+   written to support**: `node docs/evidence/phase-26/hash-vs-mtime-probe.mjs`
+   walks the 19 referenced units four times and reports
 
-   Roughly **1.45×** the proposed walk — a real difference, and nothing like
-   "far more".
+   ```
+   hash/walk ratio across 4 runs: min 1.01x, max 1.48x
+   ```
 
-   **The reason to prefer mtime is that hashing needs somewhere to keep a
-   baseline.** An mtime comparison is self-contained: both sides are already on
-   disk. A hash comparison must persist last-known digests, which means a
-   twentieth build artifact with its own staleness problem — the defect class
-   this entire record is about. That is the argument; cost never was.
+   with an earlier run reaching **0.98x** — hashing CHEAPER than the walk. The
+   two are the same order of cost and which is faster moves with cache state, so
+   **cost cannot decide between them.** The probe now asserts only that, and
+   fails if the ratio ever leaves the band where the claim would need re-arguing.
 
-   ⚠️ Round 13's lens measured **38.5 ms** for that same walk and concluded
-   hashing was CHEAPER. Re-derived here: **18.5 ms**, almost certainly a warm
-   filesystem cache after its own run, so its conclusion inverts. The direction
-   of the original claim survives; its magnitude does not. Recorded because
-   round 12's lesson — _a reviewer's "measured" is not a measurement until the
-   manager re-derives it_ — is exactly what caught it, one round after being
-   written down.
+   **What the assumption actually rests on: hashing needs somewhere to keep a
+   baseline.** An mtime comparison is self-contained — both sides are already on
+   disk. A hash comparison must persist last-known digests, which is a twentieth
+   build artifact with its own staleness problem: the defect class this entire
+   record is about.
 
 3. **Package granularity is enough.** The check names a package, not a file. A
    reader who sees the warning runs `npm run build`; knowing which file was newer
@@ -569,7 +601,8 @@ section a design-stage reader consults for limits:
 
 What it DOES establish: the repository currently asks nothing at all, and a
 newest-mtime-beneath-root comparison would have caught the specific measured
-failure that started this — for every package except the one it happened in.
+failure that started this — for every package except the one it happened in,
+**and only if something invoked it** (Q6).
 
 That last clause is the honest summary of this research, and a design that does
 not answer it has not answered the question.
@@ -1412,3 +1445,135 @@ sentence unmeasured, and round 7 then propagated the wrong number into the body.
 The record's own bar — _a disposition is complete only when every site carrying
 the wrong claim is re-measured_ — failed again, on a number it had already
 corrected once.
+
+**Round 14 (2026-08-19) — three lenses, three `revise`, three findings, all
+verified and all `fixed`. The lens followed both standing rules and one of its
+findings lands on the round that wrote them down.**
+
+**assumption-audit and source-quality, the SAME defect, filed independently and
+counted once — assumption 2's measured table had no producer.** Round 13
+replaced an uncited cost claim with a measured one and left it uncited: no
+command, no script, no artifact. It was the only measurement left in this record
+standing on session memory, in a document whose own rule is _a count is a
+measurement with a timestamp; the command is the reproducible part_. Round 6's
+entry had already declared the previous such case "the last"; round 13 quietly
+added a new one.
+
+⚠️ **And the label was wrong.** Round 13's figures were recorded as "warm cache".
+Round 14 ran the corpus four times and found they match its FIRST, COLDEST run.
+That is precisely the critique round 13 levelled at its own reviewer's 38.5 ms,
+landing on round 13.
+
+**Then the probe refuted the claim it was built to support.**
+`docs/evidence/phase-26/hash-vs-mtime-probe.mjs` was written to assert the
+weakest form of the original claim — that hashing is at least MORE EXPENSIVE
+than the walk — and **failed on its first run**, with one run at **0.98x**:
+hashing cheaper. Across runs the ratio spans roughly **1.0x to 1.6x** and moves
+with cache state.
+
+So the cost argument is dead in all three of its forms — "far more", "1.45x", and
+plain "more". The probe now asserts only that the two are the same ORDER of cost,
+which is what makes cost a non-argument, and fails if the ratio ever leaves the
+band where it would need re-arguing. Assumption 2 rests entirely on the argument
+that survives: **hashing needs somewhere to persist a baseline; an mtime
+comparison does not.**
+
+**completeness — Q6 was never asked, and it is the first genuinely missing
+QUESTION in fourteen rounds.** Every round hardened the ANSWERS. Nobody asked at
+what moment the check fires. Placement had only ever been answered as a code
+shape — "composed into the doctor registry".
+
+Measured: `crabgic doctor` is invoked by **nothing** automatic here — no
+`package.json` script, no workflow, no `.husky`, no `lefthook`, no non-sample
+`.git/hooks`, and none of `check:all`'s 14 sub-checks. Implement this record
+exactly, replay the founding incident, and the check never executes.
+
+**The record's own prior art had the answer and it was not read for this.**
+`bundle-types.mjs:70` fires because it sits inside `npm run build`. This record
+adopted that comparison's shape and dropped the property that makes it fire. Q6
+now states it, and the closing claim is qualified with "and only if something
+invoked it".
+
+**assumption-audit — three narrative claims outside the warning box's own
+enumeration.** The box names its unlogged items individually and then says "This
+disclaimer covers ONLY that observation", but the opening paragraph's "2 in 9"
+rate, "npm contention" and "blocked two pushes" appear in no committed artifact
+and were not in the list. Same shape round 5 upheld as blocking for the
+branch-switch root cause, in the same narrative section. Named in the box now.
+
+ℹ️ **What the lens checked and declined to file** is worth recording, because
+after fourteen rounds the negatives carry as much weight as the findings: every
+Corrections fact from rounds 1-13 re-walked against the body by grep with no
+further placement gap; Q5's nine blind spots matched 1:1 and in order against the
+limits section's nine; both probes re-run to exit 0 with both of
+`config-input-probe`'s assertions verified; the census, claim-scope and
+citation-content gates re-run; and roughly twenty counts re-derived with the
+exact command stated for each — including the `git cat-file` pair and the reflog
+window, which it re-derived rather than inheriting from round 10.
+
+## Stage closed
+
+**Round 15 (2026-08-19) — `approve` / `approve` / `approve`. No admissible novel
+finding. The `research` stage closes here.**
+
+Closure is not "the reviewers ran out of things to say"; it is a round that
+raised nothing novel while every obligation was answered and every finding
+dispositioned. Fifteen rounds, **thirty-one findings**, all dispositioned in
+`## Corrections` above.
+
+What round 15 re-derived rather than inherited, because a clean verdict is only
+worth what its search was:
+
+- Q5's **nine** blind spots against the limits section's **nine**, 1:1 and in
+  order;
+- all three probes to exit 0 — including `hash-vs-mtime-probe.mjs` run **four**
+  times per standing rule 2, spread `0.98x`-`1.69x` across sixteen timed runs,
+  consistent with "same order of cost, direction moves with cache state";
+- roughly twenty counts with the exact command stated for each;
+- every line anchor by `sed -n`;
+- `census`, `check:claim-scope` and `check:citation-content` (1367 citations).
+
+ℹ️ **Two things it checked and declined to file, recorded because the declines
+are as informative as the findings.**
+
+1. It saw `hash-vs-mtime-probe.mjs` as untracked and nearly filed a
+   round-14-shaped finding — assumption 2 claims "the measurement became a
+   committed probe". **It re-derived before writing it up** and found the probe
+   had landed as `b6d41f5` mid-review. Standing rule 1 working on the reviewer
+   rather than on the record, which is the first time that has happened here.
+2. `e2e/matrix/orchestration/dist` exists on disk (empty, gitignored) while the
+   `e2e/*` table says `e2e/matrix` has no `dist`. Verified: `e2e/matrix/dist`
+   does not exist, and the table pre-discloses that its unit of enumeration is
+   the six `e2e/*` directories. True as written; the sub-project framing changes
+   no conclusion.
+
+### What this record establishes, and what it does not
+
+**Establishes.** The repository asks nothing about build-output staleness at the
+top level, and the incident that motivated the question was real, dated and
+mechanically explained. A newest-mtime comparison would have caught it — for
+every package except the one it happened in, and only if something invoked it.
+
+**Does not establish.** That the check is worth building as specified. Nine
+measured blind spots stand against it, four of them closable only by a design
+that does more than the naive comparison, and Q6 shows the naive placement would
+never fire at all. **The strongest single result is Q2's**: the mechanism already
+exists in this repository at `scripts/bundle-types.mjs:70`, and nine rounds of
+review searched the wrong places for it.
+
+### The three rules this record paid for
+
+Written here because they cost fifteen rounds and generalise past this change
+set:
+
+1. **A search narrower than its claim is not evidence for it.** Now mechanical —
+   `scripts/check-claim-scope.mjs`, in `check:all`.
+2. **A reviewer's "measured" is not a measurement until the manager re-derives
+   it.** Learned from a false counterexample that carried the label "run rather
+   than argued", and confirmed twice more when a reviewer's timing inverted its
+   own conclusion.
+3. **A count is a measurement with a timestamp; the command is the reproducible
+   part.** Seven count defects, every one from a search narrower than the claim
+   or a number that drifted as the repository grew.
+
+**Next stage: `clarify`, which is owner-gated.**
