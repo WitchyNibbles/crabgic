@@ -42,7 +42,55 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import type { JournalEntryType } from "../journal/journal-entry-type.js";
 
-export type ApprovalTokenSubjectKind = "envelope_hash" | "capability_digest" | "learning_review";
+/**
+ * The closed vocabulary of things an approval token can be minted FOR.
+ *
+ * `design_revision` joined 2026-08-19, amending owner ruling R2. That ruling
+ * made `crabgic design approve` a CLI command so that "nothing reachable from a
+ * session may record this verdict"; the amendment keeps the guarantee and
+ * changes only what carries the owner's act — a token they mint at their own
+ * terminal, rather than a file the command writes directly.
+ *
+ * ⚠️ WHAT IT BUYS, AND WHAT IT DOES NOT. A minted token is journaled as
+ * `approval_token_mint` and claimed once through the durable ledger, so a design
+ * approval becomes a first-class evidence artifact on the same footing as the
+ * contract and capability approvals. It does NOT remove a context switch:
+ * measured 2026-08-19, `design-verdict-handler.ts` calls `runApprovalFlow` zero
+ * times, so the approval was already one terminal command with no prompt, and
+ * the token flow is one command too. Bought for the audit trail, not for
+ * convenience.
+ *
+ * Exported as an array as well as a union so a test can assert membership
+ * without restating the list — a second copy is a second thing to keep in step.
+ */
+export const APPROVAL_TOKEN_SUBJECT_KINDS = [
+  "envelope_hash",
+  "capability_digest",
+  "learning_review",
+  "design_revision",
+] as const;
+
+export type ApprovalTokenSubjectKind = (typeof APPROVAL_TOKEN_SUBJECT_KINDS)[number];
+
+/**
+ * The digest a `design_revision` token is bound to.
+ *
+ * ⚠️ BINDS BOTH HALVES. A token minted for one revision must not approve
+ * another: the design may have been edited after the owner read it, which is the
+ * window `packages/cli`'s "keeps refusing when the owner approved a DIFFERENT
+ * design revision" case exists to close. Binding the change set too stops a
+ * token crossing between change sets.
+ *
+ * ⚠️ THE SEPARATOR IS NOT DECORATIVE. Without one, `("ab", "c")` and
+ * `("a", "bc")` concatenate identically and a token minted for either would
+ * verify for the other. A NUL byte, because it cannot occur in a UUID or a
+ * revision label, so no input can forge the boundary.
+ */
+export function designRevisionDigest(changeSetId: string, designRevision: string): string {
+  return createHmac("sha256", "crabgic:design_revision")
+    .update(`${changeSetId}\u0000${designRevision}`)
+    .digest("hex");
+}
 
 /**
  * The narrow slice of `@crabgic/journal`'s `JournalStore` this primitive uses —

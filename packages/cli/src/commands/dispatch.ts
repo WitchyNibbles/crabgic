@@ -27,6 +27,7 @@ import {
 } from "./real-handlers.js";
 import { runApproveCommand } from "./approve.js";
 import { runDesignVerdictCommand } from "./design-verdict-handler.js";
+import { runDesignMintCommand } from "./design-mint-handler.js";
 import { runInstallCommand, runUninstallCommand, runUpgradeCommand } from "./installer-handlers.js";
 import {
   runLearnApproveCommand,
@@ -109,6 +110,20 @@ export async function dispatchCommand(
       case "design-reject":
         return deps.designVerdicts !== undefined
           ? await runDesignVerdictCommand(command, deps.designVerdicts)
+          : notImplementedResult(command.command, command.json);
+
+      /**
+       * Owner ruling 2026-08-19, amending R2. Still a CLI command, and still the
+       * only way a human's design verdict enters the system — the amendment
+       * moves what CARRIES the act from a file write to a minted token, not who
+       * performs it.
+       */
+      case "design-mint":
+        return deps.intake !== undefined
+          ? await runDesignMintCommand(command, {
+              minter: deps.intake.minter,
+              ...(deps.intake.io !== undefined ? { io: deps.intake.io } : {}),
+            })
           : notImplementedResult(command.command, command.json);
 
       case "resume":

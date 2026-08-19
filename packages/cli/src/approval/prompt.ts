@@ -14,7 +14,7 @@ import {
   type MintedApprovalToken,
 } from "./token.js";
 
-/** Human-readable label per subject kind — exhaustive over `ApprovalTokenSubjectKind` (a `never` default branch fails to compile if a 4th kind is ever added without a matching label here). */
+/** Human-readable label per subject kind — exhaustive over `ApprovalTokenSubjectKind` (a `never` default branch fails to compile if a further kind is ever added without a matching label here; `design_revision` joined 2026-08-19 and this branch is what caught its absence). */
 function subjectKindLabel(subjectKind: ApprovalTokenSubjectKind): string {
   switch (subjectKind) {
     case "envelope_hash":
@@ -23,6 +23,8 @@ function subjectKindLabel(subjectKind: ApprovalTokenSubjectKind): string {
       return "capability manifest";
     case "learning_review":
       return "learning proposal (independent review)";
+    case "design_revision":
+      return "design revision";
     default: {
       const exhaustive: never = subjectKind;
       throw new Error(`unknown approval-token subject kind: ${String(exhaustive)}`);

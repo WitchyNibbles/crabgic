@@ -78,7 +78,7 @@ export interface ApproveCommand extends JsonFlag {
  * and refused by the schema without it, because the design stage loops on it.
  */
 export interface DesignVerdictCommand extends JsonFlag {
-  readonly command: "design-approve" | "design-reject";
+  readonly command: "design-approve" | "design-reject" | "design-mint";
   readonly changeSetId: string;
   readonly revision: string;
   readonly reason?: string;

@@ -170,7 +170,13 @@ function parseTrust(rest: readonly string[]): ParsedCommand {
 }
 
 /**
- * `design approve|reject <change-set-id> --revision <rev> [--reason <why>]`.
+ * `design approve|reject|mint <change-set-id> --revision <rev> [--reason <why>]`.
+ *
+ * `mint` (owner ruling 2026-08-19, amending R2) produces an approval token the
+ * gateway later verifies, so the design verdict becomes a journaled
+ * `approval_token_mint` claimed once through the durable ledger rather than a
+ * bare file write. It takes the same arguments as `approve` because the token is
+ * bound to exactly that `(change set, revision)` pair.
  *
  * `--revision` is required on BOTH verbs rather than only on approve. An
  * approval that does not name what it approved carries forward across an edit,
@@ -183,9 +189,9 @@ function parseDesign(rest: readonly string[]): ParsedCommand {
   // `--revision sha256:abc` tokenizes as a valueless flag plus a stray
   // positional, and the positional would silently become the change-set id.
   const t = tokenize(remainder, ["revision", "reason"]);
-  if (verb !== "approve" && verb !== "reject") {
+  if (verb !== "approve" && verb !== "reject" && verb !== "mint") {
     throw new CliUsageError(
-      `unknown "design" sub-command "${verb ?? ""}" (expected approve|reject)`,
+      `unknown "design" sub-command "${verb ?? ""}" (expected approve|reject|mint)`,
     );
   }
   const changeSetId = requirePositional(t.positionals, 0, "change-set-id");
@@ -200,8 +206,16 @@ function parseDesign(rest: readonly string[]): ParsedCommand {
     // on this reason; without it the next round has nothing to change.
     throw new CliUsageError('"design reject" requires --reason <why>');
   }
+  /**
+   * `mint` shares every argument with `approve` — and must, because the token it
+   * produces is bound to exactly this `(change set, revision)` pair. A mint that
+   * accepted looser arguments than the approval it authorises would be minting
+   * for a subject the gate cannot check.
+   */
+  const command =
+    verb === "approve" ? "design-approve" : verb === "reject" ? "design-reject" : "design-mint";
   return {
-    command: verb === "approve" ? "design-approve" : "design-reject",
+    command,
     changeSetId,
     revision,
     ...(reason !== undefined ? { reason } : {}),
