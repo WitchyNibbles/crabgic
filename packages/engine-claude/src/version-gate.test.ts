@@ -38,7 +38,14 @@ const BASELINE_DOC_PATH = fileURLToPath(
 
 describe("version range constants", () => {
   it("ACCEPTED_ENGINE_VERSION_RANGE matches docs/engine-baseline.md's accepted range", () => {
-    expect(ACCEPTED_ENGINE_VERSION_RANGE).toEqual({ min: "2.1.207", max: "2.1.220" });
+    /**
+     * Extended 2026-08-19 by a FULL eight-probe suite re-run at engine 2.1.224
+     * (docs/engine-baseline.md, final section): 27 PASS / 1 FAIL / 2 UNRESOLVED,
+     * where the single FAIL is a probe's own four-turn budget rather than a
+     * permission decision, and every load-bearing permission sub-probe passed.
+     * Nothing on the baseline's own narrowing list fired, so the range extends.
+     */
+    expect(ACCEPTED_ENGINE_VERSION_RANGE).toEqual({ min: "2.1.207", max: "2.1.224" });
   });
 
   it("ACCEPTED_SDK_VERSION_RANGE matches docs/engine-baseline.md's accepted SDK range", () => {
@@ -74,7 +81,10 @@ describe("assertEngineVersionAccepted — refusal", () => {
   });
 
   it("refuses a version above the range", () => {
-    expect(() => assertEngineVersionAccepted("2.1.221")).toThrow(EngineVersionRejectedError);
+    // 2.1.225, not 2.1.221: the 2026-08-19 re-baseline moved the ceiling to
+    // 2.1.224, and a case pinned one past the OLD ceiling would silently stop
+    // testing refusal the moment the range grew past it.
+    expect(() => assertEngineVersionAccepted("2.1.225")).toThrow(EngineVersionRejectedError);
   });
 
   it("refuses a version from an entirely different minor line", () => {
@@ -83,12 +93,12 @@ describe("assertEngineVersionAccepted — refusal", () => {
 
   it("marks an out-of-range refusal with reason 'out-of-range'", () => {
     try {
-      assertEngineVersionAccepted("2.1.221");
+      assertEngineVersionAccepted("2.1.225");
       expect.unreachable("expected assertEngineVersionAccepted to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(EngineVersionRejectedError);
       expect((error as EngineVersionRejectedError).reason).toBe("out-of-range");
-      expect((error as EngineVersionRejectedError).version).toBe("2.1.221");
+      expect((error as EngineVersionRejectedError).version).toBe("2.1.225");
     }
   });
 
@@ -201,7 +211,7 @@ function buildAppendLoggingJournal(base: JournalStore, appends: string[]): Journ
 
 describe("the gate as `spawn`/`resume` apply it (roadmap/06 exit criterion, both conjuncts)", () => {
   const OUT_OF_RANGE_BELOW = "2.1.206";
-  const OUT_OF_RANGE_ABOVE = "2.1.221";
+  const OUT_OF_RANGE_ABOVE = "2.1.225";
   const READ_ONLY_PROFILE = compileEnvelope(READ_ONLY_ENVELOPE);
 
   let journalDir: string;

@@ -8,7 +8,7 @@
   {
     "probe": "auth.credentials-json-fallback",
     "expectation": "copying ~/.claude/.credentials.json (mode 0600) into an isolated CLAUDE_CONFIG_DIR lets an SDK worker (settingSources: []) resolve auth without interactive login",
-    "observed": "result received, subtype=success, is_error=false (509-byte credentials file copied at 0600; no interactive login/browser flow triggered)",
+    "observed": "result received, subtype=success, is_error=false (508-byte credentials file copied at 0600; no interactive login/browser flow triggered)",
     "verdict": "PASS"
   }
 ]
