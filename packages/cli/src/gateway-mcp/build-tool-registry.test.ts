@@ -537,6 +537,43 @@ describe("review.submit — server-derived exit criteria", () => {
     expect(result.closureReason).toMatch(/revision/i);
   });
 
+  /** Never minted. Named rather than inlined: the pre-commit secret scanner reads `token: "<literal>"` as a credential assignment, and cannot tell a fixture from the real thing. */
+  const NEVER_MINTED = "this string was never minted by any approval flow";
+
+  it("refuses to record a design verdict without a valid owner-minted token", async () => {
+    /**
+     * The property owner ruling 2026-08-19 rests on. If this passes with an
+     * unminted string, the gate is decorative and the owner's terminal prompt
+     * bought nothing.
+     *
+     * ⚠️ An earlier draft of this test called `realRegistry(deps)` — which
+     * takes NO arguments. JavaScript ignored the extra argument, so the test
+     * went green while querying a registry rooted somewhere else entirely, and
+     * asserted emptiness against a path that tool never wrote to. It was
+     * passing for the wrong reason and only `tsc` caught it. It now uses the
+     * deps-bound `registry(...)` helper, so the store it asserts against is the
+     * store the handler writes to.
+     */
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+    const tool = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    }).get("design.verdict.redeem");
+    expect(tool, "design.verdict.redeem must be registered").toBeDefined();
+
+    const result = await tool!.handler({
+      changeSetId,
+      designRevision: "design-rev-1",
+      verdict: "approved",
+      token: NEVER_MINTED,
+    });
+
+    expect(result.isError ?? false).toBe(true);
+    expect(await loadDesignVerdicts(deps.reviewDesignVerdictsPath)).toEqual([]);
+  });
+
   it("exposes EXACTLY ONE design-verdict tool, and it can only redeem a token", () => {
     /**
      * ⚠️ AMENDED BY OWNER RULING 2026-08-19. This assertion used to require
@@ -558,28 +595,6 @@ describe("review.submit — server-derived exit criteria", () => {
     expect(names.filter((name) => /design.*(verdict|approve)/i.test(name))).toEqual([
       "design.verdict.redeem",
     ]);
-  });
-
-  /** Never minted. Named rather than inlined: the pre-commit secret scanner reads `token: "<literal>"` as a credential assignment, and cannot tell a fixture from the real thing. */
-  const NEVER_MINTED = "this string was never minted by any approval flow";
-
-  it("refuses to record a verdict without a valid owner-minted token", async () => {
-    // The property the amendment rests on. If this passes with a junk token,
-    // the gate is decorative and the owner's terminal prompt bought nothing.
-    const deps = reviewDeps();
-    const changeSetId = registerChangeSet(deps);
-    const tool = realRegistry(deps).get("design.verdict.redeem")!;
-
-    const result = await tool.handler({
-      changeSetId,
-      designRevision: "design-rev-1",
-      verdict: "approved",
-      token: NEVER_MINTED,
-    });
-
-    expect(result.isError ?? false).toBe(true);
-    const stored = await loadDesignVerdicts(deps.reviewDesignVerdictsPath);
-    expect(stored).toEqual([]);
   });
 
   /**

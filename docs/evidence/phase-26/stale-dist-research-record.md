@@ -132,10 +132,13 @@ fresh runner checkout; the seven `cache: npm` entries (`:25,42,84,206,241,259,41
 are `actions/setup-node`'s dependency cache, keyed on `package-lock.json`, which
 caches npm's download cache and never build output; and a repository-wide search
 for `actions/cache@`, `nx run` and `remote-cache` returns **zero** matches
-outside this record. `turbo` matches **three** lines — `derive-policy.ts:51,61`
-and `sandbox-profile.ts:101` — every one of them the literal `.turbo` inside a
-list of build-artifact directory names to exclude, none of them Turborepo
-caching. So nothing persists a `dist` across runs; the conclusion held but the
+outside this record. `turbo` matches **three lines of CODE** (2026-08-19) —
+`derive-policy.ts:51,61` and `sandbox-profile.ts:101` — every one of them the
+literal `.turbo` inside a list of build-artifact directory names to exclude,
+none of them Turborepo caching. A fourth, prose mention lives in
+`docs/evidence/phase-26/repo-navigability-research.md`, added by this change set
+itself; the unfiltered count is therefore **4** and drifts as documentation is
+written, which is why the code count is the one stated and why it is dated. So nothing persists a `dist` across runs; the conclusion held but the
 count did not, and the count is what this record promises. It was green on the
 same commit throughout — that half is a session observation with no artifact,
 disclaimed above — — and that disagreement between a clean build and a local
@@ -295,12 +298,29 @@ the section a reader consults for limits, and not only in Corrections:
    which `bundle-cli.mjs:153` copies to the **published**
    `packages/cli/dist/index.d.ts`.
 
-   Counterexample, **run rather than argued** (round 11, assumption-audit): add
-   `"stripInternal": true` to `tsconfig.dts.json` alone and the emitted
-   declarations lose a type. No `.ts` source moves, no unit `tsconfig.json`
-   moves, `tsconfig.base.json` does not move, no `dist` file moves. The check
-   reports clean for all 19 units while the published type surface is the old
-   one.
+   Counterexample, **reproduced and committed** —
+   `node docs/evidence/phase-26/config-input-probe.mjs`:
+
+   ```
+   emitted with declarationMap:false -> index.d.ts
+   emitted with declarationMap:true  -> index.d.ts, index.d.ts.map
+   ```
+
+   Only the descendant config changes. No `.ts` source moves, the unit's own
+   `tsconfig.json` does not move, `tsconfig.base.json` does not move, no `dist`
+   file moves — and the emitted declarations differ. `declarationMap` is one of
+   the four options `packages/cli/tsconfig.dts.json` actually sets today.
+
+   ⚠️ **The first counterexample here was wrong, and it was labelled "run
+   rather than argued".** Round 11 offered `stripInternal` — flip it and a type
+   disappears. Round 12 checked: `stripInternal` removes only declarations
+   tagged `/** @internal */`, and this repository has **zero** such tags across
+   its tracked `.ts` files, so flipping it changes nothing here. **I accepted a
+   reviewer's measurement without re-running it, and wrote its own confidence
+   label into the record.** The structural facts around it were verified; the
+   experiment was not. That is the failure this record has now made twice, and
+   the probe above exists so the third reader does not have to trust either of
+   us.
 
    ⚠️ **The prior art this record adopts shares this blind spot.**
    `bundle-types.mjs`'s `newestSourceMtime()` walks only `.ts` files under
@@ -1202,3 +1222,84 @@ correspondence. Placed in the body on first landing.
 so, rather than filing it under `assumption-audit` to make its report bigger. It
 was verified and acted on here because the manager session has the shell to check
 it, not because the lens claimed it.
+
+**Round 11 (2026-08-19) — three lenses, three `revise`, three findings, all
+verified and all `fixed`.** This entry was written LATE, and round 12's
+completeness lens is why: the round-11 fixes landed in the body while the audit
+trail entry did not, so a round-12 reviewer could not check novelty against
+round 11 from the record at all. That is round 2's own finding recurring — the
+fix landed, the trail write did not — and it is recorded here rather than
+back-dated.
+
+**completeness — the `repo-census.mjs` prior-art gap.** The Prior art section
+named `bundle-types.mjs` as the closest prior art and said "a design that does
+not read this file is re-deriving a lesson the repository has already paid for",
+then omitted `scripts/repo-census.mjs` entirely — a tool added **because of this
+record's own defect**, which already computes the discriminators assumptions 4-6
+derived by hand. The record applied its own standard to one file and failed it on
+another. Fixed: Prior art now carries the census with a table mapping its four
+buckets onto the assumptions they re-derive, and says the design should call it
+rather than re-derive.
+
+**assumption-audit — `tsconfig.dts.json` extends DOWNWARD.** Assumption 5 said a
+unit's inputs are its `tsconfig.json` and its `extends` chain. But
+`packages/cli/tsconfig.dts.json` declares `"extends": "./tsconfig.json"` — a
+descendant — so walking upward never reaches it; it is in none of the 19 root
+references; and `bundle-types.mjs:83-84` hands it to the declaration generator as
+`--project`, producing the **published** `dist/index.d.ts` via
+`bundle-cli.mjs:153`. Assumption 5 is restated as _every `tsconfig*.json` a build
+program hands to a compiler_, and blind spot 9 plus a ninth limits bullet were
+added.
+
+⚠️ **And the prior art this record adopts shares the hole.**
+`bundle-types.mjs`'s `newestSourceMtime()` walks only `.ts` files
+(`:43-54`), so it never stats any `.json` — including the config steering its own
+generator. Q2 calls that predicate "exactly the comparison this record proposes";
+it is, and it carries this with it.
+
+**source-quality — Q2's hit counts did not reproduce, and both defects were
+mine.** The record claimed **8** and **39**. The command as written has no
+`docs/` filter and returns **28**; the 8 came from a run that DID filter `docs/`,
+whose filter was dropped in transcription; and that filtered count had itself
+drifted from 8 to 12 as this change set added files. **A count is a measurement
+with a timestamp; the command is the reproducible part.** The counts are now
+dated and the unfiltered command is quoted deliberately — narrowing a universal
+negative's corpus to skip `docs/` is exactly what `check:claim-scope` refuses.
+
+**Round 12 (2026-08-19) — three lenses, three `revise`, three findings, all
+verified and all `fixed`.**
+
+**completeness — no Corrections entry existed for round 11.** Confirmed against
+`git show HEAD` before acceptance. The entry above is the fix, and the lens
+correctly declined to file a second candidate (the census instruction living only
+in Prior art) because the body reaches the census twice anyway — it fails the
+_these inputs, that wrong result_ test.
+
+**assumption-audit — blind spot 9's counterexample was FALSE, and carried a
+confidence label it had not earned.** It read "Counterexample, **run rather than
+argued**: add `stripInternal` to `tsconfig.dts.json` and the emitted declarations
+lose a type." Re-measured: `stripInternal` strips only declarations tagged
+`/** @internal */`, and this repository has **zero** such tags across its tracked
+`.ts` files. Flipping it changes nothing here.
+
+⚠️ **This is the sharpest process failure in the record.** Round 11's reviewer
+reported running the experiment; I verified the STRUCTURAL claims around it —
+the descendant `extends`, the `--project` hand-off, the `copyFile` into `dist` —
+and did not re-run the experiment itself, then transcribed its confidence label
+into the record as though I had. **A reviewer's "measured" is not a measurement
+until the manager re-derives it**, which is the same rule already written here
+for reviewer-confirmed counts, applied one level up to reviewer-confirmed
+experiments.
+
+Fixed by replacing it with one that holds and committing it:
+`docs/evidence/phase-26/config-input-probe.mjs` builds a fixture whose
+descendant config sets `declarationMap`, emits twice, and asserts the outputs
+differ — `index.d.ts` against `index.d.ts, index.d.ts.map`. `declarationMap` is
+one of the four options `packages/cli/tsconfig.dts.json` actually sets.
+
+**source-quality — Q3's `turbo` count drifted from 3 to 4 and was undated.** The
+fourth is a prose mention in `repo-navigability-research.md`, added by this
+change set's own commit. Fixed the way round 11 fixed Q2: state the **code**
+count, date it, and disclose the unfiltered total. This is the second time a
+count in this record has gone stale through the record's own growth, which is
+the argument for dating every one of them rather than for chasing them.
