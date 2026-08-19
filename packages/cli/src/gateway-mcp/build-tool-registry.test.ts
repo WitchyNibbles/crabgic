@@ -31,7 +31,7 @@ import {
   type ProductionGatewayToolRegistryDeps,
 } from "./build-tool-registry.js";
 import { loadArtifacts } from "../review/artifact-store.js";
-import { recordDesignVerdict } from "../review/design-verdict-store.js";
+import { recordDesignVerdict, loadDesignVerdicts } from "../review/design-verdict-store.js";
 
 let home: string;
 
@@ -129,6 +129,8 @@ const EXPECTED_TOOL_NAMES = [
   // 11 (2)
   "project.inspect",
   "contract.approve",
+  // design gate — owner ruling 2026-08-19 amending R2
+  "design.verdict.redeem",
   // 12 (2)
   "capability.audit",
   "capability.approve",
@@ -535,11 +537,64 @@ describe("review.submit — server-derived exit criteria", () => {
     expect(result.closureReason).toMatch(/revision/i);
   });
 
-  it("exposes NO gateway tool that records a design verdict", () => {
-    // The structural half of the gate. If any tool the model can call could
-    // write a verdict, every assertion above would be theatre.
+  /** Never minted. Named rather than inlined: the pre-commit secret scanner reads `token: "<literal>"` as a credential assignment, and cannot tell a fixture from the real thing. */
+  const NEVER_MINTED = "this string was never minted by any approval flow";
+
+  it("refuses to record a design verdict without a valid owner-minted token", async () => {
+    /**
+     * The property owner ruling 2026-08-19 rests on. If this passes with an
+     * unminted string, the gate is decorative and the owner's terminal prompt
+     * bought nothing.
+     *
+     * ⚠️ An earlier draft of this test called `realRegistry(deps)` — which
+     * takes NO arguments. JavaScript ignored the extra argument, so the test
+     * went green while querying a registry rooted somewhere else entirely, and
+     * asserted emptiness against a path that tool never wrote to. It was
+     * passing for the wrong reason and only `tsc` caught it. It now uses the
+     * deps-bound `registry(...)` helper, so the store it asserts against is the
+     * store the handler writes to.
+     */
+    const deps = reviewDeps();
+    const changeSetId = registerChangeSet(deps);
+    const tool = buildProductionGatewayToolRegistry({
+      ...deps,
+      providers: new ProviderRegistry<GenericProviderClient>(),
+      mutationApplyClients: new ProviderRegistry<MutationApplyClient>(),
+    }).get("design.verdict.redeem");
+    expect(tool, "design.verdict.redeem must be registered").toBeDefined();
+
+    const result = await tool!.handler({
+      changeSetId,
+      designRevision: "design-rev-1",
+      verdict: "approved",
+      token: NEVER_MINTED,
+    });
+
+    expect(result.isError ?? false).toBe(true);
+    expect(await loadDesignVerdicts(deps.reviewDesignVerdictsPath)).toEqual([]);
+  });
+
+  it("exposes EXACTLY ONE design-verdict tool, and it can only redeem a token", () => {
+    /**
+     * ⚠️ AMENDED BY OWNER RULING 2026-08-19. This assertion used to require
+     * ZERO matches — no gateway tool could record a design verdict at all. The
+     * owner ruled the gate must complete inside a session, so exactly one now
+     * may, and it may only REDEEM a token the owner minted at their terminal.
+     *
+     * The amendment is written here rather than worked around. The tool is
+     * named `design.verdict.redeem` precisely so it TRIPS this pattern: a name
+     * like `design.redeem` would slip past it silently, which is the hole
+     * `../review/design-verdict-writer-reachability.test.ts` exists to close.
+     * That file is the stronger guard — it asserts by REACHABILITY, so a
+     * verdict-writing tool cannot evade it by being called something else.
+     *
+     * What this still forbids: any SECOND design-verdict tool, and any tool
+     * that writes a verdict without redeeming a token.
+     */
     const names = [...realRegistry().toolNames];
-    expect(names.filter((name) => /design.*(verdict|approve)/i.test(name))).toEqual([]);
+    expect(names.filter((name) => /design.*(verdict|approve)/i.test(name))).toEqual([
+      "design.verdict.redeem",
+    ]);
   });
 
   /**

@@ -77,9 +77,26 @@ exactly how it went wrong. `scripts/check-claim-scope.mjs` now flags that
 mismatch mechanically, and flagged THIS section on its first run:
 
 ```
-git ls-files | xargs grep -ln "mtime"        # 8 files, bundle-types.mjs among them
-git ls-files | xargs grep -ln "mtimeMs\|statSync"   # 39 files
+git ls-files | xargs grep -ln "mtime"              # 28 files (2026-08-19)
+git ls-files | xargs grep -ln "mtimeMs\|statSync"  # 53 files (2026-08-19)
 ```
+
+`scripts/bundle-types.mjs` is in both. Every other hit is documentation, a test,
+or an unrelated use of `mtime` — a temp-directory sweep cutoff, a generic
+`FsStat` field, a git index side effect — and none is a second build-staleness
+comparison. **Read the whole 28 before trusting that sentence**; it is the point
+of quoting the command.
+
+⚠️ **Two defects here, both found by round 11's source-quality lens, and both
+mine.** The record first claimed **8** and **39**. Neither reproduced: the
+command as written has no `docs/` filter and returns 28, while the 8 came from a
+run that DID filter `docs/` and whose filter was dropped in transcription. And
+the filtered count had itself drifted from 8 to 12 as this change set added
+files. **A count is a measurement with a timestamp; the command is the
+reproducible part.** The counts above are therefore dated, and the unfiltered
+command is quoted deliberately — narrowing a universal negative's corpus to
+exclude `docs/` is the very move `scripts/check-claim-scope.mjs` exists to
+refuse.
 
 Nothing detects it: `packages/cli/src/doctor/checks/` holds **15** non-test
 check files and none reads a build timestamp — `checksum-drift.ts` and
@@ -115,10 +132,13 @@ fresh runner checkout; the seven `cache: npm` entries (`:25,42,84,206,241,259,41
 are `actions/setup-node`'s dependency cache, keyed on `package-lock.json`, which
 caches npm's download cache and never build output; and a repository-wide search
 for `actions/cache@`, `nx run` and `remote-cache` returns **zero** matches
-outside this record. `turbo` matches **three** lines — `derive-policy.ts:51,61`
-and `sandbox-profile.ts:101` — every one of them the literal `.turbo` inside a
-list of build-artifact directory names to exclude, none of them Turborepo
-caching. So nothing persists a `dist` across runs; the conclusion held but the
+outside this record. `turbo` matches **three lines of CODE** (2026-08-19) —
+`derive-policy.ts:51,61` and `sandbox-profile.ts:101` — every one of them the
+literal `.turbo` inside a list of build-artifact directory names to exclude,
+none of them Turborepo caching. A fourth, prose mention lives in
+`docs/evidence/phase-26/repo-navigability-research.md`, added by this change set
+itself; the unfiltered count is therefore **4** and drifts as documentation is
+written, which is why the code count is the one stated and why it is dated. So nothing persists a `dist` across runs; the conclusion held but the
 count did not, and the count is what this record promises. It was green on the
 same commit throughout — that half is a session observation with no artifact,
 disclaimed above — — and that disagreement between a clean build and a local
@@ -179,17 +199,28 @@ Not rebuild. Not error. Not report a package that has no `dist` at all: a packag
 that has never been built is not stale, and reporting it would make the check
 noisy on a fresh clone, which is how a check gets ignored.
 
-⚠️ **Eight blind spots, each measured rather than feared.** They belong here, in
+⚠️ **Nine blind spots, each measured rather than feared.** They belong here, in
 the section a reader consults for limits, and not only in Corrections:
 
-1. **It cannot see its own staleness.** `bundle:cli` copies plugin assets with
+1. **It cannot see its own staleness — as naively specified.** `bundle:cli` copies plugin assets with
    `cp(..., { recursive: true })` and no `preserveTimestamps`
    (`scripts/bundle-cli.mjs:178`), unconditionally after `tsc -b`. So `dist`
    always looks fresh for `packages/cli` — the one package whose staleness
    started this.
-2. **It cannot see a deletion.** Remove a source file without rebuilding and
-   `newest(src)` can be older than `newest(dist)`; the orphaned artifact goes
-   unreported.
+
+   **Closable, and round 2 already said how**: scope the `dist` side to COMPILER
+   OUTPUTS, excluding the `bundle:cli` asset copy. `:178` refreshes only
+   `dist/plugin/**`; exclude that subtree and a skipped `tsc -b` leaves
+   `newest(dist compiler outputs)` older than `newest(src)`, so the check fires
+   for `packages/cli` after all. That remedy sat only in Corrections until round
+   13 — the same fault round 8 found for blind spot 3, recorded there as a
+   standing rule and then repeated here.
+
+2. **It cannot see a deletion — as naively specified.** Remove a source file
+   without rebuilding and `newest(src)` can be older than `newest(dist)`; the
+   orphaned artifact goes unreported. **Closable, and round 2 already said how**:
+   add an orphan check — an emitted artifact with no corresponding source is
+   stale whatever the mtimes say.
 3. **It cannot see cross-package staleness at all.** `bundle:cli` is an
    `esbuild` bundle (`bundle: true`) that inlines every `@crabgic/*` dependency
    through its `"main": "./dist/index.js"` — all 18 workspace packages declare
@@ -253,7 +284,13 @@ the section a reader consults for limits, and not only in Corrections:
    The same holds for the pinned toolchain: bump `typescript` off `6.0.3` and
    `npm ci`, and every `dist` was emitted by a compiler the check cannot see.
    **`tsc` disagrees with the check here** — `.tsbuildinfo` records
-   `version: "6.0.3"` and invalidates on mismatch, which is precisely the input
+   `version: "6.0.3"` and invalidates on mismatch — **asserted by
+   `config-input-probe.mjs`**, which builds a composite fixture, confirms
+   `tsc -b --dry` reports "is up to date", tampers with the recorded version,
+   and confirms it flips to "A non-dry build would build project". Round 13
+   flagged this claim as uncited and covered by no assumption; it is reproduced
+   rather than cited, because this record has already been burned once by
+   trusting a reviewer's report of an experiment, which is precisely the input
    an mtime comparison drops. See assumption 6.
 
 8. **There are three tiers, not two.** `packages/cli/dist/index.d.ts` is a
@@ -267,6 +304,49 @@ the section a reader consults for limits, and not only in Corrections:
    and rebuild — exactly what a reader does when the check fires. `.dts-cache`
    survives the clean, `bundle-types.mjs` skips regeneration, `bundle-cli.mjs`
    copies it in with a fresh mtime. **The check says clean before and after.**
+
+9. **An `extends` chain walked UPWARD misses a config that extends DOWNWARD.**
+   `packages/cli/tsconfig.dts.json` declares `"extends": "./tsconfig.json"` — a
+   descendant. Walking up from `packages/cli/tsconfig.json` reaches
+   `tsconfig.base.json` and stops, so assumption 5's remedy never reaches it. It
+   is not among the root's **19** references either, so assumption 4 misses it
+   too. And it is load-bearing: `scripts/bundle-types.mjs:83-84` hands it to
+   `dts-bundle-generator` as `--project`, producing `.dts-cache/index.d.ts`,
+   which `bundle-cli.mjs:153` copies to the **published**
+   `packages/cli/dist/index.d.ts`.
+
+   Counterexample, **reproduced and committed** —
+   `node docs/evidence/phase-26/config-input-probe.mjs`:
+
+   ```
+   emitted with declarationMap:false -> index.d.ts
+   emitted with declarationMap:true  -> index.d.ts, index.d.ts.map
+   ```
+
+   Only the descendant config changes. No `.ts` source moves, the unit's own
+   `tsconfig.json` does not move, `tsconfig.base.json` does not move, no `dist`
+   file moves — and the emitted declarations differ. `declarationMap` is one of
+   the four options `packages/cli/tsconfig.dts.json` actually sets today.
+
+   ⚠️ **The first counterexample here was wrong, and it was labelled "run
+   rather than argued".** Round 11 offered `stripInternal` — flip it and a type
+   disappears. Round 12 checked: `stripInternal` removes only declarations
+   tagged `/** @internal */`, and this repository has **zero** such tags across
+   its tracked `.ts` files, so flipping it changes nothing here. **I accepted a
+   reviewer's measurement without re-running it, and wrote its own confidence
+   label into the record.** The structural facts around it were verified; the
+   experiment was not. That is the failure this record has now made twice, and
+   the probe above exists so the third reader does not have to trust either of
+   us.
+
+   ⚠️ **The prior art this record adopts shares this blind spot.**
+   `bundle-types.mjs`'s `newestSourceMtime()` walks only `.ts` files under
+   `packages/*/` (`:43-54`), so it never stats ANY `.json` — including the very
+   config that steers its own generator. Touching `tsconfig.dts.json` does not
+   invalidate its cache. Q2 calls that predicate "exactly the comparison this
+   record proposes"; it is, and it carries this hole with it. **`npm run census`
+   surfaces both offenders today**, in its `configInputsOutsideProjectGraph`
+   bucket.
 
 ## Prior art checked
 
@@ -305,6 +385,25 @@ the section a reader consults for limits, and not only in Corrections:
   already worked around in this codebase**, by moving the artifact out of `dist`
   into a cache the clobbering step does not touch. A design that does not read
   this file is re-deriving a lesson the repository has already paid for.
+
+- **`scripts/repo-census.mjs` — the enumeration half is ALREADY BUILT, tested and
+  in `check:all`'s neighbourhood.** Added after round 10 precisely because this
+  record's Q2 answer was wrong, it computes the discriminators assumptions 4-6
+  spent five rounds deriving by hand:
+
+  | census output                     | re-derives                                                                       |
+  | --------------------------------- | -------------------------------------------------------------------------------- |
+  | `referencedButNotWorkspace`       | assumption 4 — 19 references vs 18 workspaces, i.e. `e2e/report`                 |
+  | `configInputsOutsideProjectGraph` | assumption 5 — `tsconfig.base.json`, extended by all 19, a project in none       |
+  | `sourceClaimedByNothing`          | Q2's own miss — `scripts/` claimed by no tsconfig                                |
+  | `claimedOnlyByString`             | the shell-string reachability that hides `bundle-types.mjs` and `bundle-cli.mjs` |
+
+  ⚠️ **This record applied that standard to itself and then failed it.** It
+  condemns omitting `bundle-types.mjs` as prior art — "a design that does not
+  read this file is re-deriving a lesson the repository has already paid for" —
+  and then omitted `repo-census.mjs`, which exists _because of this record's own
+  defect_. Found by round 11's completeness lens. **The design should call the
+  census rather than re-derive its sets**, and must say which it does.
 
 - **The wider ecosystem** — `tsc -b`'s `.tsbuildinfo` is the canonical staleness
   oracle and is strictly better than mtimes, but reading it means parsing an
@@ -351,9 +450,34 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
    carries the measurement and the withdrawn cost claim.
 
 2. **A touched-but-unchanged source file produces a false warning.** Accepted
-   deliberately. The alternative — content hashing every source file — costs far
-   more than the question is worth, and a warning that is occasionally
-   unnecessary is cheaper than the two hours this cost.
+   deliberately, and a warning that is occasionally unnecessary is cheaper than
+   the two hours this cost. But the stated reason for rejecting the alternative
+   was wrong. Content hashing every source file is **somewhat** more expensive,
+   not "far more". Measured over the 19 units (2026-08-19, warm cache):
+
+   | operation                                      | files | time        |
+   | ---------------------------------------------- | ----- | ----------- |
+   | `stat` every `src` file                        | 1521  | **5.4 ms**  |
+   | SHA-256 every `src` file (9.5 MB)              | 1521  | **26.8 ms** |
+   | the walk this record proposes (`src` + `dist`) | 6603  | **18.5 ms** |
+
+   Roughly **1.45×** the proposed walk — a real difference, and nothing like
+   "far more".
+
+   **The reason to prefer mtime is that hashing needs somewhere to keep a
+   baseline.** An mtime comparison is self-contained: both sides are already on
+   disk. A hash comparison must persist last-known digests, which means a
+   twentieth build artifact with its own staleness problem — the defect class
+   this entire record is about. That is the argument; cost never was.
+
+   ⚠️ Round 13's lens measured **38.5 ms** for that same walk and concluded
+   hashing was CHEAPER. Re-derived here: **18.5 ms**, almost certainly a warm
+   filesystem cache after its own run, so its conclusion inverts. The direction
+   of the original claim survives; its magnitude does not. Recorded because
+   round 12's lesson — _a reviewer's "measured" is not a measurement until the
+   manager re-derives it_ — is exactly what caught it, one round after being
+   written down.
+
 3. **Package granularity is enough.** The check names a package, not a file. A
    reader who sees the warning runs `npm run build`; knowing which file was newer
    would not change what they do.
@@ -365,12 +489,15 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
    `node e2e/report/dist/cli.js` (`.github/workflows/release-e2e.yml:394`).
    Enumerating by `package.json` presence would silently omit a real build unit
    with a real runtime consumer. Enumerating by `outDir` presence would be worse
-   in the other direction: four of the six `e2e/*` units declare an `outDir` they
+   in the other direction: **five** of the six `e2e/*` units declare an `outDir` they
    never write, because `noEmit: true` suppresses emission. **The discriminator
    is "a unit that emits compiled output", and in this repository that set is
    exactly the `references` array.**
-5. **A unit's build inputs are NOT confined to its `src/` tree.** Its own
-   `tsconfig.json` and the whole `extends` chain are inputs too. Measured:
+5. **A unit's build inputs are NOT confined to its `src/` tree, and a unit may
+   have MORE THAN ONE project config.** The input set is _every `tsconfig*.json`
+   a build program hands to a compiler for this unit_ — not "its `tsconfig.json`
+   and its `extends` chain", which is what an earlier version of this assumption
+   said and which provably misses a shipped config (blind spot 9). Measured:
    **19 of 19** in-scope units declare `"extends": "../../tsconfig.base.json"`,
    and that file sits at the repository root — outside every unit's `src/`.
    A comparison that walks only `src` is therefore not a comparison of the
@@ -399,13 +526,16 @@ referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
 
 ⚠️ **Concretely, not abstractly.** An earlier draft hedged here at the level of
 "mtime comparison may not suffice for a general build system", which reads as a
-hypothetical while eight PROVEN, always-present failure modes sat further down
+hypothetical while nine PROVEN, always-present failure modes sat further down
 the page. They are named in Q5 above and repeated here because this is the other
 section a design-stage reader consults for limits:
 
-- the check **can never fire for `packages/cli`**, the package whose staleness
-  motivated it;
-- it is **blind to a deleted source file**, in every package;
+- **as naively specified** the check can never fire for `packages/cli`, the
+  package whose staleness motivated it — closable by scoping the `dist` side to
+  compiler outputs, excluding the `bundle:cli` asset copy (Q5, blind spot 1). A
+  property of the naive design, not of any design;
+- **as naively specified** it is blind to a deleted source file, in every
+  package — closable by adding an orphan check (Q5, blind spot 2);
 - it is **blind to cross-package staleness**, which is the founding incident's
   own shape — a consumer running stale compiled dependency code. Closable, but
   only by a different comparison: `packages/cli/dist/bin.js`'s mtime against the
@@ -430,7 +560,12 @@ section a design-stage reader consults for limits:
   `.tsbuildinfo`; assumption 6 states it rather than pretending otherwise;
 - it **is blind to the middle tier** — `packages/cli/.dts-cache/` is gitignored
   and is neither `src` nor `dist`, so it is invisible at both ends, and it
-  survives the `rm -rf dist` a reader performs when the check fires.
+  survives the `rm -rf dist` a reader performs when the check fires;
+- it **misses a config that extends DOWNWARD**. `packages/cli/tsconfig.dts.json`
+  extends `./tsconfig.json`, so an upward `extends` walk never reaches it, yet
+  it steers the published `.d.ts` (`bundle-types.mjs:83-84` →
+  `bundle-cli.mjs:153`). Closable: enumerate every `tsconfig*.json` a build
+  program hands to a compiler, which `npm run census` already lists.
 
 What it DOES establish: the repository currently asks nothing at all, and a
 newest-mtime-beneath-root comparison would have caught the specific measured
@@ -1132,3 +1267,148 @@ correspondence. Placed in the body on first landing.
 so, rather than filing it under `assumption-audit` to make its report bigger. It
 was verified and acted on here because the manager session has the shell to check
 it, not because the lens claimed it.
+
+**Round 11 (2026-08-19) — three lenses, three `revise`, three findings, all
+verified and all `fixed`.** This entry was written LATE, and round 12's
+completeness lens is why: the round-11 fixes landed in the body while the audit
+trail entry did not, so a round-12 reviewer could not check novelty against
+round 11 from the record at all. That is round 2's own finding recurring — the
+fix landed, the trail write did not — and it is recorded here rather than
+back-dated.
+
+**completeness — the `repo-census.mjs` prior-art gap.** The Prior art section
+named `bundle-types.mjs` as the closest prior art and said "a design that does
+not read this file is re-deriving a lesson the repository has already paid for",
+then omitted `scripts/repo-census.mjs` entirely — a tool added **because of this
+record's own defect**, which already computes the discriminators assumptions 4-6
+derived by hand. The record applied its own standard to one file and failed it on
+another. Fixed: Prior art now carries the census with a table mapping its four
+buckets onto the assumptions they re-derive, and says the design should call it
+rather than re-derive.
+
+**assumption-audit — `tsconfig.dts.json` extends DOWNWARD.** Assumption 5 said a
+unit's inputs are its `tsconfig.json` and its `extends` chain. But
+`packages/cli/tsconfig.dts.json` declares `"extends": "./tsconfig.json"` — a
+descendant — so walking upward never reaches it; it is in none of the 19 root
+references; and `bundle-types.mjs:83-84` hands it to the declaration generator as
+`--project`, producing the **published** `dist/index.d.ts` via
+`bundle-cli.mjs:153`. Assumption 5 is restated as _every `tsconfig*.json` a build
+program hands to a compiler_, and blind spot 9 plus a ninth limits bullet were
+added.
+
+⚠️ **And the prior art this record adopts shares the hole.**
+`bundle-types.mjs`'s `newestSourceMtime()` walks only `.ts` files
+(`:43-54`), so it never stats any `.json` — including the config steering its own
+generator. Q2 calls that predicate "exactly the comparison this record proposes";
+it is, and it carries this with it.
+
+**source-quality — Q2's hit counts did not reproduce, and both defects were
+mine.** The record claimed **8** and **39**. The command as written has no
+`docs/` filter and returns **28**; the 8 came from a run that DID filter `docs/`,
+whose filter was dropped in transcription; and that filtered count had itself
+drifted from 8 to 12 as this change set added files. **A count is a measurement
+with a timestamp; the command is the reproducible part.** The counts are now
+dated and the unfiltered command is quoted deliberately — narrowing a universal
+negative's corpus to skip `docs/` is exactly what `check:claim-scope` refuses.
+
+**Round 12 (2026-08-19) — three lenses, three `revise`, three findings, all
+verified and all `fixed`.**
+
+**completeness — no Corrections entry existed for round 11.** Confirmed against
+`git show HEAD` before acceptance. The entry above is the fix, and the lens
+correctly declined to file a second candidate (the census instruction living only
+in Prior art) because the body reaches the census twice anyway — it fails the
+_these inputs, that wrong result_ test.
+
+**assumption-audit — blind spot 9's counterexample was FALSE, and carried a
+confidence label it had not earned.** It read "Counterexample, **run rather than
+argued**: add `stripInternal` to `tsconfig.dts.json` and the emitted declarations
+lose a type." Re-measured: `stripInternal` strips only declarations tagged
+`/** @internal */`, and this repository has **zero** such tags across its tracked
+`.ts` files. Flipping it changes nothing here.
+
+⚠️ **This is the sharpest process failure in the record.** Round 11's reviewer
+reported running the experiment; I verified the STRUCTURAL claims around it —
+the descendant `extends`, the `--project` hand-off, the `copyFile` into `dist` —
+and did not re-run the experiment itself, then transcribed its confidence label
+into the record as though I had. **A reviewer's "measured" is not a measurement
+until the manager re-derives it**, which is the same rule already written here
+for reviewer-confirmed counts, applied one level up to reviewer-confirmed
+experiments.
+
+Fixed by replacing it with one that holds and committing it:
+`docs/evidence/phase-26/config-input-probe.mjs` builds a fixture whose
+descendant config sets `declarationMap`, emits twice, and asserts the outputs
+differ — `index.d.ts` against `index.d.ts, index.d.ts.map`. `declarationMap` is
+one of the four options `packages/cli/tsconfig.dts.json` actually sets.
+
+**source-quality — Q3's `turbo` count drifted from 3 to 4 and was undated.** The
+fourth is a prose mention in `repo-navigability-research.md`, added by this
+change set's own commit. Fixed the way round 11 fixed Q2: state the **code**
+count, date it, and disclose the unfiltered total. This is the second time a
+count in this record has gone stale through the record's own growth, which is
+the argument for dating every one of them rather than for chasing them.
+
+**Round 13 (2026-08-19) — three lenses, three `revise`, four findings, all
+verified and all `fixed`.** The lens re-ran both probes, the census and the
+claim-scope gate before filing anything, which is round 12's lesson applied by
+the reviewer rather than only by the manager.
+
+**completeness — round 2's two REMEDIES never left Corrections, and limits
+bullet 1 was an active misdirection.** Rounds 8 and 9 walked round 2's three
+_findings_ into the body and confirmed them there; neither checked round 2's
+_remedies_. So blind spots 1 and 2 stated their limits with no way out, and the
+limits section said the check "can never fire for `packages/cli`" — false of a
+sound design. Scoping the `dist` side to compiler outputs closes blind spot 1:
+`bundle-cli.mjs:178` refreshes only `dist/plugin/**`, so excluding that subtree
+leaves a skipped `tsc -b` visible. Adding an orphan check closes blind spot 2.
+
+This is round 8's own finding shape — "no walk scope fixes this" is not "nothing
+fixes this" — recurring on two different blind spots **after it was written down
+as a standing rule**. Both now say "as naively specified" and carry their
+remedies, in Q5 and in the limits section.
+
+**assumption-audit — assumption 2's cost claim was uncited, and the reviewer's
+refutation did not reproduce either.** The record said content hashing "costs far
+more than the question is worth". Round 13 measured hashing at 27.1 ms against
+38.5 ms for the record's own walk and concluded hashing was CHEAPER.
+
+Re-derived by the manager, and it inverts:
+
+| operation                                      | files | measured here |
+| ---------------------------------------------- | ----- | ------------- |
+| `stat` every `src` file                        | 1521  | **5.4 ms**    |
+| SHA-256 every `src` file (9.5 MB)              | 1521  | **26.8 ms**   |
+| the walk this record proposes (`src` + `dist`) | 6603  | **18.5 ms**   |
+
+Hashing is about **1.45×** the proposed walk — more expensive, not cheaper, and
+nothing like "far more". The reviewer's 38.5 ms was almost certainly a cold cache
+before its own subsequent runs warmed it.
+
+⚠️ **So both the record and its reviewer were wrong, in opposite directions, and
+only re-derivation separated them.** That is round 12's lesson biting one round
+after it was written down, and it is why the corrected text carries its own
+numbers, its date, and the words "warm cache".
+
+The substantive correction is that cost was never the argument: **hashing needs
+somewhere to keep a baseline.** An mtime comparison is self-contained; a hash
+comparison must persist last-known digests, which is a twentieth build artifact
+with its own staleness problem — the defect class this record is about.
+
+**assumption-audit — blind spot 7's `.tsbuildinfo` invalidation claim was uncited
+and covered by no assumption.** Fixed the way this record now fixes everything of
+that shape: `config-input-probe.mjs` gained a second assertion that builds a
+composite fixture, confirms `tsc -b --dry` says "is up to date", tampers with the
+recorded `version`, and confirms it flips to "A non-dry build would build
+project". Reproduced, not cited.
+
+**source-quality — "four of the six `e2e/*` units" contradicted "Five of the six"
+in the same file.** Measured: `attestation`, `live`, `matrix`, `provisioning` and
+`release` all declare an `outDir` under `noEmit: true` and have no `dist` on
+disk; only `e2e/report` emits. **Five.** "Four" is the count of _directories with
+a top-level tsconfig_ — the framing round 5 already ruled wrong ("true of the
+directory, false of the unit"). Round 5 fixed the table row and left the derived
+sentence unmeasured, and round 7 then propagated the wrong number into the body.
+The record's own bar — _a disposition is complete only when every site carrying
+the wrong claim is re-measured_ — failed again, on a number it had already
+corrected once.

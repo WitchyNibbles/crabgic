@@ -128,6 +128,35 @@ export const REVIEW_SUBMIT_TOOL: McpToolDefinition = {
  * store, so `sampleSize: 0` was a property of the product rather than a project's
  * starting state. This is what makes the number able to move.
  */
+/**
+ * `design.verdict.redeem` — owner ruling 2026-08-19, amending R2.
+ *
+ * ⚠️ NAMED TRUTHFULLY, ON PURPOSE. `build-tool-registry.test.ts` guards the
+ * design gate with a pattern over tool NAMES, and this name trips it. That is
+ * deliberate: the tool does record a design verdict, so it must be called one,
+ * and the guard must be amended in the open rather than side-stepped by a name
+ * like `design.redeem` that the pattern happens to miss. That evasion is the
+ * exact hole `packages/cli/src/review/design-verdict-writer-reachability.test.ts`
+ * was added to close.
+ */
+export const DESIGN_VERDICT_REDEEM_TOOL: McpToolDefinition = {
+  name: "design.verdict.redeem",
+  description:
+    "Records the owner's design-gate verdict by REDEEMING a single-use approval token the owner minted at their own terminal with `crabgic design mint`. The model cannot mint one: the only path to a token is that command's interactive prompt, which mints solely on an explicit yes, so a token existing at all is evidence a human answered. The expected digest is derived server-side from changeSetId and designRevision and never taken from the caller, so a token approving one revision cannot be recorded against another. The token is spent durably and single-use across processes; a replay is refused. A rejection must carry a reason. The verdict shape is validated BEFORE the token is spent, so a malformed request does not burn the owner's approval.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      changeSetId: { type: "string" },
+      designRevision: { type: "string" },
+      verdict: { type: "string", enum: ["approved", "rejected"] },
+      reason: { type: "string" },
+      token: { type: "string" },
+    },
+    required: ["changeSetId", "designRevision", "verdict", "token"],
+    additionalProperties: false,
+  },
+};
+
 export const REVIEW_CALIBRATE_TOOL: McpToolDefinition = {
   name: "review.calibrate",
   description:

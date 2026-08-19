@@ -80,6 +80,8 @@ import {
 import { runPipelinePlan } from "../review/pipeline-plan-handler.js";
 import { runReviewCalibrate } from "../review/calibrate-handler.js";
 import { runReviewSubmit } from "../review/review-submit-handler.js";
+import { redeemDesignVerdict } from "../review/redeem-design-verdict.js";
+import { DESIGN_VERDICT_REDEEM_TOOL } from "../review/tool-definitions.js";
 import { loadFindings, saveFindings } from "../review/finding-store.js";
 import { loadStageCompletions, recordStageCompletion } from "../review/stage-completion-store.js";
 import { loadAttestations, saveAttestationsForStage } from "../review/attestation-store.js";
@@ -403,7 +405,50 @@ function buildReviewTools(
     },
   };
 
-  return [reviewSubmit, reviewCalibrate, pipelinePlan];
+  /**
+   * ⚠️ THE ONE GATEWAY PATH TO A DESIGN VERDICT, and it is not a write — it is
+   * a REDEMPTION. This handler cannot reach `recordDesignVerdict`; it can only
+   * call `redeemDesignVerdict`, which spends an owner-minted token first and
+   * writes nothing if that fails. `../review/design-verdict-writer-reachability.test.ts`
+   * asserts that no module under `gateway-mcp/` names the writer at all, and
+   * that assertion still holds with this tool registered — the indirection is
+   * the property, not a stylistic choice.
+   */
+  const designVerdictRedeem: GatewayToolDefinition<typeof DESIGN_VERDICT_REDEEM_SHAPE> = {
+    name: DESIGN_VERDICT_REDEEM_TOOL.name,
+    description: DESIGN_VERDICT_REDEEM_TOOL.description,
+    inputSchema: DESIGN_VERDICT_REDEEM_SHAPE,
+    handler: async (args) => {
+      const changeSet = deps.changeSets.get(args.changeSetId);
+      if (changeSet === undefined) {
+        return errorResult(`unknown ChangeSet "${args.changeSetId}"`);
+      }
+      try {
+        const verdict = await redeemDesignVerdict(
+          {
+            changeSetId: args.changeSetId,
+            designRevision: args.designRevision,
+            verdict: args.verdict,
+            ...(args.reason === undefined ? {} : { reason: args.reason }),
+            token: args.token,
+          },
+          {
+            designVerdictsPath: deps.reviewDesignVerdictsPath,
+            stateHome: deps.reviewStateHome,
+            ledger: { secretKey: deps.approvalSigningKey, journal: deps.journal },
+          },
+        );
+        return jsonResult({ ok: true, verdict });
+      } catch (error) {
+        // The reason is returned rather than swallowed: a refused redemption is
+        // the owner's problem to fix, and "it did not work" tells them nothing
+        // about WHICH property refused.
+        return errorResult(error instanceof Error ? error.message : String(error));
+      }
+    },
+  };
+
+  return [designVerdictRedeem, reviewSubmit, reviewCalibrate, pipelinePlan];
 }
 
 const PIPELINE_PLAN_SHAPE = {
@@ -445,6 +490,13 @@ function errorResult(message: string): {
 }
 
 const PROJECT_INSPECT_SHAPE = { changeSetId: z.string().optional() };
+const DESIGN_VERDICT_REDEEM_SHAPE = {
+  changeSetId: z.string(),
+  designRevision: z.string(),
+  verdict: z.enum(["approved", "rejected"]),
+  reason: z.string().optional(),
+  token: z.string(),
+};
 const CONTRACT_APPROVE_SHAPE = {
   changeSetId: z.string(),
   digest: z.string(),
