@@ -1,36 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { recordAttempt } from "@crabgic/journal";
 import { createGateRegistry } from "./registry.js";
 import type { GateContext } from "./types.js";
-import { captureRedBaseline } from "./tdd-gate.js";
+import type { ChangedTestsBaselineOutcome } from "./red-baseline-from-tests.js";
 import { registerTddGate, TDD_GATE_NAME } from "./tdd-gate-registration.js";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 
 /**
- * ⚠️ THE CONSUMER HALF — and why `createTddGate` could not be it.
+ * ⚠️ THE TDD GATE, AFTER OWNER RULING 2026-08-18 — and the two things that
+ * changed about what it asks.
  *
- * `createTddGate` (`./tdd-gate.ts`) takes `requirementId`, `beforeSeq`,
- * `exitStatus` and `testCommand` as CONSTRUCTOR arguments and bakes them into a
- * closure. Every one of those is per-attempt. The daemon builds ONE registry at
- * startup (`packages/cli/src/daemon/compose-gate-registry.ts`, "one shared
- * instance, never a second copy"), before any attempt exists — so there is no
- * moment at which a caller could supply them. MEASURED 2026-08-18:
- * `createTddGate` had **zero** production call sites, and that is the reason.
+ * `createTddGate` could never be the registration: `requirementId`, `beforeSeq`,
+ * `exitStatus` and `testCommand` are all per-attempt, and the daemon builds ONE
+ * registry at startup before any of them exist. That is why it had zero
+ * production call sites.
  *
- * `registerTddGate` is the same check with the same rules, reading its
- * per-attempt inputs from the `GateContext` and the journal at FIRING time —
- * the identical discipline `registerCriteriaSealGate` states for its own
- * requirements reader ("reading them at registration would pin a snapshot taken
- * before the work ran, which is exactly the window a tamper lives in").
+ * What the gate ASKS changed too. It used to ask "was the suite red at base",
+ * which a healthy repository answers no to — so the gate refused every real run,
+ * satisfiable only when the repository was already broken. It now asks the
+ * question that discriminates: do the tests THIS change set added fail against
+ * the code that preceded it?
+ *
+ * ⚠️ AND BOTH HALVES ARE NOW ONE FIRING. The old shape had a producer running
+ * before dispatch and a consumer re-reading the journal afterwards, which forced
+ * an ordering cut to tell a genuine baseline from the gate's own earlier
+ * verdict. A diff-derived baseline cannot satisfy that cut, so the halves were
+ * collapsed and the ordering question disappeared rather than being answered.
  */
 
 const CHANGE_SET_ID = "9f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
 const WORK_UNIT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
-const SESSION_ID = "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d";
 const REQ_A = "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f";
-const REQ_B = "4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a";
 const OBJECT_ID = "0123456789abcdef0123456789abcdef01234567";
-const BASE_OBJECT_ID = "fedcba9876543210fedcba9876543210fedcba98";
 
 let tj: TestJournal;
 
@@ -49,240 +49,157 @@ function contextFor(workUnitId: string | undefined): GateContext {
     objectId: OBJECT_ID,
     ...(workUnitId !== undefined ? { workUnitId } : {}),
     journal: tj.store,
-    now: () => new Date("2026-08-18T17:00:00.000Z"),
+    now: () => new Date("2026-08-18T20:00:00.000Z"),
   };
 }
 
-async function journalRedBaseline(requirementId: string): Promise<void> {
-  await captureRedBaseline(tj.store, {
-    changeSetId: CHANGE_SET_ID,
-    requirementId,
-    workUnitId: WORK_UNIT_ID,
-    baseObjectId: BASE_OBJECT_ID,
-    command: "npm run test",
-    exitStatus: 1,
-    toolchainFingerprint: "node@24",
-  });
+const RED_ESTABLISHED: ChangedTestsBaselineOutcome = {
+  kind: "captured",
+  command: "npm run test -- src/a.test.ts",
+  exitStatus: 1,
+  records: [],
+};
+
+interface FireOptions {
+  readonly red: ChangedTestsBaselineOutcome;
+  readonly candidateExitStatus?: number;
+  readonly workUnitId?: string | undefined;
+  readonly requirementIds?: readonly string[];
 }
 
-/** The `work_unit_transition: dispatched` entry that IS the gate's ordering boundary. */
-async function journalDispatchBoundary(): Promise<void> {
-  await recordAttempt(tj.store, WORK_UNIT_ID, SESSION_ID, "dispatched");
-}
-
-interface FireOnceOptions {
-  readonly requirementIds: readonly string[];
-  readonly candidateExitStatus: number;
-  readonly workUnitId?: string;
-}
-
-async function fireOnce(options: FireOnceOptions) {
+async function fireOnce(options: FireOptions) {
   const registry = createGateRegistry();
   registerTddGate(registry, {
-    requirementIds: () => options.requirementIds,
+    requirementIds: () => options.requirementIds ?? [REQ_A],
+    measureRedAtBase: () => Promise.resolve(options.red),
     runCandidate: () =>
       Promise.resolve({
         command: "npm run test",
-        exitStatus: options.candidateExitStatus,
+        exitStatus: options.candidateExitStatus ?? 0,
         toolchainFingerprint: "node@24",
       }),
   });
   const results = await registry.fireByTag(
     "tdd",
-    contextFor(options.workUnitId === undefined ? WORK_UNIT_ID : options.workUnitId),
+    contextFor("workUnitId" in options ? options.workUnitId : WORK_UNIT_ID),
     { requireAtLeastOne: true },
   );
   return results[0];
 }
 
-describe("registerTddGate — the red-before-green check, read from the context at firing time", () => {
-  it("registers under the `tdd` tag so a packet declaring that tag can fire it", async () => {
+describe("registerTddGate — red is measured, not read back", () => {
+  it("registers under `tdd`, marked per-work-unit so fireAll skips it", () => {
     const registry = createGateRegistry();
     registerTddGate(registry, {
       requirementIds: () => [REQ_A],
-      runCandidate: () => Promise.resolve({ command: "npm run test", exitStatus: 0 }),
+      measureRedAtBase: () => Promise.resolve(RED_ESTABLISHED),
+      runCandidate: () => Promise.resolve({ command: "c", exitStatus: 0 }),
     });
 
     expect(registry.list("tdd").map((gate) => gate.name)).toStrictEqual([TDD_GATE_NAME]);
+    expect(registry.list("tdd")[0]?.perWorkUnit).toBe(true);
   });
 
-  /**
-   * The pass path, and the only shape that may produce it: a genuine baseline
-   * captured strictly before this attempt's dispatch boundary, plus a candidate
-   * that is now green.
-   */
-  it("PASSES when a red baseline precedes the dispatch boundary and the candidate is green", async () => {
-    await journalRedBaseline(REQ_A);
-    await journalDispatchBoundary();
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
+  /** The only shape that mints a real verdict: red against base, green against the candidate. */
+  it("PASSES when the added tests fail at base and pass on the candidate", async () => {
+    const result = await fireOnce({ red: RED_ESTABLISHED, candidateExitStatus: 0 });
 
     expect(result?.verdict.passed).toBe(true);
     expect(result?.evidence.gateVerdict).toBe("passed");
   });
 
   /**
-   * ⚠️ THE ANTI-FORGERY ARM, and the reason the boundary exists at all. A
-   * baseline journaled AFTER the attempt was dispatched cannot be evidence that
-   * a failing test came first — it is equally consistent with the gate's own
-   * earlier failing verdict, which is journaled with the same `gateTag` and a
-   * non-zero status. Without this arm the gate would accept a baseline
-   * fabricated at any point up to the moment it fires.
-   */
-  it("REFUSES a red baseline journaled after the dispatch boundary", async () => {
-    await journalDispatchBoundary();
-    await journalRedBaseline(REQ_A);
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
-
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
-    expect(result?.evidence.gateVerdict).toBeUndefined();
-    expect(result?.verdict.detail).toMatch(/red-baseline/i);
-  });
-
-  /**
-   * ⚠️ THE REPAIR-ATTEMPT ARM — each attempt is judged against its OWN
-   * boundary, which is the LATEST one.
-   *
-   * A repaired unit is dispatched more than once. The producer captures a fresh
-   * baseline before each dispatch, so attempt 2's baseline sits BETWEEN the two
-   * `dispatched` entries: after attempt 1's boundary, before attempt 2's. Read
-   * against the latest boundary it counts, correctly. Read against the FIRST it
-   * does not, and every repaired unit would be refused for evidence it actually
-   * has. Without this arm, "latest, not first" is an unfalsifiable claim in a
-   * doc comment.
-   *
-   * This does not weaken the anti-forgery arm above: a baseline after the
-   * LATEST boundary is still refused, and that is the only window a forgery can
-   * occupy.
-   */
-  it("judges a re-dispatched attempt against its OWN boundary, not the first one", async () => {
-    await journalDispatchBoundary();
-    await journalRedBaseline(REQ_A);
-    await journalDispatchBoundary();
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
-
-    expect(result?.verdict.passed).toBe(true);
-  });
-
-  it("FAILS when no red baseline was ever journaled", async () => {
-    await journalDispatchBoundary();
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
-
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
-    expect(result?.evidence.gateVerdict).toBeUndefined();
-  });
-
-  /**
    * The green half is genuinely required. Without this arm the gate would be
-   * satisfied by the baseline alone, which asserts only that a test once
+   * satisfied by the red measurement alone, which asserts only that a test once
    * failed — never that the work made it pass.
    */
-  it("FAILS when the baseline is sound but the candidate is still failing", async () => {
-    await journalRedBaseline(REQ_A);
-    await journalDispatchBoundary();
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 1 });
+  it("FAILS when red is established but the candidate is still failing", async () => {
+    const result = await fireOnce({ red: RED_ESTABLISHED, candidateExitStatus: 1 });
 
     expect(result?.verdict.passed).toBe(false);
-    expect(result?.verdict.exitStatus).toBe(1);
+    expect(result?.evidence.gateVerdict).toBe("failed");
   });
 
   /**
-   * ⚠️ EVERY declared requirement needs its own baseline. A unit declaring two
-   * requirements with one baseline between them has proved a failing test for
-   * one of them and nothing at all for the other — and "some requirement was
-   * red" is exactly the weakened claim an `.some()` would silently accept.
+   * ⚠️ THE DISCRIMINATION ARM. Tests that already pass against the base code
+   * prove nothing this change set introduced — they would have passed before it
+   * existed. Unproven, and deliberately NOT a block: a refactor that legitimately
+   * adds no discriminating test is not a defect.
    */
-  it("FAILS when only SOME of the unit's declared requirements have a baseline", async () => {
-    await journalRedBaseline(REQ_A);
-    await journalDispatchBoundary();
+  it("is UNPROVEN when the added tests already pass against base", async () => {
+    const result = await fireOnce({
+      red: { kind: "notRed", command: "npm run test -- a", exitStatus: 0 },
+    });
 
-    const result = await fireOnce({ requirementIds: [REQ_A, REQ_B], candidateExitStatus: 0 });
-
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
     expect(result?.evidence.gateVerdict).toBeUndefined();
-    expect(result?.verdict.detail).toContain(REQ_B);
+    expect(result?.verdict.passed, "an undiscriminating test set blocked the run").toBe(true);
+    expect(result?.verdict.detail).toMatch(/discriminate/i);
+  });
+
+  it("is UNPROVEN when the change set added no test file", async () => {
+    const result = await fireOnce({ red: { kind: "noTestFiles" } });
+
+    expect(result?.evidence.gateVerdict).toBeUndefined();
+    expect(result?.verdict.detail).toMatch(/no test file/i);
   });
 
   /**
-   * Fail closed with no work unit. This gate is per-work-unit by construction —
-   * the boundary it reads is a `work_unit_transition` — so a `final_verifying`
-   * firing, where `workUnitId` is absent by design, has no boundary to read.
-   * Passing there would let the integrated candidate collect a `tdd` pass no
-   * unit ever earned.
+   * ⚠️ Each unestablished reason says its OWN thing. They have different repairs
+   * — grant a command, write a discriminating test, declare a requirement — and
+   * collapsing them to "no baseline" would tell an operator nothing actionable.
    */
-  it("FAILS CLOSED when the context carries no work unit", async () => {
-    await journalRedBaseline(REQ_A);
-    await journalDispatchBoundary();
+  it("names the reason the red half could not be established", async () => {
+    const noGrant = await fireOnce({ red: { kind: "noAcceptanceCommand" } });
+    const brokenRun = await fireOnce({
+      red: { kind: "didNotRun", command: "npm run test", reason: "could not start: ENOENT" },
+    });
 
+    expect(noGrant?.verdict.detail).toMatch(/envelope grants no/i);
+    expect(brokenRun?.verdict.detail).toMatch(/ENOENT/);
+    expect(noGrant?.verdict.detail).not.toBe(brokenRun?.verdict.detail);
+  });
+
+  /**
+   * Fail closed with no work unit. This gate is per-work-unit by construction, so
+   * a `final_verifying` firing — where `workUnitId` is absent by design — has
+   * nothing to judge.
+   */
+  it("is UNPROVEN when the context carries no work unit", async () => {
+    const result = await fireOnce({ red: RED_ESTABLISHED, workUnitId: undefined });
+
+    expect(result?.evidence.gateVerdict).toBeUndefined();
+    expect(result?.verdict.detail).toMatch(/per-work-unit/i);
+  });
+
+  /** A unit declaring no requirement has no bar for a baseline to be red against. */
+  it("is UNPROVEN when the unit declares no requirements", async () => {
+    const result = await fireOnce({ red: RED_ESTABLISHED, requirementIds: [] });
+
+    expect(result?.evidence.gateVerdict).toBeUndefined();
+    expect(result?.verdict.detail).toMatch(/requirement/i);
+  });
+
+  /**
+   * ⚠️ The candidate is not run until red is established. Measuring green for a
+   * change set whose tests never discriminated is pure cost for a number nobody
+   * may act on — and on a real project that is a full suite run per attempt.
+   */
+  it("does NOT run the candidate when the red half was not established", async () => {
+    let candidateRan = false;
     const registry = createGateRegistry();
     registerTddGate(registry, {
       requirementIds: () => [REQ_A],
-      runCandidate: () => Promise.resolve({ command: "npm run test", exitStatus: 0 }),
+      measureRedAtBase: () => Promise.resolve({ kind: "noTestFiles" }),
+      runCandidate: () => {
+        candidateRan = true;
+        return Promise.resolve({ command: "npm run test", exitStatus: 0 });
+      },
     });
-    const results = await registry.fireByTag("tdd", contextFor(undefined), {
-      requireAtLeastOne: true,
-    });
 
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
-    expect(results[0]?.evidence.gateVerdict).toBeUndefined();
-    // ⚠️ `/per-work-unit/` and not `/work unit/`: with the guard deleted the
-    // firing still fails, but on the BOUNDARY refusal, whose message also names
-    // a work unit. The loose pattern passed against the mutation — measured —
-    // so it asserted the outcome without discriminating the reason.
-    expect(results[0]?.verdict.detail).toMatch(/per-work-unit/i);
-  });
+    await registry.fireByTag("tdd", contextFor(WORK_UNIT_ID), { requireAtLeastOne: true });
 
-  /**
-   * Fail closed with no dispatch boundary. An attempt that was never journaled
-   * as dispatched cannot have a "before" — and treating a missing boundary as
-   * "anything counts" would restore precisely the forgery window the arm above
-   * closes.
-   */
-  it("FAILS CLOSED when no dispatch boundary was journaled for the unit", async () => {
-    await journalRedBaseline(REQ_A);
-
-    const result = await fireOnce({ requirementIds: [REQ_A], candidateExitStatus: 0 });
-
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
-    expect(result?.evidence.gateVerdict).toBeUndefined();
-    expect(result?.verdict.detail).toMatch(/dispatch/i);
-  });
-
-  /**
-   * A unit declaring no requirements has no acceptance bar, so there is nothing
-   * a red baseline could be red against. Passing would mint a `tdd` verdict for
-   * a unit that proved nothing — the same direction `deriveGateCriteria` takes
-   * for a record with no verdict.
-   */
-  it("FAILS CLOSED when the unit declares no requirements", async () => {
-    await journalDispatchBoundary();
-
-    const result = await fireOnce({ requirementIds: [], candidateExitStatus: 0 });
-
-    // ⚠️ Unproven, not refused (owner ruling 2026-08-18). The precondition could
-    // not be established, so the record carries NO `gateVerdict` and
-    // `implement-tests-first` stays underivable — while the run is not blocked by
-    // a check that never ran.
-    expect(result?.evidence.gateVerdict).toBeUndefined();
-    expect(result?.verdict.detail).toMatch(/requirement/i);
+    expect(candidateRan, "the candidate suite ran for a gate that had nothing to prove").toBe(
+      false,
+    );
   });
 });

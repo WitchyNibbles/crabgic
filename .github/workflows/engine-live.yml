@@ -5,7 +5,7 @@ name: engine-live
 # *.live.test.ts` via `vitest.live.config.ts` — against the real, pinned
 # Claude Code engine bundled by the exact-pinned
 # `@anthropic-ai/claude-agent-sdk` dependency (engine facts:
-# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.220).
+# `docs/engine-baseline.md`; accepted range 2.1.207–2.1.224).
 #
 # CLI: roadmap/10's plugin lane shares this job and resolves a BARE `claude`
 # from `PATH` (`packages/plugin/src/live/claude-cli.ts`). The SDK packages

@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-08-19",
-  "generatedAtSha": "5b83a2d5b1d2543c77bb341adb70a7b9a090cb9b",
+  "generatedAtSha": "d16b05727e4a60ae1ef98fdb40ed700295662e1f",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2625,
-    "seededStale": 770,
-    "outsideSpan": 879,
+    "anchored": 2628,
+    "seededStale": 767,
+    "outsideSpan": 884,
     "repeatText": 532,
     "crossFile": 19,
     "skipped": 611
@@ -69,7 +69,7 @@
       ]
     },
     "phase-00.json#c2#docs/engine-baseline.md:4-6": {
-      "qa": "78ebe18dce44",
+      "qa": "40ba6092709f",
       "ref": "OK",
       "pins": [
         "OK/collapsed@4",
@@ -97,10 +97,10 @@
       "qa": "aec60fec651e",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@125",
+        "MOVED/collapsed@135!span",
         "ABSENT@-",
-        "MOVED/collapsed@127",
-        "MOVED/collapsed@123"
+        "MOVED/collapsed@137!span",
+        "MOVED/collapsed@133!span"
       ]
     },
     "phase-00.json#c3#docs/engine-baseline.md:29": {
@@ -2819,20 +2819,20 @@
       "qa": "1d3de4d1a9fe",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@122",
-        "MOVED/collapsed@123",
-        "MOVED/collapsed@125",
+        "MOVED/collapsed@132!span",
+        "MOVED/collapsed@133!span",
+        "MOVED/collapsed@135!span",
         "SKIP-short",
         "SKIP-short"
       ]
     },
-    "phase-06.json#c9#packages/engine-claude/src/version-gate.test.ts:62-78": {
-      "qa": "ac217309b1c8",
+    "phase-06.json#c9#packages/engine-claude/src/version-gate.test.ts:62-95": {
+      "qa": "2690f278f670",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@76",
-        "MOVED/collapsed@77",
-        "MOVED/collapsed@84!span",
+        "OK/collapsed@83",
+        "OK/collapsed@87",
+        "OK/collapsed@94",
         "SKIP-short",
         "SKIP-short"
       ]
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@723!span",
-        "MOVED/collapsed@755!span"
+        "MOVED/collapsed@775!span",
+        "MOVED/collapsed@807!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -6196,11 +6196,11 @@
       "pins": [],
       "frozen": true
     },
-    "phase-15.json#c3#packages/contracts/src/approval/token.ts:45": {
-      "qa": "5a2d6b4ee6ba",
+    "phase-15.json#c3#packages/contracts/src/approval/token.ts:66": {
+      "qa": "61ccb8300619",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@45"
+        "OK/collapsed@66"
       ]
     },
     "phase-15.json#c3#packages/contracts/src/contracts/authorization-envelope.ts:134": {
@@ -11890,8 +11890,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@843!span",
-        "MOVED-AMBIG/collapsed@849,1037!span~repeat",
+        "MOVED/collapsed@895!span",
+        "MOVED-AMBIG/collapsed@901,1089!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]

@@ -111,8 +111,11 @@ import {
   registerCriteriaSealGate,
   registerSecurityFixtureManifest,
   registerTddGate,
+  captureRedBaselineForChangedTests,
   COVERAGE_GATE_NAME,
   readCoverageSummary,
+  selectChangedTestFiles,
+  type ChangedTestsBaselineOutcome,
   type CoverageMeasurement,
   REQUIRED_SECURITY_FIXTURE_IDS,
   runGrantedAcceptanceCommand,
@@ -201,6 +204,26 @@ export interface AttemptSurface {
    * as not run rather than as passed.
    */
   diffAgainstBase(changeSetId: string, candidateObjectId: string): Promise<string | undefined>;
+  /**
+   * Materialises the FROZEN BASE plus the candidate's versions of `testPaths`,
+   * runs `use` in it, and disposes of the tree afterwards.
+   *
+   * ⚠️ THE TREE'S LIFETIME IS THE DISPATCHER'S, and the callback shape is how
+   * that stays true. Handing a path back would make every caller responsible for
+   * removing a real git worktree, and the first one that threw would leak it.
+   *
+   * `undefined` when the tree could not be built at all — an unknown change set,
+   * or a re-drive after a restart that lost the run's base. The gate reports the
+   * red half as unestablished rather than presuming anything.
+   */
+  /** The frozen base object id of the named change set's run, when this dispatcher still holds it. */
+  baseObjectIdFor?(changeSetId: string): string | undefined;
+  withBaseTree<T>(
+    changeSetId: string,
+    candidateObjectId: string,
+    testPaths: readonly string[],
+    use: (worktreePath: string) => Promise<T>,
+  ): Promise<T | undefined>;
 }
 
 /** What the registry needs from the daemon's dependency bundle — a narrow slice, so this cannot reach for anything else. */
@@ -348,20 +371,123 @@ async function runCandidateSuite(
  */
 async function loadCandidateCoverage(
   attempts: AttemptSurface,
+  runCandidateOnce: (context: GateContext) => Promise<{ readonly exitStatus: number }>,
   context: GateContext,
 ): Promise<CoverageMeasurement | undefined> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) return undefined;
   const worktreePath = attempts.worktreePathFor(workUnitId);
   if (worktreePath === undefined) return undefined;
+  /**
+   * ⚠️ RUN FIRST, THEN READ. The report is a by-product of the suite, so asking
+   * for it before the suite has run reads whatever a previous attempt left — or
+   * nothing. Shared with the TDD gate, so this costs one execution per candidate
+   * rather than one per gate.
+   */
+  await runCandidateOnce(context);
   const report = await readCoverageSummary(worktreePath);
   if (report === undefined) return undefined;
   const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
   return { summary: report.summary, ...(diffText !== undefined ? { diffText } : {}) };
 }
 
+/**
+ * The RED half, measured rather than read back: the tests this change set added,
+ * run against the code that preceded them.
+ *
+ * ⚠️ EVERY UNMET PRECONDITION RETURNS ITS OWN OUTCOME, never a bare failure.
+ * "No test file was added", "the envelope grants nothing", "the base tree could
+ * not be built" and "the tests already pass at base" have four different
+ * repairs, and the gate turns each into its own sentence for an operator.
+ */
+async function measureRedAtBase(
+  attempts: AttemptSurface,
+  workUnits: GateRegistryDependencies["workUnits"],
+  _projectId: string,
+  context: GateContext,
+): Promise<ChangedTestsBaselineOutcome> {
+  const workUnitId = context.workUnitId;
+  if (workUnitId === undefined) return { kind: "noRequirements" };
+
+  const granted = attempts.grantedCommandsFor(context.changeSetId);
+  if (granted === undefined) return { kind: "noAcceptanceCommand" };
+
+  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  if (diffText === undefined) {
+    return { kind: "didNotRun", command: "git diff", reason: "the run's frozen base is unknown" };
+  }
+
+  const testPaths = selectChangedTestFiles(diffText);
+  if (testPaths.length === 0) return { kind: "noTestFiles" };
+
+  const requirementIds = workUnitRequirementIds(workUnits, workUnitId);
+  const outcome = await attempts.withBaseTree(
+    context.changeSetId,
+    context.objectId,
+    testPaths,
+    (worktreePath) =>
+      captureRedBaselineForChangedTests({
+        journal: context.journal,
+        changeSetId: context.changeSetId,
+        workUnitId,
+        requirementIds,
+        // The tree IS the base, so the record is scoped to it — which is what
+        // distinguishes a baseline from this gate's own firing.
+        baseObjectId: worktreeBaseObjectId(attempts, context.changeSetId) ?? context.objectId,
+        worktreePath,
+        grantedCommands: granted,
+        testPaths,
+      }),
+  );
+  return (
+    outcome ?? {
+      kind: "didNotRun",
+      command: "git worktree add",
+      reason: "the base tree could not be materialised",
+    }
+  );
+}
+
+/** The frozen base this change set's run was cut from, when the dispatcher still knows it. */
+function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): string | undefined {
+  return attempts.baseObjectIdFor?.(changeSetId);
+}
+
+/**
+ * One candidate suite run, shared by every gate that needs it.
+ *
+ * ⚠️ WHY THIS EXISTS, MEASURED. The coverage gate used to read a report the TDD
+ * gate's candidate run happened to leave behind, relying on `GATE_RISK_TAGS`
+ * putting `tdd` before `coverage`. The moment the TDD gate started
+ * short-circuiting — it no longer runs the candidate when the red half was never
+ * established — no report existed and the coverage gate refused every run. The
+ * comment on that coupling predicted exactly this and called the failure loud
+ * rather than silent, which it was; it should not have been a coupling at all.
+ *
+ * So the run is now explicit and memoised per candidate. Both gates ask for it,
+ * the first ask executes, and a second gate on the same candidate pays nothing.
+ * On a real project this is a full suite invocation, so running it twice is not
+ * a rounding error.
+ */
+function createCandidateSuiteRunner(
+  attempts: AttemptSurface,
+): (context: GateContext) => Promise<{ readonly command: string; readonly exitStatus: number }> {
+  const inFlight = new Map<string, Promise<{ command: string; exitStatus: number }>>();
+  return (context) => {
+    const key = `${context.changeSetId}:${context.workUnitId ?? "-"}:${context.objectId}`;
+    let pending = inFlight.get(key);
+    if (pending === undefined) {
+      pending = runCandidateSuite(attempts, context);
+      inFlight.set(key, pending);
+    }
+    return pending;
+  };
+}
+
 export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistry {
   const registry = createGateRegistry();
+  /** Shared so a candidate's suite is executed once, however many gates need its result. */
+  const runCandidateOnce = createCandidateSuiteRunner(deps.attempts);
   registerCriteriaSealGate(registry, {
     requirements: (context): readonly Requirement[] =>
       resolveRequirementsStrict(
@@ -421,14 +547,16 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
      * not stable enough either — this is the daemon's project identity.
      */
     projectId: () => deps.projectId,
-    loadCoverage: (context) => loadCandidateCoverage(deps.attempts, context),
+    loadCoverage: (context) => loadCandidateCoverage(deps.attempts, runCandidateOnce, context),
   });
   registerTddGate(registry, {
     requirementIds: (context): readonly string[] =>
       context.workUnitId === undefined
         ? []
         : workUnitRequirementIds(deps.workUnits, context.workUnitId),
-    runCandidate: (context) => runCandidateSuite(deps.attempts, context),
+    measureRedAtBase: (context) =>
+      measureRedAtBase(deps.attempts, deps.workUnits, deps.projectId, context),
+    runCandidate: (context) => runCandidateOnce(context),
   });
   /**
    * Owner ruling R5's publish refusal, registered under the SAME `acceptance`

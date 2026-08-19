@@ -33,7 +33,7 @@ export interface EngineVersionRange {
  * a NARROWER basis — no spike re-run; see that document's "Narrow
  * re-baseline (2026-07-25)" header paragraph, §14 and §15.
  */
-export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.220" };
+export const ACCEPTED_ENGINE_VERSION_RANGE: EngineVersionRange = { min: "2.1.207", max: "2.1.224" };
 
 /**
  * The accepted `@anthropic-ai/claude-agent-sdk` version range

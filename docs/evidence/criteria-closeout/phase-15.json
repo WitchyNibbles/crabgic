@@ -123,8 +123,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/contracts/src/approval/token.ts:45",
-          "quotedAssertion": "packages/contracts/src/approval/token.ts:45 — 'export type ApprovalTokenSubjectKind = \"envelope_hash\" | \"capability_digest\" | \"learning_review\";'. The human approval token's subject is one of three digests, none of which is a performance budget — so no signature the approver produces covers the enforced figure."
+          "ref": "packages/contracts/src/approval/token.ts:66",
+          "quotedAssertion": "packages/contracts/src/approval/token.ts:66 'export const APPROVAL_TOKEN_SUBJECT_KINDS = ['. AMENDED 2026-08-19: this citation quoted a three-member union on a single line at :45. Owner ruling 2026-08-19, amending R2, added a fourth member for the design gate and turned the declaration into an array with the union derived from it — so the quoted line went ABSENT rather than moving, and the ref is re-anchored to :66. The criterion is re-verified against the current file and UNCHANGED: the subject vocabulary is still a closed list of digests, none of the four is a performance budget, and so no signature the approver produces covers the enforcement. Only the member count and the declaration shape moved, and the criterion rests on neither."
         },
         {
           "kind": "test",

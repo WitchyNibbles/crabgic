@@ -3,7 +3,7 @@
 **Status:** baseline established; TWO FULL rounds of live verification complete (initial 2026-07-15, re-baseline 2026-07-24 per phase 23's engine-fact-drift ground rule — see "Re-baseline (2026-07-24)" callouts throughout), plus a THIRD, deliberately NARROW re-baseline on 2026-07-25 that extended the accepted range to the installed 2.1.220 **without re-running the spike suite** (see "Narrow re-baseline (2026-07-25)" below, and §14–§15 for the two facts it did record).
 **Tested version (full spike suite):** `claude` CLI **2.1.218** (Claude Code), `@anthropic-ai/claude-agent-sdk` **0.3.218** — both npm-registry-current at time of the 2026-07-24 re-verification. (Originally tested at 2.1.210 / 0.3.210 on 2026-07-15; every fact below was re-run against 2.1.218 and reconfirmed unless a section explicitly says otherwise.) The 2026-07-25 narrow re-baseline did **not** move this point version: the suite was not re-run, so 2.1.218 / 0.3.218 remains the version the recorded probe verdicts were actually produced at (and is what `TESTED_ENGINE_VERSION` in `packages/engine-claude/src/version-gate.ts` mirrors, and what the live harness's own canary asserts the SDK-resolved engine reports before any live probe runs).
 **Doc baseline (`docs/claude-code-adaptation.md`) was verified against:** 2.1.207 (2026-07-12).
-**Accepted range:** **2.1.207–2.1.220**. The 2026-07-24 re-run reproduced every PASS verdict from the 2.1.207–2.1.210 pass with zero FAILs and zero observed load-bearing behavioral deltas (permission semantics, hermeticity, sandbox shapes, structured-output shape, session semantics, and the tool catalog are all byte-for-byte/behaviorally identical — see §9 for the full re-run tally and §10 for the explicit "what would have narrowed this" list, none of which fired), taking the range to 2.1.218; the 2026-07-25 narrow re-baseline extended the upper end again to 2.1.220 on the narrower basis described immediately below. The range is therefore extended rather than re-pinned to a fresh point; if a future re-run inside this range ever surfaces a genuine behavioral delta, that re-run must narrow the range at the version where the delta first appears, per the ground rule that a spanning range must never silently cross a changed fact. Node v24.18.0, WSL2 Linux (6.6.87.2-microsoft-standard-WSL2), `bwrap` 0.9.0 + `socat` present (installed mid-phase in the original pass; see §6).
+**Accepted range:** **2.1.207–2.1.224** (extended 2026-08-19 by a FULL suite re-run at 2.1.224 — see the final section; the 2.1.220 figure this line carried until then is superseded). The 2026-07-24 re-run reproduced every PASS verdict from the 2.1.207–2.1.210 pass with zero FAILs and zero observed load-bearing behavioral deltas (permission semantics, hermeticity, sandbox shapes, structured-output shape, session semantics, and the tool catalog are all byte-for-byte/behaviorally identical — see §9 for the full re-run tally and §10 for the explicit "what would have narrowed this" list, none of which fired), taking the range to 2.1.218; the 2026-07-25 narrow re-baseline extended the upper end again to 2.1.220 on the narrower basis described immediately below. The range is therefore extended rather than re-pinned to a fresh point; if a future re-run inside this range ever surfaces a genuine behavioral delta, that re-run must narrow the range at the version where the delta first appears, per the ground rule that a spanning range must never silently cross a changed fact. Node v24.18.0, WSL2 Linux (6.6.87.2-microsoft-standard-WSL2), `bwrap` 0.9.0 + `socat` present (installed mid-phase in the original pass; see §6).
 **Date verified:** 2026-07-15 (original), **2026-07-24 (re-baseline, phase 23)**, **2026-07-25 (narrow re-baseline to 2.1.220)**.
 
 **Narrow re-baseline (2026-07-25, `claude` CLI 2.1.220 — owner-approved):** the host's `claude` on `PATH` moved to **2.1.220**, outside the then-accepted 2.1.207–2.1.218 range; per CLAUDE.md's engine-fact-drift ground rule that is a re-baseline trigger, and the owner chose to **extend the range to 2.1.220 and accept the findings gathered against it** rather than pin the host back. **This round is deliberately narrower than the 2026-07-24 one and must not be read as equivalent:** none of the eight `spikes/*.mjs` scripts was re-run, no fixture was regenerated, and §9's verdict tally is unchanged. What it did produce is two new engine facts, each with committed evidence artifacts — §14 (path-scoped permission rules: an ISOLATED rule did not match, while the compiler's OWN full permission object DOES scope; the owed phase-03 carry-forward is therefore narrowed rather than closed, and the causal difference is undetermined — this section was **corrected on 2026-07-25** after first publishing an over-broad "no path-anchored form matches / the compiler's anchoring is inert" reading of only the first probe) and §15 (`--allowedTools` is variadic on the CLI). **Transport caveat, load-bearing:** only the **CLI transport** (`claude` resolved from `PATH`) is genuinely at 2.1.220 on this host. The **SDK transport** still resolves the engine binary bundled with `@anthropic-ai/claude-agent-sdk` **0.3.218** — `node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude --version` reports `2.1.218 (Claude Code)`, exactly as this header's engine-resolution note predicts — so §14's evidence, both artifacts of it, gathered through the SDK, was gathered at engine **2.1.218**, not 2.1.220, while §15's was read off the 2.1.220 `PATH` binary. The SDK's own accepted range is therefore deliberately **not** extended (§10 keeps 0.3.207–0.3.218), and `e2e/release/src/enginePinCheck.ts`'s `EXPECTED_SDK_PIN` stays `0.3.218`: the two version lines move together only when the SDK dependency is actually bumped, and it was not bumped here. Nothing observed in this round was a behavioral delta between 2.1.218 and 2.1.220, and no §10 invalidation trigger was seen to fire — but §10 was **not** re-checked item-by-item at 2.1.220 the way it was on 2026-07-24, so the upper end of this range rests on a weaker evidentiary base than its 2.1.218 point. A full-suite re-run at 2.1.220 (bumping `spikes/package.json` to the SDK release matching 2.1.220 and reinstalling, per the engine-resolution note below) remains owed (§11).
@@ -420,7 +420,7 @@ Re-run the full probe suite (`spikes/README.md` procedure) and update this docum
 - `Options.outputFormat` field name/shape, or the `StructuredOutput` internal tool name/behavior (§5), including whether `error_max_structured_output_retries` is actually reachable and under what conditions.
 - Session transcript path munging scheme, `--resume`/`--fork-session` semantics (§7).
 - The `rate_limit_event`/`rate_limit_info` schema (§8 — field names, `status` enum, epoch `resetsAt`), the error-string phrasing of an actual exhaustion, or the ENOENT-masking shape of `denyRead` enforcement (§6) — phase 06's `limitSignal` and blocked-read detection key on these observed shapes.
-- `claude --version` moves outside 2.1.207–2.1.220, or `@anthropic-ai/claude-agent-sdk` moves outside 0.3.207–0.3.218. (Re-baselined 2026-07-24: range extended from the original 2.1.207–2.1.210 / 0.3.207–0.3.210 after the full suite reproduced every PASS at 2.1.218/0.3.218 with zero deltas — see §9. Extended again 2026-07-25 to 2.1.220 on the narrow basis in the header. **The two ranges are deliberately no longer symmetric:** the CLI range's upper end is 2.1.220 because the host's `PATH` binary is, while the SDK range's stays 0.3.218 because the pinned SDK — and therefore the engine binary the SDK transport actually runs — is still 0.3.218/2.1.218. Bumping the SDK dependency is a separate act with its own evidence requirement; do not "sync" these two ranges on the assumption that the documented 1:1 release correspondence obliges it.)
+- `claude --version` moves outside 2.1.207–2.1.224, or `@anthropic-ai/claude-agent-sdk` moves outside 0.3.207–0.3.218. (Re-baselined 2026-07-24: range extended from the original 2.1.207–2.1.210 / 0.3.207–0.3.210 after the full suite reproduced every PASS at 2.1.218/0.3.218 with zero deltas — see §9. Extended again 2026-07-25 to 2.1.220 on the narrow basis in the header, and again 2026-08-19 to 2.1.224 by a FULL eight-probe re-run (final section) — the round the 2026-07-25 entry recorded as owed. **The two ranges are deliberately no longer symmetric:** the CLI range's upper end is 2.1.220 because the host's `PATH` binary is, while the SDK range's stays 0.3.218 because the pinned SDK — and therefore the engine binary the SDK transport actually runs — is still 0.3.218/2.1.218. Bumping the SDK dependency is a separate act with its own evidence requirement; do not "sync" these two ranges on the assumption that the documented 1:1 release correspondence obliges it.)
 - CLI flag surface: **`--max-turns` is documented in `docs/claude-code-adaptation.md` §3.3 as confirmed in local `--help` 2.1.207, but is ABSENT from `claude --help` in 2.1.210** — only `--max-budget-usd` remains at the CLI layer. The SDK's `Options.maxTurns` field is unaffected and remains the confirmed mechanism (the SDK transport is already the confirmed v1 path per adaptation §0, so this doesn't block anything, but any future CLI-transport work must not assume `--max-turns` exists without re-checking). **Re-confirmed absent at 2.1.218** (`claude --help` re-checked 2026-07-24) — no change.
 - The `enabledPlugins` settings-key format (§12) or the `<plugin-name>@<marketplace-name>` composition it depends on.
 - **(added 2026-07-25; CORRECTED same day)** The setup-dependent matching of path-scoped permission rules (§14) — **both** of §14's observations are invalidation-relevant, in opposite directions. If the compiled profile's owned-path anchoring stops scoping (§14.2's in-path-allowed / one-directory-up-denied split no longer reproduces), phase 03's compiler and phase 06's containment story lose the mechanism they currently rest on and must both be re-derived. If an ISOLATED `Write(<path-pattern>)`/`Edit(<path-pattern>)` rule in §14.1's setup starts matching, that is a capability appearing rather than disappearing, and it would also collapse the divergence §14.3 leaves undetermined — which is a finding in its own right. This bullet previously read "the non-matching of path-scoped permission rules"; that framing came from the over-broad conclusion §14 has since retracted.
@@ -1009,3 +1009,118 @@ owns. It is not a drop-in substitute and should not be treated as one without it
 - Output styles becoming a plugin component category (§23.1/§23.2 flipping to PASS) — §L0 becomes
   available as originally designed, and this section should be re-run before relying on it.
 - `claude plugin details` gaining warn output (§23.3) — the silent-acceptance reading changes.
+
+---
+
+## Re-baseline (2026-08-19, engine `2.1.224`) — FULL suite re-run, range extended to 2.1.224
+
+**Trigger.** `crabgic doctor` reported the host's engine at `2.1.224`, outside the then-accepted
+`2.1.207–2.1.220`. Per CLAUDE.md's engine-fact-drift ground rule that is a re-baseline trigger, and
+the owner chose a **full re-run** rather than the narrow extension taken on 2026-07-25 — which also
+discharges the full-suite re-run §11 has recorded as owed since that round.
+
+**How it was run.** `spikes/package.json` was bumped to `@anthropic-ai/claude-agent-sdk` **0.3.224**
+and reinstalled, so the SDK-bundled binary reports `2.1.224 (Claude Code)` — verified before any
+probe ran. All **eight** scripts `01`–`08` were executed against it.
+
+### Verdict tally at 2.1.224
+
+| script                 | PASS   | FAIL  | UNRESOLVED |
+| ---------------------- | ------ | ----- | ---------- |
+| `01-auth`              | 2      | 0     | 0          |
+| `02-hermeticity`       | 4      | 0     | 0          |
+| `03-permissions`       | 5      | 1     | 0          |
+| `04-sandbox`           | 6      | 0     | 0          |
+| `05-structured-output` | 2      | 0     | 0          |
+| `06-sessions`          | 4      | 0     | 0          |
+| `07-ratelimit`         | 1      | 0     | 2          |
+| `08-tool-catalog-env`  | 3      | 0     | 0          |
+| **total**              | **27** | **1** | **2**      |
+
+The two `07-ratelimit` UNRESOLVED verdicts are the same two recorded at 2.1.218 and are unchanged:
+the limit is still deliberately not triggered, for the reason that probe states at length.
+
+### The one FAIL is a probe-harness bound, not a permission-semantics delta
+
+`permissions.overall` — the aggregate wrapper asserting "all permission sub-probes complete without
+throwing" — threw `Reached maximum number of turns (4)`. That is the probe's own turn budget, not a
+permission decision.
+
+**Every load-bearing permission sub-probe PASSED**, and these are the security-critical ones:
+
+- `permissions.dontask-auto-deny-unlisted-tool`
+- `permissions.compound-command-smuggling`
+- `permissions.process-wrapper-smuggling`
+- `permissions.deny-wins-same-level`
+- `permissions.deny-wins-cross-level`
+
+So deny-wins precedence at both levels, compound-command and process-wrapper smuggling refusal, and
+auto-deny of an unlisted tool under `dontask` all reproduce at 2.1.224. Nothing on §10's
+"what would have narrowed this" list fired. **The range is therefore extended to `2.1.207–2.1.224`
+rather than narrowed.**
+
+⚠️ Recorded as a residual rather than dismissed: the model needed more than four turns to complete
+the permissions scenario at 2.1.224, where four sufficed at 2.1.218. That is a real behavioural
+difference in turn consumption, and it is NOT load-bearing for any fact this baseline records — but
+a future round should raise the probe's budget rather than re-discover it, and anything that sizes
+`maxTurns` from this document should know the figure moved.
+
+### ⚠️ Two process findings this round produced, both worth more than the tally
+
+**1. The suite silently measures nothing when the interactive login lapses.** MEASURED: only
+`spikes/01-auth.mjs` sets `CLAUDE_CODE_OAUTH_TOKEN`; the other seven rely on ambient
+`~/.claude/.credentials.json`. With that credential expired, two consecutive full runs produced a
+**byte-identical** tally of 8 FAILs — every one reading `Failed to authenticate: OAuth session
+expired and could not be refreshed`. Recording that tally would have looked like a catastrophic
+2.1.224 regression and, under the drift ground rule, would have narrowed the accepted range against
+evidence that measured nothing about the engine. Nothing was recorded from those rounds.
+
+**2. An auth failure can masquerade as a security-control regression.** In the un-authenticated
+rounds, `04-sandbox` reported the engine refusing to sandbox with
+`bubblewrap (bwrap) not installed, socat not installed` — while `bwrap` and `socat` were both
+present at `/usr/bin`, and the probe's own output said so. That is precisely the shape of a
+load-bearing delta in a security control. It was withheld rather than filed, and with working
+credentials the probe returns **6 PASS / 0 FAIL**. The lesson is the general one this document keeps
+paying for: establish that the harness is measuring the engine before attributing anything to it.
+
+**Credential note for the next round.** `claude setup-token` refreshes the worker token
+(`~/.claude/.eo-oauth-token`) only. The other seven probes need `~/.claude/.credentials.json`, which
+is refreshed by an interactive `claude` → `/login`. Both are required for a meaningful full run, and
+`claude -p` answering is the check that the second one is in place.
+
+### What this round does NOT establish
+
+The workspace's own `@anthropic-ai/claude-agent-sdk` dependency is **unchanged at 0.3.218**, and
+`e2e/release/src/enginePinCheck.ts`'s `EXPECTED_SDK_PIN` stays `0.3.218`. Only `spikes/` was moved to
+0.3.224, because that is where the probes run. The two version lines move together only when the
+product dependency is actually bumped, and it was not bumped here — so this round extends the
+accepted **engine** range and says nothing about a newer SDK in the shipped product.
+
+### ⚠️ Addendum (2026-08-19, same day): the host CLI moved again, mid-round
+
+Measured immediately after the re-baseline above landed — three transports on this host, three
+different engines:
+
+| transport                                              | version   | what it is                                 |
+| ------------------------------------------------------ | --------- | ------------------------------------------ |
+| `claude` on `PATH`                                     | `2.1.235` | the operator's interactive CLI             |
+| `node_modules/@anthropic-ai/claude-agent-sdk-*/claude` | `2.1.218` | **what dispatched workers actually spawn** |
+| `spikes/node_modules/.../claude`                       | `2.1.224` | what the eight probes above ran against    |
+
+The `PATH` binary moved from 2.1.224 to 2.1.235 **during this session**, when the operator ran an
+interactive `claude` → `/login` to refresh the credential the probes needed. Nothing was done to
+upgrade it deliberately.
+
+**The re-baseline above is unaffected.** Its verdicts were gathered against a binary verified to
+report `2.1.224` before any probe ran, and the extended range names exactly that version.
+
+**`doctor` will keep reporting drift, and it is right to.** It reads the `PATH` engine, no probe has
+ever run against 2.1.235, and an accepted range must never silently span an unmeasured version.
+What that surfaces is a real gap in the QUESTION doctor asks rather than in its answer: the engine it
+checks is not the engine that runs dispatched work. The SDK-bundled binary has been `2.1.218`
+throughout — inside the accepted range on every reading this document has ever taken — so no
+unprobed engine has executed any work unit.
+
+Recorded, deliberately, without changing the check: narrowing or widening what doctor reads is an
+owner decision, and a range extended to chase a `PATH` binary that moves on every login would be a
+number with no evidence under it.
