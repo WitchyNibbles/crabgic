@@ -42,13 +42,13 @@ and git history:
 All four events below are on **2026-08-18** — the table originally gave times
 with no date, which invited exactly the confusion the lens caught:
 
-| time (2026-08-18) | reflog event |
-| --- | --- |
-| 21:36:42 | `checkout: moving from feat/coverage-report-reader to main` |
-| **21:37** | **`dist/index.js` mtime** |
-| 21:46:40 | `checkout: moving from docs/citation-unresolved-paths to main` |
-| 21:46:41 | `pull --quiet: Fast-forward` → `4414a16` |
-| **21:46** | **`src/coverage-gate-registration.ts` mtime** |
+| time (2026-08-18) | reflog event                                                   |
+| ----------------- | -------------------------------------------------------------- |
+| 21:36:42          | `checkout: moving from feat/coverage-report-reader to main`    |
+| **21:37**         | **`dist/index.js` mtime**                                      |
+| 21:46:40          | `checkout: moving from docs/citation-unresolved-paths to main` |
+| 21:46:41          | `pull --quiet: Fast-forward` → `4414a16`                       |
+| **21:46**         | **`src/coverage-gate-registration.ts` mtime**                  |
 
 `packages/gates/src/coverage-gate-registration.ts` is **absent** at `8605760`
 and **present** at `4414a16` (`git cat-file -e`), so the 21:46:41 fast-forward is
@@ -207,6 +207,7 @@ the section a reader consults for limits, and not only in Corrections:
    that omits it does not address the incident this record is named for. Stated
    here because a reader who stops at the sentence above would carry away the
    opposite conclusion.
+
 4. **It cannot bootstrap its own first activation.**
    `packages/cli/package.json:22` declares `"crabgic": "dist/bin.js"`, so the
    `crabgic` on a developer's PATH is a COMPILED artifact. A stale
@@ -240,6 +241,7 @@ the section a reader consults for limits, and not only in Corrections:
 
    Closable, like blind spot 5: include each unit's own `tsconfig.json` and its
    `extends` chain in the input side of the comparison.
+
 7. **It cannot see the build program or the toolchain change.** Edit
    `EXTERNAL_DEPENDENCIES` in `scripts/bundle-cli.mjs` — or `splitting`,
    `target`, `format` — and rebuild nothing. No `src` file moves, no
@@ -253,6 +255,7 @@ the section a reader consults for limits, and not only in Corrections:
    **`tsc` disagrees with the check here** — `.tsbuildinfo` records
    `version: "6.0.3"` and invalidates on mismatch, which is precisely the input
    an mtime comparison drops. See assumption 6.
+
 8. **There are three tiers, not two.** `packages/cli/dist/index.d.ts` is a
    `copyFile` of `packages/cli/.dts-cache/index.d.ts` (`bundle-cli.mjs:153`),
    and that cache is **gitignored** (`.gitignore:47`) — neither `src` nor
@@ -311,18 +314,19 @@ the section a reader consults for limits, and not only in Corrections:
     times, case-insensitively — and every one is about WHERE the file goes,
     never WHAT IS IN IT:
 
-    | line | declaration | what it exposes |
-    | --- | --- | --- |
-    | `7102` | `tsBuildInfoFile?: string` | the compiler option, a path |
-    | `7338` | `TsBuildInfo = ".tsbuildinfo"` | the file extension |
-    | `9511` | `getTsBuildInfoEmitOutputFilePath(options): string \| undefined` | the emit path |
+    | line   | declaration                                                      | what it exposes             |
+    | ------ | ---------------------------------------------------------------- | --------------------------- |
+    | `7102` | `tsBuildInfoFile?: string`                                       | the compiler option, a path |
+    | `7338` | `TsBuildInfo = ".tsbuildinfo"`                                   | the file extension          |
+    | `9511` | `getTsBuildInfoEmitOutputFilePath(options): string \| undefined` | the emit path               |
 
     There is **no public interface describing the contents**, so a parser cannot
     be typed against the public API — and the three-way breakdown makes that
     conclusion stronger than the one-line version it replaces, not weaker.
+
   - The files themselves carry the writer's version. `e2e/report/dist/.tsbuildinfo`
     has top-level keys `fileNames, fileIdsList, fileInfos, root, options,
-    referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
+referencedMap, latestChangedDtsFile, version` and `version: "6.0.3"` — the
     format is **bound to the compiler version by design**, which is the risk
     stated, observed directly rather than feared.
 
@@ -377,13 +381,13 @@ the section a reader consults for limits, and not only in Corrections:
    artifact this record quotes twice — `e2e/report/dist/.tsbuildinfo`'s
    `fileNames`, which is tsc's own enumeration of what the build read:
 
-   | slice | count |
-   | --- | --- |
-   | total | **421** |
-   | under `node_modules` | **304** |
-   | of those, `typescript/lib/lib.*.d.ts` | **63** |
-   | workspace `dist/*.d.ts` | **107** |
-   | **under any `src/`** | **10** |
+   | slice                                 | count   |
+   | ------------------------------------- | ------- |
+   | total                                 | **421** |
+   | under `node_modules`                  | **304** |
+   | of those, `typescript/lib/lib.*.d.ts` | **63**  |
+   | workspace `dist/*.d.ts`               | **107** |
+   | **under any `src/`**                  | **10**  |
 
    **10 of 421.** The compiler's own answer is that `src` is about 2% of what a
    build reads. This assumption is stated, not closed: closing it fully means
@@ -582,12 +586,12 @@ arrived at by counting `package.json` files, which is the same equation restated
 
 Verified against the repository, independently of the reviewer:
 
-| claim | measured |
-| --- | --- |
-| `tsc -b` project references in root `tsconfig.json` | **19** |
-| of those, under `packages/` | **18** |
-| workspace members (`packages/*/package.json`) | **18** |
-| references NOT under `packages/` | `"./e2e/report"` (`tsconfig.json:59`) |
+| claim                                               | measured                              |
+| --------------------------------------------------- | ------------------------------------- |
+| `tsc -b` project references in root `tsconfig.json` | **19**                                |
+| of those, under `packages/`                         | **18**                                |
+| workspace members (`packages/*/package.json`)       | **18**                                |
+| references NOT under `packages/`                    | `"./e2e/report"` (`tsconfig.json:59`) |
 
 `e2e/report` has **no `package.json`**, so it is invisible to `npm workspaces`,
 to a `packages/*` glob, and to any enumeration keyed off `package.json` presence.
@@ -603,14 +607,14 @@ never looked at that directory.
 discriminator in both directions. Measured across all six `e2e/*` units, exactly
 one emits:
 
-| unit | `noEmit` | in root refs | `dist/` on disk |
-| --- | --- | --- | --- |
-| `e2e/attestation` | `true` | no | no |
-| `e2e/live` | `true` | no | no |
-| `e2e/matrix` | `true` (4 sub-projects; no top-level tsconfig) | no | no |
-| `e2e/provisioning` | `true` | no | no |
-| `e2e/release` | `true` | no | no |
-| **`e2e/report`** | — | **yes** | **yes** |
+| unit               | `noEmit`                                       | in root refs | `dist/` on disk |
+| ------------------ | ---------------------------------------------- | ------------ | --------------- |
+| `e2e/attestation`  | `true`                                         | no           | no              |
+| `e2e/live`         | `true`                                         | no           | no              |
+| `e2e/matrix`       | `true` (4 sub-projects; no top-level tsconfig) | no           | no              |
+| `e2e/provisioning` | `true`                                         | no           | no              |
+| `e2e/release`      | `true`                                         | no           | no              |
+| **`e2e/report`**   | —                                              | **yes**      | **yes**         |
 
 Five of the six declare an `outDir` they never write, because `noEmit: true`
 suppresses emission. `e2e/matrix` is the awkward one: it has **no top-level
@@ -681,8 +685,8 @@ epistemic category and is **absent from that list**. Verified: `1787144919`
 appeared nowhere in this repository outside the three lines of Q4 itself — no
 script, no test, no companion entry.
 
-That is a direct violation of this stage's exit criterion, *every answer carries
-a citation or is listed as an explicit assumption*. The answer had neither, and
+That is a direct violation of this stage's exit criterion, _every answer carries
+a citation or is listed as an explicit assumption_. The answer had neither, and
 none of the three stated assumptions covers it: assumption 1 is about mtime
 **precision**, not propagation **scope**.
 
@@ -732,10 +736,10 @@ at 21:37. **Measured, not downgraded** — the same move as round 4's probe.
 single disclaimer.** The warning box covered "the CI-status claim in Q3" as a
 whole. But Q3 makes two claims of different evidentiary status:
 
-| | claim | status |
-| --- | --- | --- |
-| A | CI builds from scratch, so it can never observe a stale `dist` | **citable today** |
-| B | it was green on the same commit throughout | session observation, no artifact |
+|     | claim                                                          | status                           |
+| --- | -------------------------------------------------------------- | -------------------------------- |
+| A   | CI builds from scratch, so it can never observe a stale `dist` | **citable today**                |
+| B   | it was green on the same commit throughout                     | session observation, no artifact |
 
 Verified for A: `.github/workflows/ci.yml:86` and `:417` run `npm run build`
 unconditionally on a fresh checkout; the seven `cache: npm` entries are
@@ -859,7 +863,7 @@ Fixed in all three:
   rather than a residual limit: ignoring it reintroduces the gap.
 
 ℹ️ The lens was told not to re-raise the enumeration gap and did not. Its finding
-is a different one — that the *fix* for it never reached the body — which is why
+is a different one — that the _fix_ for it never reached the body — which is why
 it is admissible and why the instruction did not suppress it.
 
 **Round 7, source-quality lens (2026-08-19) — `approve`.** The first clean lens
@@ -875,14 +879,14 @@ format. The lens found **two**. Re-measured: case-insensitively there are
 **three**, and the lens's own search missed one for the same reason mine did —
 a pattern narrower than the question.
 
-| line | declaration | what it exposes |
-| --- | --- | --- |
-| `7102` | `tsBuildInfoFile?: string` | a path |
-| `7338` | `TsBuildInfo = ".tsbuildinfo"` | the extension |
-| `9511` | `getTsBuildInfoEmitOutputFilePath(options)` | the emit path |
+| line   | declaration                                 | what it exposes |
+| ------ | ------------------------------------------- | --------------- |
+| `7102` | `tsBuildInfoFile?: string`                  | a path          |
+| `7338` | `TsBuildInfo = ".tsbuildinfo"`              | the extension   |
+| `9511` | `getTsBuildInfoEmitOutputFilePath(options)` | the emit path   |
 
-**The conclusion came out stronger.** All three public surfaces name *where the
-file goes*; none types *what is in it*. The bullet now carries the table instead
+**The conclusion came out stronger.** All three public surfaces name _where the
+file goes_; none types _what is in it_. The bullet now carries the table instead
 of the count, so the claim is checkable rather than trusted.
 
 ⚠️ **This is the sixth count defect in this record**, after `fourteen`/`15`,
@@ -904,7 +908,17 @@ upheld. Fourth instance of the same structural fault, and the worst one.**
 Round 3's assumption-audit entry named the design requirement for the
 cross-package blind spot: a check comparing `packages/cli/dist/bin.js`'s mtime
 against the newest `dist` of every package it inlines. Grepped: that requirement
-existed **only** at Corrections lines 421-422.
+existed **only** inside round 3's own Corrections entry, and nowhere in the body.
+
+⚠️ That sentence originally cited "Corrections lines 421-422" by number, and
+`prettier --check` later padded two tables and added four blank lines above it,
+silently moving the target to 575. **A line-number reference into a living
+document is stale the moment the document is reformatted** — the same lesson
+`docs/interface-ledger.md` carries as "never reflow it, merged records cite it by
+line number", reappearing here in a file that cites ITSELF. Replaced with a
+description that survives reformatting. `check:citation-content` did not catch it
+because it validates citations INTO other files, not a document's references to
+its own line numbers.
 
 **Why this instance is worse than the previous three.** The others were omissions
 — a limit stated in Corrections and absent from the body. This one left an active
@@ -914,7 +928,7 @@ misdirection in place. Q5's bullet 3 ended:
 > bundle time, not noise in a directory listing.
 
 That sentence is true and, read alone, tells a design-stage reader the founding
-incident's own shape is **unaddressable**. It is not. No *walk* fixes it; a
+incident's own shape is **unaddressable**. It is not. No _walk_ fixes it; a
 different comparison does — the bundle-freshness check this record had already
 found and then filed where the design would not look. A reader following the
 record's own instruction to consult Q5 for limits would have concluded the
@@ -974,8 +988,8 @@ It also **found a borderline candidate and argued itself out of filing it**: the
 `E2E_TYPECHECK_PROJECTS` 8-vs-6 note lives only in Corrections, but assumption 4
 settles scope from the 19-entry `references` set without needing it, and
 `e2e/matrix` is outside that set under either count. So a design reader who never
-sees the note still gets correct scope — "it doesn't survive the *these inputs,
-that wrong result* test". That is the admissibility rule applied against the
+sees the note still gets correct scope — "it doesn't survive the _these inputs,
+that wrong result_ test". That is the admissibility rule applied against the
 lens's own instinct to file, which is what makes the `approve` worth having.
 
 And it checked for a **missing question** rather than only bad answers — the one
@@ -1008,7 +1022,7 @@ options a build ran under, **20** of them in `e2e/report/dist/.tsbuildinfo`,
 including `strict`, `target` and `module`. The structure cited to reject the
 alternative is the same structure that documents what the chosen approach drops.
 Nine rounds of review walked past it because every round checked whether the
-citation *supported the claim made from it*, and none asked what else the cited
+citation _supported the claim made from it_, and none asked what else the cited
 artifact said.
 
 Dispositioned `fixed` as **assumption 5**, plus a sixth blind spot in Q5 and a
@@ -1052,11 +1066,11 @@ one difference produced more than the nine rounds before it.
 
 **Two claims no reviewer could previously check are now independently verified.**
 
-| check | result |
-| --- | --- |
-| `git cat-file -e 8605760:packages/gates/src/coverage-gate-registration.ts` | **ABSENT**, as claimed |
-| same at `4414a16` | **PRESENT**, as claimed |
-| `node docs/evidence/phase-26/mtime-propagation-probe.mjs` | **exit 0**, `PASS`, all six rows in the quoted order |
+| check                                                                      | result                                               |
+| -------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `git cat-file -e 8605760:packages/gates/src/coverage-gate-registration.ts` | **ABSENT**, as claimed                               |
+| same at `4414a16`                                                          | **PRESENT**, as claimed                              |
+| `node docs/evidence/phase-26/mtime-propagation-probe.mjs`                  | **exit 0**, `PASS`, all six rows in the quoted order |
 
 The ℹ️ note closing round 9 is discharged: nothing in this record now rests on a
 measurement only the manager session has seen.
@@ -1089,13 +1103,13 @@ where `tsc` itself disagrees with the check: `.tsbuildinfo` carries
 `options` out of `.tsbuildinfo`'s key list. The same artifact's `fileNames` is
 tsc's own enumeration of what the build read — re-measured here:
 
-| slice | count |
-| --- | --- |
-| total | **421** |
-| `node_modules` | **304** |
-| `typescript/lib/lib.*.d.ts` | **63** |
-| workspace `dist/*.d.ts` | **107** |
-| **under any `src/`** | **10** |
+| slice                       | count   |
+| --------------------------- | ------- |
+| total                       | **421** |
+| `node_modules`              | **304** |
+| `typescript/lib/lib.*.d.ts` | **63**  |
+| workspace `dist/*.d.ts`     | **107** |
+| **under any `src/`**        | **10**  |
 
 **10 of 421.** The compiler's answer is that `src` is ~2% of a build's inputs.
 Recorded as **assumption 6** — stated, not closed, because closing it means
