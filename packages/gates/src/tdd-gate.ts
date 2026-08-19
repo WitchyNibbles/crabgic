@@ -80,17 +80,49 @@ export async function captureRedBaseline(
   return record;
 }
 
-/** `true` iff a red-baseline (`gateTag: "tdd"`, `exitStatus !== 0`) `EvidenceRecord` has been journaled for `requirementId`, at a seq strictly before `beforeSeq` when supplied. */
+/** How a caller narrows what counts as a red baseline. Both bounds are optional; supplying neither reproduces the original, widest question. */
+export interface RedBaselineScope {
+  /** Only a record at a seq strictly below this counts — the attempt's own dispatch boundary. */
+  readonly beforeSeq?: number;
+  /**
+   * ⚠️ THE STRUCTURAL DISCRIMINATOR, and what lets the dispatch-boundary cut be
+   * relaxed for a diff-derived baseline.
+   *
+   * A red baseline and the TDD gate's own non-passing verdict are otherwise
+   * INDISTINGUISHABLE here: both carry `gateTag: "tdd"` and a non-zero exit.
+   * Owner ruling 2026-08-18's `inconclusive` state made that worse, because such
+   * a firing deliberately omits its verdict too — leaving nothing at all to tell
+   * the two apart.
+   *
+   * `captureRedBaseline` records against the FROZEN BASE object id; every gate
+   * firing records against the CANDIDATE's (`../evidence.ts` takes it from the
+   * `GateContext`). A gate cannot mint a record against the base without
+   * actually running against the base, which is the thing being attested — so
+   * this is a property of what happened, not of when it was written.
+   */
+  readonly baseObjectId?: string;
+}
+
+/**
+ * `true` iff a red-baseline (`gateTag: "tdd"`, `exitStatus !== 0`)
+ * `EvidenceRecord` has been journaled for `requirementId`, within `scope`.
+ *
+ * Back-compatible: the `number` form is the original `beforeSeq` argument, kept
+ * so the boundary-ordering tests and criteria that cite them read unchanged.
+ */
 export async function hasRedBaseline(
   journal: JournalStore,
   requirementId: string,
-  beforeSeq?: number,
+  scope?: number | RedBaselineScope,
 ): Promise<boolean> {
+  const { beforeSeq, baseObjectId } =
+    typeof scope === "number" ? { beforeSeq: scope, baseObjectId: undefined } : (scope ?? {});
   for await (const entry of journal.queryEntries({ type: "evidence_pointer" })) {
     if (entry.type !== "evidence_pointer") continue;
     if (entry.payload.gateTag !== TDD_GATE_TAG) continue;
     if (entry.payload.requirementId !== requirementId) continue;
     if (entry.payload.exitStatus === 0) continue;
+    if (baseObjectId !== undefined && entry.payload.objectId !== baseObjectId) continue;
     if (beforeSeq !== undefined && entry.seq >= beforeSeq) continue;
     return true;
   }

@@ -163,3 +163,44 @@ describe("captureRedBaselineForChangedTests", () => {
     expect(await hasRedBaseline(tj.store, other)).toBe(true);
   }, 60_000);
 });
+
+/**
+ * ⚠️ A GATE FIRING IS NOT A BASELINE, and telling them apart structurally is
+ * what lets the dispatch-boundary cut be relaxed.
+ *
+ * The boundary existed because a red baseline and the TDD gate's own failing
+ * verdict were INDISTINGUISHABLE in the journal: both carry `gateTag: "tdd"` and
+ * a non-zero exit. Requiring the baseline to precede the attempt's dispatch was
+ * the only thing separating them.
+ *
+ * The new protocol cannot keep that cut. A baseline derived from the change
+ * set's diff does not exist until the worker has finished, so it is journaled
+ * AFTER dispatch by construction. Something else has to do the separating.
+ *
+ * MEASURED, and it is why this is written down: owner ruling 2026-08-18's
+ * `inconclusive` state made the collision WORSE. An inconclusive firing carries
+ * `gateTag: "tdd"`, `exitStatus: 1` and — because the record deliberately omits
+ * a verdict — nothing at all to distinguish it from a genuine baseline. Under
+ * the old cut the boundary still hid it; relaxing the boundary without this
+ * would have let the gate manufacture its own precondition.
+ *
+ * The discriminator is STRUCTURAL: `captureRedBaseline` records against the
+ * FROZEN BASE object id, while every gate firing records against the CANDIDATE's
+ * object id (`emitEvidence` takes it from the `GateContext`). A gate cannot mint
+ * a record against the base without running against the base, which is the
+ * thing being attested.
+ */
+describe("hasRedBaseline — scoped to the base object id", () => {
+  it("does NOT accept a record written against the candidate object id", async () => {
+    const worktree = await baseTreeWhereTestsFail(true);
+    await captureRedBaselineForChangedTests(baseInput(worktree));
+
+    // The genuine baseline, scoped to the base it was measured against.
+    expect(await hasRedBaseline(tj.store, REQ_A, { baseObjectId: BASE_OBJECT_ID })).toBe(true);
+    // The same records, asked for against a DIFFERENT object id, answer no.
+    expect(
+      await hasRedBaseline(tj.store, REQ_A, { baseObjectId: "0".repeat(40) }),
+      "a baseline measured against one base satisfied a different one",
+    ).toBe(false);
+  }, 60_000);
+});
