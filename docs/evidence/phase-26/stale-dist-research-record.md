@@ -1510,3 +1510,70 @@ limits section's nine; both probes re-run to exit 0 with both of
 citation-content gates re-run; and roughly twenty counts re-derived with the
 exact command stated for each — including the `git cat-file` pair and the reflog
 window, which it re-derived rather than inheriting from round 10.
+
+## Stage closed
+
+**Round 15 (2026-08-19) — `approve` / `approve` / `approve`. No admissible novel
+finding. The `research` stage closes here.**
+
+Closure is not "the reviewers ran out of things to say"; it is a round that
+raised nothing novel while every obligation was answered and every finding
+dispositioned. Fifteen rounds, **thirty-one findings**, all dispositioned in
+`## Corrections` above.
+
+What round 15 re-derived rather than inherited, because a clean verdict is only
+worth what its search was:
+
+- Q5's **nine** blind spots against the limits section's **nine**, 1:1 and in
+  order;
+- all three probes to exit 0 — including `hash-vs-mtime-probe.mjs` run **four**
+  times per standing rule 2, spread `0.98x`-`1.69x` across sixteen timed runs,
+  consistent with "same order of cost, direction moves with cache state";
+- roughly twenty counts with the exact command stated for each;
+- every line anchor by `sed -n`;
+- `census`, `check:claim-scope` and `check:citation-content` (1367 citations).
+
+ℹ️ **Two things it checked and declined to file, recorded because the declines
+are as informative as the findings.**
+
+1. It saw `hash-vs-mtime-probe.mjs` as untracked and nearly filed a
+   round-14-shaped finding — assumption 2 claims "the measurement became a
+   committed probe". **It re-derived before writing it up** and found the probe
+   had landed as `b6d41f5` mid-review. Standing rule 1 working on the reviewer
+   rather than on the record, which is the first time that has happened here.
+2. `e2e/matrix/orchestration/dist` exists on disk (empty, gitignored) while the
+   `e2e/*` table says `e2e/matrix` has no `dist`. Verified: `e2e/matrix/dist`
+   does not exist, and the table pre-discloses that its unit of enumeration is
+   the six `e2e/*` directories. True as written; the sub-project framing changes
+   no conclusion.
+
+### What this record establishes, and what it does not
+
+**Establishes.** The repository asks nothing about build-output staleness at the
+top level, and the incident that motivated the question was real, dated and
+mechanically explained. A newest-mtime comparison would have caught it — for
+every package except the one it happened in, and only if something invoked it.
+
+**Does not establish.** That the check is worth building as specified. Nine
+measured blind spots stand against it, four of them closable only by a design
+that does more than the naive comparison, and Q6 shows the naive placement would
+never fire at all. **The strongest single result is Q2's**: the mechanism already
+exists in this repository at `scripts/bundle-types.mjs:70`, and nine rounds of
+review searched the wrong places for it.
+
+### The three rules this record paid for
+
+Written here because they cost fifteen rounds and generalise past this change
+set:
+
+1. **A search narrower than its claim is not evidence for it.** Now mechanical —
+   `scripts/check-claim-scope.mjs`, in `check:all`.
+2. **A reviewer's "measured" is not a measurement until the manager re-derives
+   it.** Learned from a false counterexample that carried the label "run rather
+   than argued", and confirmed twice more when a reviewer's timing inverted its
+   own conclusion.
+3. **A count is a measurement with a timestamp; the command is the reproducible
+   part.** Seven count defects, every one from a search narrower than the claim
+   or a number that drifted as the repository grew.
+
+**Next stage: `clarify`, which is owner-gated.**
