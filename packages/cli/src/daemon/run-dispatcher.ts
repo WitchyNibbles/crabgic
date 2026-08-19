@@ -517,6 +517,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * Written once per drive, beside `retainedByRun`, and read at gate-firing time
    * for the same reason: the registry outlives every run.
    */
+  /** Where a throwaway base tree is cut, beside the run's own worktrees rather than in a system temp dir the control clone cannot reach. */
+  const worktreesRootDirFor = (controlDir: string): string =>
+    join(controlDir, "..", "red-baselines");
+
   const runBaseByChangeSetId = new Map<
     string,
     { readonly baseObjectId: string; readonly controlDir: string }
@@ -586,6 +590,54 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
          * gives. The aggregate floor and the ratchet still apply.
          */
         return undefined;
+      }
+    },
+    baseObjectIdFor(changeSetId: string): string | undefined {
+      return runBaseByChangeSetId.get(changeSetId)?.baseObjectId;
+    },
+    /**
+     * A throwaway worktree at the FROZEN BASE, carrying the candidate's versions
+     * of `testPaths` and nothing else of the candidate — owner ruling
+     * 2026-08-18's "new tests against base code".
+     *
+     * ⚠️ `--detach` AT THE BASE, then a path-scoped checkout. Checking the whole
+     * candidate out would answer the wrong question entirely: the tests would run
+     * against the code they were written for and pass, which is the opposite of
+     * what is being measured.
+     *
+     * ⚠️ REMOVED IN `finally`, and `--force` because the test run leaves the tree
+     * dirty by construction — a failed suite writes reports and caches. A worktree
+     * left behind pins disk and, worse, is registered in the control clone's
+     * metadata, so the next `worktree add` at the same path fails.
+     */
+    async withBaseTree<T>(
+      changeSetId: string,
+      candidateObjectId: string,
+      testPaths: readonly string[],
+      use: (worktreePath: string) => Promise<T>,
+    ): Promise<T | undefined> {
+      const base = runBaseByChangeSetId.get(changeSetId);
+      if (base === undefined || testPaths.length === 0) return undefined;
+      const treePath = join(
+        worktreesRootDirFor(base.controlDir),
+        `red-baseline-${candidateObjectId.slice(0, 12)}`,
+      );
+      try {
+        await plumbing.run(["worktree", "add", "--detach", treePath, base.baseObjectId], {
+          cwd: base.controlDir,
+        });
+      } catch {
+        return undefined;
+      }
+      try {
+        await plumbing.run(["checkout", candidateObjectId, "--", ...testPaths], { cwd: treePath });
+        return await use(treePath);
+      } catch {
+        return undefined;
+      } finally {
+        await plumbing
+          .run(["worktree", "remove", "--force", treePath], { cwd: base.controlDir })
+          .catch(() => undefined);
       }
     },
   };

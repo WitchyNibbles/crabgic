@@ -1,7 +1,7 @@
 import type { JournalStore } from "@crabgic/journal";
 import type { GateContext, GateVerdict } from "./types.js";
 import type { GateRegistry } from "./registry.js";
-import { hasRedBaseline } from "./tdd-gate.js";
+import type { ChangedTestsBaselineOutcome } from "./red-baseline-from-tests.js";
 
 /**
  * `registerTddGate` — the CONSUMER half of the red-before-green protocol, in
@@ -45,6 +45,24 @@ export interface TddGateRegistration {
    */
   readonly requirementIds: (context: GateContext) => readonly string[];
   /**
+   * Establishes the RED half: runs the tests this change set added against the
+   * frozen base code, and journals a baseline when they fail
+   * (`../red-baseline-from-tests.ts`).
+   *
+   * ⚠️ MEASURED AT FIRING TIME RATHER THAN READ BACK FROM THE JOURNAL, and that
+   * collapse is what removed an entire class of problem. The previous shape had
+   * a producer running before dispatch and a consumer re-reading the journal
+   * afterwards, which forced an ordering cut (`beforeSeq`) to tell a genuine
+   * baseline from the gate's own earlier verdict. A diff-derived baseline cannot
+   * satisfy that cut — it does not exist until the worker has finished — so the
+   * two halves are now one firing, and the ordering question disappears rather
+   * than being answered.
+   *
+   * The record is still journaled, because the evidence trail is the product.
+   * The gate simply does not have to trust the journal to know what it just did.
+   */
+  readonly measureRedAtBase: (context: GateContext) => Promise<ChangedTestsBaselineOutcome>;
+  /**
    * Runs the candidate's own test command and reports its exit status — the
    * GREEN half. Supplied by the composition root because this package cannot
    * know how to run a project's stack commands, and must not guess.
@@ -53,6 +71,31 @@ export interface TddGateRegistration {
 }
 
 const DEFAULT_FINGERPRINT = "@crabgic/gates";
+
+/**
+ * Why no red half could be established. Each member has a DIFFERENT repair, so
+ * each says its own thing rather than collapsing to "no baseline".
+ */
+function describeUnestablishedRed(outcome: ChangedTestsBaselineOutcome): string {
+  switch (outcome.kind) {
+    case "noTestFiles":
+      return "this change set added no test file, so there is nothing that could have been red";
+    case "notRed":
+      return (
+        "the tests this change set added already PASS against the base code, so they do not " +
+        "discriminate this work from its absence"
+      );
+    case "noAcceptanceCommand":
+      return "the approved envelope grants no acceptance-class command, so nothing could be run";
+    case "didNotRun":
+      return `the base-code test run did not complete: ${outcome.reason}`;
+    case "noRequirements":
+      return "no requirement was declared to scope a baseline to";
+    /* c8 ignore next 2 -- `captured` is handled by the caller before this is reached. */
+    default:
+      return "the red half was not established";
+  }
+}
 
 /**
  * The seq of the LATEST `work_unit_transition: dispatched` entry for
@@ -129,7 +172,7 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
       return unestablished(
         command,
         DEFAULT_FINGERPRINT,
-        "the TDD gate is per-work-unit and this firing carries no work unit — failing closed",
+        "the TDD gate is per-work-unit and this firing carries no work unit",
       );
     }
 
@@ -139,33 +182,19 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
         command,
         DEFAULT_FINGERPRINT,
         `work unit "${workUnitId}" declares no requirement, so no red baseline could be red ` +
-          `against one — failing closed`,
+          `against one`,
       );
     }
 
-    const boundary = await latestDispatchBoundarySeq(context.journal, workUnitId);
-    if (boundary === undefined) {
-      return unestablished(
-        command,
-        DEFAULT_FINGERPRINT,
-        `no dispatch boundary is journaled for work unit "${workUnitId}", so "before dispatch" ` +
-          `has no meaning here — failing closed`,
-      );
-    }
-
-    const missing: string[] = [];
-    for (const requirementId of requirementIds) {
-      if (!(await hasRedBaseline(context.journal, requirementId, boundary))) {
-        missing.push(requirementId);
-      }
-    }
-    if (missing.length > 0) {
-      return unestablished(
-        command,
-        DEFAULT_FINGERPRINT,
-        `no red-baseline EvidenceRecord precedes this attempt's dispatch for requirement(s) ` +
-          `${missing.join(", ")} — failing closed`,
-      );
+    /**
+     * ⚠️ THE DISCRIMINATION CHECK. Not "was the suite red at base" — a healthy
+     * repository is green at base, and asking that refused every real run. This
+     * asks whether the tests THIS change set added fail against the code that
+     * preceded it.
+     */
+    const red = await options.measureRedAtBase(context);
+    if (red.kind !== "captured") {
+      return unestablished(command, DEFAULT_FINGERPRINT, describeUnestablishedRed(red));
     }
 
     // Only now is the candidate run worth its cost: the red half is established,
@@ -180,8 +209,10 @@ export function registerTddGate(registry: GateRegistry, options: TddGateRegistra
       toolchainFingerprint: fingerprint,
       artifactDigests: [],
       detail: passed
-        ? `red-baseline confirmed before dispatch; candidate is green for ${String(requirementIds.length)} requirement(s)`
-        : `red-baseline confirmed before dispatch, but the candidate is still failing`,
+        ? `the change set's own tests fail against base and pass against the candidate ` +
+          `(${String(red.records.length)} requirement(s), via ${red.command})`
+        : `the change set's own tests fail against base, and are STILL failing against the ` +
+          `candidate`,
     };
   };
 

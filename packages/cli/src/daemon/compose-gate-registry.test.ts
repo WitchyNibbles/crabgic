@@ -44,6 +44,7 @@ const NO_ATTEMPTS = {
   worktreePathFor: (): string | undefined => undefined,
   grantedCommandsFor: (): readonly string[] | undefined => undefined,
   diffAgainstBase: (): Promise<string | undefined> => Promise.resolve(undefined),
+  withBaseTree: <T>(): Promise<T | undefined> => Promise.resolve(undefined),
 };
 
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
