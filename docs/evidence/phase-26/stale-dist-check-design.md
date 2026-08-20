@@ -81,11 +81,11 @@ export function checkDeclarationCache(units)         -> Finding[]  // req 8
 export function checkStaleDist(cwd)                  -> { findings, units, skipped }
 
 // Finding = { kind, unit, newerInput, olderOutput, deltaMs, remedy }
-// kind ∈ "stale-unit" | "orphan-output" | "stale-bundle" | "stale-declarations"
+// kind ∈ "stale-unit" | "orphan-output" | "stale-bundle" | "stale-declarations" | "stale-plugin-assets"
 
 // report.mjs
 export function formatFindings(result, { json })     -> string
-export function exitCodeFor(result, { strict })      -> 0 | 1
+export function exitCodeFor(result, { strict })      -> 0 | 1 | 2
 ```
 
 Everything is pure over its arguments except `newestUnder`/`stemsUnder`, which read
@@ -182,9 +182,50 @@ symbols appear anywhere in `packages/cli/dist/*.js`. So editing `packages/testki
 and running `npm run typecheck` fires `stale-bundle` against a bundle containing none
 of that code — and under `--strict` that blocks a push.
 
-The implementation therefore takes the closure **minus units that reach `packages/cli`
-only as a `devDependency`**, and states the residual: the closure is still an
-over-approximation wherever a runtime dependency is declared but unimported.
+⚠️ **THE ROUND-1 FIX FOR THAT WAS REFUTED IN ROUND 2.** The "zero testkit symbols"
+premise was wrong: it grepped `packages/cli/dist/*.js` for the specifier
+`@crabgic/testkit`, and **esbuild ERASES specifiers when it inlines**, so that search
+could only ever return nothing. It was narrower than the claim it evidenced — standing
+rule 1, on this design's own fix. Re-measured by symbol DEFINITION,
+`packages/cli/dist/chunk-I6JBP7DT.js` carries **11** occurrences of testkit identifiers
+(`GIT_FIXTURE_IDENTITY`, `ALL_FIXTURES`, `buildIntentContract`, …). Testkit **is**
+inlined, reached through `@crabgic/engine-claude`'s re-export of
+`./adjudication-policy.js`.
+
+Worse, the rule generalises catastrophically. `packages/cli/package.json` declares
+**zero** `@crabgic/*` `dependencies`; its only two `@crabgic` edges are
+`devDependencies` — `renderer` and `testkit` — and **renderer is inlined too**. So
+"minus dev-only edges" either drops both inlined units, or read transitively drops all
+16 and makes the comparison **vacuous**.
+
+**The inlined set is therefore derived from esbuild's own metafile, never from the
+package.json graph.** `result.metafile.inputs` is exactly the set of files that entered the
+bundle. The declared dependency graph is not that set and never was — the bundle is
+built from the ESM import graph.
+
+⚠️ **BUT THAT RULE WAS UNIMPLEMENTABLE AS FIRST WRITTEN, AND THE DESIGN CAUGHT IT
+BEFORE THE NEXT ROUND DID.** `bundle-cli.mjs:140` sets `metafile: true` and `:181`
+reads `result.metafile.outputs` **in memory**, then discards it. Measured:
+`find packages/cli/dist -name "*meta*"` returns nothing. The check runs at a different
+time from the bundle, so there is no metafile for it to read.
+
+**So the design requires one change to the build program**: `bundle-cli.mjs` writes
+`result.metafile` to `packages/cli/dist/.bundle-meta.json` after the build. Three
+properties make this the right shape rather than a workaround:
+
+- it is the **only** ground truth for "what went into this bundle" — every alternative
+  (the package.json graph, the tsconfig closure, grepping for specifiers) has already
+  been measured wrong in this design;
+- it is itself a build output, so when it is absent the extended skip rule already
+  covers the case and the bundle comparison reports `skipped` rather than throwing;
+- it is **excluded from the output set** for the same reason `.tsbuildinfo` is — it is
+  bundler bookkeeping, not compiler output, and including it would let the bundle
+  comparison clear itself.
+
+This is the third round in a row where a fix in this design carried the defect it was
+fixing. It is recorded rather than smoothed over because the pattern is the finding:
+**every one was caught by running the fix instead of reasoning about it**, and the two
+caught before a review round were caught by pre-checking rather than by a reviewer.
 
 **Why `dist`, not `src`, is the inlined side:** every workspace package resolves to
 its build output (`exports["."].default === "./dist/index.js"`; `main` is
@@ -265,12 +306,12 @@ and the delta.
 **Findings of the same `kind` are grouped, and the remedy is PER KIND.** Both were
 round-1 findings and both are load-bearing:
 
-| `kind`               | remedy printed                                                                                           |
-| -------------------- | -------------------------------------------------------------------------------------------------------- |
-| `stale-unit`         | `npm run build`                                                                                          |
-| `stale-bundle`       | `npm run bundle:cli`                                                                                     |
-| `orphan-output`      | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this |
-| `stale-declarations` | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this                          |
+| `kind`               | remedy printed                                                                                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stale-unit`         | **`rm -rf <unit>/dist` then `npm run build`** — `npm run build` alone often CANNOT clear this                                                                                           |
+| `stale-bundle`       | **`npm run build`** — NOT `npm run bundle:cli`, which throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), precisely the standalone invocation its own error text warns about |
+| `orphan-output`      | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this                                                                                |
+| `stale-declarations` | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this                                                                                                         |
 
 ⚠️ **`npm run build` was the single printed remedy and it is wrong for two of the four
 kinds.** Measured with the repo's pinned `typescript@6.0.3` on a composite fixture:
@@ -282,8 +323,34 @@ staleness yield a finding `npm run build` will never clear. An operator running 
 printed remedy at 3am would see the check fire again, identically, forever, and under
 `--strict` the push stays blocked with no path stated.
 
-⚠️ **`tsc -b --clean` does not clear it either, and this design said it did for one
-round.** Measured on the same fixture: after `--clean`, `b.d.ts`/`b.js` were removed
+⚠️ **`npm run build` cannot clear a `stale-unit` finding either — the kind that fires
+most — and this design printed it as the remedy for two rounds.** Measured on a fixture
+extending this repo's own `tsconfig.base.json` with the pinned `typescript@6.0.3`,
+touching a source without changing its content:
+
+```
+after touch src/a.ts + tsc -b:
+  dist/a.js          1787210164   <- NOT re-emitted
+  dist/.tsbuildinfo  1787210184   <- only this moved
+  src/a.ts           1787210184
+```
+
+`tsc -b` decides re-emission from `.tsbuildinfo`'s content versions, so a source that is
+newer but unchanged produces **no compiler output at all** — exactly §7 row 1's top
+false-positive scenario (format-on-save, `git checkout`), on the most common kind, with
+the push blocked under `--strict` and no path stated.
+
+⚠️ **This settles a question the design had left open, and the answer flips the
+behaviour.** A first measurement said the remedy DID clear it — because `.tsbuildinfo`
+lives inside `dist` and its mtime moves even when nothing is emitted. Per-file
+measurement showed the compiler output untouched. **So `.tsbuildinfo` is EXCLUDED from
+the output set.** Including it would let every `stale-unit` self-clear on the next
+`tsc -b` with nothing rebuilt — a check reporting clean because its own oracle moved.
+`rm -rf <unit>/dist` then `npm run build` does clear it, verified: every unit's
+`tsBuildInfoFile` is inside `dist`, so deleting it forces a full re-emit.
+
+⚠️ **`tsc -b --clean` does not clear an orphan either, and this design said it did for
+one round.** Measured on the same fixture: after `--clean`, `b.d.ts`/`b.js` were removed
 and the orphaned `a.d.ts`/`a.js` **survived** — `--clean` removes only what the current
 build info knows about, and an orphan from a deleted source is precisely what it does
 not know about. `rm -rf <unit>/dist` then `npm run build` does clear it, verified.
@@ -526,3 +593,57 @@ all 30 parse under raw `JSON.parse` today), equal mtimes, and renames or deletes
 source side. It also re-derived §6's live claim with the design's own algorithm and got
 exactly the four `stale-unit` findings the design predicted, and timed the walk at
 **0.23-0.24 s** across six warm runs — a spread of 0.01 s, reported per standing rule 3.
+
+**Round 2 (2026-08-20) — three `revise`, nine findings. Two refute round 1's own
+fixes, and one of those was refuted by the exact rule this change set keeps
+re-learning.**
+
+**C-A, high — the CF-1 fix rested on a search narrower than its claim.** Round 1
+asserted "zero testkit runtime symbols appear anywhere in `packages/cli/dist/*.js`"
+and built a rule on it. The search was for the SPECIFIER `@crabgic/testkit`, which
+esbuild erases when it inlines — it could only ever return nothing. Re-measured by
+definition: **11** testkit identifiers in `chunk-I6JBP7DT.js`. And
+`packages/cli` declares **zero** `@crabgic/*` `dependencies`, so "minus dev-only edges"
+drops `renderer` (also inlined) or, read transitively, all 16 — a **vacuous**
+comparison, in the one place requirement 3 exists for. Re-keyed on
+`result.metafile.inputs`, which `bundle-cli.mjs` already produces.
+
+**C-B / O-B, high — `npm run build` does not clear the most common finding, and the
+investigation changed a design decision.** `tsc -b` re-emits from `.tsbuildinfo` content
+versions, so a touched-but-unchanged source produces no compiler output. A first
+measurement said the remedy worked; per-file measurement showed only `.tsbuildinfo` had
+moved, because it lives inside `dist`. **That decided a question the design had left
+open: `.tsbuildinfo` is excluded from the output set**, since including it would let
+every `stale-unit` self-clear on the next `tsc -b` with nothing rebuilt.
+
+⚠️ Recorded because of the near-miss: the whole-directory measurement said "cleared" and
+would have closed the finding. Only asking which FILE moved reversed it. **A measurement
+at the wrong granularity is as wrong as no measurement.**
+
+**O-C, medium — the printed remedy could fail with an unrelated error.**
+`npm run bundle:cli` throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), and
+its own error text says that happens "only when `bundle:cli` is invoked on its own" —
+precisely what the design prescribed. Now `npm run build`, which orders `bundle:types`
+first.
+
+**CF-A, medium — round 1's fifth comparison landed in prose only.**
+`stale-plugin-assets` appeared once in 528 lines, absent from the `kind` union, the
+exports, the file table, the remedy table, the non-vacuity battery and the traceability
+matrix. An implementer building from §2 would have shipped four comparisons. And
+`exitCodeFor` still declared `0 | 1` while §4 required exit 2. Both fixed — the same
+"the fix landed in one place" fault the research record hit four times.
+
+**Accepted as stated limits rather than closed** (§8): CF-B — the root `tsconfig.json`
+is in no input set (it carries no `compilerOptions`, only `files: []` and
+`references`, so the impact is bounded); C-C — deleting a plugin asset source leaves the
+shipped copy until the next completed `bundle:cli`; C-D — the chunk predicate is named
+as `/-[A-Z0-9]{8}\.js$/` with `metafile.outputs` as the exact form; O-A — the `pretest`
+warning prints ~199 lines above vitest's summary, so a reporter re-emit is the reliable
+form and the limit is stated.
+
+ℹ️ **What round 2 attacked and could not break**, so it is not re-run: §3.4's
+"can only mask, never manufacture a false positive" — verified, `cpSync` resets mtimes
+and no repo script writes into the asset sources; the hashed chunk exists so the
+fallback is not live; the 0-orphan bijection; §6's live four-`stale-unit` prediction,
+re-derived with an independent implementation; §8(g); and the walk timed at 0.06 s over
+six runs.
