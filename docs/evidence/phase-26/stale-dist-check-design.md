@@ -51,6 +51,24 @@ header and `scripts/repo-census.mjs` restates at `:39-41`.
 | `scripts/stale-dist/report.mjs`     | ~80          | findings → text/JSON, and the exit code                 |
 | `scripts/check-stale-dist.test.mjs` | ~450         | colocated suite (§6)                                    |
 
+⚠️ **TWO EXISTING FILES MUST ALSO CHANGE, and listing them here is a round-8 fix.** They
+were specified only in §3.2's prose for two rounds, so an implementer could build all six
+new files, pass all twelve battery rows and the wiring test, and leave requirement 3's
+comparison **permanently muted** — the vacuity class this whole change set exists for.
+Round 7 filed that as `CF-3` and the disposition did not reach this table; caught by
+pre-checking before round 8 reported, which is the eighth consecutive partly-true
+completion claim in this record and the first caught by its author.
+
+| existing file            | change                                                                                                                                                              | why it is load-bearing                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/bundle-cli.mjs` | **delete** `packages/cli/.bundle-meta/metafile.json` in the wipe step (before `build()` at `:121`), and **write** it after the plugin copy at `:178`, beside `:181` | it is the completion marker the cli `unbuilt` rule keys on. Placed earlier it proves only that esbuild ran; **not cleared first it proves some OTHER run completed** — `OUT_DIR` is `dist` only (`:63`), so neither the wipe (`:113`) nor the design's own `rm -rf packages/cli/dist` touches the sibling `.bundle-meta/` |
+| `.gitignore`             | add `packages/cli/.bundle-meta/`                                                                                                                                    | `.dts-cache/` is ignored at `:47`; without the matching entry every build leaves an untracked file                                                                                                                                                                                                                        |
+
+§6 asserts both **by reading the files**, in the shape
+`check-support-window-freshness.test.mjs:530` uses: that `bundle-cli.mjs` contains the
+metafile write and that it appears after the plugin copy, and that `.gitignore` contains
+the entry.
+
 The subdirectory follows `scripts/check-citation-content.mjs` +
 `scripts/citation-content/*.mjs`; the colocated `*.test.mjs` follows
 `scripts/repo-census.test.mjs`.
@@ -80,7 +98,13 @@ export function checkBundleFreshness(units, inlined) -> Finding[]  // req 3
 export function checkDeclarationCache(units)         -> Finding[]  // req 8
 export function checkPluginAssets(cwd)               -> Finding[]  // §3.4
 export function inlinedUnitsFromMetafile(metafile)   -> string[]   // req 3's ground truth
-export function checkStaleDist(cwd)                  -> { findings, units, skipped }
+export function checkStaleDist(cwd)                  -> { findings, units, skipped, comparisonsSkipped }
+export function unitState(unit)                      -> { state, reason }  // the §3.3 reason table
+
+// Unit.state ∈ "compared" | "unbuilt" | "skipped"   — NOT a boolean.
+// `built: boolean` cannot separate the three outcomes the reason table produces,
+// and the separation IS the fix: an implementer collapsing them to
+// `built ? compare : skip` reproduces round 3's CR-2 exactly. Round 8.
 
 // Finding = { kind, unit, newerInput, olderOutput, deltaMs, remedy }
 // kind ∈ "stale-unit" | "orphan-output" | "stale-bundle" | "stale-declarations"
@@ -115,7 +139,7 @@ All 19 are uniform today — `extends: ../../tsconfig.base.json`, `rootDir: ./sr
 `outDir: ./dist`, `include: ["src"]`, `composite: true` — but the design READS these
 per unit rather than assuming them.
 
-**Skip rule.** A unit whose `dist/` does not exist is `skipped`, never stale (research
+**Skip rule.** A unit's state comes from the reason table in §3.3 — `compared`, `unbuilt` or `skipped` — **never from directory existence alone**. This bullet read "a unit whose `dist/` does not exist is `skipped`, never stale" for seven rounds while the rule that consumes it moved four times, 220 lines away in a section headed _Declaration cache_ (round 8). The research rationale it cited still holds for the genuinely-absent case (research
 Q5: a fresh clone must not be noisy).
 
 **Per-unit input set** — newest mtime over:
@@ -299,7 +323,12 @@ find out is to run the check the shape implies. Three properties then make it th
   esbuild and the metafile write. Silently skipping there would mute requirement 3's
   comparison on exactly the founding incident, so it reports
   `bundle-provenance-missing` with the reduced-confidence wording §3.2 already uses for
-  the chunk-predicate fallback;
+  the chunk-predicate fallback. ⚠️ **Precedence, since one fact triggers two kinds
+  (round 8):** an absent marker makes `packages/cli` `unbuilt` AND makes the bundle
+  comparison unrunnable. `unbuilt` WINS and is reported alone — it names the tree's
+  actual state, while `bundle-provenance-missing` would tell the operator the check is
+  degraded when in fact the bundle is. The provenance kind fires only when the marker is
+  absent on a unit that is otherwise `compared`;
 - it is **excluded from the output set** for the same reason `.tsbuildinfo` is — it is
   bundler bookkeeping, not compiler output, and including it would let the bundle
   comparison clear itself.
@@ -422,12 +451,16 @@ the directory, so after `npm run build:clean` all 19 units hold zero entries, ze
 non-excluded entries, and compare clean against `undefined`. That is verbatim the state
 round 3 filed `CR-2` for. The rule is therefore:
 
-| what `dist` holds             | verdict   | why                                                 |
-| ----------------------------- | --------- | --------------------------------------------------- |
-| nothing at all                | `unbuilt` | it was built once and the outputs are gone          |
-| only `.tsbuildinfo`           | `unbuilt` | `.tsbuildinfo` is positive proof the unit WAS built |
-| only `eo-*-fixture-*` scratch | `skipped` | a test `mkdir`ed it; nothing was ever built here    |
-| any real output               | compared  |                                                     |
+| what `dist` holds             | verdict       | why                                                 |
+| ----------------------------- | ------------- | --------------------------------------------------- |
+| nothing at all                | **`skipped`** | indistinguishable — see below                       |
+| only `.tsbuildinfo`           | `unbuilt`     | `.tsbuildinfo` is positive proof the unit WAS built |
+| only `eo-*-fixture-*` scratch | `skipped`     | a test `mkdir`ed it; nothing was ever built here    |
+| any real output               | compared      |                                                     |
+
+⚠️ **The empty case is `skipped`, not `unbuilt`, and that is a residual limit rather than a preference (round 8).** Round 7 made it `unbuilt` on the reasoning "it was built once and the outputs are gone". But both journal fixture families call `mkdir(SCRATCH_ROOT, { recursive: true })` and then `rm(dir, …)` — **the mkdtemp directory, not the root** (`crash-fixtures/prepare-runtime.ts:131`, `lease-fixtures/prepare-runtime.ts:110`). So on a fresh clone one `npm test` leaves `packages/journal/dist` **empty**, and the next `pretest` would report `unbuilt` on a tree nobody has ever built — CR6-2, re-opened by the fix that replaced CR6-2's fix.
+
+**Nothing at the unit level distinguishes the two states**: `tsc -b --clean` deletes `.tsbuildinfo` too, so a `--clean`ed unit and a never-built one are byte-identical. `build:clean` is therefore **accepted as indistinguishable at unit granularity** and stated here rather than papered over. It is not undetectable overall — `packages/cli`'s completion marker lives outside `dist` and is cleared at the start of every bundle, so a `--clean`ed tree still reports `unbuilt packages/cli`.
 
 **The distinguishing fact is the REASON the directory is empty, and the count cannot
 carry it** — a never-built tree and a `--clean`ed tree both hold zero entries.
@@ -751,20 +784,20 @@ test restate today's file list and fail on every unrelated addition.
 **Non-vacuity battery.** Per finding kind: one fixture reporting clean, then ONE
 `utimesSync`/`rm` mutation that must flip it to stale.
 
-| #   | clean fixture                                                | single mutation                                 | must become                            |
-| --- | ------------------------------------------------------------ | ----------------------------------------------- | -------------------------------------- |
-| 1   | dist newer than src                                          | touch one `src/**.ts` forward                   | `stale-unit`                           |
-| 2   | dist newer than src                                          | touch `tsconfig.base.json` forward              | `stale-unit` ×N (req 6)                |
-| 3   | cli unit, dist newest                                        | touch `tsconfig.dts.json` forward               | `stale-unit` (req 9)                   |
-| 4   | 1:1 stems                                                    | delete one `src/x.ts`, keep `dist/x.js`         | `orphan-output` (req 2)                |
-| 5   | bundle newest                                                | touch an inlined unit's `dist/index.js` forward | `stale-bundle` (req 3)                 |
-| 6   | cache newest                                                 | touch any `packages/*/src/*.ts` forward         | `stale-declarations` (req 8)           |
-| 7   | **stale src, then** touch `dist/plugin/.mcp.json` **to now** | —                                               | still `stale-unit` (req 1)             |
-| 8   | plugin assets fresh                                          | touch `packages/plugin/skills/**` forward       | `stale-plugin-assets` (§3.4)           |
-| 9   | unit built                                                   | `rm -rf <unit>/dist/*` keeping `.tsbuildinfo`   | `unbuilt` (round 3)                    |
-| 10  | bundle built with provenance                                 | delete `.bundle-meta/metafile.json`             | `bundle-provenance-missing`            |
-| 11  | cli built: 5 chunks + all 3 entry outputs                    | `rm dist/bin.js` only                           | `unbuilt` (round 4's entry rule)       |
-| 12  | false-negative: `packages/cli/dist` absent                   | run `checkPluginAssets`                         | `skipped` — not a finding, not a throw |
+| #   | clean fixture                                                | single mutation                                 | must become                                                                                                    |
+| --- | ------------------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | dist newer than src                                          | touch one `src/**.ts` forward                   | `stale-unit`                                                                                                   |
+| 2   | dist newer than src                                          | touch `tsconfig.base.json` forward              | `stale-unit` ×N (req 6)                                                                                        |
+| 3   | cli unit, dist newest                                        | touch `tsconfig.dts.json` forward               | `stale-unit` (req 9)                                                                                           |
+| 4   | 1:1 stems                                                    | delete one `src/x.ts`, keep `dist/x.js`         | `orphan-output` (req 2)                                                                                        |
+| 5   | bundle newest                                                | touch an inlined unit's `dist/index.js` forward | `stale-bundle` (req 3)                                                                                         |
+| 6   | cache newest                                                 | touch any `packages/*/src/*.ts` forward         | `stale-declarations` (req 8)                                                                                   |
+| 7   | **stale src, then** touch `dist/plugin/.mcp.json` **to now** | —                                               | still `stale-unit` (req 1)                                                                                     |
+| 8   | plugin assets fresh                                          | touch `packages/plugin/skills/**` forward       | `stale-plugin-assets` (§3.4)                                                                                   |
+| 9   | unit built                                                   | `rm -rf <unit>/dist/*` keeping `.tsbuildinfo`   | `unbuilt` (round 3)                                                                                            |
+| 10  | bundle built WITH metafile, all outputs present              | delete `.bundle-meta/metafile.json` only        | `unbuilt` (§3.3 precedence: it wins over `bundle-provenance-missing`)                                          |
+| 11  | cli built: metafile + 5 chunks + all 3 entry outputs         | `rm dist/bin.js` only                           | `unbuilt` — the fixture must include the metafile, or the baseline is already `unbuilt` and the row is vacuous |
+| 12  | false-negative: `packages/cli/dist` absent                   | run `checkPluginAssets`                         | `skipped` — not a finding, not a throw                                                                         |
 
 Row 7 is the decisive one: the exact state in which the naively specified check
 reports clean. The fixture asserts the plugin asset copy cannot mask a skipped compile.
@@ -779,12 +812,37 @@ reports clean. The fixture asserts the plugin asset copy cannot mask a skipped c
 **Wiring assertions**, matching the repo's existing shape at
 `scripts/check-support-window-freshness.test.mjs:530` and
 `scripts/check-marketplace-pin-digest.test.mjs:339`:
-`expect(root.scripts["check:all"]).toContain("check:stale-dist")`.
+`expect(root.scripts["check:all"]).toContain("check:stale-dist")
+expect(root.scripts["check:stale-dist"]).toBe("node scripts/check-stale-dist.mjs")
+expect(root.scripts.pretest).toBe("node scripts/check-stale-dist.mjs")
+
+// The two edits to EXISTING files, asserted by READING them. Without these an
+// implementer builds the six new files, passes every battery row and the line
+// above, and leaves requirement 3's comparison permanently muted.
+const bundler = readFileSync("scripts/bundle-cli.mjs", "utf8")
+expect(bundler).toContain(".bundle-meta")
+expect(bundler.indexOf(".bundle-meta", bundler.indexOf("PLUGIN_ASSET_ENTRIES")))
+.toBeGreaterThan(bundler.indexOf("PLUGIN_ASSET_ENTRIES")) // written AFTER the copy
+expect(readFileSync(".gitignore", "utf8")).toContain("packages/cli/.bundle-meta/")`.
 
 **One live smoke test** runs `checkStaleDist(REPO_ROOT)` and asserts only that it
 returns and that every reported unit is a member of `enumerateRootReferences()` — no
 count, so it cannot rot as the repository grows. Run against the tree at design time
 the algorithm above returns four `stale-unit` findings (`packages/contracts`,
+
+⚠️ **Plus `unbuilt packages/cli` today, and that is also the DAY-ONE MIGRATION (round 8).**
+`packages/cli/.bundle-meta/` does not exist until `bundle-cli.mjs` carries the change §1
+specifies — measured 2026-08-20, `ls -d packages/cli/.bundle-meta` returns no such file on
+a fully built tree. So the first `npm test` after this lands would print `unbuilt
+packages/cli` for **every developer on a correctly built tree**. §4's `unbuilt` line
+explicitly anticipates an operator who runs `ls`, sees plenty of output and mutes the
+check — this is that case, on day one, for everyone.
+
+So a **missing** `.bundle-meta/` on an otherwise-complete `dist` reports
+`bundle-provenance-missing` with the migration note, not `unbuilt`, until the first build
+after adoption writes it. The `unbuilt` reading applies once the marker has existed and
+gone — which the per-build clear in the wipe step makes observable.
+
 `packages/engine-claude`, `packages/gates`, `packages/plugin`): a true report of this
 working copy, and independent evidence the check is not vacuous against real inputs.
 
@@ -1243,3 +1301,69 @@ re-open another when both are governed by the same predicate**, and neither roun
 because each tested its own scenario and not the other's. That is the argument for the
 battery rows CF-1 exposes as contradictory, and for treating this design's size as a
 finding in its own right at the gate.
+
+**Round 8 (2026-08-20) — three `revise`, fifteen findings, four high. Standing rule 8
+fired on BOTH of round 7's fixes, exactly as it predicts.**
+
+**C8-2, high — the completion marker was never invalidated, so it proved that SOME build
+once finished.** `bundle-cli.mjs:63` sets `OUT_DIR` to `dist`, and the wipe at `:113`
+iterates that directory only — so `packages/cli/.bundle-meta/`, a **sibling** of `dist`,
+survives both the wipe and the design's own `rm -rf packages/cli/dist`. Round 6 had
+already recorded "a stale `.bundle-meta/` that `rm -rf dist` never touched", while the
+marker was not yet the oracle; round 7 promoted it without changing that. On a
+previously-built tree, `rm -rf packages/cli/dist && npx tsc -b packages/cli` then yields
+three entries, no chunks, no `dist/plugin`, a surviving marker — and **PASS, exit 0**.
+Sixth appearance of the founding failure, introduced by the fix for the fifth. The marker
+is now **cleared in the wipe step** and written after the plugin copy, so it marks the
+build it belongs to.
+
+**C8-1, high — the reason table could not see the reason.** Round 7 made an empty `dist`
+`unbuilt` on the reasoning "it was built once and the outputs are gone". But both journal
+fixture families `mkdir(SCRATCH_ROOT)` and then `rm(dir, …)` — the **mkdtemp directory,
+not the root** — so a fresh clone that has run `npm test` once has an EMPTY
+`packages/journal/dist`, and the next `pretest` reports `unbuilt` on a tree nobody built.
+CR6-2, re-opened by the fix that replaced CR6-2's fix.
+
+⚠️ **And nothing at unit granularity distinguishes the two states** — `tsc -b --clean`
+deletes `.tsbuildinfo` too, so a `--clean`ed unit and a never-built one are byte-identical.
+The empty case is therefore `skipped`, and `build:clean` is **accepted as indistinguishable
+at unit granularity** and stated as a residual. It is not undetectable overall:
+`packages/cli`'s marker lives outside `dist` and is now cleared per build, so a `--clean`ed
+tree still reports `unbuilt packages/cli`.
+
+**CF8-1, high — and this is the ninth consecutive partly-true completion claim, inside a
+fix written to end that pattern.** Round 8's own §1 addition said "§6 asserts both by
+reading the files". §6's entire wiring block was one `toContain` line. The assertions are
+in §6 now — `toBe` on both scripts, a source-order check that the metafile write follows
+the plugin copy, and a `.gitignore` read — in the three-part shape
+`check-support-window-freshness.test.mjs:530` uses, which §6 had been citing while copying
+one third of it.
+
+**CF8-2 — the same rule change broke two battery rows nobody looked at.** Row 10's single
+mutation mandated one kind while §3.3 mandated two, and row 11's "clean" fixture had no
+metafile, so it was already `unbuilt` and the mutation flipped nothing — **vacuous**, the
+defect class this change set exists for. Both fixed, and §3.3 now states precedence:
+`unbuilt` wins, because it names the tree's state while `bundle-provenance-missing` would
+say the check is degraded when the bundle is.
+
+**CF8-3, CF8-4, CF8-5, CF8-6, CF8-7, C8-4, O8-1..O8-3** — `Unit.built: boolean` could not
+carry a three-way verdict and is now `state`; §3's authoritative skip bullet still stated
+the round-1 rule while the rule it consumes had moved four times 220 lines away; `pretest`
+had **no assertion anywhere** despite §5.1 calling it the only trigger that can fire on a
+stale tree; and §6's live prediction omitted `unbuilt packages/cli`, which is also the
+**day-one migration** — every developer would see it on a correctly built tree until the
+first build writes the marker, so a _missing_ marker on an otherwise-complete `dist`
+reports `bundle-provenance-missing` with a migration note instead.
+
+### Owner ruling, 2026-08-20 — keep the full design
+
+The manager put the accumulated evidence to the owner: eight rounds, seventy-five
+findings, one failure recurring six times with each fix introducing the next, and nine
+consecutive partly-true completion claims. The alternatives offered were narrowing to the
+single bundle-freshness comparison, going to the gate as-is, or splitting the work.
+
+**The owner ruled: keep the full design and keep iterating.** Recorded here rather than
+argued again — the concern was raised with its evidence and reaffirmed, which makes it the
+owner's call. What the rounds have produced is real: five successive oracles ending in one
+that is right for a stated reason, and a design that now names its own residual limits
+rather than discovering them.
