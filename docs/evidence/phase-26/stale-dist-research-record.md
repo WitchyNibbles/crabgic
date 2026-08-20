@@ -1577,3 +1577,80 @@ set:
    or a number that drifted as the repository grew.
 
 **Next stage: `clarify`, which is owner-gated.**
+
+## Clarify closed — owner answers, 2026-08-20
+
+The `clarify` stage closes on the owner's answers, not on a review round. Both
+questions were put with the research's own findings as the trade-offs, and both
+were answered.
+
+**Scope: the FULL per-unit walk, with all nine blind spots closed.** Not the
+narrow bundle-only guard, and not "extend `bundle-types.mjs` and stop". The
+design must cover the workspace.
+
+⚠️ **Two of the nine are not closable and the owner's answer does not change
+that.** Blind spot 4 (the check cannot bootstrap its own first activation, since
+`crabgic` is itself `dist/bin.js`) and blind spot 7 (the build program and the
+pinned toolchain are inputs no mtime walk can reach without reimplementing
+`.tsbuildinfo`) are residual limits. "All nine closed" is therefore read as: the
+seven that are closable are closed, and the two that are not are STATED, not
+quietly dropped.
+
+**Trigger: wired into `check:all`.** So it becomes the 15th sub-check, runs in
+CI and in every pre-push, and fires before the failure can cost anyone two hours
+— which is what Q6 established a doctor-only check would never do. The cost the
+owner accepted: a false positive blocks a push, which is the direction
+assumption 2 already argues is the safe one.
+
+### What the design stage inherits, as requirements rather than notes
+
+| #   | requirement                                                                                                           | source                     |
+| --- | --------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| 1   | scope the `dist` side to COMPILER OUTPUTS, excluding the `bundle:cli` asset copy                                      | blind spot 1               |
+| 2   | add an ORPHAN check — an emitted artifact with no source is stale whatever the mtimes say                             | blind spot 2               |
+| 3   | compare `packages/cli/dist/bin.js` against the newest `dist` of every `@crabgic/*` package esbuild inlines            | blind spot 3               |
+| 4   | STATE the bootstrap limit; it cannot be solved from inside the tool                                                   | blind spot 4               |
+| 5   | enumerate from root `tsconfig.json`'s `references` (**19**), never `workspaces` (**18**)                              | blind spot 5, assumption 4 |
+| 6   | include each unit's `tsconfig.json` and its `extends` chain on the INPUT side                                         | blind spot 6, assumption 5 |
+| 7   | STATE the build-program and toolchain limit; `.tsbuildinfo` is the only complete oracle and it is rejected            | blind spot 7, assumption 6 |
+| 8   | account for the middle tier — `packages/cli/.dts-cache/` is neither `src` nor `dist`                                  | blind spot 8               |
+| 9   | enumerate EVERY `tsconfig*.json` a build program hands to a compiler, not just those an upward `extends` walk reaches | blind spot 9               |
+| 10  | wire into `check:all` as a sub-check                                                                                  | Q6, owner ruling           |
+| 11  | call `scripts/repo-census.mjs` rather than re-deriving its sets                                                       | prior art                  |
+
+**Next stage: `design`.**
+
+### Clarify amended — the trigger ruling rested on a false premise (2026-08-20)
+
+⚠️ **The manager gave the owner a wrong fact, and the owner decided on it.** The
+trigger question described wiring into `check:all` as "runs in CI and in every
+pre-push". Measured, after the design stage flagged it:
+
+- `git ls-files -z | xargs -0 grep -n "run check:all"` → **5 hits, every one
+  documentation prose**. Nothing invokes it.
+- CI runs the fourteen members as **individual steps**, never `check:all`.
+- The `pre-push` hook runs `lint typecheck build test`.
+
+**And Q3 of this record already implied the deeper problem.** CI builds from
+scratch every run, so a stale-`dist` check there is **permanently green by
+construction** — it cannot discriminate. The same is true of the `pre-push` hook,
+which now runs `build` before `test` (the owner's own earlier ruling), so `dist`
+is fresh by the time anything could look. A finding this record had already
+established was not carried into the question that depended on it.
+
+**Re-ruled with the corrected facts: `pretest`, plus `check:all`.** `pretest` is
+the only trigger in this repository that can fire on a stale tree — it runs
+immediately before `npm test`, which is exactly when the founding incident bit.
+
+Measured on npm 11.16.0, because the wiring turns on it: a `pretest` that exits
+non-zero means `test` **never runs at all**. So the `pretest` invocation
+deliberately omits `--strict` and reports rather than blocks; a false positive
+that stopped all local testing would be worse than the staleness it guards
+against. `--strict` is reserved for `check:all`, where a wrong verdict costs a
+re-run rather than a session.
+
+ℹ️ **Recorded as an amendment rather than repaired quietly**, because the failure
+is instructive: the manager asked the owner to choose between options whose
+stated consequences it had not measured, one round after closing a stage whose
+central lesson is that a claim needs its command. The design stage caught it by
+measuring what the ruling assumed.
