@@ -159,6 +159,28 @@ For the 18 `kind: "tsc"` units, compare extension-stripped stems: `dist/X.js` mu
 have `src/X.ts`. Measured today across all 18: **0** orphaned outputs and **0**
 un-emitted sources, a clean bijection — so the rule is exact, not approximate.
 
+⚠️ **THAT COUNT IS UNSTABLE, BECAUSE THE TEST SUITE WRITES INTO A `dist` (round 5).**
+`packages/journal/src/crash-fixtures/prepare-runtime.ts:25` sets
+`SCRATCH_ROOT = <journal>/dist` and `:110` `mkdtemp`s `eo-crash-fixture-*` there,
+transpiling `.ts` sources to `.js` inside it. Those `.js` have no `src` counterpart, so
+they ARE orphans by this rule — round 5 measured **40** of them, and observed two
+fixture directories being reaped mid-review. The suite's job is to SIGKILL its children,
+so `cleanup()` cannot run when the harness dies.
+
+Three ways this bites precisely this design:
+
+- `pretest` is the primary trigger, so the check runs at the START of the very
+  `npm test` whose interrupted predecessor left the residue;
+- the printed remedy would be `rm -rf packages/journal/dist`, telling the operator to
+  delete a directory a concurrent run may be writing into;
+- §6's live smoke test calls `checkStaleDist(REPO_ROOT)` from inside vitest, so it can
+  observe the orphans or `ENOENT` on a directory reaped between `readdirSync` and
+  `statSync`.
+
+**So the output and stem sets exclude test-written scratch**: `dist/eo-crash-fixture-*/**`
+by name, stated rather than inferred. And §3.1's bijection is restated as _0 orphans on a
+tree with no test run in flight_ — a measurement whose subject a test run mutates.
+
 ```
 # per unit: comm -23 <(dist .js stems) <(src .ts stems)  -> 0 for all 18
 ```
@@ -178,8 +200,14 @@ is named for".
 `references` — **16** units. `packages/perf` and `e2e/report` are unreachable and
 correctly excluded.
 
-⚠️ **This is a SUPERSET of the inlined set, and calling it "the inlined set" was a
-round-1 finding.** `@crabgic/testkit` is in the closure but is not inlined: it is a
+ℹ️ **Round 4 measured the two sets and they are EQUAL today** — the metafile filter
+yields 16 units, member for member identical to the reference closure, and `cli` never
+matches `^packages/([^/]+)/dist/` because it enters only via `src/`. So "superset"
+overstates it and the "minus `cli`" step is a no-op. The metafile remains the rule
+anyway: the closure's agreement is a fact about today's import graph, not a property of
+it, and the reasoning below is why the closure cannot be trusted to keep agreeing.
+
+⚠️ **Calling the closure "the inlined set" was a round-1 finding.** `@crabgic/testkit` is in the closure but is not inlined: it is a
 `devDependency` of `packages/cli`, not a dependency, and **zero** testkit runtime
 symbols appear anywhere in `packages/cli/dist/*.js`. So editing `packages/testkit/src`
 and running `npm run typecheck` fires `stale-bundle` against a bundle containing none
@@ -321,9 +349,20 @@ empty state gets its own name:
 | `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding, remedy `npm run build` |
 | `dist/` exists with outputs                    | compared normally                                 |
 
+⚠️ **AND FOR `packages/cli`, PRESENCE OF OUTPUTS IS NOT ENOUGH — round 4.** `tsc -b --clean` removes only tsc's own outputs; the **five hashed esbuild chunks survive**, measured with `tsc -b packages/cli --clean --dry`. So after `npm run build:clean` the unit holds fresh qualifying outputs, is not `unbuilt`, compares **clean**, and `bundleAt` reads a chunk that is still there — while `packages/cli/dist/bin.js`, the published `bin.crabgic` entry point, **does not exist**. The check would print PASS on a tree with no CLI.
+
+**So `packages/cli` additionally requires its three entry outputs to EXIST** — `dist/bin.js`, `dist/index.js`, `dist/bin/supervisord.js`, which §3.2 already names for `bundleAt`. Any one missing is `unbuilt`, whatever the chunks say. This is the third appearance of one failure — a verdict of `clean` on a tree with no usable build output — and each time it survived because the previous fix keyed on a proxy (directory existence, then output presence) rather than on the artifact anyone actually runs.
+
 `unbuilt` is never folded into `clean`. Round 2's exclusion of `.tsbuildinfo` makes this
 state reachable a second way: `bundle-cli.mjs:113-119` deletes outputs while keeping
 `.tsbuildinfo`, and a following `tsc -b` re-emits nothing.
+
+⚠️ **SKIP RULE — ALL THREE cli-SCOPED COMPARISONS, extended again in round 4.**
+`checkPluginAssets` was outside it: on a fresh clone, or after the design's own
+`rm -rf packages/cli/dist`, `newestUnder("packages/cli/dist/plugin")` is `undefined`, so
+it would throw or emit `stale-plugin-assets` against a tree that was never built — round
+1's C-1 recurring on the comparison round 1's own fix introduced. All three report
+`skipped` when their target is absent.
 
 ⚠️ **SKIP RULE, EXTENDED IN ROUND 1.** §3's skip rule was per-unit and covered only
 `checkUnitFreshness`; `checkBundleFreshness` and `checkDeclarationCache` stat their
@@ -354,9 +393,15 @@ are in no input set, and `check:marketplace-pin` digests `packages/plugin` (the 
 never the shipped copy. Edit a skill file, do not rebuild, and the copy inside
 `packages/cli/dist/plugin` is stale with every check silent.
 
-**Rule (fifth comparison):** report `stale-plugin-assets` when the newest mtime beneath
-the plugin asset SOURCES exceeds the newest beneath `packages/cli/dist/plugin`. Remedy:
-`npm run bundle:cli`.
+**Rule (fifth comparison):** the remedy is `npm run build` — §4's table is
+authoritative, and `npm run bundle:cli` is banned there for the reason the
+`stale-bundle` row gives. Report `stale-plugin-assets` when the newest mtime beneath
+the plugin asset SOURCES exceeds the newest beneath `packages/cli/dist/plugin`.
+
+⚠️ This paragraph carried a trailing `Remedy: npm run bundle:cli` for three rounds after
+that command was banned four lines above it, and it survived two dispositions claiming
+otherwise — the second time because a verification grep was single-line and the sentence
+wrapped. §4's table is the only remedy source.
 
 This is the one place the design deliberately compares a copied tree rather than
 compiler output, and it is safe here precisely because the comparison runs the other
@@ -369,18 +414,29 @@ Human text on stdout by default; `--json` for machine use (the `repo-census.mjs`
 convention). One line per finding naming the unit, the newest input, the older output
 and the delta.
 
+⚠️ **Two kinds have no delta to print, and the line shape predates them (round 4).**
+`Finding = { kind, unit, newerInput, olderOutput, deltaMs, remedy }` assumes a
+comparison. `unbuilt`'s finding IS the absence of an output, and
+`bundle-provenance-missing` has neither side. Printing the common shape gives
+`unbuilt packages/contracts undefined undefined NaN`, eighteen times over, after
+`npm run build:clean`. So those three fields are optional and each kind states its own
+line:
+
+- `unbuilt <unit> — dist/ exists but holds no compiler output`
+- `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json absent; the bundle comparison did not run`
+
 **Findings of the same `kind` are grouped, and the remedy is PER KIND.** Both were
 round-1 findings and both are load-bearing:
 
-| `kind`                      | remedy printed                                                                                                                                                                                                        |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stale-unit`                | **`rm -rf <unit>/dist` then `npm run build`** — `npm run build` alone often CANNOT clear this                                                                                                                         |
-| `stale-bundle`              | **`npm run build`** — NOT `npm run bundle:cli`, which throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), precisely the standalone invocation its own error text warns about                               |
-| `orphan-output`             | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this                                                                                                              |
-| `stale-declarations`        | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this. ⚠️ **~5 minutes**; `bundle-types.mjs:76` says so itself, and under `check:all --strict` that is a five-minute wait to unblock a push |
-| `stale-plugin-assets`       | **`npm run build`** — NOT `npm run bundle:cli`, for the reason the `stale-bundle` row gives                                                                                                                           |
-| `unbuilt`                   | `npm run build`                                                                                                                                                                                                       |
-| `bundle-provenance-missing` | `npm run build` — reduced-confidence, see §3.2                                                                                                                                                                        |
+| `kind`                      | remedy printed                                                                                                                                                                                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stale-unit`                | **`rm -rf <unit>/dist` then `npm run build`** — `npm run build` alone often CANNOT clear this                                                                                                                                                                   |
+| `stale-bundle`              | **`npm run build`** — NOT `npm run bundle:cli`, which throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), precisely the standalone invocation its own error text warns about                                                                         |
+| `orphan-output`             | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this                                                                                                                                                        |
+| `stale-declarations`        | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this. ⚠️ **~5 minutes**; `bundle-types.mjs:76` says so itself, and under `check:all --strict` that is a five-minute wait to unblock a push                                           |
+| `stale-plugin-assets`       | **`npm run build`** — NOT `npm run bundle:cli`, for the reason the `stale-bundle` row gives                                                                                                                                                                     |
+| `unbuilt`                   | **`rm -rf <unit>/dist` then `npm run build`** — plain `npm run build` clears it only when `.tsbuildinfo` went with the outputs. Measured: delete outputs but KEEP `.tsbuildinfo` (what `bundle-cli.mjs:113-119` does) and `tsc -b` re-emits nothing, twice over |
+| `bundle-provenance-missing` | `npm run build` — reduced-confidence, see §3.2                                                                                                                                                                                                                  |
 
 ⚠️ **`npm run build` was the single printed remedy and it is wrong for two of the four
 kinds.** Measured with the repo's pinned `typescript@6.0.3` on a composite fixture:
@@ -432,11 +488,36 @@ one round after the standing rule was written down.
 `stale-unit ×N` from a single `tsconfig.base.json` edit collapses to one grouped line
 naming the count, not 19 near-identical lines printed above 83 vitest failures.
 
-| condition                                    | default                 | `--strict`          |
-| -------------------------------------------- | ----------------------- | ------------------- |
-| no findings                                  | `PASS` line, exit **0** | exit **0**          |
-| findings                                     | listed, exit **0**      | listed, exit **1**  |
-| internal error (unreadable/malformed config) | `WARN` line, exit **0** | `ERROR`, exit **2** |
+⚠️ **When more than one kind fires, the remedies have exactly one correct order and the
+design must print it, not a list (round 4).** Run the per-kind advice as listed and
+`npm run build` executes before `bundle:types --force`, so the declarations finding
+survives and the second full rebuild is wasted; do the `rm -rf` after the build and you
+undo it. The live tree already returns four `stale-unit` findings, so this is not
+hypothetical. One ordered recipe:
+
+1. every `rm -rf <unit>/dist` first;
+2. `npm run build` — **before** the generator, not after;
+3. `npm run bundle:types -- --force` if `stale-declarations` fired (**~5 minutes**);
+4. `npm run bundle:cli`, so `bundle-cli.mjs:153` lifts the regenerated cache into
+   `dist/index.d.ts` — step 3 alone leaves the pre-force copy shipped.
+
+⚠️ **An earlier ordering put the generator at step 2 and it could not run there
+(round 5).** `packages/cli/tsconfig.dts.json` declares `"references": []` and
+`"composite": false`, and neither it nor `tsconfig.base.json` declares `paths` — so
+`@crabgic/*` resolves through the workspace symlink to
+`exports["."].types === "./dist/index.d.ts"`. **Step 1 deletes exactly those files.**
+Measured on a fixture with the same generator and `--no-check`: dependency `dist`
+present → inlines the type, exit 0; deleted → `TS2307: Cannot find module`, exit 1, no
+output written. `bundle-types.mjs` uses `execFileSync`, so it throws outright. The recipe
+was wrong precisely in the multi-kind case it was written for.
+
+| condition                                                 | default                 | `--strict`          |
+| --------------------------------------------------------- | ----------------------- | ------------------- |
+| no findings                                               | `PASS` line, exit **0** | exit **0**          |
+| findings                                                  | listed, exit **0**      | listed, exit **1**  |
+| internal error — **ANY** throw, not only malformed config | `WARN` line, exit **0** | `ERROR`, exit **2** |
+
+⚠️ **The `PASS` line NAMES SKIPPED UNITS, because otherwise the design's own remedy leads to a silent failure (round 5).** An operator gets `stale-unit` on `packages/cli`, runs the printed `rm -rf packages/cli/dist`, and `npm run build` then fails — tsc error, Ctrl-C, disk. Re-running the check finds no `dist` at all, which is `skipped`; the other 18 compare clean; it prints **PASS, exit 0** on a tree with no CLI. Two routes reach one operator-visible state — `tsc -b --clean` leaves `dist` present and yields `unbuilt`, a finding; the design's own `rm -rf` leaves it absent and yields silence — and the design was directing operators onto the silent one. The line reads `PASS — 18 units compared, 1 skipped (packages/cli: no dist/)`.
 
 ⚠️ **The internal-error row changed in round 1, and the reason is measured.** It was
 exit **2** in both columns. On npm 11.16.0 a `pretest` exiting **2** blocks `npm test`
@@ -483,7 +564,12 @@ CI runs the members as individual steps in two jobs (`ci.yml:246` `meta-checks`,
 
 - in `meta-checks` (`npm ci`, no build) every unit would report `skipped` — no `dist` exists;
 - in `packaging` (`npm run build` immediately before) it can only ever report clean;
-- the `pre-push` hook rebuilds before testing, so it too can only see clean.
+- the `pre-push` hook rebuilds before testing, so it too can only see clean;
+- **`ci.yml:129` (`run: npm test`) DOES run it** — the two-leg `test` matrix
+  (`ubuntu-latest`, `ubuntu-24.04-arm`), on every push to `main` and every PR — so with
+  §5.1's `pretest` the check fires **twice per push**. `ci.yml:86` builds immediately
+  before, so it reports clean every time. This bullet was missing for two rounds while
+  §8(c) asserted the check could not fire in CI at all.
 
 **The check's discriminating power is local.** A smaller claim than "runs in CI and
 in every pre-push", and the one the repository supports today. A dedicated CI step is
@@ -551,15 +637,20 @@ test restate today's file list and fail on every unrelated addition.
 **Non-vacuity battery.** Per finding kind: one fixture reporting clean, then ONE
 `utimesSync`/`rm` mutation that must flip it to stale.
 
-| #   | clean fixture                                                | single mutation                                 | must become                  |
-| --- | ------------------------------------------------------------ | ----------------------------------------------- | ---------------------------- |
-| 1   | dist newer than src                                          | touch one `src/**.ts` forward                   | `stale-unit`                 |
-| 2   | dist newer than src                                          | touch `tsconfig.base.json` forward              | `stale-unit` ×N (req 6)      |
-| 3   | cli unit, dist newest                                        | touch `tsconfig.dts.json` forward               | `stale-unit` (req 9)         |
-| 4   | 1:1 stems                                                    | delete one `src/x.ts`, keep `dist/x.js`         | `orphan-output` (req 2)      |
-| 5   | bundle newest                                                | touch an inlined unit's `dist/index.js` forward | `stale-bundle` (req 3)       |
-| 6   | cache newest                                                 | touch any `packages/*/src/*.ts` forward         | `stale-declarations` (req 8) |
-| 7   | **stale src, then** touch `dist/plugin/.mcp.json` **to now** | —                                               | still `stale-unit` (req 1)   |
+| #   | clean fixture                                                | single mutation                                 | must become                            |
+| --- | ------------------------------------------------------------ | ----------------------------------------------- | -------------------------------------- |
+| 1   | dist newer than src                                          | touch one `src/**.ts` forward                   | `stale-unit`                           |
+| 2   | dist newer than src                                          | touch `tsconfig.base.json` forward              | `stale-unit` ×N (req 6)                |
+| 3   | cli unit, dist newest                                        | touch `tsconfig.dts.json` forward               | `stale-unit` (req 9)                   |
+| 4   | 1:1 stems                                                    | delete one `src/x.ts`, keep `dist/x.js`         | `orphan-output` (req 2)                |
+| 5   | bundle newest                                                | touch an inlined unit's `dist/index.js` forward | `stale-bundle` (req 3)                 |
+| 6   | cache newest                                                 | touch any `packages/*/src/*.ts` forward         | `stale-declarations` (req 8)           |
+| 7   | **stale src, then** touch `dist/plugin/.mcp.json` **to now** | —                                               | still `stale-unit` (req 1)             |
+| 8   | plugin assets fresh                                          | touch `packages/plugin/skills/**` forward       | `stale-plugin-assets` (§3.4)           |
+| 9   | unit built                                                   | `rm -rf <unit>/dist/*` keeping `.tsbuildinfo`   | `unbuilt` (round 3)                    |
+| 10  | bundle built with provenance                                 | delete `.bundle-meta/metafile.json`             | `bundle-provenance-missing`            |
+| 11  | cli built: 5 chunks + all 3 entry outputs                    | `rm dist/bin.js` only                           | `unbuilt` (round 4's entry rule)       |
+| 12  | false-negative: `packages/cli/dist` absent                   | run `checkPluginAssets`                         | `skipped` — not a finding, not a throw |
 
 Row 7 is the decisive one: the exact state in which the naively specified check
 reports clean. The fixture asserts the plugin asset copy cannot mask a skipped compile.
@@ -610,7 +701,11 @@ working copy, and independent evidence the check is not vacuous against real inp
   and the research rejects it: no public interface describes its contents (three
   mentions in `typescript.d.ts`, all about the path) and it carries `version: "6.0.3"`,
   binding a parser to a compiler release.
-- **(c) That the check fires in CI.** Measured in §5: it cannot. Local and manual only.
+- **(c) That the check DISCRIMINATES in CI.** It does FIRE there — `ci.yml:129` is
+  `run: npm test` in the two-leg `test` matrix, so `pretest` runs **twice per push** —
+  but `ci.yml:86` builds immediately before it, so it can only ever report clean. An
+  earlier draft said the check "cannot fire in CI", which is the opposite of the truth
+  and would have left a CI failure with no documented owner (round 5).
 - **(d) Content correctness.** The check answers "was the build re-run since its inputs
   moved", never "is the output right". A rebuild producing byte-identical output still
   refreshes mtimes and still reports clean.
@@ -789,3 +884,120 @@ and reported that all five content-hashed chunk names were unchanged, so only mt
 moved, and re-derived §6's live claim afterwards to confirm it still holds. Recorded
 because disclosing a side effect and re-deriving past it is what makes the rest of the
 report usable.
+
+**Round 4 (2026-08-20) — three `revise`, nine findings, all re-derived and
+dispositioned. One is the same failure for the third time, and it survived twice
+because each fix keyed on a proxy.**
+
+**C-R4-1, high — after `npm run build:clean`, `packages/cli` reports CLEAN with no
+`bin.js`.** Measured with `tsc -b packages/cli --clean --dry`: `--clean` removes tsc's
+outputs and the **five hashed esbuild chunks survive**. So the unit holds fresh
+qualifying outputs, is not `unbuilt`, compares clean, and `bundleAt` reads a chunk that
+is still there — while `dist/bin.js`, the published `bin.crabgic` entry point, does not
+exist.
+
+⚠️ **This is the third appearance of one failure — `clean` on a tree with no usable
+build output.** CR-2 keyed the rule on directory existence; round 3 re-keyed it on
+output presence; both are proxies. It is now keyed on the artifact anyone actually runs:
+`packages/cli` requires its three entry outputs to EXIST, whatever the chunks say.
+
+**C-R4-2, medium-high — `checkPluginAssets` was outside the skip rule**, so a fresh
+clone or the design's own `rm -rf packages/cli/dist` would throw or emit
+`stale-plugin-assets` against a tree that was never built. Round 1's C-1 recurring on the
+comparison round 1's own fix introduced. All three cli-scoped comparisons now skip.
+
+**C-R4-3, medium — the `unbuilt` remedy was wrong on the path §3.3 itself names.**
+Measured: delete outputs but keep `.tsbuildinfo` — exactly `bundle-cli.mjs:113-119` — and
+`tsc -b` re-emits nothing, twice over. `npm run build` clears it for `packages/cli` only
+by accident, because `bundle:cli` rewrites the chunks, which does not generalise to the
+other 18 units.
+
+**CF-R4-3 — and one of this design's own claims was overstated in the safe direction.**
+§3.2 called the reference closure "a SUPERSET of the inlined set". Measured: the metafile
+filter yields **16** units, member for member identical to the closure, and `cli` never
+matches because it enters only via `src/`. The sets are EQUAL today and the "minus `cli`"
+step is a no-op. The metafile remains the rule — the closure's agreement is a fact about
+today's import graph, not a property of it — but the record now says so.
+
+**CF-R4-1, CF-R4-2, OP-R4-1, OP-R4-2, OP-R4-3** — §3.4 still printed the remedy round 2
+banned; three of seven kinds had no non-vacuity row, so an implementer could have shipped
+`stale-plugin-assets` hardcoded never to fire (the exact defect class this change set
+exists for); `unbuilt` and `bundle-provenance-missing` had no line shape and would have
+printed `undefined undefined NaN` eighteen times after `build:clean`; seven remedies had
+no ORDER, and running them as listed wastes a full rebuild or undoes itself; and §5's
+consequence list omitted `ci.yml:129`, the only place CI runs `npm test` and therefore
+`pretest`.
+
+ℹ️ **The lens disclosed two things it could not control** — the design file changed
+under it mid-review, and `packages/cli/dist` was rebuilt at 09:43 by something that was
+not its own probes, which it verified by pinning the artifact's md5 and by keeping every
+probe non-mutating (`--dry`, and `esbuild` with `write: false` rather than importing
+`bundle-cli.mjs`, which is how round 3 caused a rebuild). Recorded because a review whose
+own side effects are stated is the only kind whose negatives mean anything.
+
+**Round 5 (2026-08-20) — three `revise`, seven findings, four of them high. Two of
+round 4's five claimed fixes did not land, and round 4's own new element failed on
+contact.**
+
+**C-R5-1, high — the test suite writes `.js` into a `dist`, so §3.1's "clean bijection"
+was conditionally false.** `packages/journal/src/crash-fixtures/prepare-runtime.ts:25`
+sets `SCRATCH_ROOT` to `packages/journal/dist` and `:110` `mkdtemp`s
+`eo-crash-fixture-*` there, transpiling sources into it. Those `.js` have no `src`
+counterpart, so they are orphans by this design's own rule — **40** measured, with two
+fixture directories observed being reaped mid-review. The suite SIGKILLs its children, so
+`cleanup()` cannot run when the harness dies.
+
+⚠️ **It bites this design three ways at once**: `pretest` runs at the START of the very
+`npm test` whose interrupted predecessor left the residue; the printed remedy would tell
+the operator to `rm -rf` a directory a concurrent run is writing into; and §6's live
+smoke test calls the check from inside vitest, so it can observe the orphans or `ENOENT`
+on a directory reaped between `readdirSync` and `statSync`. Scratch is excluded by name,
+and §3.1's count is restated as a measurement whose subject a test run mutates.
+
+**C-R5-2, high — round 4's ordered recipe could not run in its own order.** Step 1
+deleted every `<unit>/dist`; step 2 was `bundle:types -- --force`, and
+`packages/cli/tsconfig.dts.json` declares `"references": []`, `"composite": false`, with
+no `paths` anywhere — so `@crabgic/*` resolves through the workspace symlink to
+`exports["."].types === "./dist/index.d.ts"`, exactly what step 1 deleted. Measured on a
+fixture with the same generator: dependency `dist` present → inlines the type, exit 0;
+deleted → `TS2307`, exit 1, no output. `npm run build` now comes second, and a fourth
+step lifts the regenerated cache into `dist/index.d.ts`.
+
+**C-R5-3, medium — "no build output" reached two OPPOSITE verdicts, and the design
+directed operators onto the silent one.** `tsc -b --clean` leaves `dist` present →
+`unbuilt`, a finding. The design's own `rm -rf` remedy leaves it absent → `skipped` →
+**PASS, exit 0** on a tree with no CLI. The `PASS` line now names skipped units.
+
+**CF-R5-1, high — §8(c) asserted the opposite of the truth.** It said the check "cannot
+fire in CI". `ci.yml:129` is `run: npm test` in the two-leg `test` matrix, so with
+`pretest` it fires **twice per push**; `ci.yml:86` builds immediately before, so it
+cannot DISCRIMINATE there. The distinction matters because an unclassified throw would
+redden both legs with no documented owner. Both §5 and §8(c) corrected, and the
+internal-error row now covers **any** throw rather than malformed config only.
+
+**CF-R5-2, high — §3.4 still printed the banned remedy, four lines after banning it, for
+the FOURTH consecutive round.**
+
+⚠️ **And this time it survived a disposition because the verification grep was
+single-line and the sentence wrapped.** The trailing `Remedy:` and
+`` `npm run bundle:cli`. `` sat on consecutive lines; a one-line pattern reported it
+gone. **Standing rule 1 — a search narrower than its claim — applied to the verification
+of a finding rather than to the finding itself.** That is the fourth consecutive round
+with a partly-true completion claim, and the first where the cause was the check on the
+claim rather than the claim.
+
+**CF-R5-3, medium — round 4's two behavioural fixes had no non-vacuity row**, because
+the battery is keyed by KIND and both are refinements _within_ a kind. An implementer who
+never wrote the `packages/cli` entry-output rule would have passed all ten rows. Two rows
+added: rm one entry output from an otherwise-complete cli `dist` → `unbuilt`; and
+`packages/cli/dist` absent → `checkPluginAssets` returns `skipped`, neither finding nor
+throw.
+
+ℹ️ **What round 5 attacked and could not break**: the `unbuilt` remedy on both paths
+§3.3 names (`--clean` removes `.tsbuildinfo` too, so path (a) clears under plain
+`npm run build`); the entry-output rule against a fresh clone (row 1 precedes, so a fresh
+clone is silent); every other unit's `dist` for foreign files (`packages/journal` is the
+only one); `--clean` on `packages/cli` (exactly five deletions, chunks and `plugin/**`
+survive); §6's four-`stale-unit` live claim, re-derived independently; and every count and
+anchor. Walk timing 0.20-0.28 s over six runs, spread 0.08 s — wider than round 2's 0.06,
+and the lens noted its machine was concurrently running vitest.
