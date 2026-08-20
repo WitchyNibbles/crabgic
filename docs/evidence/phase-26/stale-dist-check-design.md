@@ -148,7 +148,15 @@ git ls-files | grep -E 'tsconfig.*\.json$' | wc -l                              
   copies the six `PLUGIN_ASSET_ENTRIES` with `cp(..., { recursive: true })` and no
   `preserveTimestamps`, so those mtimes are copy time and say nothing about a compile;
 - for `packages/cli` only, `dist/index.d.ts` — a `copyFile` of the declaration cache
-  (`bundle-cli.mjs:153`), handled as its own artifact in §3.3.
+  (`bundle-cli.mjs:153`), handled as its own artifact in §3.3;
+- **`dist/eo-*-fixture-*/**` — test-written scratch, in BOTH families.**
+  `packages/journal/src/crash-fixtures/prepare-runtime.ts:25,:110` and
+  `packages/journal/src/lease-fixtures/prepare-runtime.ts:60,:91` both set
+  `SCRATCH_ROOT` to `packages/journal/dist` and `mkdtemp` into it, transpiling `.ts`
+  sources to `.js` there. Round 5 named only the crash family and put the exclusion in
+  §3.1's prose rather than here, where the output set is actually defined — so an
+  implementer building `walk.mjs` from §2 and this list would have shipped no exclusion
+  at all. The glob covers both families and any third that follows the convention.
 
 **Verdict:** `newest(inputs) > newest(outputs)`, strictly. Equal timestamps are clean —
 the safe direction under second-granularity filesystems.
@@ -177,7 +185,7 @@ Three ways this bites precisely this design:
   observe the orphans or `ENOENT` on a directory reaped between `readdirSync` and
   `statSync`.
 
-**So the output and stem sets exclude test-written scratch**: `dist/eo-crash-fixture-*/**`
+**So the output and stem sets exclude test-written scratch**: `dist/eo-*-fixture-*/**`
 by name, stated rather than inferred. And §3.1's bijection is restated as _0 orphans on a
 tree with no test run in flight_ — a measurement whose subject a test run mutates.
 
@@ -343,17 +351,43 @@ this check is named for.
 **The rule is keyed on qualifying COMPILER OUTPUTS, not on the directory**, and the
 empty state gets its own name:
 
-| unit state                                     | verdict                                           |
-| ---------------------------------------------- | ------------------------------------------------- |
-| no `dist/` at all                              | `skipped`                                         |
-| `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding, remedy `npm run build` |
-| `dist/` exists with outputs                    | compared normally                                 |
+| unit state                                     | verdict                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------ |
+| no `dist/` at all                              | `skipped`                                                                |
+| `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding; remedy per §4's table, which is authoritative |
+| `dist/` exists with outputs                    | compared normally                                                        |
 
 ⚠️ **AND FOR `packages/cli`, PRESENCE OF OUTPUTS IS NOT ENOUGH — round 4.** `tsc -b --clean` removes only tsc's own outputs; the **five hashed esbuild chunks survive**, measured with `tsc -b packages/cli --clean --dry`. So after `npm run build:clean` the unit holds fresh qualifying outputs, is not `unbuilt`, compares **clean**, and `bundleAt` reads a chunk that is still there — while `packages/cli/dist/bin.js`, the published `bin.crabgic` entry point, **does not exist**. The check would print PASS on a tree with no CLI.
 
-**So `packages/cli` additionally requires its three entry outputs to EXIST** — `dist/bin.js`, `dist/index.js`, `dist/bin/supervisord.js`, which §3.2 already names for `bundleAt`. Any one missing is `unbuilt`, whatever the chunks say. This is the third appearance of one failure — a verdict of `clean` on a tree with no usable build output — and each time it survived because the previous fix keyed on a proxy (directory existence, then output presence) rather than on the artifact anyone actually runs.
+⚠️ **AND THE ENTRY-OUTPUT RULE IS ITSELF A tsc-WRITABLE PROXY — the FOURTH appearance
+of this failure (round 6).** `tsc -b packages/cli --clean --dry` lists exactly
+`dist/bin.js`, `dist/index.js`, `dist/index.d.ts`, `dist/bin/supervisord.js` and
+`.tsbuildinfo`, so `tsc -b` alone writes every entry output the rule checks. Interrupt
+`npm run build` during the **~5 minute** `bundle:types` step — Ctrl-C, CI timeout, 3am —
+and the tree has all three entries present, no chunks, no `dist/plugin`, and a stale
+`.bundle-meta/` that `rm -rf dist` did not touch. The check reports **PASS, exit 0**, on
+a tree with no `crabgic` binary.
 
-`unbuilt` is never folded into `clean`. Round 2's exclusion of `.tsbuildinfo` makes this
+**So the rule is: `packages/cli` is `unbuilt` unless an ESBUILD-ONLY artifact exists** —
+a `/-[A-Z0-9]{8}\.js$/` chunk, which `tsc` has no notion of. The entry-output condition
+is additional, never the whole one.
+
+The four proxies, in order, are the record of how this was learned: directory existence →
+output presence → entry-output presence → **the artifact only the bundler can produce**.
+Each of the first three is writable by `tsc -b` alone.
+
+**`packages/cli` additionally requires its three entry outputs to EXIST** — `dist/bin.js`, `dist/index.js`, `dist/bin/supervisord.js`, which §3.2 already names for `bundleAt`. Any one missing is `unbuilt`, whatever the chunks say. This is the third appearance of one failure — a verdict of `clean` on a tree with no usable build output — and each time it survived because the previous fix keyed on a proxy (directory existence, then output presence) rather than on the artifact anyone actually runs.
+
+`unbuilt` is never folded into `clean`.
+
+⚠️ **And `unbuilt` requires at least one NON-EXCLUDED entry, or round 5's scratch
+exclusion creates a false positive (round 6).** Both fixture families call
+`mkdir(SCRATCH_ROOT, { recursive: true })` and their `cleanup()` removes only the
+mkdtemp directory — so `packages/journal/dist` **persists, empty**, after the first
+`npm test` on a tree that was never built. With every remaining entry excluded as
+scratch, the next `pretest` would report `unbuilt packages/journal` and print
+`rm -rf packages/journal/dist`. The round-5 fix would have converted a silent wrong
+answer into a loud one. Round 2's exclusion of `.tsbuildinfo` makes this
 state reachable a second way: `bundle-cli.mjs:113-119` deletes outputs while keeping
 `.tsbuildinfo`, and a following `tsc -b` re-emits nothing.
 
@@ -486,7 +520,11 @@ defect O-1 itself was. Caught by pre-checking the fix before the next review rou
 one round after the standing rule was written down.
 
 `stale-unit ×N` from a single `tsconfig.base.json` edit collapses to one grouped line
-naming the count, not 19 near-identical lines printed above 83 vitest failures.
+naming the count **and the units**, not 19 near-identical lines printed above 83 vitest
+failures. Naming only the count would make the recipe's step 1 unrunnable — the operator
+cannot `rm -rf <unit>/dist` for units nobody listed. The success path already names its
+skipped unit; the failure path must match:
+`stale-unit ×4 — contracts, engine-claude, gates, plugin`.
 
 ⚠️ **When more than one kind fires, the remedies have exactly one correct order and the
 design must print it, not a list (round 4).** Run the per-kind advice as listed and
@@ -500,6 +538,13 @@ hypothetical. One ordered recipe:
 3. `npm run bundle:types -- --force` if `stale-declarations` fired (**~5 minutes**);
 4. `npm run bundle:cli`, so `bundle-cli.mjs:153` lifts the regenerated cache into
    `dist/index.d.ts` — step 3 alone leaves the pre-force copy shipped.
+
+   ⚠️ **This is the ONE sanctioned standalone `bundle:cli`**, and §4's table bans it
+   everywhere else. The ban's stated cause is `.dts-cache` absence
+   (`bundle-cli.mjs:146-151`), and step 3 has just written that cache — so the guard
+   those lines implement is satisfied here and nowhere else. Round 6 traced it and
+   confirmed the step is safe; what was missing was saying why it does not contradict
+   the ban 100 lines above.
 
 ⚠️ **An earlier ordering put the generator at step 2 and it could not run there
 (round 5).** `packages/cli/tsconfig.dts.json` declares `"references": []` and
@@ -1001,3 +1046,64 @@ only one); `--clean` on `packages/cli` (exactly five deletions, chunks and `plug
 survive); §6's four-`stale-unit` live claim, re-derived independently; and every count and
 anchor. Walk timing 0.20-0.28 s over six runs, spread 0.08 s — wider than round 2's 0.06,
 and the lens noted its machine was concurrently running vitest.
+
+**Round 6 (2026-08-20) — three `revise`, nine findings, three high. The same failure
+appeared for the FOURTH time, and the diagnosis is now exact.**
+
+**CR6-3, high — `PASS` on a tree with no CLI, again, because the entry-output rule is
+also a `tsc`-writable proxy.** `tsc -b packages/cli --clean --dry` lists exactly the
+three entry outputs plus `index.d.ts` and `.tsbuildinfo` — so `tsc -b` alone satisfies
+round 4's rule. Interrupt `npm run build` during the **~5 minute** `bundle:types` step
+and the tree has all three entries, no chunks, no `dist/plugin`, and a stale
+`.bundle-meta/` that `rm -rf dist` never touched. Reported PASS, exit 0, on a tree with
+no `crabgic` binary.
+
+⚠️ **The four proxies are the whole lesson**, and they are recorded in order because
+each looked sufficient at the time:
+
+| round | keyed on                         | writable by `tsc -b` alone |
+| ----- | -------------------------------- | -------------------------- |
+| CR-2  | directory existence              | yes                        |
+| 3     | output presence                  | yes                        |
+| 4     | entry-output presence            | **yes**                    |
+| 6     | an **esbuild-only** hashed chunk | no                         |
+
+Three successive fixes chose something the wrong tool also produces. The rule is now
+keyed on the one artifact only the bundler can make.
+
+**CR6-1, high — round 5's scratch exclusion named ONE of two fixture families.**
+`packages/journal/src/lease-fixtures/prepare-runtime.ts:60,:91` does exactly what the
+crash family does — `SCRATCH_ROOT = packages/journal/dist`, `mkdtemp` into it, transpile
+`.ts` to `.js`. A repo-wide `mkdtemp` sweep excluding `tmpdir()` bases returns exactly
+these two. The exclusion is now `dist/eo-*-fixture-*/**`, which covers both and any third
+following the convention.
+
+**CR6-2, high — and that exclusion CREATED a false positive.** Both families call
+`mkdir(SCRATCH_ROOT, { recursive: true })` and their `cleanup()` removes only the mkdtemp
+directory, so `packages/journal/dist` persists **empty** after the first `npm test` on a
+tree that was never built. With every remaining entry excluded, the next `pretest` would
+report `unbuilt packages/journal` and print `rm -rf`. Round 5 would have turned a silent
+wrong answer into a loud one. `unbuilt` now requires at least one non-excluded entry.
+
+**CF6-1, high — and the exclusion had landed in ONE section.** §3's authoritative
+_Per-unit output set_ had three `minus:` bullets and no scratch bullet; the exclusion sat
+only in §3.1's prose. An implementer building `walk.mjs` from §2 and the output set from
+§3 — the two places that define them — would have shipped no exclusion at all. It is in
+the output set now.
+
+**CF6-2 — the sixth consecutive partly-true completion claim.** Round 4's `C-R4-3` was
+filed against §3.3's restated `unbuilt` remedy and dispositioned `fixed`; two rounds
+later §3.3 still carried it. §3.3 now cites §4 rather than restating.
+
+**OP6-1, OP6-2** — §4 banned `npm run bundle:cli` and then prescribed it as recipe step 4. The lens traced it and found the step genuinely **safe** — the ban's cause is
+`.dts-cache` absence, and step 3 has just written that cache — so the fix was one clause
+saying why, not a reorder. And the grouped `stale-unit ×N` line named only a count, which
+makes step 1 unrunnable: the operator cannot `rm -rf` units nobody listed. It names them
+now, matching what the success path already did.
+
+ℹ️ **Six rounds, fifty findings, and a pattern worth stating plainly.** In four of six
+rounds a fix in this design carried a defect, and three of those were caught only because
+the fix was RUN rather than reasoned about. The design is 1000+ lines, seven finding
+kinds, five comparisons — and the recurring failure has been a rule keyed on a proxy for
+the thing it means. That is a property of the FULL design the owner selected, not of any
+one round, and it is recorded here so the design-gate decision can weigh it.
