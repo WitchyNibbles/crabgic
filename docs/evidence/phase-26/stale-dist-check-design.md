@@ -10,11 +10,11 @@ third standing rule. All measured 2026-08-20 at a clean working tree.
 
 ⚠️ **NO RULE IN THIS DOCUMENT IS CITED BY LINE NUMBER INTO THIS DOCUMENT (round 11).**
 Intra-document references name the section and the rule's own name — "§3.3's **SKIP RULE —
-ALL FOUR cli-SCOPED COMPARISONS**", "§4's **The `PASS` line NAMES SKIPPED UNITS**" — because a file every round
+ALL FOUR cli-SCOPED COMPARISONS**", "§4's **SKIPPED UNITS ARE NAMED ON BOTH PATHS**" — because a file every round
 rewrites reflows underneath its own anchors, and a named rule survives the reflow.
 Re-derived 2026-08-20 at a clean tree: `grep -on '§[0-9][0-9.]*:[0-9]'` over this file
 returned **six** such anchors and **all six resolved to the wrong text**. `§4:667` (twice)
-lands inside §3.3 — round 9 moved §4's **The `PASS` line NAMES SKIPPED UNITS** rule 548 lines and the anchor was carried
+lands inside §3.3 — round 9 moved §4's skipped-units rule (renamed **SKIPPED UNITS ARE NAMED ON BOTH PATHS** in round 13, OP13-1) 548 lines and the anchor was carried
 forward unchanged — and round 10's three `§3.3:71x` anchors were wrong at the commit that
 wrote them (`:710` is the chunk-collision bound, `:724` is "when there is one — answers
 freshness"). All six are repointed by NAME in this round. The check is that command run over the
@@ -25,21 +25,29 @@ first and it failed on its own illustration — a check a counterexample falsifi
 check, and the scope is part of the check.
 
 ⚠️ **A NAME THAT RESOLVES TO NOTHING IS INVISIBLE TO THAT GREP, so the check has TWO MORE
-PASSES (round 12).** The anchor grep guards WHERE a citation points; these guard WHAT it
-names. **Both are scoped below the `## 0.` heading for the reason the anchor grep is** —
+PASSES (round 12), AND A THIRD (round 13, CF13-3).** The anchor grep guards WHERE a
+citation points; these guard WHAT it
+names. **All three are scoped below the `## 0.` heading for the reason the anchor grep is** —
 this guard must quote the failing forms to teach them, and an unscoped pass would then
 report its own illustrations forever, which is the trap round 11 recorded one paragraph
 above. Measured 2026-08-20 before this round, both failed:
 
 ```
 # (1) every finding ID cited anywhere must have a §9 entry
-awk '/^## 0\./,0' <file> | grep -oE '\b(C|CF|CR|O|OP)[0-9]*-?R?[0-9]*-[0-9]+\b' | sort -u | while read -r id; do
+awk '/^## 0\./,0' <file> | grep -oE '\b(C|CF|CR|O|OP)[0-9]*-?R?[0-9]*-([0-9]+|[A-Z])\b' | sort -u | while read -r id; do
   awk '/^## 9\./,0' <file> | grep -qF -- "$id" || echo "DANGLING $id"; done
 
 # (2) every `§N's **NAME**` citation must occur inside that section
 awk '/^## 0\./,0' <file> | grep -oE "§[0-9](\.[0-9])?'s \*\*[^*]+\*\*" | sort -u | while IFS= read -r cite; do
   sec=$(printf '%s' "$cite" | sed -E "s/^§([0-9](\.[0-9])?)'s.*/\1/")
   name=$(printf '%s' "$cite" | sed -E 's/^[^*]*\*\*(.*)\*\*$/\1/')
+    awk -v s="$sec" 'BEGIN{re="^#+ " s "[ .]"} $0 ~ re {inS=1;next} /^#+ [0-9]/{if(inS)exit} inS' <file> \
+    | grep -qF -- "$name" || echo "UNRESOLVED $cite"; done
+
+# (3) every UNBOLDED §N's ALL-CAPS RULE NAME citation must occur inside that section
+awk '/^## 0\./,0' <file> | grep -oE "§[0-9](\.[0-9])?'s [A-Z][A-Z-]+( [A-Z][A-Z-]+)+" | sort -u | while IFS= read -r cite; do
+  sec=$(printf '%s' "$cite" | sed -E "s/^§([0-9](\.[0-9])?)'s.*/\1/")
+  name=$(printf '%s' "$cite" | sed -E "s/^§[0-9](\.[0-9])?'s //")
   awk -v s="$sec" 'BEGIN{re="^#+ " s "[ .]"} $0 ~ re {inS=1;next} /^#+ [0-9]/{if(inS)exit} inS' <file> \
     | grep -qF -- "$name" || echo "UNRESOLVED $cite"; done
 ```
@@ -51,11 +59,66 @@ for §4's PASS-line rule that this guard offered above as its own model and that
 not contain. Both are discharged in this round — §9 gains round 10, round 11 and round 12
 entries, and the four citations are renamed — and both must return **nothing**
 thereafter. **A round that files a new finding ID adds its §9 entry in the SAME round**,
-or pass 1 fails on that round's own body text. ⚠️ **Pass 2's section matcher is `[ .]`,
+or pass 1 fails on that round's own body text. ⚠️ **Pass 1's suffix alternation is
+`([0-9]+|[A-Z])`, and the numeric-only form it was written with could not see round 2's
+entire slate (round 13 — CF13-2, C13-3 and OP13-4, filed independently by all three
+lenses).** ⚠️ **Every figure below is measured against the document ROUND 12 LEFT, named
+by its sha — `git show c18ebff:<file>` — and not against this one, because this round's
+own apply would make any bare count stale in the commit that writes it, which is verbatim
+the defect `CF13-6` files two paragraphs down.** `C-A`, `C-B`, `C-C`, `C-D`, `CF-A`,
+`CF-B`, `O-A`, `O-B` and `O-C` carry no digit, so the first form extracted **82** IDs with
+not one of them letter-suffixed, while **19** such citations were live below `## 0.` —
+**five** of them in the body above §9, at §0's requirement 2 row, §2's `exitCodeFor`
+comment, §5.1's `pretest` paragraph, §8(l) and §8(m), and the other **14** inside §9,
+where they resolve trivially. The pass returned nothing because all nine happen to resolve,
+not because it looked, and a later round filing a tenth letter-suffixed ID and citing it in
+§0 would have passed forever — standing rule 1, on the check itself, in the sibling pass to
+the one this paragraph already records it for. Falsified by mutant rather than by reading:
+strip `C-C`, `CF-A`, `CF-B` and `O-A` from §9 alone on a copy — 0 occurrences left in §9,
+5 citations left in the body — and the numeric-only pass printed **nothing**. The widened
+form extracts **91** IDs there, returns nothing, and prints four `DANGLING` lines on that
+mutant. The population is stated so a later NARROWING is as visible as this one was not.
+⚠️ **The alternation is `[A-Z]`, ONE letter, and deliberately not `[0-9A-Z]+`:** the wider
+form matches exactly the same 91 IDs on that document — re-derived, the two sets are
+identical — and it would also match any hyphenated ALL-CAPS token following `C`, `CF`,
+`CR`, `O` or `OP`, which would `DANGLE` forever. A pass that cannot return nothing is not a
+pass — round 11's own lesson, one screen above, applied to the widening rather than to the
+narrowing. ⚠️ **Pass 2's section matcher is `[ .]`,
 not an escaped dot, and that is not cosmetic**: §3.3's heading is `### 3.3 Declaration
 cache` with no dot, so a dot-anchored form extracts an empty section and reports
 `§3.3's **SKIP RULE — ALL FOUR cli-SCOPED COMPARISONS**` as UNRESOLVED when it resolves —
-standing rule 1, on the check itself. Line citations into OTHER
+standing rule 1, on the check itself. ⚠️ **Pass 2 is NARROWER THAN ITS TITLE IN TWO WAYS,
+and pass 3 is what makes the convention this guard STATES the one it TESTS (round 13,
+CF13-3/OP13-4).** The figures here are measured against the document round 12 left —
+`git show c18ebff:<file>` — for the reason the paragraph above gives. First, pass 2 matches
+the BOLD form only: **5** occurrences below `## 0.` and **8** in the whole file, against
+**272** unbolded `§N`-apostrophe-s references below `## 0.` (278 total, 6 of them bold).
+Falsified by mutant: rename `IMPORT RULE` to `LOAD-TIME RULE` throughout §1 alone and
+pass 2 prints **nothing**, while five §1 citations dangle. Second — found by the
+consolidation step rather than by a lens — **`grep` is LINE-ORIENTED, so a bold citation
+that WRAPS across a newline is invisible to it, and one is live below `## 0.`**: §2's
+`ComparisonCoverage` comment carries the bold `SKIP RULE — ALL FOUR cli-SCOPED
+COMPARISONS` citation of §3.3 split over two comment lines. **The reproducible form of
+that gap is the DIFFERENCE, not a count**, because a count moves with every citation any
+round adds: the `§N`-apostrophe-s-star-star PREFIX must occur below `## 0.` exactly as
+often as the full pattern matches, and today it occurs **one** time more. Re-derive both
+and subtract; a pass reporting nothing cannot show it. ⚠️ **The obvious widening is not a
+check.** Extracting the noun phrase up to the first comma, semicolon, full stop or
+close-paren — `grep -oE "§[0-9](\.[0-9])?'s [^,;.)]+"` — yields **237** distinct citations
+below `## 0.` and **193** UNRESOLVED lines on that UNMODIFIED document, because the greedy
+form swallows the rest of the sentence and a descriptive citation is then looked up as a
+literal. (The finding that proposed it reported 184; re-derived at 193, which is standing
+rule 2 applied to a reviewer's own figure — the conclusion is unchanged and the number is
+now reproducible from the regex beside it.) A pass that cannot return nothing is not a
+pass. So the convention is narrowed to what a machine can resolve, and pass 3 enforces
+exactly that: **a rule NAME cited across sections is written BOLD or in ALL CAPS**; a
+descriptive phrase is not a name and is out of scope by construction. Pass 3 inspects one
+citation on that document, §1's IMPORT RULE, and returns nothing; on the rename mutant
+above it prints `UNRESOLVED`. ⚠️ **Two residuals are stated rather than hidden:** no pass
+sees a citation that names no rule at all, which is how a pointer to §3.2 "precedence" — a
+word §3.2 contains only in order to DENY it — survived twelve rounds in §4 (round 13,
+CF13-4); and no pass sees a bold citation that wraps, until the prefix-versus-full-match
+difference above is re-derived. Line citations into OTHER
 files stay and stay exact — those files are not rewritten by these rounds. §6 already
 guards its row numbers this way ("cited from OUTSIDE this section, so nothing here is
 renumbered casually"); this is the same guard for everything else.
@@ -98,9 +161,24 @@ sequences are named in words rather than quoted here, for two measured reasons: 
 them would make this guard the fifth and sixth instances, and the quoted form of the
 census returns NOTHING under `fish`, which is how a first scan nearly recorded the
 document as free of them — standing rule 1, at the verification of an absence claim.
-Re-derived 2026-08-20 for residual damage of the round-11 class: **2574** lines, every
-`#`-heading occurring once, no duplicated line over 120 characters, and no editor
-directive, placeholder or "see above" standing in as document text. None survives.
+Re-derived 2026-08-20 for residual damage of the round-11 class: every `#`-heading
+occurring once, no duplicated line over 120 characters, and no editor directive,
+placeholder or "see above"/"see below" standing in as document text. ⚠️ **The LINE COUNT
+that stood here is DELETED rather than corrected (round 13, CF13-6/OP13-5), which is
+C11-4's own remedy applied to the baseline of the doubling detector itself.** It read
+**2574** while the very commit publishing it as a re-derivation of "the CURRENT document"
+was **518** lines longer: `git show 46a1d5c:<file> | wc -l` → 2574,
+`git show c18ebff:<file> | wc -l` → 3092. That was the one clause of the four that would
+have caught round 11's own failure mode — a doubling from 2574 to 4499 — and a figure
+every round invalidates cannot be the baseline of the detector for it. The other three
+clauses are scale-free, survive a reflow and carry it alone. If a count is ever restored
+it is written as `git show <sha>:<file> | wc -l` WITH the sha, so a later round can tell a
+stale figure from damage. ⚠️ **And the placeholder clause was FALSE when it was written**:
+§3.3's unit-state reason table gave an existing-but-empty `dist/` the whole reason
+`indistinguishable — see below`, an editor's cross-reference under a §4 rule that prints
+that field to a terminal (round 13, OP13-2). Fixed in this round; the clause now holds,
+and it scans for "see below" as well as "see above" because the surviving instance was the
+one the wording did not name. None survives.
 
 ## 0. Requirement traceability
 
@@ -116,7 +194,7 @@ directive, placeholder or "see above" standing in as document text. None survive
 | 8   | account for `packages/cli/.dts-cache/`                                               | §3.3 `checkDeclarationCache` (cache vs sources) + §3.5 `checkShippedDeclarations` (cache vs the shipped copy) — **both** returning `{ findings, coverage }`, and both reporting coverage `not-run` (§3, printed by §4) when their side of the comparison is absent — or, with nothing absent at all, when `packages/cli` is `unbuilt` and §3.2's suppression rule fires, reason `packages/cli unbuilt` (round 10, C10-1) — for §3.3 that side is `.dts-cache/index.d.ts`, which §3.3's own skip rule makes reachable on a fresh clone: `npm ci` never creates the cache, so that is the state `meta-checks` runs in. Fixture rows 6, 17, 22, 23, 29, §6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 9   | every `tsconfig*.json` a build program hands to a compiler, incl. downward `extends` | §3 input rule 4 + §3.3. Fixture row 3, §6. ⚠️ **Bounded residuals — §8(l) and §8(f)**: discharged for **21 of the 30** tracked `tsconfig*.json` (re-derived 2026-08-20: `git ls-files \| grep -E 'tsconfig.*\.json$' \| wc -l` → 30 — the pipes are ESCAPED, and that is not cosmetic: GFM discards every cell past its header's column count and does not exempt a pipe inside a code span, so until round 12 this row truncated at `git ls-files` and everything after it was in the file and not on the page). `enumerateTsconfigs` returns 27 project dirs + 2 variants = **29 PATHS**, which is the CENSUS POPULATION and never the covered set. Re-derived 2026-08-20 by running §3's rules 3 and 4 over all 30: **21** land in some unit's input set — the 19 unit `tsconfig.json` (rule 3), `tsconfig.base.json` (rule 3's upward chain, length 2 for all 19) and `packages/cli/tsconfig.dts.json` (rule 4) — and **NINE do not**. The nine are the root `tsconfig.json`, which bare `tsc -b` reads (`build` is `tsc -b && …`, `package.json:15`) and which carries no `compilerOptions` — residual **§8(l)** — plus the **8** non-`report` `e2e/*` configs, each declaring `"extends": "../../tsconfig.base.json"` (or `../../../`), which resolves to the root-level base and never INTO a unit, so neither rule reaches them, while `scripts/check-e2e-types.mjs:40` hands each to `npx tsc -p … --noEmit` for exactly `E2E_TYPECHECK_PROJECTS` (`:24-32`, wired as `check:e2e-types`, `package.json:24`) — residual **§8(f)**, bounded because all 8 set `noEmit: true` and emit nothing that can go stale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 10  | wire into `check:all`                                                                | §5 — 15th member, FIRST in the chain, verbatim `npm run check:stale-dist -- --strict`; §6 pins `members[0]` by equality, so neither the position nor the flag can drift. ⚠️ **Bounded residual — §5.1's Honest bound**: npm's pre-hook is NAME-EXACT, so `pretest` reaches `npm test` and nothing else. Re-derived 2026-08-20 (npm 11.16.0): four sibling scripts bypass it — `test:watch` (`package.json:20`, `vitest`), `test:live` (`:21`), `test:e2e` (`:22`) and `test:e2e:release-evidence` (`:23`) — plus `npx vitest`, so the measured bypass set is **five**, not the one §5.1 named for twelve rounds; and `test:watch` is the vitest WATCH loop, the founding incident's own context. "Trigger's real reach stated" is the claim; §5.1 is where it is now measured                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| 11  | call `scripts/repo-census.mjs` rather than re-deriving                               | §2 — imports `enumerateRootReferences` + `enumerateTsconfigs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 11  | call `scripts/repo-census.mjs` rather than re-deriving                               | §2 — `units.mjs` imports `enumerateRootReferences` + `enumerateTsconfigs` from `scripts/repo-census.mjs`. ⚠️ **That is §1's SECOND repo-internal import, and §1 counted "exactly one" for thirteen rounds (round 13, CF13-1)**: an implementer who honours that count discharges this row only by re-deriving the unit list inside `units.mjs`, which is verbatim what this requirement forbids, and passes every §6 row, because nothing in §6 reads the import list of `units.mjs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## 1. Shape and placement
 
@@ -132,8 +210,20 @@ directive, placeholder or "see above" standing in as document text. None survive
 - Its colocated tests run under `npm test` via the `scripts` vitest project
   (`vitest.config.ts:84`, `test: { root: "scripts", name: "scripts" }`).
 
-Node builtins only, plus **exactly one** repo-internal import: `scripts/bundle-cli.mjs`,
-for its `PLUGIN_ASSET_ENTRIES` (§3.3's clause 1, §3.4's source side). ⚠️ **That import is
+Node builtins, plus **exactly TWO** repo-internal imports — and the second one IS
+requirement 11 (round 13, CF13-1). `units.mjs` imports `enumerateRootReferences` and
+`enumerateTsconfigs` from `scripts/repo-census.mjs` (§0's requirement 11 row, §2), and
+`walk.mjs` imports `PLUGIN_ASSET_ENTRIES` from `scripts/bundle-cli.mjs` (§3.3's clause 1,
+§3.4's source side). ⚠️ **Only the second one costs anything, and that is a MEASURED FACT
+about `repo-census.mjs` rather than a property of it:** re-derived 2026-08-20,
+`grep -n "^import" scripts/repo-census.mjs` returns `node:fs`, `node:path`,
+`node:child_process` and `node:url` — builtins only — so the requirement-11 import
+resolves nothing outside node and §8(n)'s bound covers `bundle-cli.mjs` alone. Should
+`repo-census.mjs` ever take a dependency, §8(n) is the residual that widens, and this
+sentence is the only thing in the design pointing at it. The design said "exactly one"
+for thirteen rounds; an implementer who followed it literally satisfied it by re-deriving
+the unit list in `units.mjs` — verbatim what requirement 11 forbids — and passed every §6
+row, because no battery row or wiring assertion reads the import list of `units.mjs`. ⚠️ **That import is
 not free, and the flat "dependency-free" claim does not survive it (round 10, C10-2):**
 `bundle-cli.mjs:59` is `import { build } from "esbuild"`, so importing the module resolves
 `esbuild` at load time. Re-derived 2026-08-20: `esbuild` is a root **devDependency**
@@ -163,7 +253,9 @@ dynamic entry the throw lands in the catch and §4's row holds: `WARN`/exit 0 by
 `ERROR`/exit **2** under `--strict`. Stated as residual §8(n), pinned by §6 row 31, and its
 reachability is wider than `--omit=dev`: any incomplete or pruned `node_modules`, and any
 load-time throw anywhere in the six-module graph, lands in the same uncatchable window. ℹ️ The alternative that
-keeps a builtins-only import graph is to move the const into a builtins-only
+keeps `esbuild` out of the graph — never "a builtins-only import graph", which was
+already false of the requirement-11 import above (round 13, CF13-1) — is to move the
+const into a builtins-only
 `scripts/plugin-assets.mjs` that BOTH files import; it costs one more file and one more §6
 assertion (that `bundle-cli.mjs` still imports it, so the bundler cannot fork its own
 list) and needs no entry-point guard.
@@ -174,8 +266,8 @@ list) and needs no entry-point guard.
 | `scripts/stale-dist/units.mjs`      | ~150         | build-unit enumeration and per-unit input/output sets                                                                                                                                                                                                        |
 | `scripts/stale-dist/walk.mjs`       | ~95          | mtime walk primitives, `sameBytes`, and the output/input classifiers                                                                                                                                                                                         |
 | `scripts/stale-dist/compare.mjs`    | ~250         | the SIX comparisons — the FOUR cli-scoped ones (§3.2, §3.3, §3.4, §3.5) return `{ findings, coverage }`, the other two (`checkUnitFreshness`, `checkOrphans`) `Finding[]` — plus `unitState` (§3.3's three-way reason table) and the `checkStaleDist` driver |
-| `scripts/stale-dist/report.mjs`     | ~115         | findings **and coverage** → text/JSON, and the exit code; §4's coverage line prints on BOTH paths; **plus §4's ordered REMEDY PLAN** — the block `formatFindings` computes from the finding-KIND set with §4's three carve-outs applied, which had no owner, no shape and no assertion for twelve rounds (round 12, OP12-4), so an implementer printing the per-kind remedies beside each grouped block passed every row and handed the operator exactly the unordered list §4 measures as harmful; plus `formatInternalError` — the `WARN`/`ERROR` line §4's internal-error row prints, or the JSON error object under `--json` (round 12, C11-5), the one output this check writes that no `result` produces                                                                                                                                                            |
-| `scripts/check-stale-dist.test.mjs` | ~620         | colocated suite (§6) — **34** battery rows, the false-negative battery, the mutant-proved wiring assertions and the live smoke test                                                                                                                                                                                                                                         |
+| `scripts/stale-dist/report.mjs`     | ~115         | findings **and coverage** → text/JSON, and the exit code; §4's coverage line prints on BOTH paths, **and so does the units-compared/skipped summary** — the `PASS` line's own slot where there is one, its own line after the grouped findings where there is not (round 13, OP13-1); **the grouped `×N` collapse covers the FOUR delta-carrying kinds only**, while the four kinds whose §4 line carries per-finding text print one line each (round 13, OP13-3); **plus §4's ordered REMEDY PLAN** — the block `formatFindings` computes from the finding-KIND set with §4's three carve-outs applied, which had no owner, no shape and no assertion for twelve rounds (round 12, OP12-4), so an implementer printing the per-kind remedies beside each grouped block passed every row and handed the operator exactly the unordered list §4 measures as harmful; plus `formatInternalError` — the `WARN`/`ERROR` line §4's internal-error row prints, or the JSON error object under `--json` (round 12, C11-5), the one output this check writes that no `result` produces                                                                                                                                                            |
+| `scripts/check-stale-dist.test.mjs` | ~620         | colocated suite (§6) — **36** battery rows, the false-negative battery, the mutant-proved wiring assertions and the live smoke test                                                                                                                                                                                                                                         |
 
 ⚠️ **THREE EXISTING FILES MUST ALSO CHANGE. The first two were a round-8 fix; `package.json` is round 9's (CF9-3).** The first two were specified only in §3.2's prose for two rounds, and `package.json`'s three edits have lived only in §5/§5.1 for nine — so an implementer could build all six new files, pass every battery row and the wiring test, and still leave requirement 3's comparison **permanently muted**, or chain the check last and non-strict so it blocks nothing — the vacuity class this whole change set exists for.
 Round 7 filed that as `CF-3` and the disposition did not reach this table; caught by
@@ -222,9 +314,18 @@ export const PRODUCER_INPUTS                                       // build prog
 // unimplementable at BOTH ends (round 9, C9-1): if no field on Unit carries a `dist`
 // fact, then `unitState` is the function that reads them, and it is NOT pure over its
 // argument. It stats `<unit>/dist` through `walk.mjs` and, for `packages/cli` only,
-// calls `cliArtifactGaps(cwd)`. PRESENCE facts, not mtimes — round 9 moved completeness
-// off the marker onto §3.3's artifact set, so nothing here needs a timestamp the
-// struct would otherwise have to carry.
+// calls `readMetafile(cwd)` and then `cliArtifactGaps(cwd, metafile)` — the TWO-argument
+// form declared below, which round 12's C11-6 introduced without reaching this caller
+// (round 13, C13-1). ⚠️ **NOT presence facts alone, and this line said so for four
+// rounds.** Round 9 moved completeness off the marker onto §3.3's artifact set, so
+// clauses 1 and 3 need no timestamp — but clause 2 compares TWO mtimes, the marker's
+// against the newest member of §3's filtered output set, and `unitState` is what
+// evaluates it. So the outcome list below has THREE branches, not two, and §3.3's cli
+// reason table has a row for the third. `readMetafile` is called HERE rather than passed
+// in, so that no signature in this section changes arity — `unitState(unit)` is cited in
+// that exact form by §3's Skip rule and by §6 row 15. Stated cost: the marker is parsed
+// twice per run, once here and once by `checkStaleDist` for `checkBundleFreshness`;
+// `readMetafile` never throws (below), so the second read adds no error path.
 
 // walk.mjs
 export function newestUnder(dir, accept)             -> { path, mtimeMs } | undefined
@@ -285,11 +386,17 @@ export function checkStaleDist(cwd)                  -> { findings, states, cove
 //   states: { unit, state, reason }[] — ONE entry per enumerated unit, from unitState().
 //   ONE container for the three-way verdict: a `units` array beside a `skipped` array
 //   is the same collapse in a different shape, and neither carried the `reason` §4's
-//   PASS line prints (`1 skipped (packages/cli: no dist/)`, §4). Both PASS-line counts
-//   are filters over this one array, and `units` is recoverable as states.map(s => s.unit).
+//   PASS line prints (`1 skipped (packages/cli: no dist/)`, §4). Both counts are filters
+//   over this one array, and `units` is recoverable as states.map(s => s.unit). The SAME
+//   two filters feed the findings path's units-compared/skipped summary (§4, round 13,
+//   OP13-1), so this array has THREE human consumers and not two — `--json` is not the
+//   only surface on which a skipped unit survives a run that reports findings.
 //   `coverage` is separate and stays: it is about the FOUR cli-scoped COMPARISONS
 //   (§3.2, §3.3, §3.4, §3.5), never about unit state.
-export function unitState(unit)                      -> { state, reason }  // the §3.3 reason table
+export function unitState(unit)                      -> { state, reason }  // §3.3's reason tables AND, for
+//   `packages/cli`, that section's three-clause conjunction — the cli table alone admitted
+//   no clause-2 state until round 13 (C13-1), so naming one table as the sole authority is
+//   what let the missing row stand for eleven rounds
 
 // `cliArtifactGaps` returns the required `packages/cli` artifacts that are ABSENT —
 // the esbuild chunk SET, dist/bin.js, dist/index.js, dist/bin/supervisord.js,
@@ -307,6 +414,22 @@ export function unitState(unit)                      -> { state, reason }  // th
 //                                        picks it (§4, §6 rows 30 and 32)
 //   gaps.length === 0 && no metafile  -> `bundle-provenance-missing`, unit stays
 //                                        `compared`; a FINDING, never a skip.
+//   gaps.length === 0 && a metafile OLDER than the newest §3-filtered output
+//                                     -> `unbuilt`, the offending file named, carrying
+//                                        §3.3's clause-2 reason. ⚠️ **THIS THIRD BRANCH
+//                                        WAS MISSING (round 13, C13-1).** With only the
+//                                        two above, an implementer returns `compared` on
+//                                        §6 row 19's own fixture, every comparison then
+//                                        runs clean, and the check prints PASS, exit 0
+//                                        even under `--strict`, on a `packages/cli` whose
+//                                        `bin.js` is tsc per-file output importing
+//                                        `@crabgic/*`. It does NOT collapse the two cli
+//                                        kinds and CF9-2 stays closed: the marker is
+//                                        still not a member of the artifact set, so a
+//                                        marker-LESS tree is `compared` plus the
+//                                        advisory, never `unbuilt` for want of a marker.
+//                                        A marker that EXISTS and is stale is a different
+//                                        fact from one that is absent.
 
 // unitState().state ∈ "compared" | "unbuilt" | "skipped" — three values, never a
 // boolean, and never a field on Unit. A `built: boolean` cannot separate the three
@@ -354,9 +477,12 @@ export function unitState(unit)                      -> { state, reason }  // th
 // run, and it cannot carry the REASON §4's coverage line prints — which is the whole of
 // the argument now that `reduced` is gone and the enum is two-valued (round 10).
 // Round 9, O9-1.
-// `skipped` stays UNIT-scoped: it is §4's PASS-line slot and a `states` entry above,
-// never a coverage entry — naming skipped UNITS and not skipped COMPARISONS is the
-// same defect one level up.
+// `skipped` stays UNIT-scoped: it is a `states` entry above and §4's
+// units-compared/skipped summary — the `PASS` line's own slot where there is a `PASS`
+// line, a line of its own after the grouped findings where there is not (round 13,
+// OP13-1) — never a coverage entry. Naming skipped UNITS and not skipped COMPARISONS is
+// the same defect one level up; naming them on ONE of the two paths is that same defect
+// again, at the surface round 5 built to close it.
 
 // Finding = { kind, unit, remedy, newerInput?, olderOutput?, deltaMs?, reason? }
 //   the three comparison fields are OPTIONAL — §4 names FOUR kinds with no delta
@@ -377,8 +503,17 @@ export function unitState(unit)                      -> { state, reason }  // th
 // report.mjs
 export const ADVISORY_KINDS = new Set(["bundle-provenance-missing"])  // §4 exit table
 export function formatFindings(result, { json })     -> string
-//   Renders the PASS line, the grouped finding lines, **§4's ordered REMEDY PLAN** and
-//   the coverage line — in that order, which §4's prefix rule fixes. The plan is a pure
+//   Renders the PASS line, the grouped finding lines, the units-compared/skipped
+//   summary, **§4's ordered REMEDY PLAN** and the coverage line — in that order, which
+//   §4's prefix rule fixes. ⚠️ **The skipped summary prints on BOTH paths (round 13,
+//   OP13-1):** the `PASS` line carries it in its slot, and where there is no `PASS` line
+//   — every run holding a non-advisory finding — it is a line of its own, with
+//   `unitState()`'s reasons verbatim. ⚠️ **Grouping is per KIND and NOT uniform
+//   (round 13, OP13-3):** `stale-unit`, `stale-bundle`, `stale-declarations` and
+//   `stale-plugin-assets` collapse to `<kind> ×N — <units>`; `unbuilt`, `orphan-output`,
+//   `bundle-provenance-missing` and `stale-shipped-declarations` carry per-finding text
+//   in their §4 line and print one line EACH, whatever N is — the same four kinds §2
+//   names delta-less, for the same reason. The plan is a pure
 //   function of the finding-KIND set with §4's three carve-outs applied, NOT a per-kind
 //   remedy printed beside each grouped block, which is the unordered list §4 measures as
 //   harmful. It prints whenever the run reports at least ONE finding, because §4's own
@@ -423,8 +558,13 @@ Everything is pure over its arguments except `newestUnder`/`newestOfEntries`/`st
 metadata; §3.5 states why that single artifact needs it, and why it is not the content
 oracle §7 row 1 rejects.
 
-**No `git` spawn.** `units.mjs` imports only `enumerateRootReferences` and
-`enumerateTsconfigs` from `scripts/repo-census.mjs`; `enumerateGit` is the one that
+**No `git` spawn — and this is the design's FIRST repo-internal import, which §1 did not
+count for thirteen rounds (round 13, CF13-1).** `units.mjs` imports only
+`enumerateRootReferences` and `enumerateTsconfigs` from `scripts/repo-census.mjs`, whose
+own import list is `node:fs`, `node:path`, `node:child_process` and `node:url` — builtins
+only, re-derived 2026-08-20 with `grep -n "^import" scripts/repo-census.mjs`, which is
+what keeps this import out of §8(n) and is a fact about today's file rather than a
+property of it; `enumerateGit` is the one that
 spawns and is not imported. A future revision that needs git must go through the same
 module's `censusGitEnv()`, which already scrubs `GIT_LOCATION_ENV_VARS`.
 
@@ -443,13 +583,13 @@ All 19 are uniform today — `extends: ../../tsconfig.base.json`, `rootDir: ./sr
 `outDir: ./dist`, `include: ["src"]`, `composite: true` — but the design READS these
 per unit rather than assuming them.
 
-**Skip rule.** A unit's state is `unitState(unit)`'s — `compared`, `unbuilt` or `skipped`, from the reason table in §3.3 — **never from directory existence alone, and never a boolean (§2)**. What each state DOES is stated here, because 'which comparisons run' is the thing `built ? compare : skip` gets wrong:
+**Skip rule.** A unit's state is `unitState(unit)`'s — `compared`, `unbuilt` or `skipped`, from the reason tables in §3.3 **together with, for `packages/cli`, that section's three-clause conjunction, which its cli reason table's rows must cover between them** (round 13, C13-1: for eleven rounds they did not, and this bullet and §2 both cited one table as sole authority, so the state clause 2 exists for had no verdict anywhere an implementer reads) — **never from directory existence alone, and never a boolean (§2)**. What each state DOES is stated here, because 'which comparisons run' is the thing `built ? compare : skip` gets wrong:
 
 | state      | per-unit comparisons run              | reported as                                        |
 | ---------- | ------------------------------------- | -------------------------------------------------- |
 | `compared` | `checkUnitFreshness` + `checkOrphans` | findings, if any                                   |
 | `unbuilt`  | neither — the absence IS the finding  | one `unbuilt` finding carrying its `reason`        |
-| `skipped`  | neither                               | no finding; named with its `reason` in §4's `PASS` |
+| `skipped`  | neither                               | no finding; named with its `reason` in §4's skipped summary, on BOTH paths |
 
 This bullet read "a unit whose `dist/` does not exist is `skipped`, never stale" for seven rounds while the rule that consumes it moved four times, 220 lines away in a section headed _Declaration cache_ (round 8). The research rationale it cited still holds for the genuinely-absent case (research
 Q5: a fresh clone must not be noisy).
@@ -575,8 +715,14 @@ suppresses all four with nothing absent to name, the mandated `packages/cli unbu
 the PASS path and the findings path**. A comparison that did not run is never absorbed
 into `clean`, exactly as `unbuilt` is never folded into `clean` (§3.3).
 `checkUnitFreshness` and `checkOrphans` emit no coverage entry: theirs is the unit
-table, already printed in the PASS line's units-compared/skipped slot, and printing
-that fact twice is the failure mode on the other side of this rule.
+table, already printed in the units-compared/skipped summary §4 renders on BOTH paths —
+the `PASS` line's own slot where there is a `PASS` line, a line of its own after the
+grouped findings where there is not (§4's **SKIPPED UNITS ARE NAMED ON BOTH PATHS**) —
+and printing that fact twice is the failure mode on the other side of this rule.
+⚠️ **Round 13 (OP13-1): this bullet justified the missing coverage entry by a slot the
+findings path did not print**, so on every run holding a non-advisory finding the unit
+table reached the operator nowhere at all — the O9-1 defect one level over, produced by
+O9-1's own fix.
 
 ### 3.1 Orphan outputs — requirement 2
 
@@ -625,7 +771,12 @@ entirely before re-copying — re-derived 2026-08-20 at `:113`, where `KEEP` is
 
 **The orphan comparison therefore emits no coverage entry of its own** (§3).
 `packages/cli` is exempt by construction, and any other unit it could not check is
-`skipped` or `unbuilt` — already named in the PASS line's skipped slot or as a finding.
+`skipped` or `unbuilt` — already named as a finding, or in the units-compared/skipped
+summary §4 prints on BOTH paths (§4's **SKIPPED UNITS ARE NAMED ON BOTH PATHS**).
+⚠️ **Round 13 (OP13-1): this read "the PASS line's skipped slot", and the run that
+carries a `skipped` unit BESIDE a finding prints no `PASS` line at all** — §3's coverage
+bullet carried the same half-truth, and standing rule 9 is why both are fixed in one
+round rather than one.
 An implementer who adds a FIFTH entry here prints the same fact twice; one who reads
 §3's "six comparisons" and expects six coverage entries prints a blank. Four entries,
 never six: `checkUnitFreshness` and `checkOrphans` are the two comparisons without one,
@@ -746,9 +897,10 @@ find out is to run the check the shape implies. Three properties then make it th
   design ever prints, `rm -rf packages/cli/dist`, does NOT clear it, because `.bundle-meta/`
   is a SIBLING of `dist` (§3.3's opening sentence, C8-2's own fact) — after round 10 the only non-`full`
   status this design produces anywhere, the unreachable `reduced` having been deleted
-  (§2, §3.2's Rule), so the "two states must not share one word" caution is moot. ⚠️ **NO precedence
+  (§2, §3.2's Rule), so the "two states must not share one word" caution is moot. ⚠️ **DISJOINTNESS RULE — NO precedence
   rule, because the two kinds are DISJOINT (round 9, C9-3/O9-2 and CF9-2, replacing
-  round 8's):** the marker is not a member of §3.3's artifact set, so a `dist` with a
+  round 8's; NAMED in round 13, CF13-4, so that a citation to it resolves under the
+  preamble's pass 3 rather than resolving to the one word this rule exists to deny):** the marker is not a member of §3.3's artifact set, so a `dist` with a
   gap is `unbuilt` whatever the marker says, and a `dist` with no gaps and no marker is
   `bundle-provenance-missing` on a unit that stays `compared` — a **finding**, never a
   skip, so a marker-less tree is never a bare PASS and requirement 3 is not muted while
@@ -919,7 +1071,10 @@ tool that carries the fix is the tool that did not run.
    chunk-pattern-matching entries of `metafile.outputs`**: `result.metafile` already names
    every file esbuild emitted, it is the artifact §1 writes, and §3.2 already reads it — so
    clause 1 checks the exact chunk set the bundle produced, and `cliArtifactGaps` takes the
-   metafile as an argument (§2). ⚠️ **This is a READ, never a MEMBERSHIP, and the
+   metafile as an argument (§2). **§6 row 33 is the non-vacuity row**, in the shape §4
+   already uses for rows 32 and 34 — added round 13 (CF13-5), because §6's own registry
+   asserted this citation existed while `grep -n "row 33"` returned nothing anywhere in
+   the file. ⚠️ **This is a READ, never a MEMBERSHIP, and the
    distinction is what keeps CF9-2 closed:** a marker-less tree is still `compared` plus
    the advisory `bundle-provenance-missing`, never `unbuilt` for want of a marker, and the
    rule can only ever NARROW clause 1. When the marker is **ABSENT** the clause keeps "at
@@ -1048,10 +1203,10 @@ the directory, so after `npm run build:clean` all 19 units hold zero entries, ze
 non-excluded entries, and compare clean against `undefined`. That is verbatim the state
 round 3 filed `CR-2` for. The rule is therefore:
 
-| what `dist` holds                          | verdict                                                                | why                                                                                                                                                                                                 |
+| what `dist` holds                          | verdict                                                                | the `reason` §4 prints VERBATIM where there is one, then why                                                                                                                                        |
 | ------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| nothing at all                             | **`skipped`**                                                          | indistinguishable — see below                                                                                                                                                                       |
-| only `.tsbuildinfo`                        | `unbuilt`                                                              | `.tsbuildinfo` is positive proof the unit WAS built                                                                                                                                                 |
+| nothing at all                             | **`skipped`**                                                          | `dist/ exists but is empty — a --clean, a test's mkdir, or a manual delete; nothing here proves a build ever ran`. ⚠️ **Round 13 (OP13-2): this cell read `indistinguishable — see below`** — an editor's cross-reference standing in as the operator-facing string, under a §4 rule that prints this field verbatim and a §6 row that forbids the reporter inventing one, so the one `skipped` state the design could not spell was the one it sent to a terminal. The indistinguishability argument is §8(h)'s and lives in the prose beneath this table, never in the cell |
+| only `.tsbuildinfo`                        | `unbuilt`                                                              | `dist/ holds only .tsbuildinfo — outputs were deleted without it` — §4's generic `unbuilt` reason, stated here because §4 prints it verbatim and `.tsbuildinfo` is positive proof the unit WAS built |
 | only `eo-*-fixture-*` scratch              | `skipped`                                                              | a test `mkdir`ed it; nothing was ever built here                                                                                                                                                    |
 | any real output, unit ≠ `packages/cli`     | compared                                                               |                                                                                                                                                                                                     |
 | any real output, unit **= `packages/cli`** | `compared` only if clauses 1-3 above all hold; otherwise **`unbuilt`** | round 9: 'any real output → compared' is the row that let a `tsc -b`-only tree compare clean. The three entry outputs ARE real output, and they are exactly what an interrupted build leaves behind |
@@ -1065,7 +1220,8 @@ cases above are untouched:
 | every tsc-written member absent — the three entry outputs, `dist/index.d.ts` AND `.tsbuildinfo` — while ≥1 esbuild chunk survives | `unbuilt`, gaps named, reason `tsc -b --clean removed the compiler outputs from a completed bundle` | the `--clean` SIGNATURE, and it is not `bundle:cli` failing (round 12, C11-3). ⚠️ **Standing rule 8, at the site of this fix:** keying on `.tsbuildinfo` absence ALONE would misfire on a standalone `npm run bundle:cli` against a fresh clone, which also has none — so the predicate is the conjunction. No `bundle-cli.mjs` failure class produces it: the wipe at `:113-119` removes the chunks FIRST, and `build()` at `:121` writes the entries before anything downstream can throw, so a surviving chunk with no entries can only be `tsc -b --clean` |
 | any other member of the §3.3 artifact set missing         | `unbuilt`, gaps named, reason `bundle:cli did not finish` | a step of `bundle-cli.mjs` did not run                        |
 | every member present, `.bundle-meta/metafile.json` absent | `compared` **plus** `bundle-provenance-missing` | the bundle is fine, the check is degraded — §3.2, and day one |
-| every member present, marker present                      | `compared`, bundle comparison runs              | the whole sequence ran and named its own inputs               |
+| every member present, marker present and NOT OLDER than the newest §3-filtered output | `compared`, bundle comparison runs | the whole sequence ran and named its own inputs |
+| every member present, marker present but OLDER than the newest §3-filtered output | `unbuilt`, the offending file named, reason `dist/<file> (<mtime>) is NEWER than the last completed bundle (.bundle-meta/metafile.json, <mtime>); tsc -b has overwritten the bundled output` | **clause 2** — `tsc -b` re-emitted over a completed bundle. ⚠️ **This row is round 13's (C13-1), and its absence was the founding failure's NINTH appearance, at the clause added to close its seventh.** The table partitioned on (members present) × (marker PRESENT) only, so §6 row 19's own end state landed on the row above and read `compared`; every comparison then ran clean — `bundleAt` is the min chunk mtime and is unchanged, §3.2's three input sides are unchanged, `checkUnitFreshness` sees a FUTURE output, §3.4 and §3.5 are untouched — and the check printed **PASS, exit 0 even under `--strict`** on the tree this section's own stated-cost paragraph calls one that "cannot publish and cannot run its own `bin.crabgic`" (§7 row 2's). An implementer following the three-clause conjunction FAILED §6 rows 19 and 26; one following this table PASSED them holding a state it does not admit — round 7's `CF-1` shape, at the clause round 9 introduced |
 
 ⚠️ **The empty case is `skipped`, not `unbuilt`, and that is a residual limit rather than a preference (round 8).** Round 7 made it `unbuilt` on the reasoning "it was built once and the outputs are gone". But both journal fixture families call `mkdir(SCRATCH_ROOT, { recursive: true })` and then `rm(dir, …)` — **the mkdtemp directory, not the root** (`crash-fixtures/prepare-runtime.ts:131`, `lease-fixtures/prepare-runtime.ts:110`). So on a fresh clone one `npm test` leaves `packages/journal/dist` **empty**, and the next `pretest` would report `unbuilt` on a tree nobody has ever built — CR6-2, re-opened by the fix that replaced CR6-2's fix.
 
@@ -1126,7 +1282,7 @@ C10-3), not a skip and not a throw,
 or the kind can never fire — and with the same consequence: coverage `not-run`, reason
 `packages/cli/.dts-cache/index.d.ts absent` or `packages/cli/dist absent`, printed by
 §4. "Exactly as a unit with no `dist` does" only becomes true once comparisons are
-named in the output the way skipped units already are (§4's **The `PASS` line NAMES SKIPPED UNITS**). Report
+named in the output the way skipped units already are on BOTH paths (§4's **SKIPPED UNITS ARE NAMED ON BOTH PATHS**; the unit side became true on the findings path only in round 13, OP13-1). Report
 `stale-declarations` when the newest of
 
 - every `*.ts` under every `packages/*/src` (the set `bundle-types.mjs:43-61` walks),
@@ -1263,7 +1419,16 @@ not a state §3.5 can observe (round 10):** the same `tsc -b` emit also writes
 and `declarationMap`, and no config sets `emitDeclarationOnly` or `noEmit` for
 `packages/cli` (measured 2026-08-20) — and §3's filtered output set INCLUDES both, so
 clause 2 makes `packages/cli` `unbuilt` and this comparison does not run; §7 row 4 is
-row 2's scenario. What keys the rule on bytes on a tree that is actually `compared` is the
+row 2's scenario — ⚠️ **but ONLY while the marker EXISTS, and this sentence said it
+unconditionally (round 13, C13-2).** Clause 2's predicate is "**if** the marker exists", so
+on every tree until the first build after this lands — measured 2026-08-20, `.bundle-meta/`
+absent on a complete `dist` — the barrel emit leaves `packages/cli` **`compared`** and THIS
+comparison is what fires, NON-advisory, at exit **1** under `--strict`, with
+`.dts-cache/index.d.ts` present (**230,199** bytes, measured) and the shipped copy now
+tsc's. That is §8(i)'s already-stated "the common case IS caught — but by §3.5, whose
+stated purpose is different"; §4's line for this kind carries the cause-neutral wording
+that branch forced, and §6 row 22's twin pins it.
+What keys the rule on bytes on a tree that is actually `compared` is the
 pair §3.5 still has to separate: the recipe's **step-3-only** state (`bundle:types
 --force` then stop, which writes only `.dts-cache/index.d.ts` and moves no output mtime),
 where the cache is newer and the shipped copy is stale, and a `--force` regeneration
@@ -1285,7 +1450,9 @@ the baseline already exists and is already checked: `.dts-cache/index.d.ts` is �
 subject. The two comparisons chain — sources → cache (§3.3, mtime) → shipped copy (§3.5,
 bytes) — and neither introduces a new artifact.
 
-**Skip, coverage and precedence.** Absent EITHER file → `skipped`; never a throw, never a
+**Skip, coverage and SUPPRESSION** — not "precedence", which §3.2 and §3.3 both abolished
+in round 9, so every surviving occurrence of that word in §0-§8 must be a NEGATION (round
+13, CF13-4). Absent EITHER file → `skipped`; never a throw, never a
 finding — and, as §3.3's **SKIP RULE — ALL FOUR cli-SCOPED COMPARISONS** requires of all four, never an early
 `return []`. `skipped` here IS a coverage entry: this comparison returns
 `{ findings, coverage }` (§2), `full` when both files existed and were compared, and
@@ -1337,7 +1504,7 @@ the six plugin entries), the line is:
 check-stale-dist: ⚠️ coverage: bundle freshness not run (.bundle-meta/metafile.json absent)
 ```
 
-- it prints **after the PASS line and after the findings list** — both paths, never one;
+- it prints **LAST — after the PASS line, the findings list, the units-compared/skipped summary and the remedy plan** — both paths, never one; the summary carries this bullet's own rule as of round 13 (OP13-1), and the prefix rule below stays authoritative for the full order;
 - it lists only entries whose status is not `full`, so a fully covered run prints nothing extra;
 - `--json` carries `coverage` verbatim from `checkStaleDist`'s return, so the machine path cannot drift from the text path;
 - it carries **no remedy**: the table below is keyed by finding KIND and a coverage entry is not a finding. It names what the check could not see.
@@ -1361,13 +1528,19 @@ own cited precedent, and the third time this change set has copied part of a sha
 (`CF8-1`, `CF9-4`).
 
 **RULE: every top-level line this check writes to stdout or stderr begins
-`check-stale-dist: `** — the `PASS` line, every finding line, every grouped `×N` line, the
+`check-stale-dist: `** — the `PASS` line, every finding line, every grouped `×N` line, **the
+units-compared/skipped summary on the findings path** (round 13, OP13-1), the
 **the ordered REMEDY PLAN's first line** (its steps are indented
 continuation lines, which the sentence below exempts), the
 coverage line, and the `WARN`/`ERROR` internal-error lines. Their ORDER is fixed here too,
 because "which line lands where" is the other half of a rule an implementer can satisfy and
 still print an unreadable page: the `PASS` line when there is one, then the grouped finding
-lines, then the remedy plan, then the coverage line. The shapes given in the rest
+lines, then — where there was no `PASS` line — the units-compared/skipped summary, then the
+remedy plan, then the coverage line. ⚠️ **The summary is EXACTLY ONE of those two
+positions, never both and never neither**: a run either earns a `PASS` line, which carries
+it in its own slot, or it does not, and then it is a line of its own. "when there is one"
+is what made the skipped units invisible for thirteen rounds on the only path an operator
+reads because something is already wrong. The shapes given in the rest
 of this section are the text that FOLLOWS the prefix. Continuation lines indented under a
 prefixed line do not repeat it (`check-marketplace-pin-digest.mjs:377-379`'s shape).
 `--json` is unaffected — and it is unaffected on EVERY path, the internal-error one included: `formatInternalError` takes `json` and emits the object stated with that row below, never a prefixed human line (round 12, C11-5).
@@ -1405,12 +1578,29 @@ optional and each kind states its own line:
 
 - `unbuilt <unit> — <reason>`, printing `unitState()`'s reason verbatim. Today the only generic reason is `dist/ holds only .tsbuildinfo — outputs were deleted without it`. The sentence is not hard-coded here: the rule behind it changed in four of nine rounds and the line was twice left asserting what the previous rule meant (round 7's OP-2).
 - `stale-shipped-declarations packages/cli — dist/index.d.ts does not match
-.dts-cache/index.d.ts (<a> vs <b> bytes); the cached declarations were never copied in`
-- `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json absent; the bundle comparison did not run (advisory: does not fail --strict)`, and its twin for the unreadable case, `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json unreadable; the bundle comparison did not run (advisory: does not fail --strict)` (round 10, C10-3: `absent` is false there, and this line is the only place the operator learns that `npm run build` — never `rm -rf packages/cli/dist`, which leaves the sibling `.bundle-meta/` untouched — is what clears it) — **round 9**: this is the
+.dts-cache/index.d.ts (<a> vs <b> bytes); the shipped copy is not the current cache` —
+  ⚠️ **cause-NEUTRAL since round 13 (C13-2).** It read "the cached declarations were
+  never copied in", which is FALSE in the branch §3.5 and §7 row 4 now name: with the
+  marker absent, `tsc -b` writes its own barrel OVER a copy that WAS made, and the line
+  told the operator the opposite of what happened. A wrong diagnosis is the OP-2 failure
+  this section files two bullets below its own line list, and a wrong diagnosis is what
+  the founding incident WAS. Both causes share one remedy (`npm run bundle:cli`, the
+  table below), so the line states the OBSERVATION and the table states the fix.
+- `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json absent; the bundle comparison did not run (advisory: does not fail --strict)`, and its twin for the unreadable case, `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json unreadable; the bundle comparison did not run (advisory: does not fail --strict)` (round 10, C10-3: `absent` is false there, and this line is the only place the operator learns that `npm run build` — never `rm -rf packages/cli/dist`, which leaves the sibling `.bundle-meta/` untouched — is what clears it). ⚠️ **That is the FINDING form, and it fires only on a unit that is
+  otherwise `compared` — §3.2's DISJOINTNESS RULE, NEVER a precedence rule (round 13,
+  CF13-4).** §3.2 and §3.3 both abolished precedence in round 9 and now state the
+  opposite in terms ("NO precedence rule, because the two kinds are DISJOINT"; "disjoint
+  by construction and need no precedence rule"), so this section cited a rule its two
+  authoritative sections explicitly DENY, and an implementer sent to §3.2 for it finds
+  the denial and cannot tell which section is current. The rule this line actually rests
+  on where the coverage entry is concerned is §3.2's `unbuilt` suppression (round 10,
+  C10-1). The coverage entry for the same comparison fires in **every** not-run case,
+  including the ones that suppression or the skip rule silence, so both can print on one
+  run and neither is redundant. **Round 9** settled the rest: this is the
   permanent, stateless reading. The check holds no state, so it cannot say "until the first
   build after adoption"; it prints the same line on a pre-adoption tree and on a build
   interrupted between `bundle-cli.mjs:178` and `:181`, because those two trees are identical
-  on disk. It never implies `unbuilt`, and its remedy never deletes `dist`. — the FINDING form, which fires only on a unit that is otherwise `compared` (§3.2 precedence). The coverage entry for the same comparison fires in **every** not-run case, including the ones precedence or the skip rule silence, so both can print on one run and neither is redundant
+   on disk. It never implies `unbuilt`, and its remedy never deletes `dist`.
 - `orphan-output <unit> — dist/<x>.js has no src/<x>.ts` — **round 7**: an orphan has no
   newer input by definition, so it printed `undefined … NaN` too. The same defect round 4
   filed for `unbuilt`, at a site that fix did not reach.
@@ -1444,7 +1634,7 @@ optional and each kind states its own line:
   it. The rule changed in round 6; the line did not.
 - `unbuilt packages/cli — dist/<file> (<mtime>) is NEWER than the last completed bundle
 (.bundle-meta/metafile.json, <mtime>); tsc -b has overwritten the bundled output` —
-  **round 9**, for §3.3's clause 2, C9-1's marker-freshness clause. The line above is
+    **round 9**, for §3.3's clause 2, C9-1's marker-freshness clause — whose cli-reason-table row is round 13's (C13-1). Until then NO row produced this string, while §6 row 30 forbids the reporter inventing one and this line prints `unitState()`'s `reason` verbatim, so the line had no producer at all: the `--clean` twin two bullets above escaped the same fate only because C11-3 gave it its own row. The line above is
   FALSE here in the other direction: the marker is PRESENT and a bundle DID finish. What
   is wrong is that `tsc -b` has since rewritten `dist/bin.js` and `dist/index.d.ts` over
   it — which nothing an operator can see with `ls` will reveal, and which §7 names as a
@@ -1452,7 +1642,22 @@ optional and each kind states its own line:
   mtimes. Same defect as round 7's OP-2 — the rule changed and the line did not — at the
   site round 7's own fix created.
 
-**Findings of the same `kind` are grouped, and the remedy is PER KIND.** Both were
+**Findings of the same `kind` are grouped, and the remedy is PER KIND.** ⚠️ **WHICH kinds
+collapse is stated here, because "grouped" was written for every kind while this section
+fixes a grouped shape for exactly ONE (round 13, OP13-3).** The FOUR delta-carrying kinds
+group — `stale-unit`, `stale-bundle`, `stale-declarations`, `stale-plugin-assets` — to
+`<kind> ×N — <units>`, the shape spelled out for `stale-unit` below. The FOUR kinds whose
+line above carries PER-FINDING text print one line EACH, ungrouped, whatever N is:
+`unbuilt` (`— <reason>`, verbatim from `unitState()`, plus `packages/cli`'s gap list),
+`orphan-output` (`dist/<x>.js has no src/<x>.ts`), `bundle-provenance-missing` (its absent
+and unreadable twins) and `stale-shipped-declarations` (`(<a> vs <b> bytes)`). They are the
+same four §2 names delta-less, and for the same reason: a grouped line has nowhere to put
+text that differs per finding. An implementer who groups `unbuilt` prints
+`unbuilt ×2 — packages/cli, packages/contracts` and discards two reasons drawn from
+DIFFERENT tables — the field round 9 added and round 12 split in two precisely so the
+operator is not sent after a step they never ran — and passes the whole battery, because no
+row before 36 renders two `unbuilt` findings at once; §6 row **36** is the mutant-proved
+row. Both were
 round-1 findings and both are load-bearing:
 
 | `kind`                       | remedy printed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -1537,7 +1742,8 @@ a run whose sole finding is `stale-declarations` needs step 3 AND step 4, and th
 remedy-table row names only step 3, so a plan withheld there withholds half the remedy.
 §6 row 34 is the non-vacuity row. Without it an implementer who reads "the remedy is PER
 KIND" plus `Finding.remedy` prints the per-kind remedy beside each grouped block, passes
-all 34 rows, the false-negative battery, the wiring assertions and the live smoke test, and
+EVERY OTHER row in §6's battery, the false-negative battery, the wiring assertions and the
+live smoke test, and
 hands the operator exactly the unordered list this paragraph measures as harmful. One
 ordered recipe:
 
@@ -1665,7 +1871,7 @@ earn: when **no** comparison ran and **no** unit was compared — a fresh clone,
 `check-stale-dist: PASS — 0 units compared, 19 skipped; nothing was checked`. Still exit 0, because
 research Q5 requires a fresh clone to be quiet, but never a bare green line.
 
-⚠️ **The `PASS` line NAMES SKIPPED UNITS, because otherwise the design's own remedy leads to a silent failure (round 5).** An operator gets `stale-unit` on `packages/cli`, runs the printed `rm -rf packages/cli/dist`, and `npm run build` then fails — tsc error, Ctrl-C, disk. Re-running the check finds no `dist` at all, which is `skipped`; the other 18 compare clean; it prints **PASS, exit 0** on a tree with no CLI. Since round 8 BOTH routes are silent at unit granularity: `tsc -b --clean` deletes `.tsbuildinfo` along with the outputs, so a `--clean`ed unit holds nothing at all and §3.3's reason table makes it `skipped`, not `unbuilt`; the design's own `rm -rf` leaves no `dist` at all — also `skipped`. `packages/cli` is the one unit that still yields a finding there, and it does so through §3.3's entry-output clause, never through what `dist`'s emptiness says. The `PASS` line is therefore the ONLY surface for either route, which is what makes naming the units load-bearing rather than a nicety. The line reads `check-stale-dist: PASS — 18 units compared, 1 skipped (packages/cli: no dist/)`, **followed by the coverage line whenever any comparison is not `full`** — on that exact tree `bundle-freshness`, `plugin-assets` and `shipped-declarations` are all `not-run`, while `declaration-cache` RUNS `full` — `.dts-cache/index.d.ts` survives `rm -rf packages/cli/dist` (§3.3's opening sentence), which is the whole reason it is a separate comparison. Three of FOUR, named individually rather than counted, so a bare PASS there is the silent route this round-5 fix closed for units, still open one level up. Naming skipped UNITS and not skipped COMPARISONS is the same defect at comparison granularity (round 9, O9-1). The parenthetical is `unitState()`'s `reason` printed verbatim, never a sentence the reporter invents — this is the design's only other consumer of that field. §3.3's reason table has three `skipped` rows (no `dist/` at all, `dist/` empty, only `eo-*-fixture-*` scratch) and the operator needs to know which one they are in: two mean no build ever ran, one means their own `rm -rf` did (round 9, CF9-1).
+⚠️ **SKIPPED UNITS ARE NAMED ON BOTH PATHS, because otherwise the design's own remedy leads to a silent failure (round 5; widened to the findings path in round 13, OP13-1).** An operator gets `stale-unit` on `packages/cli`, runs the printed `rm -rf packages/cli/dist`, and `npm run build` then fails — tsc error, Ctrl-C, disk. Re-running the check finds no `dist` at all, which is `skipped`; the other 18 compare clean; it prints **PASS, exit 0** on a tree with no CLI. Since round 8 BOTH routes are silent at unit granularity: `tsc -b --clean` deletes `.tsbuildinfo` along with the outputs, so a `--clean`ed unit holds nothing at all and §3.3's reason table makes it `skipped`, not `unbuilt`; the design's own `rm -rf` leaves no `dist` at all — also `skipped`. `packages/cli` is the one unit that still yields a finding there, and it does so through §3.3's entry-output clause, never through what `dist`'s emptiness says. The `PASS` line is the surface for either route on the no-findings and advisory-only rows of the exit table above — and there it is the ONLY one. ⚠️ **On the findings path there IS no `PASS` line (the exit table prints it on those two rows only, and the prefix rule above says "the `PASS` line when there is one"), so `formatFindings` prints the SAME units-compared/skipped summary as a line of its own, after the grouped finding lines and before the remedy plan (round 13, OP13-1).** Its text is the `PASS` line's slot verbatim — `check-stale-dist: 18 skipped (packages/cli: no dist/)`, or the full `N compared, M skipped (…)` counts — with `unitState()`'s reasons printed the same way. This is the coverage line's own "both paths, never one" rule applied to the other half of the output, and without it the state this section's own `--clean` twin measures above is silent where it matters: after `npm run build:clean` the operator's whole human output is one `unbuilt packages/cli` line, the remedy plan and a coverage line whose four entries are all comparison-scoped, while **18** of 19 units hold zero build output and `states` reaches nobody outside `--json`. §6 row 35 is the mutant-proved row; §3's coverage bullet and §3.1's orphan bullet stop resting on a line that path never prints. On the `rm -rf` tree this rule opens with there is no finding, so it is the `PASS` line that carries the summary, and its text is unchanged: The line reads `check-stale-dist: PASS — 18 units compared, 1 skipped (packages/cli: no dist/)`, **followed by the coverage line whenever any comparison is not `full`** — on that exact tree `bundle-freshness`, `plugin-assets` and `shipped-declarations` are all `not-run`, while `declaration-cache` RUNS `full` — `.dts-cache/index.d.ts` survives `rm -rf packages/cli/dist` (§3.3's opening sentence), which is the whole reason it is a separate comparison. Three of FOUR, named individually rather than counted, so a bare PASS there is the silent route this round-5 fix closed for units, still open one level up. Naming skipped UNITS and not skipped COMPARISONS is the same defect at comparison granularity (round 9, O9-1). The parenthetical is `unitState()`'s `reason` printed verbatim, never a sentence the reporter invents — this is the design's only other consumer of that field. THREE tree states reach `skipped` and the operator needs to know which one they are in — two mean no build ever ran, one means their own `rm -rf` did (round 9, CF9-1) — so each carries its own LITERAL `reason`: `no dist/` for the absent case, which §3.3's unit-state table decides one table ABOVE its reason table; and `dist/ exists but is empty — a --clean, a test's mkdir, or a manual delete; nothing here proves a build ever ran` plus the scratch row's own sentence, which are the reason table's TWO `skipped` rows. ⚠️ **This sentence said "§3.3's reason table has three `skipped` rows" and that table has two (round 13, OP13-2)**, and the empty case had no printable reason at all — its cell read `indistinguishable — see below` — so this count and §6 row 30's "three DISTINCT reasons" were both unsatisfiable from the table they cite, and the one reason a reporter could not invent was the one the design had not written.
 
 ⚠️ **The internal-error row changed in round 1, and the reason is measured.** It was
 exit **2** in both columns. On npm 11.16.0 a `pretest` exiting **2** blocks `npm test`
@@ -1722,7 +1928,19 @@ git ls-files -z | xargs -0 grep -n "run check:all" | grep -v stale-dist-check-de
    # no workflow and no hook invokes `check:all` — is carried entirely by the 6, which
    # the command above produces.
 git ls-files -z | xargs -0 grep -ln "check:all" | grep -v ^docs/ | wc -l   # 9 files: the
-   # definition at package.json:45, 4 prose comments, 4 test assertions — no invocation
+      # definition at package.json:45, 6 prose comments, 2 toContain assertions — no
+   # invocation. Re-derived 2026-08-20 (round 13, CF13-7). Comment-only FILES, six:
+   # .github/workflows/ci.yml (:263, :385), scripts/repo-census.mjs:11,
+   # scripts/check-claim-scope.mjs:11, scripts/check-claim-scope.test.mjs:12,
+   # scripts/check-published-tarball.test.mjs:21, scripts/repo-census.test.mjs:8.
+   # Assertion FILES, two: check-marketplace-pin-digest.test.mjs:339 and
+   # check-support-window-freshness.test.mjs:530, both
+   # expect(root.scripts["check:all"]).toContain(...) -- the exact shape section 1 calls
+   # "membership only, blind to position and to flags". Round 12 wrote "4 and 4" at the
+   # commit that DELETED the unfiltered figure for having drifted three times, which
+   # makes this the fourth recurrence of round 1's O-4 in this same block, and it
+   # overstated by 2x how much of check:all's membership any test pins -- in the section
+   # arguing that section 6 must pin member 0 by index and by equality.
 ```
 
 CI runs the members as individual steps in two jobs (`ci.yml:246` `meta-checks`,
@@ -1840,13 +2058,13 @@ test restate today's file list and fail on every unrelated addition.
 
 **Non-vacuity battery.** Per finding kind, **per unit state and per coverage status**: one
 fixture reporting clean, then ONE `utimesSync`/`rm`/`writeFileSync` mutation that must flip
-it to the stated verdict — or, for the RENDERED-TEXT rows 16-18 and 26-34, that must make the check SAY what it stopped
+it to the stated verdict — or, for the RENDERED-TEXT rows 16-18 and 26-36, that must make the check SAY what it stopped
 covering. (`writeFileSync` is row 22's alone: §3.5 keys on bytes, not mtime, so a
 `utimesSync` mutation there would prove nothing.)
 
 Three rules the rows below carry, each earned from a defect a green battery passed:
 
-- **Rows 16-18 and 26-34 assert `formatFindings`' RENDERED text, never the return value.**
+- **Rows 16-18 and 26-36 assert `formatFindings`' RENDERED text, never the return value.**
   Rows 16-18 and 26 are the COVERAGE side of that group; rows 27-30 are the FINDING and
   internal-error side, added in round 11; rows 31-34 are round 12's — the LOAD-TIME
   internal error (OP12-1), the `--clean` reason (C11-3), the chunk SET (C11-6) and §4's
@@ -1856,7 +2074,7 @@ Three rules the rows below carry, each earned from a defect a green battery pass
   concerned a coverage entry or the prefix, and §4's per-kind line shapes, its grouped
   `stale-unit ×N — <units>` line and its `WARN`/`ERROR` lines were proved by NOTHING — and its
   ordered REMEDY PLAN still was, until round 12 (OP12-4). Rows
-  28-30 and 34 take a MUTANT FORMATTER as their single mutation rather than a filesystem change,
+    28-30, 34, 35 and 36 take a MUTANT FORMATTER as their single mutation rather than a filesystem change,
   because what they pin is what the reporter prints, and the rule stated one line above —
   that a row reading a return value goes green on the printing defect — applies to findings
   exactly as it does to coverage. O9-1 was a
@@ -1867,17 +2085,22 @@ Three rules the rows below carry, each earned from a defect a green battery pass
   assertion in this group includes §4's `check-stale-dist: ` prefix — row 18 on the PASS
   line and the findings list at once (its fixture is advisory-only, the one state §4's exit
   table renders both), rows 16, 17 and 26 on the coverage line, rows 27-30 on the
-  finding, grouped and `WARN`/`ERROR` lines (round 11), and rows 31-34 on the load-time
+    finding, grouped and `WARN`/`ERROR` lines (round 11), rows 31-34 on the load-time
   `WARN`/`ERROR` lines, the two `unbuilt` lines and the remedy plan's first line
-  (round 12).** For rows 16, 17 and 26 the
+  (round 12), and rows 35 and 36 on the findings-path units-compared/skipped summary and
+  on the two UNGROUPED `unbuilt` lines (round 13).** For rows 16, 17 and 26 the
   prefix, the `⚠️ coverage: ` label and the asserted entry form ONE contiguous substring,
   because §4 renders only the non-`full` entries, in §2's union order, and on each of those
   three fixtures the asserted entry is FIRST among them — verified per row. ⚠️ **Round 10
   wrote the previous form of this bullet while rows 16 and 17 still asserted the bare
   entry**, so the property held for row 18 alone and the two rows it named would have
   FAILED a correct implementation, while passing one that emits no prefix at all — the very
-  defect the group exists to catch. An implementer who omits the prefix now fails seven
-  rows instead of one, and ships lines nobody can attribute in `check:all`'s 15-member
+  defect the group exists to catch. An implementer who omits the prefix now fails EVERY row this
+  bullet enumerates instead of one — the SET, never a count. ⚠️ **"seven" stood here and
+  was already wrong by five when round 13 read it against the twelve rows named one
+  sentence above (OP13-3)**, round 12 having appended 31-34 to the group without touching
+  the figure; a number this bullet re-invalidates on every appending round is `C11-4`'s
+  own class of defect, and `C11-4`'s own remedy is to state the set, and ships lines nobody can attribute in `check:all`'s 15-member
   stream — the same shape of gap as a coverage value nobody rendered, one level out.
 - **Rows 9, 13, 14 and 15 are the unit-state set** — one fixture per `unitState().state`,
   plus the reasons. A `built: boolean` implementation passes any two of the three states and
@@ -1890,9 +2113,22 @@ Three rules the rows below carry, each earned from a defect a green battery pass
   re-pointed §0's requirement 1 and 8 rows off the stale "row 13" onto those numbers, and
     appended rows 24-25 rather than renumbering anything. Round 11 appended rows 26-30 the
   same way, and §0's requirement 8 row now cites **29** as well. Round 12 appended **31**,
-  **32**, **33** and **34** the same way; §8(n) cites 31, §4's `unbuilt` line shape cites
-  32, §3.3's clause 1 cites 33 and §4's ordered-recipe paragraph cites 34, so those
-  sections join the outside-citer list above.
+  **32**, **33** and **34** the same way, and round 13 appended **35** and **36**.
+  ⚠️ **The outside-citer list is now DERIVED, not restated (round 13, CF13-5)** —
+  `grep -onE '§6 rows? [0-9]+' <file>` run over everything outside this section,
+  2026-08-20, returns row **31** from §1 and §2 (plus §8(n) in the bolded form that grep
+  does not match), row **32** from §4's `unbuilt` line shape, row **34** from §2 and from
+  §4's ordered-recipe paragraph, and row **33** from §3.3's clause 1, which is a citation
+  round 13 ADDED. Round 12 wrote this bullet by hand and it was wrong in both directions
+  at the commit that wrote it: it asserted "§3.3's clause 1 cites 33" while
+  `grep -n "row 33"` returned **nothing anywhere in this file**, and it named neither §1
+  nor §2 for rows 31 and 34 — so renumbering §6 would have broken links the registry said
+  did not exist and preserved one it said did. The one round-12 rule with the loudest
+  consequence, `PASS` exit 0 under `--strict` on a `bin.crabgic` that dies with
+  `ERR_MODULE_NOT_FOUND`, was the only one of the four whose non-vacuity row had no
+  incoming citation at all. Round 13's two are cited the same way: §4's skipped-units rule
+  and this section's false-negative battery cite 35, §4's grouping rule cites 36. All of
+  those sections join the outside-citer list above.
 
 | #   | clean fixture                                                                                          | single mutation                                                                                                                                                                | must become                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1905,19 +2141,19 @@ Three rules the rows below carry, each earned from a defect a green battery pass
 | 7   | **stale src, marker newest, then** touch `dist/plugin/.mcp.json` **to now**                            | —                                                                                                                                                                              | still `stale-unit` (req 1) — and **NOT `unbuilt`**: `dist/plugin/**` is outside §3's filtered output set, so §3.3's clause 2 is unaffected. This row is the proof that the freshness comparand is the filtered set and not a raw `dist/**` walk                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 8   | plugin assets fresh                                                                                    | touch `packages/plugin/skills/**` forward                                                                                                                                      | `stale-plugin-assets` (§3.4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 9   | unit built                                                                                             | `rm -rf <unit>/dist/*` keeping `.tsbuildinfo`                                                                                                                                  | `unbuilt` (round 3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| 10  | bundle built WITH metafile, all outputs present                                                        | delete `.bundle-meta/metafile.json` only                                                                                                                                       | `bundle-provenance-missing`, and **not** `unbuilt` — the marker no longer feeds the `unbuilt` rule (§3.2, round 9) **AND**, in the RENDERED output, the entry `bundle freshness not run (.bundle-meta/metafile.json absent)` — §4's renderer, not the raw value shape: `bundle-freshness: not-run (…)` is what `result.coverage` HOLDS and what the direct-call rows 12 and 23 assert, and it never appears in rendered text (round 10). Precedence silences the finding, never the coverage                                                                                                                                                                                                                                                                                                   |
+| 10  | bundle built WITH metafile, all outputs present                                                        | delete `.bundle-meta/metafile.json` only                                                                                                                                       | `bundle-provenance-missing`, and **not** `unbuilt` — the marker no longer feeds the `unbuilt` rule (§3.2, round 9) **AND**, in the RENDERED output, the entry `bundle freshness not run (.bundle-meta/metafile.json absent)` — §4's renderer, not the raw value shape: `bundle-freshness: not-run (…)` is what `result.coverage` HOLDS and what the direct-call rows 12 and 23 assert, and it never appears in rendered text (round 10). §3.2's `unbuilt` suppression silences a FINDING, never the coverage entry — there is no precedence rule and this cell asserted one (round 13, CF13-4)                                                                                                                                                                                                                                                                                                   |
 | 11  | cli built COMPLETE: metafile + 5 chunks + 3 entry outputs + `dist/index.d.ts` + the six plugin entries | `rm dist/bin.js` only                                                                                                                                                          | `unbuilt` — the fixture must be complete, or the baseline already carries a finding and the row is vacuous. Round 9: without the metafile the baseline is now `bundle-provenance-missing` rather than `unbuilt`, and with `dist/index.d.ts` or the plugin entries missing it is `unbuilt` before the mutation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 12  | false-negative: `packages/cli/dist` absent                                                             | run `checkPluginAssets`                                                                                                                                                        | no finding, no throw, and coverage `plugin-assets: not-run (packages/cli/dist absent)` — bare "skipped" is unassertable under §2's return shape                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 13  | unit built: outputs + `.tsbuildinfo`                                                                   | `rm -rf <unit>/dist/*` INCLUDING `.tsbuildinfo`                                                                                                                                | `skipped`, not `unbuilt` — row 9's twin; the pair is what a `built: boolean` cannot satisfy (§3.3's reason table, rows 1-2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 14  | unit whose `dist/` holds outputs + an `eo-*-fixture-*/` dir                                            | `rm` the outputs and `.tsbuildinfo`, keep the scratch dir                                                                                                                      | `skipped` — a test `mkdir`ed it; nothing was ever built here (§3.3's reason table, row 3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| 15  | rows 9, 13 and 14's end states                                                                         | none — assert `unitState(unit).reason`                                                                                                                                         | three DISTINCT reason strings — §4's `unbuilt` line prints one verbatim and the PASS line's skipped slot names the others, so one collapsed string is a silent regression                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 15  | rows 9, 13 and 14's end states                                                                         | none — assert `unitState(unit).reason`                                                                                                                                         | the three LITERAL reason strings §3.3's reason table gives its `.tsbuildinfo`, empty and scratch rows (round 13, OP13-2), not merely three that differ — §4's `unbuilt` line prints one verbatim and the units-compared/skipped summary names the others on BOTH paths (round 13, OP13-1), so one collapsed string is a silent regression and one unprintable string is a worse one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 16  | cli built COMPLETE, as row 11, marker present and newest                                               | `rm -rf packages/cli/dist` (§4 recipe step 1, the design's own printed remedy)                                                                                                 | rendered output contains `check-stale-dist: ⚠️ coverage: bundle freshness not run (packages/cli/dist absent)` — §4's PREFIX and LABEL, then the entry: a leading substring of the coverage line, never the whole line. Contiguous because §4 renders only the non-`full` entries and `bundle-freshness` is FIRST among them here — this mutation also puts `plugin-assets` and `shipped-declarations` at `not-run` (§3.3, §3.5), while `declaration-cache` still runs `full` because `.dts-cache/` is a sibling of `dist`, so nothing renders between the label and this entry. ⚠️ **Round 11: the previous text asserted the BARE entry**, which fails a correct implementation (§4 mandates prefix + label before the first entry) and passes one that emits no prefix at all. Unit `skipped`, still exit 0. ⚠️ **Round 10 replaced the previous fixture and mutation**, whose asserted text `bundle freshness reduced (no esbuild chunk)` was UNSATISFIABLE — a chunkless `packages/cli` is `unbuilt` through §3.3's clause 1, so §3.2's fallback never ran — and whose "metafile + 3 entries + 5 chunks" baseline was already `unbuilt` before the mutation, missing `dist/index.d.ts` and the six plugin entries. Row 25 now carries the chunk gap |
 | 17  | cli built, `.dts-cache/index.d.ts` present                                                             | `rm -rf packages/cli/.dts-cache`                                                                                                                                               | rendered output contains `check-stale-dist: ⚠️ coverage: declaration cache not run (packages/cli/.dts-cache/index.d.ts absent)` — §4's prefix, label and renderer applied to §2's comparison id and §3.3's mandated reason, all verbatim. A leading substring of the coverage line, never the whole line, and contiguous because `declaration-cache` is FIRST among the non-`full` entries here: this row starts from a COMPLETE cli build with the marker written last (the rule below), so `bundle-freshness` and `plugin-assets` both stay `full`, and this mutation also puts `shipped-declarations` at `not-run` (§3.5, same absent file) BEHIND it in §2's union order. ⚠️ **Round 11 added the prefix and label**, for row 16's reason. No finding, exit 0. ⚠️ **Round 10:** the previous text `declarations not run (.dts-cache absent)` failed on BOTH halves — no renderer produces `declarations`, and that reason substring occurs in no section                                                                                                                                                                                                                                                   |
 | 18  | a fixture whose findings are ADVISORY-ONLY (exactly one `bundle-provenance-missing`, as row 21) AND with ≥1 non-`full` comparison — the only combination §4's exit table renders a `PASS` line and a finding together (round 11: with a non-advisory finding there IS no PASS line, so the previous fixture could not assert the prefix on it)                                                 | none — assert the RENDERED text of both paths                                                                                                                                  | the coverage line appears on the findings path too; asserting only the PASS path is how this fix half-lands. Both asserted strings begin `check-stale-dist: ` (§4) — this is the row an unprefixed implementation fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 19  | cli built COMPLETE, marker newest                                                                      | `utimesSync` `dist/bin.js` forward past the marker                                                                                                                             | `unbuilt` via §3.3's clause 2, reason naming `dist/bin.js` — the ONLY row a presence-only marker implementation fails, and therefore the row that makes the freshness clause non-vacuous (C9-1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 19  | cli built COMPLETE, marker newest                                                                      | `utimesSync` `dist/bin.js` forward past the marker                                                                                                                             | `unbuilt` via §3.3's clause 2 **and its cli-reason-table row (round 13, C13-1 — until then the table gave this very fixture `compared`)**, reason naming `dist/bin.js` — one of **TWO** rows a presence-only marker implementation fails. Row 26 is the other, on THIS row's own end state: such an implementation reports the unit `compared`, so all four cli-scoped comparisons RUN and render `full`, where row 26 requires four `not run (packages/cli unbuilt)` entries. "The ONLY row" was false by one from the round that wrote it (round 13, C13-4), and it UNDERSTATED the battery's coverage of exactly the gap C13-1 names — which is the reassurance a reader would otherwise take from it. Together the two are what make the freshness clause non-vacuous (C9-1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 20  | cli built COMPLETE, as row 11                                                                          | `rm -rf packages/cli/dist/plugin/skills` only                                                                                                                                  | `unbuilt`, gaps naming `dist/plugin` — the `:178` step's own row; without it the artifact set can ship as chunks + entries and rows 10-12 all still pass                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 21  | cli built COMPLETE, marker absent → exactly one advisory `bundle-provenance-missing`                   | call `exitCodeFor(result, { strict: true })`                                                                                                                                   | **0**; and **1** for the same call on a fixture whose findings include a non-advisory kind. Without this row an implementer makes the advisory blocking and every row above still passes (§4's exit table, `ADVISORY_KINDS`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 22  | cli `compared`: `.dts-cache/index.d.ts` and `dist/index.d.ts` byte-identical                           | rewrite `dist/index.d.ts` as a small `export * from "./errors.js"` barrel, mtime UNCHANGED or NEWER                                                                            | `stale-shipped-declarations` (§3.5) — the mutation is `tsc -b`'s own output, so a row that flips only on `utimesSync` would pass an mtime oracle and prove nothing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 22  | cli `compared`: `.dts-cache/index.d.ts` and `dist/index.d.ts` byte-identical                           | rewrite `dist/index.d.ts` as a small `export * from "./errors.js"` barrel, mtime UNCHANGED or NEWER                                                                            | `stale-shipped-declarations` (§3.5) — the mutation is `tsc -b`'s own output, so a row that flips only on `utimesSync` would pass an mtime oracle and prove nothing. ⚠️ **Its TWIN, asserted in the same row, in row 33's shape (round 13, C13-2):** the same fixture with the marker **ABSENT** — the state of every tree until the first build after this lands — and with `dist/index.js` and `dist/index.d.ts.map` rewritten in the SAME emit, which is what a real `tsc -b` does (`tsconfig.base.json:22-24` sets `declaration`, `declarationMap` AND `sourceMap`, measured 2026-08-20). Clause 2 does not evaluate, so `packages/cli` stays `compared` and the run must report exactly this kind PLUS one advisory `bundle-provenance-missing`, with `bundle-freshness` at `not-run (.bundle-meta/metafile.json absent)` and the other three comparisons `full`. Mutant = an implementation built from §7 row 4's pre-C13-2 cell, suppressing §3.5 whenever a tsc barrel is present: it passes the marker-PRESENT half and FAILS this one. Written as a twin rather than a new numbered row so nothing is renumbered                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 23  | false-negative: cache present, `dist/index.d.ts` absent (what `rm -rf packages/cli/dist` leaves)       | run `checkShippedDeclarations`                                                                                                                                                 | no finding, no throw, and coverage `shipped-declarations: not-run (packages/cli/dist/index.d.ts absent)` — row 12's shape, and for row 12's stated reason: this row CALLS the comparison, so the return value is the only surface, and a bare "skipped" is unassertable under a `Finding[]` return, where it degenerates to `toEqual([])` — indistinguishable from "ran and found nothing", the early `return []` §3.3's **SKIP RULE — ALL FOUR cli-SCOPED COMPARISONS** bans as "the founding silence in a smaller box". Written in the same round as the return shape that makes it assertable (round 10)                                                                                                                                                                                                                                                                             |
 | 24  | plugin assets fresh, cli built COMPLETE (as row 11)                                                    | touch `packages/plugin/.mcp.json` forward                                                                                                                                      | `stale-plugin-assets` (§3.4) — the one **FILE** member of `PLUGIN_ASSET_ENTRIES` (`bundle-cli.mjs:89`); the other five are directories. Row 8's mutation is `packages/plugin/skills/**`, a DIRECTORY member, and its fixture need not contain the file member at all — so without this row a directory-typed source walk can pass every other row and still throw `ENOTDIR` on the real tree, which §4 turns into `ERROR`, exit 2 (round 10)                                                                                                                                                                                                                                                                                                                                                   |
 | 25  | cli built COMPLETE, as row 11                                                                          | `rm packages/cli/dist/chunk-*.js packages/cli/dist/run-dispatcher-*.js` — BOTH live naming families (verified 2026-08-20: four `chunk-*.js` plus `run-dispatcher-POLZZ2DH.js`) | `unbuilt`, gaps naming the esbuild chunk — §3.3 clause 1's `:121` chunk member, which had NO row until round 10. Clause 2 cannot catch it (deleting an output LOWERS the newest output mtime) and clause 3 cannot (the three entries survive), so this is the only row that makes the chunk member non-vacuous. It replaces the coverage assertion row 16 used to carry, which no correct implementation could print                                                                                                                                                                                                                                                                                                                                                                           |
@@ -1925,11 +2161,13 @@ Three rules the rows below carry, each earned from a defect a green battery pass
 | 27  | any unit's `tsconfig.json` rewritten as malformed JSON on an otherwise complete tree — the RUNTIME half of §4's "**ANY** throw the catch can SEE" (row 31 is the LOAD-TIME half, which this row's tree mutation provably cannot reach), reached deterministically and without depending on a wrong `newestOfEntries` | none on the tree — run `check-stale-dist.mjs` against the fixture **three** times: once without `--strict`, once with, and once with `--json` (round 12, C11-5) | non-strict: stdout contains `check-stale-dist: WARN internal error — ` **followed by the fixture's own tsconfig PATH** and the process exits **0**; strict: `check-stale-dist: ERROR internal error — <that path>: ` plus the re-run and member-0-of-15 sentences §4's line carries, and exit **2**; `--json`: stdout `JSON.parse`s and yields `{ internalError, ran: false }` with the path inside `internalError`, and contains **neither** human line. The path and the two sentences are round 12's (OP12-5): `JSON.parse` messages carry no locus — measured, `Expected double-quoted property name in JSON at position 7 (line 1 column 8)` and nothing else — so without them the row goes green on a line naming none of the **30** candidate configs and stating no next action; and a `formatInternalError` blind to `json` writes chatter onto the JSON stream, which is the failure `scripts/bundle-types.mjs:63-68` records this repository shipping (round 12, C11-5). Mutant = no `try`/`catch`, letting the throw propagate: node prints an unprefixed stack and exits **1**, failing both halves — and under `pretest` that blocks `npm test` outright (§5.1, round 1's `O-2`). Without this row §4's internal-error row has no owner and every other row passes (round 11, OP11-2) |
 | 28  | a SYNTHETIC tree with `stale-unit` on ≥2 units (two units whose `src` is newer than their `dist`) | none on the tree — swap in a MUTANT `formatFindings` that renders the grouped line as the count alone, `check-stale-dist: stale-unit ×2` | the row must FAIL on the mutant: the rendered line is `check-stale-dist: stale-unit ×2 — <unit>, <unit>` (§4), prefixed and NAMING the units. §4's recipe step 1 is `rm -rf <unit>/dist` **for the units reported `stale-unit`**, so a count-only line makes the printed remedy unrunnable — round 6's `OP6-2`, whose fix landed in §4 prose and became no row until round 11. Synthetic, never the live tree's own four: §6's opening rule and the live-prediction paragraph both keep today's repository state out of the battery |
 | 29  | one fixture per DELTA-LESS kind (§2, §4): `unbuilt` (row 9's end state), `orphan-output` (row 4's end state), `bundle-provenance-missing` (row 21's fixture) and `stale-shipped-declarations` (row 22's end state) | none on the tree — swap in a MUTANT `formatFindings` that prints the generic comparison shape `<kind> <unit> <newerInput> <olderOutput> <deltaMs>` for every finding | all four must FAIL: the generic shape renders `stale-shipped-declarations packages/cli undefined undefined NaN`, round 4's `OP-R4-2` and round 7's `OP-1` verbatim, at the kind round 9 added. Each must instead render its own §4 line, prefixed `check-stale-dist: ` — and for `stale-shipped-declarations` that line is byte-based, `(<a> vs <b> bytes)`, with no mtime delta |
-| 30  | rows 9, 13 and 14's end states — one `unbuilt`, two `skipped` | none on the tree — swap in a MUTANT `formatFindings` that prints one hard-coded sentence in place of `unitState()`'s `reason`, in BOTH of its consumers: §4's `unbuilt <unit> — <reason>` line and the PASS line's skipped parenthetical | all three must FAIL: §4 prints that `reason` VERBATIM in both places ("never a sentence the reporter invents") and §3.3's reason table gives these three states three DISTINCT reasons. Row 15 asserts the same three on the RETURN value — precisely the surface this section's own rule says goes green on the printing defect — which is why the rendered twin is a separate row (round 11) |
+| 30  | rows 9, 13 and 14's end states — one `unbuilt`, two `skipped` | none on the tree — swap in a MUTANT `formatFindings` that prints one hard-coded sentence in place of `unitState()`'s `reason`, in BOTH of its consumers: §4's `unbuilt <unit> — <reason>` line and the skipped parenthetical of the units-compared/skipped summary — which on THIS fixture is the findings path's own summary line and NOT a `PASS` line, because the fixture carries one `unbuilt` finding and §4's exit table prints no `PASS` line on that row (round 13, OP13-1: as written, this column asserted a surface its own fixture cannot render) | all three must FAIL: §4 prints that `reason` VERBATIM in both places ("never a sentence the reporter invents") and §3.3's reason table gives these three states three DISTINCT reasons. ⚠️ **Assert the three LITERAL strings, not merely that they differ (round 13, OP13-2)** — row 9's `dist/ holds only .tsbuildinfo — outputs were deleted without it`, row 13's `dist/ exists but is empty — a --clean, a test's mkdir, or a manual delete; nothing here proves a build ever ran`, and row 14's scratch sentence. "Distinct" went green on a cell reading `indistinguishable — see below`, which is distinct and unprintable at once, so the weaker assertion is what let an editor's cross-reference reach the operator. Row 15 asserts the same three on the RETURN value — precisely the surface this section's own rule says goes green on the printing defect — which is why the rendered twin is a separate row (round 11) |
 | 31  | a fixture holding a COPY of this check's own modules — `check-stale-dist.mjs`, `stale-dist/*.mjs`, and a stub `bundle-cli.mjs` that `export`s `PLUGIN_ASSET_ENTRIES` and throws nothing — over a complete cli tree, run as `node <fixture>/check-stale-dist.mjs`: reports clean | replace the copied `bundle-cli.mjs` with one whose FIRST statement throws — a module that fails at LOAD, the half of §4's internal-error row that row 27's tree mutation provably cannot reach, because the check's real import graph resolves from the REPOSITORY and no fixture `node_modules` can touch it | non-strict: stdout contains `check-stale-dist: WARN internal error — ` and exit **0**; strict: `check-stale-dist: ERROR internal error — ` and exit **2**, both prefixed. Mutant = the entry module reaching `compare.mjs`/`report.mjs` by a STATIC `import` statement instead of §1's IMPORT RULE `await import(...)` inside the try: measured 2026-08-20 (node v24.18.0, npm 11.16.0, nothing else running but the shell), node prints the throw plus an internal stack, NO `check-stale-dist: ` line at all, and exits **1** in BOTH invocations — failing both halves, and under `pretest` blocking `npm test` outright (§5.1's table, round 1's `O-2`). Row 27's mutant is "no try/catch" over a RUNTIME throw and stays green here, so without this row §8(n) is a residual nothing proves (round 12, OP12-1) |
 | 32  | cli built COMPLETE, as row 11, marker present and newest | `rm packages/cli/dist/bin.js packages/cli/dist/index.js packages/cli/dist/bin/supervisord.js packages/cli/dist/index.d.ts packages/cli/dist/.tsbuildinfo` — the `--clean` SIGNATURE: every tsc-written member gone, the esbuild chunks and `dist/plugin/**` left | `unbuilt`, gaps naming those four, and the RENDERED line reads `check-stale-dist: unbuilt packages/cli — tsc -b --clean removed the compiler outputs from a completed bundle; missing: dist/bin.js, dist/index.js, dist/bin/supervisord.js, dist/index.d.ts` (§3.3's cli reason table, §4). Mutant = a `unitState` carrying the single `bundle:cli did not finish` reason: it PASSES the verdict and FAILS the line — which is the whole row, because after `npm run build:clean` that sentence blames a step the operator never ran, verbatim §4's own OP-2 failure. A rendered-text row, in rows 27-30's group and for their stated reason (round 12, C11-3) |
 | 33  | cli built COMPLETE, as row 11, marker present and newest, its `metafile.outputs` naming all five emitted chunk files | `rm` three of the four chunks `dist/bin.js` imports (measured 2026-08-20: `bin.js` → `chunk-FRJGAF5Y.js` → `chunk-DVV3SNQ3.js`, `chunk-I6JBP7DT.js`, `chunk-UF6GI6PE.js`), leaving one file that still matches the pattern | `unbuilt`, gaps naming the three deleted chunks — clause 1's chunk membership is `metafile.outputs` whenever the marker exists (§3.3, round 12, C11-6). Mutant = clause 1 requiring only "at least one file matching the pattern": it PASSES, and so do clauses 2 and 3 — a deletion LOWERS the newest output mtime — so the check reports **PASS, exit 0 even under `--strict`** on a `bin.crabgic` that dies with `ERR_MODULE_NOT_FOUND`. Its twin, asserted in the same row: the SAME mutation with the marker ABSENT must still be PASS plus one advisory `bundle-provenance-missing`, because that is §8(i)'s third stated cost and not a defect the row may quietly close |
 | 34  | cli built COMPLETE (as row 11) plus a second unit whose `src` is newer than its `dist`, and `.dts-cache/index.d.ts` older than `packages/*/src` — TWO kinds, `stale-unit` and `stale-declarations` | none on the tree — swap in a MUTANT `formatFindings` that prints each kind's remedy-table row beside its own grouped block and no plan | the row must FAIL on the mutant: the rendered output carries ONE `check-stale-dist: remedy plan:` block with its steps as indented continuation lines, in §4's stated order, positioned after the findings list and before the coverage line. The mutant's per-kind list omits step 4 (`npm run bundle:cli`, which lifts the regenerated cache into `dist/index.d.ts` — §4: "step 3 alone leaves the pre-force copy shipped") and step 5 (re-run), so an operator who follows it spends the generator's ~5 minutes and is left with `stale-shipped-declarations` on the next run. Every other row passes the mutant, which is why the plan needed a row (round 12, OP12-4) |
+| 35  | a SYNTHETIC tree carrying ≥1 `stale-unit` finding AND ≥1 unit with no `dist/` at all — the findings path with a skipped unit on it, which §4's exit table renders WITHOUT a `PASS` line | none on the tree — swap in a MUTANT `formatFindings` that prints the units-compared/skipped summary only when it prints a `PASS` line | the row must FAIL on the mutant: the rendered output carries `check-stale-dist: ` plus the same units-compared/skipped summary the `PASS` line's slot would carry, NAMING the skipped unit and `unitState()`'s `reason` verbatim, after the grouped findings and before the remedy plan (§4). Rows 16-18 and 26 assert comparison COVERAGE only, §6's false-negative bullet asserts naming on a fixture with no findings, and row 30's fixture renders one `unbuilt` beside two `skipped` without asserting the summary — so the mutant passes every other row while the skipped units vanish from human output on exactly the path an operator reads because something is already wrong (round 13, OP13-1) |
+| 36  | a SYNTHETIC tree with `unbuilt` on TWO units whose reasons DIFFER — `packages/cli` under row 32's `--clean` signature, plus one non-cli unit under row 9's mutation (outputs deleted, `.tsbuildinfo` kept) | none on the tree — swap in a MUTANT `formatFindings` that groups `unbuilt` the way §4 groups `stale-unit`, rendering `check-stale-dist: unbuilt ×2 — packages/cli, <unit>` | the row must FAIL on the mutant: `unbuilt` carries PER-FINDING text — `unbuilt <unit> — <reason>`, `reason` verbatim from `unitState()` — so a grouped line discards both, and the two reasons here come from different tables, which is the whole of C11-3. TWO prefixed lines, one per finding. Rows 28-30, 32 and 34 each render at most ONE `unbuilt`, and row 29 takes its `unbuilt` fixture from row 9 alone, so the grouping mutant passes the entire battery without this row (round 13, OP13-3) |
 
 **Every `packages/cli` fixture that writes `dist/index.d.ts` must also write
 `.dts-cache/index.d.ts` with the SAME bytes, or omit the cache entirely.** Otherwise the
@@ -1941,7 +2179,7 @@ Row 7 is the decisive one: the exact state in which the naively specified check
 reports clean. The fixture asserts the plugin asset copy cannot mask a skipped compile.
 
 ⚠️ **Every cli-scoped row starts from a COMPLETE cli build, and from a marker WRITTEN
-LAST** — rows 3, 5, 7, 8, 10, 11, 16, 17, 19, 20, 21, 22, 24, 25, 26, 32, 33, 34 and 29's two cli fixtures (its `bundle-provenance-missing` and `stale-shipped-declarations` states): a chunk, the three entry
+LAST** — rows 3, 5, 7, 8, 10, 11, 16, 17, 19, 20, 21, 22, 24, 25, 26, 32, 33, 34, 36 and 29's two cli fixtures (its `bundle-provenance-missing` and `stale-shipped-declarations` states): a chunk, the three entry
 outputs, `dist/index.d.ts`, the six plugin entries, plus `.bundle-meta/metafile.json` with
 an mtime at or after the newest member of §3's filtered output set, except where the row
 itself deletes or moves it. ⚠️ **AND that marker's `outputs` must name EXACTLY the
@@ -1959,7 +2197,7 @@ exceptions: their whole subject is an absent artifact.
 
 **False-negative battery** (the check must stay quiet):
 
-- a unit with no `dist` → `skipped`: no finding, and **named** in the PASS line's skipped slot (§4's **The `PASS` line NAMES SKIPPED UNITS**) — "not reported" has been wrong since round 5, and beside a coverage line it would read as a mandate to stay silent;
+- a unit with no `dist` → `skipped`: no finding, and **named** in the units-compared/skipped summary (§4's **SKIPPED UNITS ARE NAMED ON BOTH PATHS**) — "not reported" has been wrong since round 5, and beside a coverage line it would read as a mandate to stay silent. ⚠️ **This bullet is the ONLY assertion anywhere in §6 that a skipped unit is NAMED, and its fixture holds no findings, so it proves nothing about the findings path (round 13, OP13-1)** — battery row 35 is that path's row, and rows 16-18 and 26 assert comparison coverage only;
 - `.tsbuildinfo` newer than every `.js` → clean — asserted **twice**: once for
   `checkUnitFreshness`, and once for `packages/cli` with `dist/.tsbuildinfo` touched
   forward PAST the marker, which must stay `compared` and must not become `unbuilt`
@@ -2126,10 +2364,10 @@ working copy, and independent evidence the check is not vacuous against real inp
 | Touched-but-unchanged source (format-on-save, `git checkout` rewriting a file)                                                                                                | None available: a content oracle needs a persisted baseline, which is a twentieth build artifact with the same staleness problem (assumption 2). Remedy is one `npm run build`. Accepted by owner ruling. **It does NOT escalate to `unbuilt packages/cli`:** the only thing `tsc -b` moves in that case is `dist/.tsbuildinfo`, which §3's output set — and therefore §3.3's clause 2 — excludes. Measured on a composite fixture with the pinned `typescript@6.0.3`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | A bare `npm run typecheck` (`tsc -b`) that re-emits, after a completed bundle                                                                                                 | Firing is CORRECT, and reports `unbuilt packages/cli` (clause 2), **plus four coverage entries reading `not run (packages/cli unbuilt)`** — §3.2 suppresses all four cli-scoped comparisons on this tree and nothing is absent, which is the routine tree round 10's C10-1 fix exists for. `tsc -b` overwrites `dist/bin.js` and `dist/index.d.ts` with per-file output that still imports `@crabgic/*` — `bundle-cli.mjs:105-112` states it, and `ci.yml`'s `packaging` job comments on the same fact as the cause of defect `25-install-smoke-depends-on-local-dist-state`. Verified: the live `dist/bin.js` imports `./chunk-FRJGAF5Y.js`, so a `tsc -b` over it destroys the bundle. Named here so nobody mutes it as noise.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Branch switch refreshing sources                                                                                                                                              | Firing here is CORRECT — it is the founding incident. Named so nobody mutes it as noise.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `npm run typecheck` clobbering `dist/index.d.ts` with `tsc`'s barrel                                                                                                          | Firing is CORRECT, and ⚠️ **clause 2 SUBSUMES this row — it is row 2's scenario, not a distinct one (round 10).** Measured 2026-08-20: `tsconfig.base.json:22-23` sets `declaration`+`declarationMap`, and no config sets `emitDeclarationOnly` or `noEmit` for `packages/cli`, so a `tsc -b` that writes the barrel `dist/index.d.ts` writes `dist/index.js` and `dist/index.d.ts.map` in the same emit. Those two ARE in §3's filtered output set, so `mtime(newest output) > mtime(marker)`, clause 2 fails, and the verdict is `unbuilt packages/cli — dist/index.js (…) is NEWER than the last completed bundle`. `packages/cli` is then `unbuilt`, so §3.5 and §3.2 do NOT run: neither `stale-shipped-declarations` nor `stale-bundle` fires, and the remedy is the `unbuilt` row's (`rm -rf packages/cli/dist` then `npm run build`), never recipe steps 3-4. `bundle-types.mjs:32-38` records the underlying incident `check-install-smoke.mjs` caught (`Cannot find module './exit-codes.js'` from an installed consumer), and §3.5 still keys on bytes for the reachable state its own section now names. Round 9 rewrote row 2 for clause 2 and left this row asserting pre-clause-2 behaviour. Named so nobody mutes it as noise. |
+| `npm run typecheck` clobbering `dist/index.d.ts` with `tsc`'s barrel                                                                                                          | Firing is CORRECT, and ⚠️ **clause 2 SUBSUMES this row — it is row 2's scenario, not a distinct one (round 10).** Measured 2026-08-20: `tsconfig.base.json:22-23` sets `declaration`+`declarationMap`, and no config sets `emitDeclarationOnly` or `noEmit` for `packages/cli`, so a `tsc -b` that writes the barrel `dist/index.d.ts` writes `dist/index.js` and `dist/index.d.ts.map` in the same emit. Those two ARE in §3's filtered output set, so `mtime(newest output) > mtime(marker)`, clause 2 fails, and the verdict is `unbuilt packages/cli — dist/index.js (…) is NEWER than the last completed bundle`. ⚠️ **That subsumption is CONDITIONAL on the marker, and this cell stated it unconditionally (round 13, C13-2).** Clause 2's predicate is "**if** `packages/cli/.bundle-meta/metafile.json` exists". **Marker PRESENT:** `packages/cli` is `unbuilt`, so §3.5 and §3.2 do NOT run — neither `stale-shipped-declarations` nor `stale-bundle` fires — and the remedy is the `unbuilt` row's (`rm -rf packages/cli/dist` then `npm run build`), never recipe steps 3-4. **Marker ABSENT — every tree until the first build after this lands**, measured 2026-08-20 (`ls -d packages/cli/.bundle-meta` → no such file, on a `dist` holding five chunks, all three entry outputs, `index.d.ts` and all six plugin entries): clause 1 finds no gap, clause 2 does not evaluate, clause 3 holds, so the unit stays **`compared`**. `stale-bundle` still does not fire, but for the OTHER reason — `bundle-provenance-missing`, advisory, coverage `not-run` — while §3.5 **RUNS** and `stale-shipped-declarations` fires, NON-advisory, **exit 1 under `--strict`**, remedy `npm run bundle:cli` (§4's table), not the `unbuilt` row's. §8(i) already states this branch — "With the cache present the common case IS caught — but by §3.5, whose stated purpose is different, not by the clause written for it" — so until round 13 the design contradicted itself at two sites round 10 wrote in one pass, and this cell, the one an operator reads for "what fires on this tree", was the wrong one. §6 row 22's marker-absent twin pins it. `bundle-types.mjs:32-38` records the underlying incident `check-install-smoke.mjs` caught (`Cannot find module './exit-codes.js'` from an installed consumer), and §3.5 still keys on bytes for the reachable state its own section now names. Round 9 rewrote row 2 for clause 2 and left this row asserting pre-clause-2 behaviour. Named so nobody mutes it as noise. |
 | Test fixtures under `src`                                                                                                                                                     | Input set restricted to `.ts` + `.json`; the other 15 of 18 non-`.ts` files under `src` are ignored.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Second-granularity mtimes                                                                                                                                                     | Compare strictly `>` on `mtimeMs`; equal is clean — and §3.3's clause 2 is the mirror, `>=`, so equal is clean there too. ⚠️ Ordering is asserted by `./mtime-propagation-probe.mjs`'s `ordering:` rows only for **writes more than a second apart** (`:74-75`, which calls `pastNextSecond()` between the two writes). The marker write at `bundle-cli.mjs:181` follows the plugin copy at `:178` by microseconds, which that probe does NOT cover — `>=` is precisely what makes the uncovered case safe (round 9).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Fresh clone, restored tarball, or a `dist/` left empty by `build:clean` or by a test's `mkdir`                                                                                | `unitState` returns `skipped` for all three (§3.3 reason-table rows 1 and 3) — a unit with nothing proving a build ran is not stale. The cost of covering the third case is residual §8(h): `build:clean` is indistinguishable from never-built.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Fresh clone, restored tarball, or a `dist/` left empty by `build:clean` or by a test's `mkdir`                                                                                | `unitState` returns `skipped` for all three (§3.3's unit-state table for the ABSENT case; its reason-table rows 1 and 3 for the other two — three tree states, TWO reason-table rows, and each of the three now carries its own literal `reason`: round 13, OP13-2) — a unit with nothing proving a build ran is not stale. The cost of covering the third case is residual §8(h): `build:clean` is indistinguishable from never-built.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Toolchain bump marking all 19 units stale                                                                                                                                     | Deliberately NOT implemented: putting `package-lock.json` in every unit's input set would make an unrelated `npm i` block a push. See §8 residual (b).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Check run while `npm run build` is mid-flight                                                                                                                                 | Not mitigable; a transient the operator caused. Documented in the header. **Round 9: the manifestation is now `unbuilt packages/cli`**, and the window is wide — `build` is `tsc -b && bundle:types && bundle:cli`, so for the whole ~5-minute `bundle:types` step the entry outputs are newer than the marker. `pretest` makes a second terminal running `npm test` hit it, and the printed remedy is `rm -rf packages/cli/dist`, aimed at a directory the running build is about to write — the same hazard §3.1 names for the journal scratch, on a second path.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | A tree whose last build predates this change set (`.bundle-meta/` absent, `dist` complete) — **every developer's tree on day one, at every `npm test` until they build once** | Not a false positive — the check truthfully cannot verify provenance and says so. ⚠️ **But the cost is not provenance ALONE (round 10, C10-4):** §3.3's clause 2 is conditional on the marker ("**if** … exists"), so while it is absent C9-1's freshness oracle — the fix for the SEVENTH appearance of PASS-on-a-broken-tree — does not evaluate, and nothing reports that a unit-state clause was skipped: `skipped`/unit state stays UNIT-scoped (§2) while §4's coverage line is comparison-scoped, so it structurally cannot say it. On such a tree the only remaining oracle for `tsc -b` having overwritten a completed bundle is §3.5's byte comparison, which itself declines whenever `packages/cli/.dts-cache/index.d.ts` is absent. Accepted as a bounded residual naming that conjunction — §8(i), pinned by §6's false-negative battery. Reported as `bundle-provenance-missing`, **never `unbuilt`** (round 9, C9-3): the line says the CHECK is degraded, not that the tree is broken. Advisory: listed, exit **0** even under `--strict` (§4), and `pretest` carries no `--strict` (§5.1), so it warns without blocking `npm test`; remedy `npm run build`, never `rm -rf`. Measured 2026-08-20: `ls -d packages/cli/.bundle-meta` → no such file on a fully built tree (§6). Permanent and stateless — this tree cannot be told from a build interrupted between `bundle-cli.mjs:178` and `:181` (§8(i))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -2312,8 +2550,15 @@ working copy, and independent evidence the check is not vacuous against real inp
   one. Round 2 dispositioned this as `C-C`, "accepted as a stated limit"; like (l) it
   reached no section for ten rounds (round 11).
 - **(n) That the check runs on a production-only install.** Round 10's C10-2 fix gives the
-  check one repo-internal import, `scripts/bundle-cli.mjs`, whose `:59` is
-  `import { build } from "esbuild"`, so `esbuild` must resolve at import time. Re-derived
+    check its SECOND repo-internal import, `scripts/bundle-cli.mjs`, whose `:59` is
+  `import { build } from "esbuild"`, so `esbuild` must resolve at import time. ⚠️ **The
+  FIRST is `scripts/repo-census.mjs` (requirement 11, §2), and it sits outside this
+  residual only because of a measured fact this bullet has to state (round 13, CF13-1):**
+  re-derived 2026-08-20, `grep -n "^import" scripts/repo-census.mjs` returns `node:fs`,
+  `node:path`, `node:child_process` and `node:url` — builtins only. So this bound ranges
+  over TWO modules and holds for one of them by luck; a dependency added to
+  `repo-census.mjs` widens it, and `scripts/repo-census.mjs` is a file whose neighbourhood
+  this change set already cites (`:290` in §2, `:382` in §1). Re-derived
   2026-08-20: it is a root `devDependency` (`package.json:61`, `0.28.1`), which `npm ci`
   installs, so `meta-checks` and every local invocation resolve it; an `--omit=dev`
   install does not. ⚠️ **What happens there depends on §1's IMPORT RULE, and the exit code
@@ -2330,8 +2575,10 @@ working copy, and independent evidence the check is not vacuous against real inp
   graph, lands in the same uncatchable window. Accepted rather than papered
   over, and bounded: no workflow
   under `.github/` and no root script installs with `--omit=dev` today (re-derived
-  2026-08-20). §1 states the alternative that removes the residual entirely (a
-  builtins-only `scripts/plugin-assets.mjs` both files import).
+    2026-08-20). §1 states the alternative that removes the residual entirely: a
+  builtins-only `scripts/plugin-assets.mjs` both files import. ⚠️ **"Entirely" is true
+  only while `repo-census.mjs`'s own import list stays builtins-only** — re-derived above,
+  and the second half of this bound rather than a separate fact (round 13, CF13-1).
 
 ## 9. Review rounds
 
@@ -3033,9 +3280,17 @@ re-applied with a function replacement plus a line-delta guard. ⚠️ **The haz
 live in the document, and round 12 re-derived it:** three lines carry that sequence inside
 backticked shell commands and one carries a dollar-backtick, so every future apply
 touching them must use a function replacement — now a standing rule in this file's
-preamble. Round 12 checked the CURRENT document for residual damage of that class —
-**2574** lines, no duplicated headings, no duplicated long line, no placeholder standing
-in as document text — and found none.
+preamble. Round 12 checked the CURRENT document for residual damage of that class — no
+duplicated headings, no duplicated long line, no placeholder standing in as document text
+— and found none. ⚠️ **Two of those four clauses did not hold as written (round 13,
+CF13-6/OP13-5).** The line count it published, **2574**, was the count at the PREVIOUS
+commit: `git show 46a1d5c:<file> | wc -l` → 2574 against `git show c18ebff:<file> | wc -l`
+→ 3092, so round 12's own commit was **518** lines longer than the figure it offered as a
+re-derivation of the current document — `C11-4`'s pattern a fourth time, in the baseline of
+the doubling detector itself, and the one clause of the four that would have caught round
+11's own doubling. And the placeholder clause missed §3.3's `indistinguishable — see below`
+reason cell (OP13-2). The count is deleted rather than corrected, per `C11-4`; the other
+three clauses reproduce.
 
 **Round 12 (2026-08-20) — `contract-fit` / `correctness` / `operability`, seventeen
 findings: `CF12-1`, `CF12-2`, `CF12-3`, `CF12-4`, `C11-1`, `C11-2`, `C11-3`, `C11-4`,
@@ -3090,3 +3345,160 @@ findings: `CF12-1`, `CF12-2`, `CF12-3`, `CF12-4`, `C11-1`, `C11-2`, `C11-3`, `C1
   as document text rather than as one round's remedy.
 
 Battery rows **31-34** were appended, nothing renumbered.
+
+**Round 13 (2026-08-20) — `contract-fit` / `correctness` / `operability`, sixteen findings
+consolidated across the three lenses: `CF13-1`, `CF13-2`, `CF13-3`, `CF13-4`, `CF13-5`,
+`CF13-6`, `CF13-7`, `C13-1`, `C13-2`, `C13-3`, `C13-4`, `OP13-1`, `OP13-2`, `OP13-3`,
+`OP13-4`, `OP13-5`. Entered here in the SAME round that filed them, which is the
+preamble's own standing requirement and the thing rounds 10 and 11 did not do.** Six of
+the sixteen are round 12's own new reproducible checks failing on their first writing,
+which is now true of every check this document has added.
+
+- **`C13-1`, high — the founding failure's NINTH appearance, at the clause added to close
+  its seventh.** §3.3's cli reason table partitioned on (members present) × (marker
+  present) and carried no row for a marker that is present but OLDER than the newest
+  §3-filtered output — the state clause 2 exists for, and §6 row 19's own fixture. §2 and
+  §3 both named that table as `unitState`'s authority, so an implementer built from it
+  returns `compared` there; every comparison then runs clean and the check prints **PASS,
+  exit 0 even under `--strict`** on a `packages/cli` that can neither publish nor run its
+  own `bin.crabgic`. §2 reinforced the wrong branch three ways in one paragraph:
+  `unitState` documented as reading "PRESENCE facts, not mtimes"; a two-outcome branch
+  list with nothing for gaps-empty-and-marker-stale; and `cliArtifactGaps(cwd)` against
+  the two-argument signature round 12's `C11-6` introduced and did not carry to its
+  caller. Fixed at six sites: §2's signature comment, its `unitState` prose and its
+  outcome list, §3's Skip rule, §3.3's cli table (one row split into two) and §4's
+  clause-2 line.
+- **`CF13-1`, medium — the design has TWO repo-internal imports and §1 said "exactly
+  one", and the second one IS requirement 11.** §2 mandates that `units.mjs` import
+  `enumerateRootReferences` and `enumerateTsconfigs` from `scripts/repo-census.mjs`, and
+  §0's requirement 11 row discharges the requirement with exactly that. An implementer who
+  honoured §1's count satisfied it by re-deriving the unit list — verbatim what
+  requirement 11 forbids — and passed every §6 row, because nothing in §6 reads that
+  import list. The dependency claim survived only by luck: re-derived 2026-08-20,
+  `repo-census.mjs` imports `node:fs`, `node:path`, `node:child_process`, `node:url` and
+  nothing else, so §8(n)'s `esbuild` bound is over two modules and holds for one of them
+  as a fact about today's file. §1, §0's requirement 11 row, §2 and §8(n) at three points
+  now say so.
+- **`C13-2`, medium — a SUBSUMPTION stated unconditionally when the clause doing the
+  subsuming is conditional.** §7 row 4 said clause 2 subsumes the tsc-barrel row, so
+  neither `stale-shipped-declarations` nor `stale-bundle` fires. Clause 2 is
+  marker-conditional, and the marker is absent on every tree until the first build after
+  this lands — measured 2026-08-20. There the unit stays `compared`, §3.5 RUNS, and
+  `stale-shipped-declarations` fires NON-advisory at exit **1** under `--strict`, with a
+  remedy the cell denies. §8(i) already stated that branch, so the design contradicted
+  itself at two sites round 10 wrote in one pass, and the site an operator reads was the
+  wrong one. §4's line for the kind also printed a diagnosis false in that branch ("the
+  cached declarations were never copied in") — the OP-2 failure §4 files two bullets below
+  its own line list — and is now cause-neutral. §6 row 22 gains the marker-absent twin in
+  row 33's shape, so no row is renumbered.
+- **`CF13-4`, medium — §4 twice cited a precedence rule §3.2 and §3.3 abolished in round
+  9.** Both sections state the opposite in terms, so the citation resolved to its own
+  denial; the rule §4 means is §3.2's `unbuilt` suppression (round 10, `C10-1`). Round 9's
+  own site list claims it reached "§3.2's absence bullet (precedence deleted)" and "§4's
+  line shape" — the eleventh partly-true completion claim, and `CF9-2`'s shape at a site
+  round 9 recorded as done. The same line was also a splice: a full stop followed by an
+  em-dash continuation whose anchor sat four lines above, the round-9 paragraph having been
+  inserted between them — round 10's "guard WHAT an apply inserts" at a live site. Fixed in
+  §4, §3.2's rule NAMED so a citation to it can resolve, and the word swept out of §3.5's
+  paragraph heading and §6's row 10, so every surviving occurrence in §0-§8 is a negation.
+- **`OP13-1`, high — the findings path names no skipped unit anywhere in human output.**
+  §4's exit table prints the `PASS` line on the no-findings and advisory-only rows only,
+  and the prefix rule says "the `PASS` line when there is one", so on any run holding ≥1
+  non-advisory finding the skipped units survive only in `states` and `--json`. Three
+  sites justified emitting no coverage entry by pointing at that slot — §3's coverage
+  bullet, §3.1's orphan bullet, and §6's false-negative battery, whose fixture holds no
+  findings at all. §4's own worked example is the counterexample: after
+  `npm run build:clean`, **18** `skipped` units and exactly ONE `unbuilt` finding, and the
+  operator is told about one package. Round 9's `O9-1` fix made the coverage line dual-path
+  and then rested the unit table on a line the other path never prints — `O9-1` one level
+  over, produced by `O9-1`'s own fix. Fixed by giving the units-compared/skipped summary
+  the same "both paths, never one" rule; §4's rule renamed **SKIPPED UNITS ARE NAMED ON
+  BOTH PATHS** with all four citations repointed; §6 row **35** is the mutant-proved row.
+- **`OP13-2`, high — an editor's cross-reference standing in as an operator-facing reason
+  string.** §3.3's unit-state reason table gave an existing-but-empty `dist/` the whole
+  reason `indistinguishable — see below`, while §4 prints `unitState()`'s `reason` VERBATIM
+  and §6 row 30 forbids the reporter inventing one — so the design's own rules route a
+  pointer into a design file onto `pretest` line **5** of 204. Round 10's lesson at a new
+  site, one promotion further out. The cell now carries a printable reason. ⚠️ **The row
+  SPLIT the finding proposed was rejected in consolidation**: the reason table's domain is
+  "what `dist` holds", the ABSENT-`dist/` case is decided by §3.3's unit-state table one
+  table above, and adding a row for it would duplicate that verdict — `CF9-2`'s shape — and
+  renumber a table §6 rows 13 and 14 and §7 cite by row number. §4's "three `skipped` rows"
+  is corrected instead: three STATES, two of them reason-table rows.
+- **`OP13-3`, medium — "grouped" stated for every kind, shaped for one.** Four kinds carry
+  per-finding text in their §4 line and grouping discards it. Two `unbuilt` findings with
+  reasons from DIFFERENT tables is a state §4 itself names as reachable, and no battery row
+  renders two `unbuilt` findings at once, so a grouping formatter passed the whole battery.
+  §4 now partitions the eight kinds; §6 row **36** is the row. The site walk also found
+  §6's prefix-failure count reading "seven" against a group of **twelve** rows one sentence
+  above it — round 12 appended 31-34 without touching the figure — so the count is replaced
+  by the SET, per `C11-4`, rather than by another number.
+- **`CF13-5`, low — the registry that exists to protect §6's row numbers was wrong in both
+  directions.** It asserted "§3.3's clause 1 cites 33" while `grep -n "row 33"` returned
+  nothing anywhere in the file, and omitted §1 and §2 from rows 31 and 34. §3.3's clause 1
+  now carries the citation, in the shape §4 uses for rows 32 and 34, and the bullet quotes
+  a `grep` rather than restating it.
+- **`C13-4`, advisory — "the ONLY row" was false by one from the round that wrote it.**
+  §6 row 19 claimed to be the only row a presence-only marker implementation fails. Row 26
+  starts from row 19's own end state and requires four `not run (packages/cli unbuilt)`
+  coverage entries, which such an implementation renders as four `full` runs — so it fails
+  too. Corrected to name both, which also states the battery's coverage of exactly the gap
+  `C13-1` names, the reassurance a reader would otherwise take from the exclusivity claim.
+- **`CF13-2` / `C13-3` / `OP13-4`, medium — pass 1's regex could not see round 2's entire
+  slate, filed independently by all three lenses.** The numeric-suffix form misses `C-A`
+  through `O-C`: **19** such citations are live below `## 0.`, five of them in the body
+  above §9 and one of those inside §0's requirement rows — every figure in this bullet
+  measured against the document round 12 left, `git show c18ebff:<file>`, because this
+  round's own apply invalidates a bare count in the commit that writes it. Mutant: strip four of them from
+  §9 alone and the pass prints nothing while the condition it claims to enforce is
+  violated. Widened to `([0-9]+|[A-Z])` — 82 IDs became **91** there, still returning nothing and
+  four `DANGLING` lines on the mutant, and nothing on this document after this round's
+  apply. `[0-9A-Z]+` was measured against the same
+  document, matches the identical 91, and was rejected in consolidation: it would also
+  match a hyphenated ALL-CAPS token and dangle forever, which is a pass that cannot return
+  nothing.
+- **`CF13-3` / `OP13-4`, medium — pass 2 inspects 5 citations out of 278.** It matches the
+  BOLD form only, while the unbolded form occurs **272** times below `## 0.`; renaming
+  `IMPORT RULE` inside §1 alone leaves five dangling citations and pass 2 silent. The
+  greedy widening the finding proposed was measured first and rejected: with `grep -oE "§[0-9](\.[0-9])?'s [^,;.)]+"` it yields 237 extractions and **193**
+  UNRESOLVED lines on the unmodified document, so it can never return nothing — round 11's
+  lesson at a third site. (The finding reported 184; re-derived at 193, standing rule 2 on
+  a reviewer's own figure. The conclusion is unchanged and the number now travels with the
+  regex that produced it.) Closed instead by narrowing the CONVENTION to what a machine can
+  resolve (a cross-section rule name is BOLD or ALL CAPS) and adding pass 3 over the
+  ALL-CAPS form, which returns nothing here and flips on the mutant. ⚠️ **Consolidation
+  found a THIRD narrowness no lens named: `grep` is line-oriented, and one live bold
+  citation below `## 0.` WRAPS across a newline** — §2's `ComparisonCoverage` comment — so
+  the prefix occurs ONE time more below `## 0.` than the full pattern matches. The
+  DIFFERENCE is the reproducible form, not either count, because both move with every
+  citation a round adds; re-deriving both and subtracting is what makes the gap visible. Both residuals are
+  stated in the guard: a citation naming no rule at all is seen by no pass, which is how
+  `CF13-4` survived, and a bold citation that wraps is seen by no pass either.
+- **`CF13-6` / `OP13-5`, low — the corruption guard was baselined at 2574 lines against a
+  3092-line file**, the count having been taken before round 12's own 60 edits:
+  `git show 46a1d5c:<file> | wc -l` → 2574, `git show c18ebff:<file> | wc -l` → 3092. It is
+  the sub-claim that would have caught round 11's doubling. ⚠️ **The proposed remedy of
+  writing the CURRENT count was rejected in consolidation** — this round's own apply makes
+  any literal written here stale in the same commit that writes it, which is verbatim the
+  defect being filed. Deleted instead, per `C11-4`; if a count is ever restored it carries
+  its `git show <sha>` command. The other three clauses re-derive clean and carry no
+  number, except that the placeholder clause was itself false until `OP13-2` landed.
+- **`CF13-7`, low — §5's `check:all` census split 9 files as "4 prose comments, 4 test
+  assertions"; re-derived, it is 6 and 2.** Both assertion files use the `toContain` shape
+  §1 calls "membership only, blind to position and to flags", so the figure overstated by
+  2x how much of `check:all`'s membership any test pins, in the section arguing that §6
+  must pin member 0 by index and equality — the fourth recurrence of round 1's `O-4`, in
+  the block round 12 had just rewritten for that exact reason. The nine files are now
+  enumerated, so a fifth drift is detectable rather than merely likely.
+
+ℹ️ **What round 13 re-derived and could not break:** the anchor grep (nothing below
+`## 0.`, exactly its two quoted counterexamples over the whole file), the escape-aware
+row-width census (nothing; the naive form still flags §0's requirement 9 row, which is the
+document's own account), pass 2 as scoped (nothing on its five occurrences), pass 3 as
+newly written (nothing, over §1's IMPORT RULE), the four `String.replace` special
+sequences (still exactly four — three dollar-apostrophes and one dollar-backtick), the
+three structural clauses of the corruption guard, and the widened pass 1 against the whole
+91-ID set. No working-tree mutation: every probe read files as text or ran on a copy under
+the scratchpad, and `scripts/bundle-cli.mjs` was never imported.
+
+Battery rows **35** and **36** were appended, nothing renumbered.
