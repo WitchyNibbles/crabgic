@@ -351,11 +351,11 @@ this check is named for.
 **The rule is keyed on qualifying COMPILER OUTPUTS, not on the directory**, and the
 empty state gets its own name:
 
-| unit state                                     | verdict                                                                  |
-| ---------------------------------------------- | ------------------------------------------------------------------------ |
-| no `dist/` at all                              | `skipped`                                                                |
-| `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding; remedy per §4's table, which is authoritative |
-| `dist/` exists with outputs                    | compared normally                                                        |
+| unit state                                     | verdict                                                                      |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| no `dist/` at all                              | `skipped`                                                                    |
+| `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding; see the reason table below, and §4 for the remedy |
+| `dist/` exists with outputs                    | compared normally                                                            |
 
 ⚠️ **AND FOR `packages/cli`, PRESENCE OF OUTPUTS IS NOT ENOUGH — round 4.** `tsc -b --clean` removes only tsc's own outputs; the **five hashed esbuild chunks survive**, measured with `tsc -b packages/cli --clean --dry`. So after `npm run build:clean` the unit holds fresh qualifying outputs, is not `unbuilt`, compares **clean**, and `bundleAt` reads a chunk that is still there — while `packages/cli/dist/bin.js`, the published `bin.crabgic` entry point, **does not exist**. The check would print PASS on a tree with no CLI.
 
@@ -368,8 +368,43 @@ and the tree has all three entries present, no chunks, no `dist/plugin`, and a s
 `.bundle-meta/` that `rm -rf dist` did not touch. The check reports **PASS, exit 0**, on
 a tree with no `crabgic` binary.
 
-**So the rule is: `packages/cli` is `unbuilt` unless an ESBUILD-ONLY artifact exists** —
-a `/-[A-Z0-9]{8}\.js$/` chunk, which `tsc` has no notion of. The entry-output condition
+**So the rule is: `packages/cli` is `unbuilt` unless the LAST artifact `bundle-cli.mjs`
+writes exists** — `packages/cli/.bundle-meta/metafile.json`, and **the design requires
+that write to be placed AFTER the plugin copy**, beside `bundle-cli.mjs:181`.
+
+⚠️ **An esbuild-only chunk was round 6's answer and it is not sufficient, because esbuild
+is step 2 of 5 (round 7).** Verified order in `bundle-cli.mjs`:
+
+| line       | step                                       | absent if it never runs            |
+| ---------- | ------------------------------------------ | ---------------------------------- |
+| `:113-119` | wipe `dist`, keeping only `.tsbuildinfo`   | —                                  |
+| `:121`     | `build()` — writes 5 chunks + 3 entries    | ← a chunk oracle is satisfied HERE |
+| `:147-151` | throw if `.dts-cache/index.d.ts` is absent | `dist/index.d.ts`                  |
+| `:153`     | `copyFile` the declarations                | `dist/index.d.ts`                  |
+| `:178`     | `cp` the six `PLUGIN_ASSET_ENTRIES`        | `dist/plugin/**`                   |
+
+A fresh clone has no `.dts-cache` (gitignored, `npm ci` does not create it), so
+`npm run bundle:cli` throws at `:147` — leaving five chunks, three entries, **no
+declarations and no plugin assets**. Every comparison then passes or skips, and the check
+reports **PASS** on a `packages/cli` that would publish incomplete.
+
+**Keying on the last-written artifact makes the oracle prove the whole sequence ran**,
+not just its second step. That is the fifth and final form of this rule, and the reason
+the previous four failed is the same each time: they proved something _upstream_ of the
+thing that matters.
+
+**Pre-checked before the next round, per the rule that a fix must be run rather than
+reasoned about.** The pattern matches all five live artifacts — `chunk-DVV3SNQ3.js`,
+`chunk-FRJGAF5Y.js`, `chunk-I6JBP7DT.js`, `chunk-UF6GI6PE.js` and
+`run-dispatcher-POLZZ2DH.js`, i.e. **both** naming families esbuild produces under
+`splitting: true` — and matches **none** of the three tsc entry outputs.
+
+⚠️ **Its one bound, stated rather than left implicit.** `tsc` names outputs after their
+sources, so a source called `x-ABCD1234.ts` WOULD emit a matching `.js` and satisfy the
+rule without esbuild running. Measured: **zero** tracked `.ts` files match
+`-[A-Z0-9]{8}\.ts$`, and no `dist` outside `packages/cli` holds a matching `.js`. The
+collision is possible in principle and absent in fact; the honest form of the rule is
+"an artifact esbuild produces and no source in this repository would name". The entry-output condition
 is additional, never the whole one.
 
 The four proxies, in order, are the record of how this was learned: directory existence →
@@ -380,8 +415,25 @@ Each of the first three is writable by `tsc -b` alone.
 
 `unbuilt` is never folded into `clean`.
 
-⚠️ **And `unbuilt` requires at least one NON-EXCLUDED entry, or round 5's scratch
-exclusion creates a false positive (round 6).** Both fixture families call
+⚠️ **`unbuilt` is decided by WHY `dist` is empty, not by how many entries it has
+(round 7 — round 6's count-based rule reverted round 3's fix).** Counting non-excluded
+entries made an empty `dist` report **clean**: `tsc -b --clean` deletes files and leaves
+the directory, so after `npm run build:clean` all 19 units hold zero entries, zero
+non-excluded entries, and compare clean against `undefined`. That is verbatim the state
+round 3 filed `CR-2` for. The rule is therefore:
+
+| what `dist` holds             | verdict   | why                                                 |
+| ----------------------------- | --------- | --------------------------------------------------- |
+| nothing at all                | `unbuilt` | it was built once and the outputs are gone          |
+| only `.tsbuildinfo`           | `unbuilt` | `.tsbuildinfo` is positive proof the unit WAS built |
+| only `eo-*-fixture-*` scratch | `skipped` | a test `mkdir`ed it; nothing was ever built here    |
+| any real output               | compared  |                                                     |
+
+**The distinguishing fact is the REASON the directory is empty, and the count cannot
+carry it** — a never-built tree and a `--clean`ed tree both hold zero entries.
+
+⚠️ **The original round-6 wording — "requires at least one NON-EXCLUDED entry" — is what
+reverted the earlier fix.** Both fixture families call
 `mkdir(SCRATCH_ROOT, { recursive: true })` and their `cleanup()` removes only the
 mkdtemp directory — so `packages/journal/dist` **persists, empty**, after the first
 `npm test` on a tree that was never built. With every remaining entry excluded as
@@ -437,6 +489,14 @@ that command was banned four lines above it, and it survived two dispositions cl
 otherwise — the second time because a verification grep was single-line and the sentence
 wrapped. §4's table is the only remedy source.
 
+⚠️ **And mtime alone cannot see a PARTIAL copy (round 7).** `bundle-cli.mjs:177-179`
+copies the six `PLUGIN_ASSET_ENTRIES` in a loop; interrupt it after `agents/` and before
+`skills/` and `dist/plugin` exists with a copy-time mtime, so `newest(sources)` is not
+greater and the comparison reports clean while the shipped CLI has no skills. So the
+comparison checks the six entries for **presence** as well as mtime — or, equivalently,
+is subsumed by the metafile-as-completion-marker rule above, since a partial copy means
+`bundle-cli.mjs` never reached `:181`.
+
 This is the one place the design deliberately compares a copied tree rather than
 compiler output, and it is safe here precisely because the comparison runs the other
 way round: the asset copy refreshes the OUTPUT side, so it can only ever mask staleness
@@ -448,7 +508,7 @@ Human text on stdout by default; `--json` for machine use (the `repo-census.mjs`
 convention). One line per finding naming the unit, the newest input, the older output
 and the delta.
 
-⚠️ **Two kinds have no delta to print, and the line shape predates them (round 4).**
+⚠️ **THREE kinds have no delta to print, and the line shape predates them.**
 `Finding = { kind, unit, newerInput, olderOutput, deltaMs, remedy }` assumes a
 comparison. `unbuilt`'s finding IS the absence of an output, and
 `bundle-provenance-missing` has neither side. Printing the common shape gives
@@ -458,6 +518,15 @@ line:
 
 - `unbuilt <unit> — dist/ exists but holds no compiler output`
 - `bundle-provenance-missing packages/cli — .bundle-meta/metafile.json absent; the bundle comparison did not run`
+- `orphan-output <unit> — dist/<x>.js has no src/<x>.ts` — **round 7**: an orphan has no
+  newer input by definition, so it printed `undefined … NaN` too. The same defect round 4
+  filed for `unbuilt`, at a site that fix did not reach.
+- `unbuilt packages/cli — tsc output present but no completed bundle; bundle:cli did not
+finish` — **round 7**: the generic line says "holds no compiler output", which is FALSE
+  in the case round 6 added the rule for. Interrupt `npm run build` during `bundle:types`
+  and `dist` holds `bin.js`, `index.js`, `bin/supervisord.js` and `index.d.ts`. An
+  operator who runs `ls` sees plenty of output, concludes the check is broken, and mutes
+  it. The rule changed in round 6; the line did not.
 
 **Findings of the same `kind` are grouped, and the remedy is PER KIND.** Both were
 round-1 findings and both are load-bearing:
@@ -1107,3 +1176,70 @@ the fix was RUN rather than reasoned about. The design is 1000+ lines, seven fin
 kinds, five comparisons — and the recurring failure has been a rule keyed on a proxy for
 the thing it means. That is a property of the FULL design the owner selected, not of any
 one round, and it is recorded here so the design-gate decision can weigh it.
+
+**Round 7 (2026-08-20) — three `revise`, ten findings, three high. One is a REGRESSION
+this design introduced in round 6, and one finally names the right oracle.**
+
+**CR-1, high — round 6's `unbuilt` precondition REVERTED round 3's `CR-2` fix.** Round 6
+required "at least one non-excluded entry" so that a test-created empty
+`packages/journal/dist` would not report `unbuilt`. But `tsc -b --clean` deletes files and
+leaves the directory, so after `npm run build:clean` **all 19 units hold zero entries**,
+therefore zero non-excluded entries, therefore not `unbuilt`, therefore **clean** — the
+exact state round 3 called "the worst available answer for the incident this check is
+named for".
+
+⚠️ **A count cannot carry the distinction, because a never-built tree and a `--clean`ed
+tree both hold zero entries.** The rule is now keyed on WHY the directory is empty:
+`.tsbuildinfo` alone is positive proof the unit _was_ built, so it is `unbuilt`; only
+scratch means a test `mkdir`ed it and nothing was ever built, so it is `skipped`.
+
+**CR-2, high — the chunk proves esbuild ran, not that the bundle completed, and esbuild
+is step 2 of 5.** Verified order in `bundle-cli.mjs`: `:121` `build()` writes the chunks,
+`:147` throws if `.dts-cache` is missing, `:153` copies the declarations, `:178` copies
+the six plugin entries, `:181` reads the metafile. A fresh clone has no `.dts-cache`, so
+`npm run bundle:cli` throws at `:147` — leaving chunks and entries present, and **no
+declarations and no plugin assets**. Every comparison passes or skips, and the check
+reports PASS on a `packages/cli` that would publish incomplete.
+
+**So the oracle is the LAST artifact `bundle-cli.mjs` writes**, and the design now
+requires the metafile write to be placed after the plugin copy. That is the fifth form of
+this rule, and the reason the first four failed is identical each time: **they proved
+something upstream of the thing that matters.**
+
+| #   | oracle                        | proved                     |
+| --- | ----------------------------- | -------------------------- |
+| 1   | directory exists              | nothing                    |
+| 2   | any output present            | `tsc` ran                  |
+| 3   | entry outputs present         | `tsc` ran                  |
+| 4   | an esbuild-only chunk         | esbuild ran — step 2 of 5  |
+| 5   | **the last artifact written** | **the whole sequence ran** |
+
+**CR-3, medium — mtime cannot see a partial plugin copy.** Interrupt the six-entry loop
+after `agents/` and `dist/plugin` exists with a copy-time mtime, so the comparison reports
+clean while the shipped CLI has no skills. Subsumed by the completion-marker rule, and
+stated anyway.
+
+**CF-1, high — §3.3 contradicted itself in two lines**, and §6's row 9 mandated the
+refuted behaviour: an implementer who passed row 9 had not implemented the round-6 rule,
+and one who implemented it failed row 9.
+
+**CF-2, CF-3 — the wiring assertions copy one third of the shape they cite**, and the two
+edits to EXISTING files are in no scope list. `pretest` — which §5.1 calls the ONLY
+trigger that can fire on a stale tree — has no assertion anywhere; an implementer could
+omit it, pass all 12 battery rows and the wiring test, and ship a check that never runs
+automatically. Likewise `bundle-cli.mjs`'s metafile write and `.gitignore`'s entry exist
+only in prose, so an implementer builds the six new files, passes everything, and leaves
+requirement 3's comparison **permanently muted** — the vacuity class this change set
+exists for.
+
+**OP-1, OP-2 — `orphan-output` also printed `undefined … NaN`** (three kinds without a
+delta, not two), and the `unbuilt` line said "holds no compiler output" in precisely the
+case where `dist` holds four files. Round 6 changed the rule and not the sentence.
+
+ℹ️ **Seven rounds, sixty findings.** Rounds 6 and 7 each produced a materially better
+rule rather than another patch — the proxy diagnosis, then the completion-marker oracle —
+but round 6's own fix also reverted round 3's. **A fix that narrows one failure can
+re-open another when both are governed by the same predicate**, and neither round noticed
+because each tested its own scenario and not the other's. That is the argument for the
+battery rows CF-1 exposes as contradictory, and for treating this design's size as a
+finding in its own right at the gate.
