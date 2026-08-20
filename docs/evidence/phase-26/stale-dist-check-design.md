@@ -47,7 +47,7 @@ header and `scripts/repo-census.mjs` restates at `:39-41`.
 | `scripts/check-stale-dist.mjs`      | ~90          | `#!/usr/bin/env node`, the WHY header, arg parsing, CLI |
 | `scripts/stale-dist/units.mjs`      | ~150         | build-unit enumeration and per-unit input/output sets   |
 | `scripts/stale-dist/walk.mjs`       | ~80          | mtime walk primitives and the output/input classifiers  |
-| `scripts/stale-dist/compare.mjs`    | ~180         | the four comparisons, each returning `Finding[]`        |
+| `scripts/stale-dist/compare.mjs`    | ~220         | the FIVE comparisons, each returning `Finding[]`        |
 | `scripts/stale-dist/report.mjs`     | ~80          | findings → text/JSON, and the exit code                 |
 | `scripts/check-stale-dist.test.mjs` | ~450         | colocated suite (§6)                                    |
 
@@ -76,12 +76,15 @@ export function isCompilerInput(relPath)             -> boolean
 // compare.mjs
 export function checkUnitFreshness(unit)             -> Finding[]  // reqs 1, 5, 6, 9
 export function checkOrphans(unit)                   -> Finding[]  // req 2
-export function checkBundleFreshness(units)          -> Finding[]  // req 3
+export function checkBundleFreshness(units, inlined) -> Finding[]  // req 3
 export function checkDeclarationCache(units)         -> Finding[]  // req 8
+export function checkPluginAssets(cwd)               -> Finding[]  // §3.4
+export function inlinedUnitsFromMetafile(metafile)   -> string[]   // req 3's ground truth
 export function checkStaleDist(cwd)                  -> { findings, units, skipped }
 
 // Finding = { kind, unit, newerInput, olderOutput, deltaMs, remedy }
-// kind ∈ "stale-unit" | "orphan-output" | "stale-bundle" | "stale-declarations" | "stale-plugin-assets"
+// kind ∈ "stale-unit" | "orphan-output" | "stale-bundle" | "stale-declarations"
+//       | "stale-plugin-assets" | "unbuilt" | "bundle-provenance-missing"
 
 // report.mjs
 export function formatFindings(result, { json })     -> string
@@ -200,7 +203,14 @@ Worse, the rule generalises catastrophically. `packages/cli/package.json` declar
 
 **The inlined set is therefore derived from esbuild's own metafile, never from the
 package.json graph.** `result.metafile.inputs` is exactly the set of files that entered the
-bundle. The declared dependency graph is not that set and never was — the bundle is
+bundle.
+
+**The derivation is stated rather than left to the implementer**, because `inputs` is
+not a unit list: measured with esbuild 0.28.1 under `bundle-cli.mjs`'s own options it
+holds **758** entries spanning **17** `packages/*` plus a large `node_modules/**` tail.
+`inlinedUnitsFromMetafile` therefore keeps keys matching `^packages/([^/]+)/dist/`,
+takes the capture, and drops `cli` itself — `packages/cli` appears via its own `src/`
+and is the consumer, not an inlined dependency. The declared dependency graph is not that set and never was — the bundle is
 built from the ESM import graph.
 
 ⚠️ **BUT THAT RULE WAS UNIMPLEMENTABLE AS FIRST WRITTEN, AND THE DESIGN CAUGHT IT
@@ -210,14 +220,50 @@ reads `result.metafile.outputs` **in memory**, then discards it. Measured:
 time from the bundle, so there is no metafile for it to read.
 
 **So the design requires one change to the build program**: `bundle-cli.mjs` writes
-`result.metafile` to `packages/cli/dist/.bundle-meta.json` after the build. Three
-properties make this the right shape rather than a workaround:
+`result.metafile` to **`packages/cli/.bundle-meta/metafile.json`** — gitignored, and
+deliberately OUTSIDE `dist`.
+
+⚠️ **`packages/cli/dist/.bundle-meta.json` was the first proposal and it would have
+SHIPPED.** `packages/cli/package.json`'s `files` is
+`["dist", "!dist/**/*.test.*", "!dist/**/test-support/**", "!dist/.tsbuildinfo"]`, so
+anything new under `dist` is published by default — and the metafile is **404,198 bytes
+over 758 inputs**, including a `node_modules/**` tail. This repository already fought
+exactly this battle: `check-published-tarball.mjs:41-45` bans `.tsbuildinfo` because it
+is "the one file that differs between two builds of identical sources in different
+environments, so shipping it makes the published artifact non-reproducible — directly
+undermining roadmap/23's reproducible-build criterion. Shipped in 1.0.0 through 1.1.1."
+The metafile is twice that size with the same defect, and **no `files` negation and no
+`FORBIDDEN_PATTERNS` rule would have caught it** — `check:tarball` would have passed it
+straight into the published package.
+
+Beside `.dts-cache` is the shape this repository already uses for a build artifact that
+must not ship.
+
+⚠️ **And the entry has to be copied, not just the shape.** `.dts-cache/` is gitignored at
+`.gitignore:47`; `packages/cli/.bundle-meta/` is **not** — measured with
+`git check-ignore -v`, which reports nothing for it. Without that line the design creates
+an untracked file on every build, which `repo-census.mjs` reports in its "on disk,
+neither tracked nor ignored" bucket and which sits in `git status` forever. So the change
+to the build program comes with a second, one-line change: add
+`packages/cli/.bundle-meta/` to `.gitignore`.
+
+This was caught by pre-checking the fix rather than by a review round — the fourth
+consecutive round in which a fix in this design carried a defect, and the third caught
+before a reviewer saw it. The pattern is worth more than any single instance: **a fix
+that copies an existing shape must copy the whole of it**, and the only reliable way to
+find out is to run the check the shape implies. Three properties then make it the right oracle rather than a workaround:
 
 - it is the **only** ground truth for "what went into this bundle" — every alternative
   (the package.json graph, the tsconfig closure, grepping for specifiers) has already
   been measured wrong in this design;
-- it is itself a build output, so when it is absent the extended skip rule already
-  covers the case and the bundle comparison reports `skipped` rather than throwing;
+- when it is absent the bundle comparison does not throw — but **absence is reported,
+  not silently skipped**. "No bundle at all" and "a bundle exists whose provenance is
+  missing" are different states, and the second is reachable on a fully built tree:
+  every tree built by today's `bundle-cli.mjs`, and any build interrupted between
+  esbuild and the metafile write. Silently skipping there would mute requirement 3's
+  comparison on exactly the founding incident, so it reports
+  `bundle-provenance-missing` with the reduced-confidence wording §3.2 already uses for
+  the chunk-predicate fallback;
 - it is **excluded from the output set** for the same reason `.tsbuildinfo` is — it is
   bundler bookkeeping, not compiler output, and including it would let the bundle
   comparison clear itself.
@@ -258,6 +304,26 @@ produces exactly this artifact and nothing else.
 `packages/cli/.dts-cache/index.d.ts` is gitignored (`.gitignore:47`), is neither
 `src` nor `dist`, and survives the `rm -rf packages/cli/dist` a reader performs when
 the check fires.
+
+⚠️ **SKIP RULE, RE-KEYED IN ROUND 3 — directory existence is the wrong predicate.**
+`tsc -b --clean` leaves `dist` **existing and empty**, measured, and `build:clean` is a
+published root script. A rule keyed on absence does not fire there, so the comparison
+runs with nothing to compare and its verdict is undefined. Reporting `clean` would print
+PASS on a tree with **zero build output** — the worst available answer for the incident
+this check is named for.
+
+**The rule is keyed on qualifying COMPILER OUTPUTS, not on the directory**, and the
+empty state gets its own name:
+
+| unit state                                     | verdict                                           |
+| ---------------------------------------------- | ------------------------------------------------- |
+| no `dist/` at all                              | `skipped`                                         |
+| `dist/` exists, no qualifying compiler outputs | **`unbuilt`** — a finding, remedy `npm run build` |
+| `dist/` exists with outputs                    | compared normally                                 |
+
+`unbuilt` is never folded into `clean`. Round 2's exclusion of `.tsbuildinfo` makes this
+state reachable a second way: `bundle-cli.mjs:113-119` deletes outputs while keeping
+`.tsbuildinfo`, and a following `tsc -b` re-emits nothing.
 
 ⚠️ **SKIP RULE, EXTENDED IN ROUND 1.** §3's skip rule was per-unit and covered only
 `checkUnitFreshness`; `checkBundleFreshness` and `checkDeclarationCache` stat their
@@ -306,12 +372,15 @@ and the delta.
 **Findings of the same `kind` are grouped, and the remedy is PER KIND.** Both were
 round-1 findings and both are load-bearing:
 
-| `kind`               | remedy printed                                                                                                                                                                          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stale-unit`         | **`rm -rf <unit>/dist` then `npm run build`** — `npm run build` alone often CANNOT clear this                                                                                           |
-| `stale-bundle`       | **`npm run build`** — NOT `npm run bundle:cli`, which throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), precisely the standalone invocation its own error text warns about |
-| `orphan-output`      | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this                                                                                |
-| `stale-declarations` | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this                                                                                                         |
+| `kind`                      | remedy printed                                                                                                                                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stale-unit`                | **`rm -rf <unit>/dist` then `npm run build`** — `npm run build` alone often CANNOT clear this                                                                                                                         |
+| `stale-bundle`              | **`npm run build`** — NOT `npm run bundle:cli`, which throws when `.dts-cache` is absent (`bundle-cli.mjs:146-151`), precisely the standalone invocation its own error text warns about                               |
+| `orphan-output`             | **`rm -rf <unit>/dist` then `npm run build`** — neither `npm run build` NOR `tsc -b --clean` clears this                                                                                                              |
+| `stale-declarations`        | **`npm run bundle:types -- --force`** — `npm run build` alone CANNOT clear this. ⚠️ **~5 minutes**; `bundle-types.mjs:76` says so itself, and under `check:all --strict` that is a five-minute wait to unblock a push |
+| `stale-plugin-assets`       | **`npm run build`** — NOT `npm run bundle:cli`, for the reason the `stale-bundle` row gives                                                                                                                           |
+| `unbuilt`                   | `npm run build`                                                                                                                                                                                                       |
+| `bundle-provenance-missing` | `npm run build` — reduced-confidence, see §3.2                                                                                                                                                                        |
 
 ⚠️ **`npm run build` was the single printed remedy and it is wrong for two of the four
 kinds.** Measured with the repo's pinned `typescript@6.0.3` on a composite fixture:
@@ -429,11 +498,31 @@ in every pre-push". It runs in neither. Re-ruled with the corrected facts:
 
 ```json
 "pretest": "node scripts/check-stale-dist.mjs",
-"check:stale-dist": "node scripts/check-stale-dist.mjs --strict"
+"check:stale-dist": "node scripts/check-stale-dist.mjs"
 ```
+
+⚠️ **`check:stale-dist` carries NO `--strict` in its own definition.** §5 chains it as
+`npm run check:stale-dist -- --strict`, so declaring it strict here would contradict
+§4's "an ad-hoc local run stays non-punitive, and only the chained invocation fails" AND
+pass `--strict --strict` from `check:all`. An earlier draft declared it strict; that was
+a round-3 finding.
 
 `pretest` is the ONLY trigger in this repository that can fire on a stale tree. It runs
 immediately before `npm test`, which is the exact moment the founding incident bit —
+
+⚠️ **BUT IT DOES NOT PRINT "IMMEDIATELY ABOVE" THE FAILURES, AND AN EARLIER DRAFT
+CLAIMED IT DID.** `pretest` completes before `vitest` starts, and `vitest run` prints
+failure detail and its summary at the END. Measured with an 83-failure suite — the
+founding incident's own count — and a one-line warning: **204 lines of output, the
+warning at line 5**, so ~199 lines of scrollback separate the explanation from the place
+an operator reads. Real failures carry diffs and stacks, so the true gap is larger. The
+founding incident WAS two hours of misdiagnosis by someone reading the bottom of the
+output.
+
+The reliable form is a vitest reporter or `globalSetup` that re-emits at the end;
+`posttest` does not run when `test` fails. Until that element exists, the limit is
+stated here rather than in the round log: **the warning can scroll away.**
+
 83 failures from a `dist` that predated its source, misdiagnosed for two hours because
 nothing said so.
 
@@ -647,3 +736,56 @@ and no repo script writes into the asset sources; the hashed chunk exists so the
 fallback is not live; the 0-orphan bijection; §6's live four-`stale-unit` prediction,
 re-derived with an independent implementation; §8(g); and the walk timed at 0.06 s over
 six runs.
+
+**Round 3 (2026-08-20) — three `revise`, nine findings, all re-derived and all
+dispositioned. Two are blocking, and one of them would have shipped a defect this
+repository already has a gate against.**
+
+**CR-1, high — the round-2 metafile fix would have published a 404 kB file.** The fix
+put `result.metafile` at `packages/cli/dist/.bundle-meta.json`. `packages/cli`'s `files`
+is `["dist", "!dist/**/*.test.*", "!dist/**/test-support/**", "!dist/.tsbuildinfo"]`, so
+anything new under `dist` ships by default. Measured: **404,198 bytes, 758 inputs**,
+including a `node_modules/**` tail.
+
+⚠️ **This repository already banned exactly this file class, for exactly this reason.**
+`check-published-tarball.mjs:41-45` excludes `.tsbuildinfo` because it is "the one file
+that differs between two builds of identical sources in different environments, so
+shipping it makes the published artifact non-reproducible — directly undermining
+roadmap/23's reproducible-build criterion. **Shipped in 1.0.0 through 1.1.1.**" The
+metafile is twice the size with the same defect, and no `files` negation or
+`FORBIDDEN_PATTERNS` rule would have caught it — `check:tarball` would have **passed**.
+Moved to `packages/cli/.bundle-meta/`, beside `.dts-cache`, which is the shape this
+repository already uses for a build artifact that must not ship.
+
+**CR-2, high — the skip rule's predicate was directory existence, and the empty state is
+reachable from a published script.** Measured: `tsc -b --clean` leaves `dist` existing
+and **empty**, and `build:clean` is a root script. A rule keyed on absence does not fire,
+so the comparison would run with nothing to compare. Reporting `clean` there prints PASS
+on a tree with **zero build output** — the worst available answer for the incident this
+check is named for. Re-keyed on qualifying compiler outputs, with `unbuilt` as its own
+verdict, never folded into `clean`. Round 2's `.tsbuildinfo` exclusion makes the state
+reachable a second way, via `bundle-cli.mjs:113-119`.
+
+**CF-1, medium — "both fixed" was again only half true.** Round 2's entry claimed
+`stale-plugin-assets` had been propagated to the kind union, the exports, the file table,
+the remedy table, the battery and the traceability matrix. Measured: it reached the kind
+union and nothing else, and only `exitCodeFor` of the "both" was done. **This is the
+second consecutive round in which a completion claim in this record was overstated**, and
+the rule the research stage wrote down for exactly this — _a disposition is complete only
+when every site is re-measured_ — was not applied to the disposition itself.
+
+**CR-3, CF-2, OP-1, OP-2, OP-3, OP-4** — a missing metafile silenced requirement 3's
+comparison on a fully built tree, so it now reports `bundle-provenance-missing`; the
+metafile filter is stated (**758** inputs across **17** `packages/*`, so `inputs` is not
+a unit list); `check:stale-dist` had two contradictory definitions, one of which made an
+ad-hoc run punitive and passed `--strict --strict`; the fifth kind had no remedy row and
+its only stated remedy was the command round 2 had just banned; `stale-declarations`
+prints a **~5 minute** rebuild and now says so; and §5.1's "immediately above the
+failures" is corrected to the measured **~199 lines** with the reporter re-emit named.
+
+ℹ️ **The reviewer disclosed that it mutated the working tree** — a probe imported
+`bundle-cli.mjs`, whose top-level `await main()` rebuilt `packages/cli/dist`. It checked
+and reported that all five content-hashed chunk names were unchanged, so only mtimes
+moved, and re-derived §6's live claim afterwards to confirm it still holds. Recorded
+because disclosing a side effect and re-deriving past it is what makes the rest of the
+report usable.
