@@ -10,11 +10,11 @@ third standing rule. All measured 2026-08-20 at a clean working tree.
 
 ⚠️ **NO RULE IN THIS DOCUMENT IS CITED BY LINE NUMBER INTO THIS DOCUMENT (round 11).**
 Intra-document references name the section and the rule's own name — "§3.3's **SKIP RULE —
-ALL FOUR cli-SCOPED COMPARISONS**", "§4's **PASS-line rule**" — because a file every round
+ALL FOUR cli-SCOPED COMPARISONS**", "§4's **The `PASS` line NAMES SKIPPED UNITS**" — because a file every round
 rewrites reflows underneath its own anchors, and a named rule survives the reflow.
 Re-derived 2026-08-20 at a clean tree: `grep -on '§[0-9][0-9.]*:[0-9]'` over this file
 returned **six** such anchors and **all six resolved to the wrong text**. `§4:667` (twice)
-lands inside §3.3 — round 9 moved §4's PASS-line rule 548 lines and the anchor was carried
+lands inside §3.3 — round 9 moved §4's **The `PASS` line NAMES SKIPPED UNITS** rule 548 lines and the anchor was carried
 forward unchanged — and round 10's three `§3.3:71x` anchors were wrong at the commit that
 wrote them (`:710` is the chunk-collision bound, `:724` is "when there is one — answers
 freshness"). All six are repointed by NAME in this round. The check is that command run over the
@@ -22,10 +22,85 @@ document **below this guard** — `awk '/^## 0\./,0' <file> | grep -on '§[0-9][
 — which returns **nothing**, measured 2026-08-20. Run over the WHOLE file it returns
 **two**: the anchors quoted above as counterexamples. Round 11 wrote the unscoped form
 first and it failed on its own illustration — a check a counterexample falsifies is not a
-check, and the scope is part of the check. Line citations into OTHER
+check, and the scope is part of the check.
+
+⚠️ **A NAME THAT RESOLVES TO NOTHING IS INVISIBLE TO THAT GREP, so the check has TWO MORE
+PASSES (round 12).** The anchor grep guards WHERE a citation points; these guard WHAT it
+names. **Both are scoped below the `## 0.` heading for the reason the anchor grep is** —
+this guard must quote the failing forms to teach them, and an unscoped pass would then
+report its own illustrations forever, which is the trap round 11 recorded one paragraph
+above. Measured 2026-08-20 before this round, both failed:
+
+```
+# (1) every finding ID cited anywhere must have a §9 entry
+awk '/^## 0\./,0' <file> | grep -oE '\b(C|CF|CR|O|OP)[0-9]*-?R?[0-9]*-[0-9]+\b' | sort -u | while read -r id; do
+  awk '/^## 9\./,0' <file> | grep -qF -- "$id" || echo "DANGLING $id"; done
+
+# (2) every `§N's **NAME**` citation must occur inside that section
+awk '/^## 0\./,0' <file> | grep -oE "§[0-9](\.[0-9])?'s \*\*[^*]+\*\*" | sort -u | while IFS= read -r cite; do
+  sec=$(printf '%s' "$cite" | sed -E "s/^§([0-9](\.[0-9])?)'s.*/\1/")
+  name=$(printf '%s' "$cite" | sed -E 's/^[^*]*\*\*(.*)\*\*$/\1/')
+  awk -v s="$sec" 'BEGIN{re="^#+ " s "[ .]"} $0 ~ re {inS=1;next} /^#+ [0-9]/{if(inS)exit} inS' <file> \
+    | grep -qF -- "$name" || echo "UNRESOLVED $cite"; done
+```
+
+Pass 1 returned **six** IDs — `C10-1`, `C10-2`, `C10-3`, `C10-4`, `O9-1`, `OP11-2` —
+carrying **37** citations in the body (12, 9, 7, 4, 4 and 1), two of them inside §0's
+requirement rows, against a §9 that stopped at round 9. Pass 2 returned **one**: the name
+for §4's PASS-line rule that this guard offered above as its own model and that §4 does
+not contain. Both are discharged in this round — §9 gains round 10, round 11 and round 12
+entries, and the four citations are renamed — and both must return **nothing**
+thereafter. **A round that files a new finding ID adds its §9 entry in the SAME round**,
+or pass 1 fails on that round's own body text. ⚠️ **Pass 2's section matcher is `[ .]`,
+not an escaped dot, and that is not cosmetic**: §3.3's heading is `### 3.3 Declaration
+cache` with no dot, so a dot-anchored form extracts an empty section and reports
+`§3.3's **SKIP RULE — ALL FOUR cli-SCOPED COMPARISONS**` as UNRESOLVED when it resolves —
+standing rule 1, on the check itself. Line citations into OTHER
 files stay and stay exact — those files are not rewritten by these rounds. §6 already
 guards its row numbers this way ("cited from OUTSIDE this section, so nothing here is
 renumbered casually"); this is the same guard for everything else.
+
+⚠️ **A SECOND REPRODUCIBLE CHECK, ON TABLE ROWS (round 12).** GFM discards every cell
+beyond its header's column count and does NOT exempt a pipe inside a code span, so one
+unescaped `|` in a cell silently TRUNCATES the row there and throws the rest away — the
+sentence is in the file and not on the page. Every `|` inside a cell is written escaped,
+the shape `docs/presentation-policy.md:234` already uses. The check compares each row's
+pipe count against its own table's header, **after stripping the escaped ones — and that
+stripping is the whole of it**: the naive form still reports a CORRECTLY escaped row as
+malformed, so it can never return nothing and is not a check (standing rule 1, on the
+check itself):
+
+```
+awk '/^\|/{gsub(/\\\|/,""); n=gsub(/\|/,"|"); if(p==0)h=n; if(n!=h) print NR": "n" vs "h; p=1; next}{p=0}' <file>
+```
+
+Run 2026-08-20 before this round it printed exactly **one** line — §0's requirement 9 row,
+**6** pipes against a **4**-pipe header — where a `git ls-files … wc -l` command cut the
+cell at its first pipe and dropped the whole of the bounded-residual statement round 11
+had just added to it. After escaping it returns **nothing**, verified against a simulated
+fixed copy. The anchor grep above is the guard on WHERE a fix points; this is the guard on
+WHAT it inserts, at the one place a correct sentence can be inserted and still not render.
+
+⚠️ **THIS FILE IS NEVER EDITED WITH A STRING REPLACEMENT (round 12).** Round 11's first
+apply passed replacement text containing a dollar followed by an apostrophe to
+JavaScript's `String.replace`, which reads that pair as "everything after the match": it
+spliced the rest of the file back in and doubled the document to **4499** lines. It was
+caught, reverted, and re-applied with a function replacement plus a line-delta guard.
+Both are STANDING requirements of the apply step, not that round's remedy, because this
+document carries **four** live `String.replace` special patterns as legitimate content —
+three dollar-apostrophes and one dollar-backtick, in §0's requirement-9 row, twice in §3's
+reproducible-command block, and in §3.3's chunk-collision bound. Three of the four sit in
+blocks re-derived and rewritten most rounds, so an edit whose replacement text spans one
+is likely rather than exotic. The check is a shell-neutral census — `grep -on` for a
+dollar followed by any character, over the whole file, discounting the forms that are not
+special — measured 2026-08-20 at **four** hits. It is written unquoted, and the two
+sequences are named in words rather than quoted here, for two measured reasons: quoting
+them would make this guard the fifth and sixth instances, and the quoted form of the
+census returns NOTHING under `fish`, which is how a first scan nearly recorded the
+document as free of them — standing rule 1, at the verification of an absence claim.
+Re-derived 2026-08-20 for residual damage of the round-11 class: **2574** lines, every
+`#`-heading occurring once, no duplicated line over 120 characters, and no editor
+directive, placeholder or "see above" standing in as document text. None survives.
 
 ## 0. Requirement traceability
 
@@ -33,14 +108,14 @@ renumbered casually"); this is the same guard for everything else.
 | --- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `dist` side scoped to compiler outputs, excluding the `bundle:cli` asset copy        | §3 output set; `dist/plugin/**` (covered by §3.4) + `dist/index.d.ts` (covered by §3.5) excluded from the **mtime** side for `packages/cli` — their PRESENCE is required by §3.3's artifact set, so "excluded" never means "the check ignores them". Fixture rows 7, 8, 22, §6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2   | orphan check                                                                         | §3.1 `checkOrphans`. ⚠️ **Bounded residual — §8(m)**: a `PLUGIN_ASSET_ENTRIES` source DELETED without a rebuild leaves its shipped copy under `packages/cli/dist/plugin`, which §3.1 exempts from orphan detection by construction, §3.3's clause 1 checks only for top-level presence, and §3.4 compares mtimes only. Round 2 dispositioned that as `C-C`, "accepted as a stated limit"; the limit reached no section until round 11                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 3   | `packages/cli/dist/bin.js` vs newest `dist` of every inlined `@crabgic/*`            | §3.2 `checkBundleFreshness`, over the **metafile-derived** inlined set (16 units, equal to the reference closure today but never derived from it) — **inert unless §1's two `bundle-cli.mjs` edits land in the right order**, which §6's mutant-proved wiring assertion is the only thing that establishes, and **conditional on the marker**: absent, the comparison does not run and the advisory `bundle-provenance-missing` is reported instead — unconditionally, never as a migration window (§3.3's cli reason table, §6 battery row 10), which is the state of every tree until the first build after this lands. **Discharged only when it RUNS**: §4's coverage line prints the `not-run` entry on both paths, so the row is never silently undischarged — **including the not-run case in which NOTHING is absent (round 10, C10-1)**: when `unitState("packages/cli").state === "unbuilt"` all four cli-scoped comparisons are suppressed, and all four then report `not-run` with the second mandated reason `packages/cli unbuilt` (§3.2, §3.3, §3.4, §3.5, and §4's verbatim reason list). Without it the most routine tree there is — §7's `npm run typecheck` row, a bare `tsc -b` after a completed bundle — prints one `unbuilt` finding and no coverage line at all, which §4's recipe step 5 reads as "all six ran". There is no `reduced` status — round 10 deleted it as unreachable: a `packages/cli` with no esbuild chunk is `unbuilt` through §3.3's clause 1, and no cli-scoped comparison runs on an `unbuilt` unit (§3.2) |
+| 3   | `packages/cli/dist/bin.js` vs newest `dist` of every inlined `@crabgic/*`            | §3.2 `checkBundleFreshness`, over the **metafile-derived** inlined set (16 units, equal to the reference closure today but never derived from it) — **inert unless ALL FIVE of §1's `bundle-cli.mjs` edits land, and the clear/write pair in the right order** (round 12, CF12-4: the `writeFile` import, the clear, the write, the `export` of `PLUGIN_ASSET_ENTRIES` and the entry-point guard — §1 says of the last two that "nothing above is reachable without them", because without the `export` at `:89` the check's own import fails to link and §4's internal-error row fires `ERROR`, exit **2**, at `check:all` member 0; only the clear/write pair is ORDER-sensitive), which §6's mutant-proved wiring assertion is the only thing that establishes, and **conditional on the marker**: absent, the comparison does not run and the advisory `bundle-provenance-missing` is reported instead — unconditionally, never as a migration window (§3.3's cli reason table, §6 battery row 10), which is the state of every tree until the first build after this lands. **Discharged only when it RUNS**: §4's coverage line prints the `not-run` entry on both paths, so the row is never silently undischarged — **including the not-run case in which NOTHING is absent (round 10, C10-1)**: when `unitState("packages/cli").state === "unbuilt"` all four cli-scoped comparisons are suppressed, and all four then report `not-run` with the second mandated reason `packages/cli unbuilt` (§3.2, §3.3, §3.4, §3.5, and §4's verbatim reason list). Without it the most routine tree there is — §7's `npm run typecheck` row, a bare `tsc -b` after a completed bundle — prints one `unbuilt` finding and no coverage line at all, which §4's recipe step 5 reads as "all six ran". There is no `reduced` status — round 10 deleted it as unreachable: a `packages/cli` with no esbuild chunk is `unbuilt` through §3.3's clause 1, and no cli-scoped comparison runs on an `unbuilt` unit (§3.2) |
 | 4   | STATE the bootstrap limit                                                            | **residual** — §8(a). Partly sidestepped: the check lives in `scripts/`, which no tsconfig compiles                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 5   | enumerate from root `references` (19), never `workspaces` (18)                       | §3, via `enumerateRootReferences`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 6   | each unit's `tsconfig.json` + its `extends` chain on the input side                  | §3 input rule 3. Fixture row 2, §6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 7   | STATE the build-program/toolchain limit                                              | **residual** — §8(b). Partly closed: each producer script is an input to ONE artifact it produces (§3.2, §3.3); `bundle-cli.mjs`'s other two outputs are compared against their sources (§3.4, §3.5)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 8   | account for `packages/cli/.dts-cache/`                                               | §3.3 `checkDeclarationCache` (cache vs sources) + §3.5 `checkShippedDeclarations` (cache vs the shipped copy) — **both** returning `{ findings, coverage }`, and both reporting coverage `not-run` (§3, printed by §4) when their side of the comparison is absent — or, with nothing absent at all, when `packages/cli` is `unbuilt` and §3.2's suppression rule fires, reason `packages/cli unbuilt` (round 10, C10-1) — for §3.3 that side is `.dts-cache/index.d.ts`, which §3.3's own skip rule makes reachable on a fresh clone: `npm ci` never creates the cache, so that is the state `meta-checks` runs in. Fixture rows 6, 17, 22, 23, 29, §6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 9   | every `tsconfig*.json` a build program hands to a compiler, incl. downward `extends` | §3 input rule 4 + §3.3. Fixture row 3, §6. ⚠️ **Bounded residual — §8(l)**: discharged for **29 of the 30** tracked `tsconfig*.json` (re-derived 2026-08-20: `git ls-files | grep -E 'tsconfig.*\.json$' | wc -l` → 30, against rule 4's 27 project dirs + 2 variants); the root `tsconfig.json` is in no unit's input set although bare `tsc -b` reads it (`build` is `tsc -b && …`, `package.json:15`), and it carries no `compilerOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| 10  | wire into `check:all`                                                                | §5 — 15th member, FIRST in the chain, verbatim `npm run check:stale-dist -- --strict`; §6 pins `members[0]` by equality, so neither the position nor the flag can drift; trigger's real reach stated                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 9   | every `tsconfig*.json` a build program hands to a compiler, incl. downward `extends` | §3 input rule 4 + §3.3. Fixture row 3, §6. ⚠️ **Bounded residuals — §8(l) and §8(f)**: discharged for **21 of the 30** tracked `tsconfig*.json` (re-derived 2026-08-20: `git ls-files \| grep -E 'tsconfig.*\.json$' \| wc -l` → 30 — the pipes are ESCAPED, and that is not cosmetic: GFM discards every cell past its header's column count and does not exempt a pipe inside a code span, so until round 12 this row truncated at `git ls-files` and everything after it was in the file and not on the page). `enumerateTsconfigs` returns 27 project dirs + 2 variants = **29 PATHS**, which is the CENSUS POPULATION and never the covered set. Re-derived 2026-08-20 by running §3's rules 3 and 4 over all 30: **21** land in some unit's input set — the 19 unit `tsconfig.json` (rule 3), `tsconfig.base.json` (rule 3's upward chain, length 2 for all 19) and `packages/cli/tsconfig.dts.json` (rule 4) — and **NINE do not**. The nine are the root `tsconfig.json`, which bare `tsc -b` reads (`build` is `tsc -b && …`, `package.json:15`) and which carries no `compilerOptions` — residual **§8(l)** — plus the **8** non-`report` `e2e/*` configs, each declaring `"extends": "../../tsconfig.base.json"` (or `../../../`), which resolves to the root-level base and never INTO a unit, so neither rule reaches them, while `scripts/check-e2e-types.mjs:40` hands each to `npx tsc -p … --noEmit` for exactly `E2E_TYPECHECK_PROJECTS` (`:24-32`, wired as `check:e2e-types`, `package.json:24`) — residual **§8(f)**, bounded because all 8 set `noEmit: true` and emit nothing that can go stale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 10  | wire into `check:all`                                                                | §5 — 15th member, FIRST in the chain, verbatim `npm run check:stale-dist -- --strict`; §6 pins `members[0]` by equality, so neither the position nor the flag can drift. ⚠️ **Bounded residual — §5.1's Honest bound**: npm's pre-hook is NAME-EXACT, so `pretest` reaches `npm test` and nothing else. Re-derived 2026-08-20 (npm 11.16.0): four sibling scripts bypass it — `test:watch` (`package.json:20`, `vitest`), `test:live` (`:21`), `test:e2e` (`:22`) and `test:e2e:release-evidence` (`:23`) — plus `npx vitest`, so the measured bypass set is **five**, not the one §5.1 named for twelve rounds; and `test:watch` is the vitest WATCH loop, the founding incident's own context. "Trigger's real reach stated" is the claim; §5.1 is where it is now measured                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 11  | call `scripts/repo-census.mjs` rather than re-deriving                               | §2 — imports `enumerateRootReferences` + `enumerateTsconfigs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## 1. Shape and placement
@@ -66,8 +141,28 @@ not free, and the flat "dependency-free" claim does not survive it (round 10, C1
 runs `npm ci` with no build step (the constraint
 `scripts/citation-content/file-index.mjs` documents in its header and
 `scripts/repo-census.mjs` restates at `:39-41`), resolves it. An `--omit=dev` install does
-not, and there the check throws at import and §4's internal-error row makes that `ERROR`,
-exit **2**. Stated as residual §8(n) rather than assumed away. ℹ️ The alternative that
+not — and what happens there depends on HOW the graph is entered, which this design now
+rules on rather than leaving implicit. ⚠️ **IMPORT RULE (round 12, OP12-1):
+`scripts/check-stale-dist.mjs` reaches `stale-dist/compare.mjs` and `stale-dist/report.mjs`
+through `await import(...)` INSIDE its try/catch, never by a static `import` statement.**
+Everything below those two keeps ordinary static imports — `walk.mjs`'s
+`import { PLUGIN_ASSET_ENTRIES } from "../bundle-cli.mjs"` included, so no signature in §2
+becomes async — because the whole static subgraph is resolved AT that `await import`, which
+is inside the try. A static ESM graph, by contrast, is resolved and linked BEFORE the first
+statement of the entry module runs, so the catch this section's file table and §4's
+internal-error row assign as owner is not yet on the stack and cannot fire. Measured
+2026-08-20 (node v24.18.0, npm 11.16.0, nothing else running but the shell) on a probe with
+this design's exact shape — `cli.mjs` statically importing `sub/walk.mjs` importing
+`sub/dep.mjs` importing an absent `esbuild`, with the call wrapped in the try/catch — BOTH
+invocations printed no `check-stale-dist: ` line at all, node printed
+`ERR_MODULE_NOT_FOUND` plus a ten-frame internal stack, and the process exited **1** with
+`--strict` AND **1** without. By §5.1's own measured table (`pretest THROWS -> npm exits 1,
+and test NEVER RUNS`) the non-strict path is then a total block on `npm test` — verbatim
+round 1's `O-2`, re-opened by omission at the site round 10's C10-2 fix created. Under the
+dynamic entry the throw lands in the catch and §4's row holds: `WARN`/exit 0 by default,
+`ERROR`/exit **2** under `--strict`. Stated as residual §8(n), pinned by §6 row 31, and its
+reachability is wider than `--omit=dev`: any incomplete or pruned `node_modules`, and any
+load-time throw anywhere in the six-module graph, lands in the same uncatchable window. ℹ️ The alternative that
 keeps a builtins-only import graph is to move the const into a builtins-only
 `scripts/plugin-assets.mjs` that BOTH files import; it costs one more file and one more §6
 assertion (that `bundle-cli.mjs` still imports it, so the bundler cannot fork its own
@@ -75,12 +170,12 @@ list) and needs no entry-point guard.
 
 | file                                | lines (est.) | purpose                                                                                                                                                                                                                                                      |
 | ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scripts/check-stale-dist.mjs`      | ~110         | `#!/usr/bin/env node`, the WHY header, arg parsing, CLI — **and the `try`/`catch` that owns §4's internal-error row**: it wraps `checkStaleDist` and `formatFindings`, prints `formatInternalError(err, { strict })` (§2), and exits **2** under `--strict`, **0** without. Exit 2 comes from here and never from `exitCodeFor`, which takes a `result` a throw never produces                                                                                                                                                                                                      |
+| `scripts/check-stale-dist.mjs`      | ~110         | `#!/usr/bin/env node`, the WHY header, arg parsing, CLI — **and the `try`/`catch` that owns §4's internal-error row**: it reaches `checkStaleDist` and `formatFindings` through `await import("./stale-dist/compare.mjs")` and `await import("./stale-dist/report.mjs")` **inside** the try — §1's IMPORT RULE, because a static `import` puts the whole six-module graph outside the catch and a load-time throw then exits **1** with an unprefixed node stack and no `check-stale-dist: ` line at all (measured, round 12, OP12-1) — then prints `formatInternalError(err, { strict, json })` (§2), passing the `--json` it parsed so a throw under `--json` emits the JSON error object and never the human line (round 12, C11-5), and exits **2** under `--strict`, **0** without. Exit 2 comes from here and never from `exitCodeFor`, which takes a `result` a throw never produces                                                                                                                                                                                                      |
 | `scripts/stale-dist/units.mjs`      | ~150         | build-unit enumeration and per-unit input/output sets                                                                                                                                                                                                        |
 | `scripts/stale-dist/walk.mjs`       | ~95          | mtime walk primitives, `sameBytes`, and the output/input classifiers                                                                                                                                                                                         |
 | `scripts/stale-dist/compare.mjs`    | ~250         | the SIX comparisons — the FOUR cli-scoped ones (§3.2, §3.3, §3.4, §3.5) return `{ findings, coverage }`, the other two (`checkUnitFreshness`, `checkOrphans`) `Finding[]` — plus `unitState` (§3.3's three-way reason table) and the `checkStaleDist` driver |
-| `scripts/stale-dist/report.mjs`     | ~115         | findings **and coverage** → text/JSON, and the exit code; §4's coverage line prints on BOTH paths; plus `formatInternalError` — the `WARN`/`ERROR` line §4's internal-error row prints, the one line this check writes that no `result` produces                                                                                                                                                            |
-| `scripts/check-stale-dist.test.mjs` | ~620         | colocated suite (§6) — 30 battery rows, the false-negative battery, the mutant-proved wiring assertions and the live smoke test                                                                                                                                                                                                                                         |
+| `scripts/stale-dist/report.mjs`     | ~115         | findings **and coverage** → text/JSON, and the exit code; §4's coverage line prints on BOTH paths; **plus §4's ordered REMEDY PLAN** — the block `formatFindings` computes from the finding-KIND set with §4's three carve-outs applied, which had no owner, no shape and no assertion for twelve rounds (round 12, OP12-4), so an implementer printing the per-kind remedies beside each grouped block passed every row and handed the operator exactly the unordered list §4 measures as harmful; plus `formatInternalError` — the `WARN`/`ERROR` line §4's internal-error row prints, or the JSON error object under `--json` (round 12, C11-5), the one output this check writes that no `result` produces                                                                                                                                                            |
+| `scripts/check-stale-dist.test.mjs` | ~620         | colocated suite (§6) — **34** battery rows, the false-negative battery, the mutant-proved wiring assertions and the live smoke test                                                                                                                                                                                                                                         |
 
 ⚠️ **THREE EXISTING FILES MUST ALSO CHANGE. The first two were a round-8 fix; `package.json` is round 9's (CF9-3).** The first two were specified only in §3.2's prose for two rounds, and `package.json`'s three edits have lived only in §5/§5.1 for nine — so an implementer could build all six new files, pass every battery row and the wiring test, and still leave requirement 3's comparison **permanently muted**, or chain the check last and non-strict so it blocks nothing — the vacuity class this whole change set exists for.
 Round 7 filed that as `CF-3` and the disposition did not reach this table; caught by
@@ -89,7 +184,7 @@ completion claim in this record and the first caught by its author.
 
 | existing file            | change                                                                                                                                                                                                                                                                                                                                                                                                                                                   | why it is load-bearing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/bundle-cli.mjs` | add `writeFile` to the `node:fs/promises` import (`:55` — absent today, measured); **clear** with `rm(join(CLI_ROOT, ".bundle-meta")…` in the wipe step, before `build()` at `:121`; **write** with `writeFile(join(CLI_ROOT, ".bundle-meta", "metafile.json")…` after the plugin-copy loop, beside `:181`. Those two literals are the anchors §6 asserts on: both edits name `.bundle-meta`, so a bare path anchor cannot tell the clear from the write. ⚠️ **TWO MORE EDITS TO THIS FILE, and nothing above is reachable without them (round 10, C10-2):** (4) `export` the `PLUGIN_ASSET_ENTRIES` const at `:89` — re-derived 2026-08-20, `grep -n "^export" scripts/bundle-cli.mjs` returns `:71` `EXTERNAL_DEPENDENCIES` and nothing else, so §3.3's clause 1 and §3.4's source side both cite a binding no importer can obtain, and a literal `import { PLUGIN_ASSET_ENTRIES } from "../bundle-cli.mjs"` fails to link ("does not provide an export named"), reaching §4's internal-error row: `ERROR`, exit **2**, from `check:all -- --strict` at member 0; (5) put the file's last statement `await main()` behind the entry-point guard `scripts/repo-census.mjs:382` already uses in this repo (`process.argv[1] && statSync(process.argv[1]).ino === statSync(fileURLToPath(import.meta.url)).ino`) — without it a namespace import executes `main()` and REBUILDS `packages/cli/dist` from inside the check that observes it, the side effect round 3 disclosed, and throws at `:147` on a fresh clone. Nothing imports this module today (re-derived 2026-08-20: its only consumer is `package.json:48`'s `node scripts/bundle-cli.mjs`), so the guard changes no existing behaviour. **FOUR edits to this file, all four asserted by §6** | it is requirement 3's provenance oracle — the only record of what entered this bundle (§3.2) — and after round 9 its ABSENCE reports `bundle-provenance-missing` and never `unbuilt`; `unbuilt` keys on C9-1's freshness rule, which reads artifacts in the tree and needs no history. **The write's POSITION is what the rest rests on**: `:181` runs after every byte `bundle-cli.mjs` puts under `dist`, so a present marker implies every earlier step ran and a completed bundle always leaves mtime(marker) >= the newest qualifying output under `dist` — §3.3's marker-freshness clause — and `bundle-provenance-missing` is reachable only in the `:178`→`:181` window. Placed earlier it proves only that esbuild ran. ⚠️ **The wipe-step clear is retained as defence in depth and is NO LONGER the invalidation mechanism (round 9).** `build` is `tsc -b && npm run bundle:types && npm run bundle:cli` (`package.json:15`), so an interrupt during the ~5-minute `bundle:types` step means `bundle-cli.mjs` never runs and the clear never fires; the clear covers the classes where the bundler IS executing, the freshness comparison covers the classes where it is not. **Not cleared first the marker describes some OTHER run's bundle** — `OUT_DIR` is `dist` only (`:63`), so neither the wipe (`:113`) nor the design's own `rm -rf packages/cli/dist` touches the sibling `.bundle-meta/`, and a surviving metafile would name a stale inlined unit set |
+| `scripts/bundle-cli.mjs` | add `writeFile` to the `node:fs/promises` import (`:55` — absent today, measured); **clear** with `rm(join(CLI_ROOT, ".bundle-meta")…` in the wipe step, before `build()` at `:121`; **write** with `writeFile(join(CLI_ROOT, ".bundle-meta", "metafile.json")…` after the plugin-copy loop, beside `:181`. Those two literals are the anchors §6 asserts on: both edits name `.bundle-meta`, so a bare path anchor cannot tell the clear from the write. ⚠️ **TWO MORE EDITS TO THIS FILE, and nothing above is reachable without them (round 10, C10-2):** (4) `export` the `PLUGIN_ASSET_ENTRIES` const at `:89` — re-derived 2026-08-20, `grep -n "^export" scripts/bundle-cli.mjs` returns `:71` `EXTERNAL_DEPENDENCIES` and nothing else, so §3.3's clause 1 and §3.4's source side both cite a binding no importer can obtain, and a literal `import { PLUGIN_ASSET_ENTRIES } from "../bundle-cli.mjs"` fails to link ("does not provide an export named") — and that reaches §4's internal-error row (`ERROR`, exit **2**, from `check:all -- --strict` at member 0) **only under §1's IMPORT RULE**. Measured 2026-08-20 (node v24.18.0): with the entry module importing statically, the same link failure is a `SyntaxError` raised before its first statement runs, so no catch sees it — exit **1**, unprefixed stack, no `check-stale-dist: ` line, and under `pretest` no test suite at all (round 12, OP12-1); (5) put the file's last statement `await main()` behind the entry-point guard `scripts/repo-census.mjs:382` already uses in this repo (`process.argv[1] && statSync(process.argv[1]).ino === statSync(fileURLToPath(import.meta.url)).ino`) — without it a namespace import executes `main()` and REBUILDS `packages/cli/dist` from inside the check that observes it, the side effect round 3 disclosed, and throws at `:147` on a fresh clone. Nothing imports this module today (re-derived 2026-08-20: its only consumer is `package.json:48`'s `node scripts/bundle-cli.mjs`), so the guard changes no existing behaviour. **FIVE edits to this file** — the `writeFile` import, the clear, the write, the `export`, the entry-point guard — **of which §6 asserts FOUR SOURCE PROPERTIES**: the clear precedes `build()`, the write follows the plugin copy, `PLUGIN_ASSET_ENTRIES` is `export`ed, `await main()` sits behind the ino guard. The `writeFile` import is the fifth edit and is NOT separately asserted — §6's `WRITE` anchor pins the CALL, not the import. **Edits and asserted properties are different counts, stated apart** (round 12, CF12-4: this cell read "FOUR edits … all four asserted" inside its own "TWO MORE EDITS TO THIS FILE … (4) … (5)") | it is requirement 3's provenance oracle — the only record of what entered this bundle (§3.2) — and after round 9 its ABSENCE reports `bundle-provenance-missing` and never `unbuilt`; `unbuilt` keys on C9-1's freshness rule, which reads artifacts in the tree and needs no history. **The write's POSITION is what the rest rests on**: `:181` runs after every byte `bundle-cli.mjs` puts under `dist`, so a present marker implies every earlier step ran and a completed bundle always leaves mtime(marker) >= the newest qualifying output under `dist` — §3.3's marker-freshness clause — and `bundle-provenance-missing` is reachable only in the `:178`→`:181` window. Placed earlier it proves only that esbuild ran. ⚠️ **The wipe-step clear is retained as defence in depth and is NO LONGER the invalidation mechanism (round 9).** `build` is `tsc -b && npm run bundle:types && npm run bundle:cli` (`package.json:15`), so an interrupt during the ~5-minute `bundle:types` step means `bundle-cli.mjs` never runs and the clear never fires; the clear covers the classes where the bundler IS executing, the freshness comparison covers the classes where it is not. **Not cleared first the marker describes some OTHER run's bundle** — `OUT_DIR` is `dist` only (`:63`), so neither the wipe (`:113`) nor the design's own `rm -rf packages/cli/dist` touches the sibling `.bundle-meta/`, and a surviving metafile would name a stale inlined unit set |
 | `.gitignore`             | append `packages/cli/.bundle-meta/` after the `packages/cli/.dts-cache/` entry at `:47`. Measured 2026-08-20: `git check-ignore -v packages/cli/.bundle-meta/` reports nothing and `grep -n bundle-meta .gitignore` returns no hit, so the directory is untracked-and-unignored today                                                                                                                                                                    | `.dts-cache/` is ignored at `:47`; without the matching entry every build leaves an untracked file that `repo-census.mjs` reports in its "on disk, neither tracked nor ignored" bucket and that sits in `git status` forever. §6 asserts it by reading `.gitignore`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `package.json`           | add `"check:stale-dist": "node scripts/check-stale-dist.mjs"` and `"pretest": "node scripts/check-stale-dist.mjs"` (neither carries `--strict`), and insert `npm run check:stale-dist -- --strict` as **`check:all`'s member 0**, before the 14 that exist today                                                                                                                                                                                         | position and flag ARE requirement 10's value. Measured: `check:tarball` is member 12 and `check:install-smoke` member 13, and both read local `dist` state (defect `25-install-smoke-depends-on-local-dist-state.md`), so a member appended last runs AFTER the two §5 orders it before; and without `--strict` `check:all` exits 0 on a stale tree. §6 asserts `members[0]` by equality                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
@@ -168,7 +263,11 @@ export function checkBundleFreshness(units, metafile) -> { findings, coverage } 
 //   coverage `not-run`, never a comparison over an empty inlined set
 export function checkDeclarationCache(units)         -> { findings, coverage }  // req 8
 export function checkPluginAssets(cwd)               -> { findings, coverage }  // §3.4
-export function cliArtifactGaps(cwd)                 -> string[]   // §3.3 artifact set
+export function cliArtifactGaps(cwd, metafile)       -> string[]   // §3.3 artifact set
+//   takes the metafile (from `readMetafile`, `undefined` when absent or unparseable)
+//   because clause 1's chunk member is a SET when there is one and "at least one" when
+//   there is not (§3.3, round 12, C11-6). It never throws on it — `readMetafile` already
+//   returns `undefined` for both degraded cases — so this adds no new error path.
 // checkUnitFreshness/checkOrphans return no coverage — theirs IS the unit table (§3, §3.1)
 export function checkShippedDeclarations(cwd)        -> { findings, coverage }  // §3.5,
 //   requirement 1's 2nd excluded artifact. ⚠️ **`{ findings, coverage }`, not `Finding[]`
@@ -193,10 +292,19 @@ export function checkStaleDist(cwd)                  -> { findings, states, cove
 export function unitState(unit)                      -> { state, reason }  // the §3.3 reason table
 
 // `cliArtifactGaps` returns the required `packages/cli` artifacts that are ABSENT —
-// an esbuild-named chunk, dist/bin.js, dist/index.js, dist/bin/supervisord.js,
-// dist/index.d.ts, and the six dist/plugin entries. The METAFILE IS NOT A MEMBER.
+// the esbuild chunk SET, dist/bin.js, dist/index.js, dist/bin/supervisord.js,
+// dist/index.d.ts, and the six dist/plugin entries. The METAFILE IS NOT A MEMBER — it is
+// READ, for the chunk set only (§3.3 clause 1, round 12, C11-6), and never REQUIRED,
+// which is what keeps `unbuilt` and `bundle-provenance-missing` disjoint. Round 12
+// changed the reading, not the membership: a marker-less tree is still `compared` +
+// `bundle-provenance-missing`, never `unbuilt` for want of a marker (CF9-2).
 // The two cli kinds are disjoint by construction, and collapsing them re-opens CF9-2:
-//   gaps.length > 0                   -> `unbuilt`, gaps named in the line
+//   gaps.length > 0                   -> `unbuilt`, gaps named in the line, with the
+//                                        reason §3.3's cli reason table gives — TWO of
+//                                        them since round 12 (C11-3): `bundle:cli did
+//                                        not finish`, and the `--clean` signature's own,
+//                                        which is why `unitState` and never the reporter
+//                                        picks it (§4, §6 rows 30 and 32)
 //   gaps.length === 0 && no metafile  -> `bundle-provenance-missing`, unit stays
 //                                        `compared`; a FINDING, never a skip.
 
@@ -231,8 +339,10 @@ export function unitState(unit)                      -> { state, reason }  // th
 // `cliArtifactGaps` below lists "an esbuild-named chunk" first — so a chunkless
 // `packages/cli` is `unbuilt` with `missing: chunk-*.js`, and §3.2 states that no
 // cli-scoped comparison runs on an `unbuilt` `packages/cli`. Both predicates read the
-// same `/-[A-Z0-9]{8}\.js$/`, so they can never disagree, and `checkBundleFreshness`
-// never reaches the fallback to report anything. ⚠️ **Standing rule 8: do NOT resolve
+// same `/-[A-Z0-9]{8}\.js$/` for PRESENCE, so they can never disagree that a chunkless
+// tree is `unbuilt` — round 12 (C11-6) made clause 1's chunk MEMBERSHIP metafile-derived
+// when a marker exists, which only NARROWS clause 1 and can never widen it — and
+// `checkBundleFreshness` never reaches the fallback to report anything. ⚠️ **Standing rule 8: do NOT resolve
 // that the other way.** Letting a chunkless tree report `reduced` at exit 0 is verbatim
 // round 6's `CR6-3` — `PASS` on a `tsc -b`-only tree — the founding failure's eighth
 // appearance, produced by the coverage element round 9 added. A member no reachable state
@@ -267,11 +377,35 @@ export function unitState(unit)                      -> { state, reason }  // th
 // report.mjs
 export const ADVISORY_KINDS = new Set(["bundle-provenance-missing"])  // §4 exit table
 export function formatFindings(result, { json })     -> string
-export function formatInternalError(err, { strict }) -> string   // §4's internal-error row
+//   Renders the PASS line, the grouped finding lines, **§4's ordered REMEDY PLAN** and
+//   the coverage line — in that order, which §4's prefix rule fixes. The plan is a pure
+//   function of the finding-KIND set with §4's three carve-outs applied, NOT a per-kind
+//   remedy printed beside each grouped block, which is the unordered list §4 measures as
+//   harmful. It prints whenever the run reports at least ONE finding, because §4's own
+//   carve-outs make single-kind runs multi-step (a lone `stale-declarations` needs step 3
+//   AND step 4, and the remedy table's row names only step 3). It had no owner in this
+//   section for twelve rounds (round 12, OP12-4); §6 row 34 is what makes it non-vacuous.
+export function formatInternalError(err, { strict, json }) -> string   // §4's internal-error row
 //   The ONLY line this check prints that no `result` produces, and the reason §4's
-//   internal-error row had no owner for eleven rounds (round 11). `check-stale-dist.mjs`'s
+//   internal-error row had no owner for eleven rounds (round 11). ⚠️ **It takes `json`
+//   for the same reason `formatFindings` does (round 12, C11-5): `--json` PLUS a throw
+//   was an input pair no section named.** Every reachable throw §4's own row admits — the
+//   `ENOTDIR` on `packages/plugin/.mcp.json` (§2, §3.4), row 27's malformed unit
+//   tsconfig, an `--omit=dev` install with no `esbuild` (§8(n)), a missing
+//   `PLUGIN_ASSET_ENTRIES` export (§1's fourth edit) — would otherwise emit
+//   `check-stale-dist: WARN internal error — …` on **stdout** under
+//   `node scripts/check-stale-dist.mjs --json`, so the JSON stream is not JSON. **This
+//   repository has already SHIPPED that failure:** `scripts/bundle-types.mjs:63-68`
+//   records `check-published-tarball.mjs` dying with
+//   `Unexpected token 'b', "bundle-typ"... is not valid JSON` because a producer wrote
+//   human chatter to stdout. Latent today — nothing consumes `--json` yet — which is why
+//   it is closed BEFORE a consumer exists rather than after. `check-stale-dist.mjs`'s
 //   try/catch is its sole caller (§1); exit **2** comes from that catch, never from
-//   `exitCodeFor`. Without a catch the operator gets an unprefixed node stack — and under
+//   `exitCodeFor`. ⚠️ **A catch owns only what is LOADED inside it (round 12, OP12-1):**
+//   the entry module reaches `compare.mjs` and `report.mjs` through `await import(...)`
+//   inside the try, because a static import resolves the whole graph before the try
+//   exists and turns every load-time throw into an uncatchable exit **1** with no
+//   prefixed line at all — §1's IMPORT RULE, §6 row 31. Without a catch the operator gets an unprefixed node stack — and under
 //   `pretest` no test suite at all: re-derived 2026-08-20 in a scratchpad package (npm
 //   11.16.0, node v24.18.0, nothing else running but the shell), an UNCAUGHT throw in
 //   `pretest` exits npm **1** and `npm test` never runs, verbatim round 1's `O-2`.
@@ -331,15 +465,49 @@ Q5: a fresh clone must not be noisy).
    dirs plus **2** variants (`packages/cli/tsconfig.dts.json`, `tsconfig.base.json`).
       `packages/cli/tsconfig.dts.json` declares `"extends": "./tsconfig.json"`, so it
    attaches to `packages/cli` — the config an upward walk provably never reaches.
-   ⚠️ **27 + 2 = 29, against the 30 tracked below — the thirtieth is the ROOT
-   `tsconfig.json`, and it is in NO unit's input set (round 11).** Rule 3 reaches it only
-   by an upward `extends` walk and it declares none; rule 4 reaches only configs whose own
-   chain resolves INTO a unit, and this one has `"files": []` plus 19 `references` and
-   nothing else — re-derived 2026-08-20, `Object.keys` on the parsed file returns exactly
-   `files, references`. `build` is `tsc -b && …` (`package.json:15`), so a build program
-   DOES hand it to a compiler: requirement 9 is discharged for 29 of 30, and the thirtieth
-   is residual §8(l), bounded because the file carries no `compilerOptions` and because
-   §3's own **Units** step re-reads it on every run (`enumerateRootReferences`).
+      ⚠️ **27 + 2 = 29 is the size of `enumerateTsconfigs`' RETURN, not the size of the
+   covered set — and the covered set is 21 of 30 (round 12, C11-1/CF12-3, correcting
+   round 11).** The two are different questions and round 11 answered the wrong one: 8 of
+   those 27 project dirs are NOT units. Units come from `enumerateRootReferences` (**19**,
+   re-derived 2026-08-20); the other 8 are `e2e/{attestation,live,provisioning,release}`
+   and `e2e/matrix/{connector,git,installation,orchestration}` — exactly the set
+   difference. Re-derived 2026-08-20 by running rules 3 and 4 over the 30 tracked configs:
+   **21 land in some unit's input set, 9 do not.**
+
+   The 21 are the 19 unit `tsconfig.json` (rule 3), `tsconfig.base.json` (rule 3's upward
+   chain, length 2 for all 19), and `packages/cli/tsconfig.dts.json` (rule 4). The 9 are:
+
+   - the **ROOT `tsconfig.json`**. Rule 3 reaches it only by an upward `extends` walk and
+     it declares none; rule 4 reaches only configs whose own chain resolves INTO a unit,
+     and this one has `"files": []` plus 19 `references` and nothing else — re-derived
+     2026-08-20, `Object.keys` on the parsed file returns exactly `files, references`.
+     `build` is `tsc -b && …` (`package.json:15`), so a build program DOES hand it to a
+     compiler. Residual **§8(l)**, bounded because it carries no `compilerOptions` and
+     because §3's own **Units** step re-reads it on every run (`enumerateRootReferences`);
+   - the **8 `e2e/*` configs**, each declaring `"extends": "../../tsconfig.base.json"` (or
+     `../../../`), which resolves to the root-level base — so rule 4's chain never
+     resolves into a unit — and none of which an upward walk from the 19 reaches.
+     `scripts/check-e2e-types.mjs:40` runs `npx tsc -p <config> --noEmit` for exactly
+     `E2E_TYPECHECK_PROJECTS` (`:24-32`), wired as `check:e2e-types` (`package.json:24`),
+     so requirement 9's own wording covers them. Residual **§8(f)**, bounded by that
+     bullet's already-measured reason: all 8 set `noEmit: true`, so they emit no output
+     that can go stale.
+
+   Requirement 9 is therefore discharged for **21 of the 30**. ⚠️ **Standing rule 4 at the
+   site of round 11's own fix**: 29 was a measurement of the enumeration, and this rule is
+   about the input SETS.
+
+⚠️ **EVERY CONFIG READ NAMES ITS FILE (round 12, OP12-5).** Rules 3 and 4 parse configs
+with raw `JSON.parse` — all 30 do so today — and a `JSON.parse` failure carries no path:
+measured 2026-08-20 on node v24.18.0, a malformed config yields `Expected double-quoted
+property name in JSON at position 7 (line 1 column 8)` and nothing else, while an `fs`
+failure yields `ENOENT: no such file or directory, open 'nope.json'` WITH the path. So
+`units.mjs` wraps each read and re-throws as `<path>: <err.message>` — the shape `ENOENT`
+gives for free — and wraps the one census call that parses, `enumerateRootReferences`
+(`repo-census.mjs:290`), whose file is the root `tsconfig.json`. Without it §6 row 27's
+own fixture hands a 3am operator one line, exit **2** at `check:all` member 0, with **30**
+candidate configs and no locus. §4's internal-error line is where that path is printed,
+and §6 row 27 is where the path is asserted.
 
 Everything else under `src` is excluded: **18** non-`.ts` files exist across all 19
 `src/` trees — 12 `.mjs`, 3 `.json`, 2 `.snap`, 1 `.info` — so the 3 `.json` are inputs
@@ -519,8 +687,10 @@ reads `result.metafile.outputs` **in memory**, then discards it. Measured:
 `find packages/cli/dist -name "*meta*"` returns nothing. The check runs at a different
 time from the bundle, so there is no metafile for it to read.
 
-**So the design requires TWO edits to the build program**, and §1's table is the
-authoritative scope list: `bundle-cli.mjs` **writes** `result.metafile` to
+**So the design requires EDITS TO THE BUILD PROGRAM, and §1's table is the
+authoritative scope list — this sentence states no count of its own** (round 12, CF12-4:
+round 10's C10-2 raised the count from three to five and it reached §1, §2, §3.3, §3.4,
+§6 and §8 but not here, so this line still read TWO). The two THIS section is about are: `bundle-cli.mjs` **writes** `result.metafile` to
 **`packages/cli/.bundle-meta/metafile.json`** — gitignored, and deliberately OUTSIDE
 `dist` — **after the plugin-copy loop**, and **clears** it in the wipe step before
 `build()` so the marker names the build it belongs to (§3.3, round 8's C8-2). Both
@@ -648,7 +818,9 @@ state cannot occur. Round 9 made one file matching the chunk pattern a REQUIRED 
 §3.3's clause-1 artifact set — `cliArtifactGaps` (§2) lists "an esbuild-named chunk" first
 — so a chunkless `packages/cli` is `unbuilt` with `missing: chunk-*.js`, and §3.2 above
 states that **no cli-scoped comparison runs on an `unbuilt` `packages/cli`**. Both
-predicates read the same `/-[A-Z0-9]{8}\.js$/`, so they can never disagree, and
+predicates read the same `/-[A-Z0-9]{8}\.js$/` for PRESENCE, so they can never disagree
+that a chunkless tree is `unbuilt` — round 12 (C11-6) made clause 1's chunk MEMBERSHIP
+metafile-derived when a marker exists, which only NARROWS clause 1 — and
 `checkBundleFreshness` never reaches the fallback to report anything. §6 row 16 mandated a
 rendered line — `bundle freshness reduced (no esbuild chunk)`, still exit 0 — that no
 correct implementation can print; what actually prints on that tree is §4's own worked
@@ -697,9 +869,11 @@ empty state gets its own name:
 ⚠️ **AND FOR `packages/cli`, PRESENCE OF OUTPUTS IS NOT ENOUGH — round 4.** `tsc -b --clean` removes only tsc's own outputs; the **five hashed esbuild chunks survive**, measured with `tsc -b packages/cli --clean --dry`. So after `npm run build:clean` the unit holds fresh qualifying outputs, is not `unbuilt`, compares **clean**, and `bundleAt` reads a chunk that is still there — while `packages/cli/dist/bin.js`, the published `bin.crabgic` entry point, **does not exist**. The check would print PASS on a tree with no CLI.
 
 ⚠️ **AND THE ENTRY-OUTPUT RULE IS ITSELF A tsc-WRITABLE PROXY — the FOURTH appearance
-of this failure (round 6).** `tsc -b packages/cli --clean --dry` lists exactly
-`dist/bin.js`, `dist/index.js`, `dist/index.d.ts`, `dist/bin/supervisord.js` and
-`.tsbuildinfo`, so `tsc -b` alone writes every entry output the rule checks. Interrupt
+of this failure (round 6).** The **`packages/cli/` subset** of
+`tsc -b packages/cli --clean --dry` is exactly `dist/bin.js`, `dist/index.js`,
+`dist/index.d.ts`, `dist/bin/supervisord.js` and `.tsbuildinfo` (round 12: the whole
+command lists 4,781 across 17 packages), so `tsc -b` alone writes every entry output the
+rule checks. Interrupt
 `npm run build` during the **~5 minute** `bundle:types` step — Ctrl-C, CI timeout, 3am —
 and the tree has all three entries present, no chunks, no `dist/plugin`, and a stale
 `.bundle-meta/` that `rm -rf dist` did not touch. The check reports **PASS, exit 0**, on
@@ -710,9 +884,10 @@ a tree with no `crabgic` binary.
 `build` is `tsc -b && npm run bundle:types && npm run bundle:cli` (`package.json:15`), so an
 interrupt during the ~5-minute `bundle:types` step means **`bundle-cli.mjs` never executes
 and the clear never fires**. Reached from this design's own printed remedy:
-`rm -rf packages/cli/dist`, then `npm run build`, then Ctrl-C. Measured —
-`tsc -b packages/cli --clean --dry` lists exactly `dist/bin.js`, `dist/index.js`,
-`dist/index.d.ts`, `dist/bin/supervisord.js` and `.tsbuildinfo`, so the tree is left with
+`rm -rf packages/cli/dist`, then `npm run build`, then Ctrl-C. Measured — the
+**`packages/cli/` subset** of `tsc -b packages/cli --clean --dry` is `dist/bin.js`,
+`dist/index.js`, `dist/index.d.ts`, `dist/bin/supervisord.js` and `.tsbuildinfo` (round
+12: the whole command lists 4,781 across 17 packages), so the tree is left with
 three entries present, no chunks, no `dist/plugin`, and the PREVIOUS build's marker beside
 `dist`. Marker present, entries present, every comparison passing or skipping: **PASS,
 exit 0.** Round 8's fix could not fire in the failure class it was written for, because the
@@ -721,8 +896,8 @@ tool that carries the fix is the tool that did not run.
 **So the rule is a CONJUNCTION OF THREE CLAUSES, none of which replaces another —
 `packages/cli` is `unbuilt` unless all three hold:**
 
-1. **Completeness: every artifact `bundle-cli.mjs` writes EXISTS** — one file matching the
-   esbuild chunk pattern below, the three entry outputs (`:121`), `dist/index.d.ts`
+1. **Completeness: every artifact `bundle-cli.mjs` writes EXISTS** — the esbuild chunk
+   SET (rule below, round 12, C11-6), the three entry outputs (`:121`), `dist/index.d.ts`
       (`:153`), and all six `PLUGIN_ASSET_ENTRIES` under `dist/plugin` (`:178`) — read from
    the `export`ed const §1 adds, **never a literal duplicated into `walk.mjs`** (round 10,
    C10-2): a copy leaves the check at six after a seventh member is added to
@@ -732,7 +907,30 @@ tool that carries the fix is the tool that did not run.
    the source tree today and is not a member (re-derived 2026-08-20), so that drift is one
    commit away. That set is
    the **§3.3 artifact set**; it is read off the tree, needs no history, and §4 prints the
-   gaps. ⚠️ **The metafile is deliberately NOT a member (round 9).** Keying `unbuilt` on its
+   gaps. ⚠️ **The chunk member is a SET, not "at least one" — round 12, C11-6.** Measured
+   import graph on this tree 2026-08-20: `dist/bin.js` imports `chunk-FRJGAF5Y.js`, which
+   imports `chunk-DVV3SNQ3.js`, `chunk-I6JBP7DT.js` and `chunk-UF6GI6PE.js`. Delete any
+   three of those four on an otherwise complete tree WITH a marker and the check reports
+   **PASS, exit 0 even under `--strict`** — clause 1 passes because one file still matches
+   the pattern, clause 3 passes because the three entries survive, and clause 2 passes
+   because deleting an output LOWERS the newest output mtime, which is this design's own
+   argument for retaining clause 3 — on a `packages/cli` whose `bin.crabgic` dies with
+   `ERR_MODULE_NOT_FOUND`. **So when the marker exists, chunk membership is taken from the
+   chunk-pattern-matching entries of `metafile.outputs`**: `result.metafile` already names
+   every file esbuild emitted, it is the artifact §1 writes, and §3.2 already reads it — so
+   clause 1 checks the exact chunk set the bundle produced, and `cliArtifactGaps` takes the
+   metafile as an argument (§2). ⚠️ **This is a READ, never a MEMBERSHIP, and the
+   distinction is what keeps CF9-2 closed:** a marker-less tree is still `compared` plus
+   the advisory `bundle-provenance-missing`, never `unbuilt` for want of a marker, and the
+   rule can only ever NARROW clause 1. When the marker is **ABSENT** the clause keeps "at
+   least one file matching the pattern", and **the completeness of the chunk set is then
+   unverifiable** — stated in §8(i) beside the other marker-absent costs, never hidden
+   here. ⚠️ **Standing rule 8, at the site of the fix: do NOT close it by hardcoding
+   five.** The chunk count is a function of the import graph and moves with any
+   re-chunking under `splitting: true`, so a literal would be a rule keyed on today's tree
+   — §3.3's own proxy lesson at a new site. Reachability is thin and said so: no repo
+   script produces this state, and the realistic paths are an interrupted esbuild write
+   phase or a manual or partial `rm`. ⚠️ **The metafile is deliberately NOT a member (round 9).** Keying `unbuilt` on its
    presence made every correctly built tree report `unbuilt` on day one — measured
    2026-08-20, this tree holds all three entry outputs, `dist/index.d.ts`, the six plugin
    entries and five chunks, and no `.bundle-meta/` at all — and it left
@@ -864,13 +1062,14 @@ cases above are untouched:
 
 | cli `dist`, given `compared`                              | verdict                                         | why                                                           |
 | --------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
-| any member of the §3.3 artifact set missing               | `unbuilt`, gaps named                           | a step of `bundle-cli.mjs` did not run                        |
+| every tsc-written member absent — the three entry outputs, `dist/index.d.ts` AND `.tsbuildinfo` — while ≥1 esbuild chunk survives | `unbuilt`, gaps named, reason `tsc -b --clean removed the compiler outputs from a completed bundle` | the `--clean` SIGNATURE, and it is not `bundle:cli` failing (round 12, C11-3). ⚠️ **Standing rule 8, at the site of this fix:** keying on `.tsbuildinfo` absence ALONE would misfire on a standalone `npm run bundle:cli` against a fresh clone, which also has none — so the predicate is the conjunction. No `bundle-cli.mjs` failure class produces it: the wipe at `:113-119` removes the chunks FIRST, and `build()` at `:121` writes the entries before anything downstream can throw, so a surviving chunk with no entries can only be `tsc -b --clean` |
+| any other member of the §3.3 artifact set missing         | `unbuilt`, gaps named, reason `bundle:cli did not finish` | a step of `bundle-cli.mjs` did not run                        |
 | every member present, `.bundle-meta/metafile.json` absent | `compared` **plus** `bundle-provenance-missing` | the bundle is fine, the check is degraded — §3.2, and day one |
 | every member present, marker present                      | `compared`, bundle comparison runs              | the whole sequence ran and named its own inputs               |
 
 ⚠️ **The empty case is `skipped`, not `unbuilt`, and that is a residual limit rather than a preference (round 8).** Round 7 made it `unbuilt` on the reasoning "it was built once and the outputs are gone". But both journal fixture families call `mkdir(SCRATCH_ROOT, { recursive: true })` and then `rm(dir, …)` — **the mkdtemp directory, not the root** (`crash-fixtures/prepare-runtime.ts:131`, `lease-fixtures/prepare-runtime.ts:110`). So on a fresh clone one `npm test` leaves `packages/journal/dist` **empty**, and the next `pretest` would report `unbuilt` on a tree nobody has ever built — CR6-2, re-opened by the fix that replaced CR6-2's fix.
 
-**Nothing at the unit level distinguishes the two states**: `tsc -b --clean` deletes `.tsbuildinfo` too, so a `--clean`ed unit and a never-built one are byte-identical. `build:clean` is therefore **accepted as indistinguishable at unit granularity** and stated here rather than papered over. It is not undetectable overall — `npx tsc -b packages/cli --clean --dry` lists exactly five deletions (`dist/bin.js`, `dist/index.js`, `dist/index.d.ts`, `dist/bin/supervisord.js`, `.tsbuildinfo`; re-measured 2026-08-20, nothing under `.bundle-meta/`), so a `--clean`ed tree loses its entry outputs and still reports `unbuilt packages/cli` — through **clause 3**, the entry-output clause above, and through nothing else. ⚠️ **Clause 2 does NOT catch this state (round 9):** `build:clean` is `tsc -b --clean` and runs no bundle, so the wipe-step clear never fires; the five hashed chunks and `dist/plugin/**` survive as well, and having been written before the marker they are all OLDER than it, so the freshness comparison passes. That is the second reason clause 3 can never be dropped. The marker is NOT what carries this: `--clean` never touches it, so it survives the very state it was cited for.
+**Nothing at the unit level distinguishes the two states**: `tsc -b --clean` deletes `.tsbuildinfo` too, so a `--clean`ed unit and a never-built one are byte-identical. `build:clean` is therefore **accepted as indistinguishable at unit granularity** and stated here rather than papered over. It is not undetectable overall — the **`packages/cli/` SUBSET** of `npx tsc -b packages/cli --clean --dry` is exactly five deletions (`dist/bin.js`, `dist/index.js`, `dist/index.d.ts`, `dist/bin/supervisord.js`, `.tsbuildinfo`; re-measured 2026-08-20, nothing under `.bundle-meta/`). ⚠️ **The WHOLE command lists 4,781 deletions across 17 packages (round 12, C11-2), because `--clean` cleans the project's entire REFERENCE GRAPH, not the project.** Quoting the `grep 'packages/cli/'` subset as the command's output was standing rule 1 — a search narrower than its claim — used as the bound for a residual, and the root `build:clean` (`tsc -b --clean`, `package.json:17`) is wider still: `npx tsc -b --clean --dry` lists **5,051** deletions across all **19** units, including 19 `.tsbuildinfo`. So a `--clean`ed tree loses its entry outputs and still reports `unbuilt packages/cli` — **through clauses 1 AND 3**: `dist/index.d.ts` (`:153`) is one of that five and is a clause-1 member, so clause 1 fires independently of clause 3 and the gap list §4 prints is `dist/bin.js, dist/index.js, dist/bin/supervisord.js, dist/index.d.ts`. ⚠️ **Clause 2 does NOT catch this state (round 9):** `build:clean` is `tsc -b --clean` and runs no bundle, so the wipe-step clear never fires; the five hashed chunks and `dist/plugin/**` survive as well, and having been written before the marker they are all OLDER than it, so the freshness comparison passes. ⚠️ **What clause 3 buys is therefore stated rather than overstated (round 12, C11-2).** The three entry outputs are clause-1 MEMBERS, so clause 1 alone already catches every state clause 3 does, `build:clean` included — "the second reason clause 3 can never be dropped" rested on the "through nothing else" claim corrected above. Clause 3 is retained as redundancy on purpose: an explicit guard against clause 2, which can never subsume it (a deletion LOWERS the newest output mtime and makes the marker look MORE current), and against a later edit dropping the entries from clause 1's set — the class of edit standing rule 8 keeps catching. It is not a second detector, and it is not deleted: dropping it is one edit away from re-opening `C-R4-1`. The marker is NOT what carries this: `--clean` never touches it, so it survives the very state it was cited for.
 
 **The distinguishing fact is the REASON the directory is empty, and the count cannot
 carry it** — a never-built tree and a `--clean`ed tree both hold zero entries.
@@ -927,7 +1126,7 @@ C10-3), not a skip and not a throw,
 or the kind can never fire — and with the same consequence: coverage `not-run`, reason
 `packages/cli/.dts-cache/index.d.ts absent` or `packages/cli/dist absent`, printed by
 §4. "Exactly as a unit with no `dist` does" only becomes true once comparisons are
-named in the output the way skipped units already are (§4's **PASS-line rule**, "The `PASS` line NAMES SKIPPED UNITS"). Report
+named in the output the way skipped units already are (§4's **The `PASS` line NAMES SKIPPED UNITS**). Report
 `stale-declarations` when the newest of
 
 - every `*.ts` under every `packages/*/src` (the set `bundle-types.mjs:43-61` walks),
@@ -1163,10 +1362,15 @@ own cited precedent, and the third time this change set has copied part of a sha
 
 **RULE: every top-level line this check writes to stdout or stderr begins
 `check-stale-dist: `** — the `PASS` line, every finding line, every grouped `×N` line, the
-coverage line, and the `WARN`/`ERROR` internal-error lines. The shapes given in the rest
+**the ordered REMEDY PLAN's first line** (its steps are indented
+continuation lines, which the sentence below exempts), the
+coverage line, and the `WARN`/`ERROR` internal-error lines. Their ORDER is fixed here too,
+because "which line lands where" is the other half of a rule an implementer can satisfy and
+still print an unreadable page: the `PASS` line when there is one, then the grouped finding
+lines, then the remedy plan, then the coverage line. The shapes given in the rest
 of this section are the text that FOLLOWS the prefix. Continuation lines indented under a
 prefixed line do not repeat it (`check-marketplace-pin-digest.mjs:377-379`'s shape).
-`--json` is unaffected.
+`--json` is unaffected — and it is unaffected on EVERY path, the internal-error one included: `formatInternalError` takes `json` and emits the object stated with that row below, never a prefixed human line (round 12, C11-5).
 
 Without it the check is unattributable in both wirings §5 targets. Under `check:all` it is
 member 0 of 15, `&&`-chained into one stream beside 14 prefixed neighbours (measured: 14
@@ -1185,10 +1389,19 @@ comparison. `unbuilt`'s finding IS the absence of an output, and
 definition (round 7); and `stale-shipped-declarations` is byte-keyed, so its line prints
 `(<a> vs <b> bytes)` and no mtime delta at all (round 9). All four are NAMED here rather
 than counted, because §2 carried the count and it drifted (round 11). Printing the common
-shape gives
-`unbuilt packages/contracts undefined undefined NaN`, eighteen times over, after
-`npm run build:clean`. So those three fields are optional and each kind states its own
-line:
+shape gives `unbuilt <unit> undefined undefined NaN`. ⚠️ **The example carried here until
+round 12 named the wrong unit, the wrong count and the wrong state (C11-3).** Re-derived
+2026-08-20: `tsc -b --clean` deletes `.tsbuildinfo` in EVERY project (`npx tsc -b --clean
+--dry` at the root — which is what `build:clean` runs — lists 5,051 deletions across all
+19 units, including 19 `*/dist/.tsbuildinfo`), so §3.3's reason table gives those units an
+empty `dist` and `skipped`. After `npm run build:clean` this design therefore produces
+**18 `skipped` units and exactly ONE `unbuilt` finding — `packages/cli`**, whose esbuild
+chunks and `dist/plugin/**` survive; **zero** `unbuilt packages/contracts` findings occur
+in that state, and the count and unit were carried forward from the pre-round-8 rule. The
+state that DOES yield one finding per unit is §6 row 9's — outputs deleted, `.tsbuildinfo`
+kept, which is exactly what `bundle-cli.mjs:113-119` does — applied to N units. The
+argument is unaffected either way: one such line is enough. So those three fields are
+optional and each kind states its own line:
 
 - `unbuilt <unit> — <reason>`, printing `unitState()`'s reason verbatim. Today the only generic reason is `dist/ holds only .tsbuildinfo — outputs were deleted without it`. The sentence is not hard-coded here: the rule behind it changed in four of nine rounds and the line was twice left asserting what the previous rule meant (round 7's OP-2).
 - `stale-shipped-declarations packages/cli — dist/index.d.ts does not match
@@ -1202,7 +1415,21 @@ line:
   newer input by definition, so it printed `undefined … NaN` too. The same defect round 4
   filed for `unbuilt`, at a site that fix did not reach.
 - `unbuilt packages/cli — bundle:cli did not finish; missing: <gap list>` — e.g.
-  `missing: chunk-*.js, dist/plugin/skills`. This is §3.3's artifact-set clause, and the
+  `missing: chunk-*.js, dist/plugin/skills`. ⚠️ **AND ITS `--clean` TWIN,
+  `unbuilt packages/cli — tsc -b --clean removed the compiler outputs from a completed
+  bundle; missing: <gap list>` (round 12, C11-3).** After `npm run build:clean` the gap
+  list is `dist/bin.js, dist/index.js, dist/bin/supervisord.js, dist/index.d.ts` —
+  measured, those four are the tsc-written members of clause 1's set and `--clean` deletes
+  exactly them — on a tree where `bundle:cli` **finished normally** and `tsc -b --clean`
+  deleted afterwards. Printing "bundle:cli did not finish" there is verbatim the OP-2
+  failure this section files two bullets below ("the generic line says … which is FALSE"):
+  the operator is sent after a step they never ran, at the tree state §3.3 and §8(h)
+  discuss most. §3.3's cli reason table owns the predicate that separates the two, because
+  §6 row 30 forbids the reporter inventing a sentence and this line prints `unitState()`'s
+  reason verbatim; §6 row 32 is the non-vacuity row. The remedy is unchanged
+  (`rm -rf packages/cli/dist` then `npm run build`), so the remedy table needs no row —
+  only the diagnosis was wrong, and a wrong diagnosis is what the founding incident was.
+  This is §3.3's artifact-set clause, and the
   gap list is the whole of it: the verdict is a gap over a MULTI-MEMBER set (`:121`'s
   chunk, the three entry outputs, `:153`'s `dist/index.d.ts`, `:178`'s six plugin
   entries), so the line names WHICH member is absent instead of asserting one step.
@@ -1298,7 +1525,21 @@ design must print it, not a list (round 4).** Run the per-kind advice as listed 
 `npm run build` executes before `bundle:types --force`, so the declarations finding
 survives and the second full rebuild is wasted; do the `rm -rf` after the build and you
 undo it. The live tree already returns four `stale-unit` findings, so this is not
-hypothetical. One ordered recipe:
+hypothetical. ⚠️ **The recipe has an OWNER, a POSITION and an assertion, all three stated
+here because for twelve rounds it had none (round 12, OP12-4).** `formatFindings` renders
+it (§1, §2) as a `remedy plan:` block computed from the finding-KIND set with the three
+carve-outs below applied; its first line carries §4's `check-stale-dist: ` prefix with the
+steps indented beneath it (`check-marketplace-pin-digest.mjs:377-379`'s continuation
+shape), and it prints AFTER the findings list and BEFORE the coverage line (the prefix rule
+above). It prints whenever the run reports at least ONE finding — **not only on the
+multi-kind case**, because this section's own carve-outs make single-kind runs multi-step:
+a run whose sole finding is `stale-declarations` needs step 3 AND step 4, and that kind's
+remedy-table row names only step 3, so a plan withheld there withholds half the remedy.
+§6 row 34 is the non-vacuity row. Without it an implementer who reads "the remedy is PER
+KIND" plus `Finding.remedy` prints the per-kind remedy beside each grouped block, passes
+all 34 rows, the false-negative battery, the wiring assertions and the live smoke test, and
+hands the operator exactly the unordered list this paragraph measures as harmful. One
+ordered recipe:
 
 1. every `rm -rf <unit>/dist` first — for the units reported `stale-unit`, `orphan-output` or `unbuilt` ONLY. A run whose only finding is `bundle-provenance-missing` starts at **step 2**: that tree is complete, and step 1 would delete a working `packages/cli/dist` to restore a missing bookkeeping file;
 2. `npm run build` — **before** the generator, not after. ⚠️ **A run whose only finding is
@@ -1362,7 +1603,7 @@ clauses can never both be live.
 | no findings                                               | `PASS` line, exit **0**                       | exit **0**          |
 | only advisory findings (`bundle-provenance-missing`)      | `PASS` line + the advisory listed, exit **0** | same, exit **0**    |
 | findings                                                  | listed, exit **0**                            | listed, exit **1**  |
-| internal error — **ANY** throw, not only malformed config | `WARN` line, exit **0**                       | `ERROR`, exit **2** |
+| internal error — **ANY** throw the catch can SEE (§1's IMPORT RULE), not only malformed config | `WARN` line, exit **0**                       | `ERROR`, exit **2** |
 
 ⚠️ **That row's OWNER and its TEXT, both stated because for eleven rounds neither was
 (round 11).** No element in §2 could produce it — `exitCodeFor` takes a `result` and a throw
@@ -1372,16 +1613,40 @@ wraps `checkStaleDist` and `formatFindings` in `try`/`catch` (§1) and prints
 `formatInternalError(err, { strict })` (§2):
 
 ```
-check-stale-dist: WARN internal error — <err.message>; the staleness check did NOT run, so this is not a verdict on your tree
-check-stale-dist: ERROR internal error — <err.message>; the staleness check did NOT run, so this is not a verdict on your tree
+check-stale-dist: WARN internal error — <path>: <err.message>; the staleness check did NOT run, so this is not a verdict on your tree
+check-stale-dist: ERROR internal error — <path>: <err.message>; the staleness check did NOT run, so this is not a verdict on your tree; re-run `npm run check:stale-dist` for the same diagnosis at exit 0; this is check:all member 0 of 15, so the remaining 14 did not run
 ```
 
-Both carry this section's prefix. **What the operator does is stated here rather than in the
-remedy table**, for the same reason the coverage line carries no remedy: that table is keyed
-by finding KIND, and an internal error is not a finding. Re-run non-strict with
-`npm run check:stale-dist`, which prints the same diagnosis and exits **0**; and under
-`check:all` note that this check is member **0** of 15, so the remaining **14** members did
-not run either (§5). Re-derived 2026-08-20 in a scratchpad package (npm 11.16.0, node
+⚠️ **And under `--json` NEITHER of those lines is printed (round 12, C11-5).** `--json`
+plus a throw was an input pair no section named, so both texts went to **stdout** and the
+JSON stream stopped being JSON — the failure `scripts/bundle-types.mjs:63-68` records this
+repository already shipping, `check-published-tarball.mjs` dying on
+`Unexpected token 'b', "bundle-typ"... is not valid JSON` because a producer wrote human
+chatter there. `formatInternalError` takes `json` exactly as `formatFindings` does (§2) and
+emits one object instead:
+
+```json
+{ "internalError": "<err.message>", "ran": false }
+```
+
+It carries **no** `findings`, `states` or `coverage` key, so a consumer cannot read it as a
+clean run; `<err.message>` already carries the `<path>: ` prefix §3's read wrapper adds, so
+the machine path loses no locus; the exit code is unchanged (**0** non-strict, **2**
+strict). §6 row 27 asserts all three invocations, including that the `--json` one parses.
+Latent today — nothing consumes `--json` yet — which is why it is stated now rather than
+after a consumer exists.
+
+Both text lines carry this section's prefix. **What the operator does is PRINTED, not
+merely stated here — round 12 (OP12-5) found both facts written to the wrong audience.**
+They are not in the remedy table for the reason the coverage line carries no remedy: that
+table is keyed by finding KIND, and an internal error is not a finding. So the `ERROR` line
+itself carries them: re-run non-strict with `npm run check:stale-dist`, which prints the
+same diagnosis and exits **0**; and this check is member **0** of 15, so the remaining
+**14** members did not run either (§5). The `WARN` line carries neither — the re-run advice
+is what the operator is already doing, and nothing was blocked. `<path>` is the config or
+artifact whose read threw, supplied by §3's read wrapper because `JSON.parse` messages
+carry no locus; where the error comes from no read (a link failure, a bug in the check
+itself) the prefix is omitted and the line starts at `<err.message>`. Re-derived 2026-08-20 in a scratchpad package (npm 11.16.0, node
 v24.18.0, nothing else running but the shell): an UNCAUGHT throw in `pretest` exits npm
 **1** and `npm test` never runs — the same total block round 1's `O-2` filed (§5.1).
 
@@ -1447,13 +1712,15 @@ gates a push.
 
 ```
 git ls-files -z | xargs -0 grep -n "run check:all" | grep -v stale-dist-check-design   # 6 hits (2026-08-20), ALL in docs/evidence prose
-   # THIS design file is excluded BY CONSTRUCTION. Unfiltered the same command returns 9
-   # today; the extra 3 are §5's own prose, §2's ENOTDIR note and the text of this very
-   # command. A self-referential count drifts on every round that writes the string:
-   # round 10 ADDED the third occurrence (§2's `from every npm run check:all -- --strict`)
-   # and left the figure reading "8 hits … 2 of the 8" — verbatim round 1's own O-4,
-   # recurring at the site the fixing round created (round 11). The load-bearing claim,
-   # that no workflow and no hook invokes it, is carried by the 6.
+      # THIS design file is excluded BY CONSTRUCTION, and NO unfiltered figure is stated
+   # (round 12, C11-4). It is unmaintainable: round 11 wrote "9" while the true value was
+   # 10, because the very comment it added to explain the drift quoted the string a
+   # FOURTH time — the third recurrence of round 1's own O-4, one round after the second,
+   # and again at the site the fixing round created. Any sentence explaining the drift
+   # re-triggers it, so the sentence is gone rather than corrected. Re-derived
+   # 2026-08-20: filtered 6, all in docs/evidence prose. The load-bearing claim — that
+   # no workflow and no hook invokes `check:all` — is carried entirely by the 6, which
+   # the command above produces.
 git ls-files -z | xargs -0 grep -ln "check:all" | grep -v ^docs/ | wc -l   # 9 files: the
    # definition at package.json:45, 4 prose comments, 4 test assertions — no invocation
 ```
@@ -1523,17 +1790,47 @@ pretest THROWS   ->  npm exits 1,  and `test` NEVER RUNS   <- the UNCAUGHT case 
 
 So a strict `pretest` turns any false positive into a total block on local testing — **and
 so does an uncaught throw, `--strict` or not**, which is the whole reason §4's
-internal-error row must have an owner in §2 rather than being prose. Re-derived 2026-08-20
+internal-error row must have an owner in §2 rather than being prose. ⚠️ **And an owner in
+§2 is not enough on its own (round 12, OP12-1):** a catch covers only what is LOADED inside
+it, so §1's IMPORT RULE — the entry module reaching `compare.mjs` and `report.mjs` through
+`await import(...)` inside the try — is what puts the six-module graph in that catch's
+scope. Measured on the design's own import shape, a STATIC entry import of a module that
+throws at load exits **1** with no `check-stale-dist: ` line, which is this table's fourth
+row and a total block on `npm test`. Re-derived 2026-08-20
 in a scratchpad package (npm 11.16.0, node v24.18.0, nothing else running but the shell):
 0 → npm 0 with the suite running; 1 → npm 1; 2 → npm 2; uncaught throw → npm 1; the suite
 never ran in the last three. The
-check therefore reports and continues there: a loud warning printed immediately above
-the failures it explains, which is all the founding incident needed. `--strict` is
+check therefore reports and continues there, so that a false positive cannot block local
+testing. ⚠️ **It does NOT print "immediately above the failures", and this sentence said it
+did for nine rounds after the paragraph above measured it false (round 12, OP12-3).** The
+warning lands ~199 lines above vitest's summary and can scroll away — which is where the
+founding incident's two hours of misdiagnosis happened, at the top of scrollback, read from
+the bottom; §4's coverage line has it worse, being one line, once, on a passing tree.
+"Immediately above" is a property of the reporter or `globalSetup` re-emit named above as
+the future element, never of the `pretest` wiring. Rounds 2 (`O-A`) and 3 (`OP-4`) both
+filed this and both fixes reached the measuring paragraph and not the argument resting on
+it. `--strict` is
 reserved for `check:all`, where a wrong verdict costs a re-run rather than a working
 session.
 
-**Honest bound**: `npx vitest` directly bypasses `pretest` entirely. This catches
-`npm test`, not every path to the suite.
+**Honest bound — the measured set is FIVE, not the one this line named for twelve rounds
+(round 12, OP12-2).** npm's pre-hook is NAME-EXACT. Re-derived 2026-08-20 (npm 11.16.0) in
+a scratchpad package declaring `pretest`, `test`, `test:watch` and `test:e2e`: `npm test`
+printed `PRETEST RAN / TEST RAN`, while `npm run test:watch` and `npm run test:e2e` each
+printed their own line ALONE — npm looks for `pretest:watch`, not `pretest`. This
+repository declares **four** siblings beside `test`: `test:watch` = `vitest`
+(`package.json:20`), `test:live` (`:21`), `test:e2e` (`:22`) and
+`test:e2e:release-evidence` (`:23`). So the bypass set is those four plus `npx vitest`.
+This catches `npm test` and nothing else — and `test:watch` is the vitest WATCH loop, the
+developer's inner loop and precisely the founding incident's context, so a developer who
+lives there never sees the check at all. Combined with §5's measurement that no workflow
+and no hook invokes `check:all`, the honest reach of this design is `npm test`.
+⚠️ **Extending it is a NAMED future element, not silently taken here**, in the shape the
+reporter re-emit above already uses: add `pretest:watch`, `pretest:live` and `pretest:e2e`
+to §1's `package.json` row and to this section's JSON block, each pinned by equality in
+CF9-3's shape, since a membership-only assertion is what let the last `package.json` wiring
+gap through. It is not taken here because §5.1's ruling is the owner's and names `pretest`;
+what this line owed was the measurement.
 
 ## 6. Testing, and how non-vacuity is proven
 
@@ -1543,19 +1840,23 @@ test restate today's file list and fail on every unrelated addition.
 
 **Non-vacuity battery.** Per finding kind, **per unit state and per coverage status**: one
 fixture reporting clean, then ONE `utimesSync`/`rm`/`writeFileSync` mutation that must flip
-it to the stated verdict — or, for the RENDERED-TEXT rows 16-18 and 26-30, that must make the check SAY what it stopped
+it to the stated verdict — or, for the RENDERED-TEXT rows 16-18 and 26-34, that must make the check SAY what it stopped
 covering. (`writeFileSync` is row 22's alone: §3.5 keys on bytes, not mtime, so a
 `utimesSync` mutation there would prove nothing.)
 
 Three rules the rows below carry, each earned from a defect a green battery passed:
 
-- **Rows 16-18 and 26-30 assert `formatFindings`' RENDERED text, never the return value.**
+- **Rows 16-18 and 26-34 assert `formatFindings`' RENDERED text, never the return value.**
   Rows 16-18 and 26 are the COVERAGE side of that group; rows 27-30 are the FINDING and
-  internal-error side, added in round 11. Re-derived: `formatFindings` occurred exactly
+  internal-error side, added in round 11; rows 31-34 are round 12's — the LOAD-TIME
+  internal error (OP12-1), the `--clean` reason (C11-3), the chunk SET (C11-6) and §4's
+  ordered remedy plan (OP12-4), of which the first and last are surfaces §4 mandates that
+  nothing in this section read. Re-derived: `formatFindings` occurred exactly
   TWICE in this design — §2's signature and this bullet — so every rendered assertion in §6
   concerned a coverage entry or the prefix, and §4's per-kind line shapes, its grouped
-  `stale-unit ×N — <units>` line and its `WARN`/`ERROR` lines were proved by NOTHING. Rows
-  28-30 take a MUTANT FORMATTER as their single mutation rather than a filesystem change,
+  `stale-unit ×N — <units>` line and its `WARN`/`ERROR` lines were proved by NOTHING — and its
+  ordered REMEDY PLAN still was, until round 12 (OP12-4). Rows
+  28-30 and 34 take a MUTANT FORMATTER as their single mutation rather than a filesystem change,
   because what they pin is what the reporter prints, and the rule stated one line above —
   that a row reading a return value goes green on the printing defect — applies to findings
   exactly as it does to coverage. O9-1 was a
@@ -1565,8 +1866,10 @@ Three rules the rows below carry, each earned from a defect a green battery pass
   output to read and the return value is the only surface there is. ⚠️ **And every
   assertion in this group includes §4's `check-stale-dist: ` prefix — row 18 on the PASS
   line and the findings list at once (its fixture is advisory-only, the one state §4's exit
-  table renders both), rows 16, 17 and 26 on the coverage line, and rows 27-30 on the
-  finding, grouped and `WARN`/`ERROR` lines (round 11).** For rows 16, 17 and 26 the
+  table renders both), rows 16, 17 and 26 on the coverage line, rows 27-30 on the
+  finding, grouped and `WARN`/`ERROR` lines (round 11), and rows 31-34 on the load-time
+  `WARN`/`ERROR` lines, the two `unbuilt` lines and the remedy plan's first line
+  (round 12).** For rows 16, 17 and 26 the
   prefix, the `⚠️ coverage: ` label and the asserted entry form ONE contiguous substring,
   because §4 renders only the non-`full` entries, in §2's union order, and on each of those
   three fixtures the asserted entry is FIRST among them — verified per row. ⚠️ **Round 10
@@ -1586,7 +1889,10 @@ Three rules the rows below carry, each earned from a defect a green battery pass
   the state rows keep 13-15 so §2 stays true, and §3.5's two rows moved to 22-23. Round 10
   re-pointed §0's requirement 1 and 8 rows off the stale "row 13" onto those numbers, and
     appended rows 24-25 rather than renumbering anything. Round 11 appended rows 26-30 the
-  same way, and §0's requirement 8 row now cites **29** as well.
+  same way, and §0's requirement 8 row now cites **29** as well. Round 12 appended **31**,
+  **32**, **33** and **34** the same way; §8(n) cites 31, §4's `unbuilt` line shape cites
+  32, §3.3's clause 1 cites 33 and §4's ordered-recipe paragraph cites 34, so those
+  sections join the outside-citer list above.
 
 | #   | clean fixture                                                                                          | single mutation                                                                                                                                                                | must become                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1616,10 +1922,14 @@ Three rules the rows below carry, each earned from a defect a green battery pass
 | 24  | plugin assets fresh, cli built COMPLETE (as row 11)                                                    | touch `packages/plugin/.mcp.json` forward                                                                                                                                      | `stale-plugin-assets` (§3.4) — the one **FILE** member of `PLUGIN_ASSET_ENTRIES` (`bundle-cli.mjs:89`); the other five are directories. Row 8's mutation is `packages/plugin/skills/**`, a DIRECTORY member, and its fixture need not contain the file member at all — so without this row a directory-typed source walk can pass every other row and still throw `ENOTDIR` on the real tree, which §4 turns into `ERROR`, exit 2 (round 10)                                                                                                                                                                                                                                                                                                                                                   |
 | 25  | cli built COMPLETE, as row 11                                                                          | `rm packages/cli/dist/chunk-*.js packages/cli/dist/run-dispatcher-*.js` — BOTH live naming families (verified 2026-08-20: four `chunk-*.js` plus `run-dispatcher-POLZZ2DH.js`) | `unbuilt`, gaps naming the esbuild chunk — §3.3 clause 1's `:121` chunk member, which had NO row until round 10. Clause 2 cannot catch it (deleting an output LOWERS the newest output mtime) and clause 3 cannot (the three entries survive), so this is the only row that makes the chunk member non-vacuous. It replaces the coverage assertion row 16 used to carry, which no correct implementation could print                                                                                                                                                                                                                                                                                                                                                                           |
 | 26  | row 19's end state: cli built COMPLETE, marker newest, then `utimesSync dist/bin.js` forward past the marker | none — assert the RENDERED text of the coverage line | all FOUR entries present: `check-stale-dist: ⚠️ coverage: bundle freshness not run (packages/cli unbuilt) · declaration cache not run (packages/cli unbuilt) · plugin assets not run (packages/cli unbuilt) · shipped declarations not run (packages/cli unbuilt)` — §4's renderer, §2's union order, prefix and label contiguous with the first entry. NOTHING is absent on this fixture, so an absence-keyed implementation prints no entry at all and emits a line §4's recipe step 5 reads as "all six ran" when four did not, including requirement 3's and `stale-declarations`' (round 10, C10-1). Rows 16-18 are all absence-triggered, so every one of them passes an absence-keyed implementation |
-| 27  | any unit's `tsconfig.json` rewritten as malformed JSON on an otherwise complete tree — §4's "**ANY** throw, not only malformed config", reached deterministically and without depending on a wrong `newestOfEntries` | none on the tree — run `check-stale-dist.mjs` against the fixture twice, once without `--strict` and once with | non-strict: stdout contains `check-stale-dist: WARN internal error — ` and the process exits **0**; strict: `check-stale-dist: ERROR internal error — ` and exit **2**. Mutant = no `try`/`catch`, letting the throw propagate: node prints an unprefixed stack and exits **1**, failing both halves — and under `pretest` that blocks `npm test` outright (§5.1, round 1's `O-2`). Without this row §4's internal-error row has no owner and every other row passes (round 11, OP11-2) |
+| 27  | any unit's `tsconfig.json` rewritten as malformed JSON on an otherwise complete tree — the RUNTIME half of §4's "**ANY** throw the catch can SEE" (row 31 is the LOAD-TIME half, which this row's tree mutation provably cannot reach), reached deterministically and without depending on a wrong `newestOfEntries` | none on the tree — run `check-stale-dist.mjs` against the fixture **three** times: once without `--strict`, once with, and once with `--json` (round 12, C11-5) | non-strict: stdout contains `check-stale-dist: WARN internal error — ` **followed by the fixture's own tsconfig PATH** and the process exits **0**; strict: `check-stale-dist: ERROR internal error — <that path>: ` plus the re-run and member-0-of-15 sentences §4's line carries, and exit **2**; `--json`: stdout `JSON.parse`s and yields `{ internalError, ran: false }` with the path inside `internalError`, and contains **neither** human line. The path and the two sentences are round 12's (OP12-5): `JSON.parse` messages carry no locus — measured, `Expected double-quoted property name in JSON at position 7 (line 1 column 8)` and nothing else — so without them the row goes green on a line naming none of the **30** candidate configs and stating no next action; and a `formatInternalError` blind to `json` writes chatter onto the JSON stream, which is the failure `scripts/bundle-types.mjs:63-68` records this repository shipping (round 12, C11-5). Mutant = no `try`/`catch`, letting the throw propagate: node prints an unprefixed stack and exits **1**, failing both halves — and under `pretest` that blocks `npm test` outright (§5.1, round 1's `O-2`). Without this row §4's internal-error row has no owner and every other row passes (round 11, OP11-2) |
 | 28  | a SYNTHETIC tree with `stale-unit` on ≥2 units (two units whose `src` is newer than their `dist`) | none on the tree — swap in a MUTANT `formatFindings` that renders the grouped line as the count alone, `check-stale-dist: stale-unit ×2` | the row must FAIL on the mutant: the rendered line is `check-stale-dist: stale-unit ×2 — <unit>, <unit>` (§4), prefixed and NAMING the units. §4's recipe step 1 is `rm -rf <unit>/dist` **for the units reported `stale-unit`**, so a count-only line makes the printed remedy unrunnable — round 6's `OP6-2`, whose fix landed in §4 prose and became no row until round 11. Synthetic, never the live tree's own four: §6's opening rule and the live-prediction paragraph both keep today's repository state out of the battery |
 | 29  | one fixture per DELTA-LESS kind (§2, §4): `unbuilt` (row 9's end state), `orphan-output` (row 4's end state), `bundle-provenance-missing` (row 21's fixture) and `stale-shipped-declarations` (row 22's end state) | none on the tree — swap in a MUTANT `formatFindings` that prints the generic comparison shape `<kind> <unit> <newerInput> <olderOutput> <deltaMs>` for every finding | all four must FAIL: the generic shape renders `stale-shipped-declarations packages/cli undefined undefined NaN`, round 4's `OP-R4-2` and round 7's `OP-1` verbatim, at the kind round 9 added. Each must instead render its own §4 line, prefixed `check-stale-dist: ` — and for `stale-shipped-declarations` that line is byte-based, `(<a> vs <b> bytes)`, with no mtime delta |
 | 30  | rows 9, 13 and 14's end states — one `unbuilt`, two `skipped` | none on the tree — swap in a MUTANT `formatFindings` that prints one hard-coded sentence in place of `unitState()`'s `reason`, in BOTH of its consumers: §4's `unbuilt <unit> — <reason>` line and the PASS line's skipped parenthetical | all three must FAIL: §4 prints that `reason` VERBATIM in both places ("never a sentence the reporter invents") and §3.3's reason table gives these three states three DISTINCT reasons. Row 15 asserts the same three on the RETURN value — precisely the surface this section's own rule says goes green on the printing defect — which is why the rendered twin is a separate row (round 11) |
+| 31  | a fixture holding a COPY of this check's own modules — `check-stale-dist.mjs`, `stale-dist/*.mjs`, and a stub `bundle-cli.mjs` that `export`s `PLUGIN_ASSET_ENTRIES` and throws nothing — over a complete cli tree, run as `node <fixture>/check-stale-dist.mjs`: reports clean | replace the copied `bundle-cli.mjs` with one whose FIRST statement throws — a module that fails at LOAD, the half of §4's internal-error row that row 27's tree mutation provably cannot reach, because the check's real import graph resolves from the REPOSITORY and no fixture `node_modules` can touch it | non-strict: stdout contains `check-stale-dist: WARN internal error — ` and exit **0**; strict: `check-stale-dist: ERROR internal error — ` and exit **2**, both prefixed. Mutant = the entry module reaching `compare.mjs`/`report.mjs` by a STATIC `import` statement instead of §1's IMPORT RULE `await import(...)` inside the try: measured 2026-08-20 (node v24.18.0, npm 11.16.0, nothing else running but the shell), node prints the throw plus an internal stack, NO `check-stale-dist: ` line at all, and exits **1** in BOTH invocations — failing both halves, and under `pretest` blocking `npm test` outright (§5.1's table, round 1's `O-2`). Row 27's mutant is "no try/catch" over a RUNTIME throw and stays green here, so without this row §8(n) is a residual nothing proves (round 12, OP12-1) |
+| 32  | cli built COMPLETE, as row 11, marker present and newest | `rm packages/cli/dist/bin.js packages/cli/dist/index.js packages/cli/dist/bin/supervisord.js packages/cli/dist/index.d.ts packages/cli/dist/.tsbuildinfo` — the `--clean` SIGNATURE: every tsc-written member gone, the esbuild chunks and `dist/plugin/**` left | `unbuilt`, gaps naming those four, and the RENDERED line reads `check-stale-dist: unbuilt packages/cli — tsc -b --clean removed the compiler outputs from a completed bundle; missing: dist/bin.js, dist/index.js, dist/bin/supervisord.js, dist/index.d.ts` (§3.3's cli reason table, §4). Mutant = a `unitState` carrying the single `bundle:cli did not finish` reason: it PASSES the verdict and FAILS the line — which is the whole row, because after `npm run build:clean` that sentence blames a step the operator never ran, verbatim §4's own OP-2 failure. A rendered-text row, in rows 27-30's group and for their stated reason (round 12, C11-3) |
+| 33  | cli built COMPLETE, as row 11, marker present and newest, its `metafile.outputs` naming all five emitted chunk files | `rm` three of the four chunks `dist/bin.js` imports (measured 2026-08-20: `bin.js` → `chunk-FRJGAF5Y.js` → `chunk-DVV3SNQ3.js`, `chunk-I6JBP7DT.js`, `chunk-UF6GI6PE.js`), leaving one file that still matches the pattern | `unbuilt`, gaps naming the three deleted chunks — clause 1's chunk membership is `metafile.outputs` whenever the marker exists (§3.3, round 12, C11-6). Mutant = clause 1 requiring only "at least one file matching the pattern": it PASSES, and so do clauses 2 and 3 — a deletion LOWERS the newest output mtime — so the check reports **PASS, exit 0 even under `--strict`** on a `bin.crabgic` that dies with `ERR_MODULE_NOT_FOUND`. Its twin, asserted in the same row: the SAME mutation with the marker ABSENT must still be PASS plus one advisory `bundle-provenance-missing`, because that is §8(i)'s third stated cost and not a defect the row may quietly close |
+| 34  | cli built COMPLETE (as row 11) plus a second unit whose `src` is newer than its `dist`, and `.dts-cache/index.d.ts` older than `packages/*/src` — TWO kinds, `stale-unit` and `stale-declarations` | none on the tree — swap in a MUTANT `formatFindings` that prints each kind's remedy-table row beside its own grouped block and no plan | the row must FAIL on the mutant: the rendered output carries ONE `check-stale-dist: remedy plan:` block with its steps as indented continuation lines, in §4's stated order, positioned after the findings list and before the coverage line. The mutant's per-kind list omits step 4 (`npm run bundle:cli`, which lifts the regenerated cache into `dist/index.d.ts` — §4: "step 3 alone leaves the pre-force copy shipped") and step 5 (re-run), so an operator who follows it spends the generator's ~5 minutes and is left with `stale-shipped-declarations` on the next run. Every other row passes the mutant, which is why the plan needed a row (round 12, OP12-4) |
 
 **Every `packages/cli` fixture that writes `dist/index.d.ts` must also write
 `.dts-cache/index.d.ts` with the SAME bytes, or omit the cache entirely.** Otherwise the
@@ -1631,10 +1941,15 @@ Row 7 is the decisive one: the exact state in which the naively specified check
 reports clean. The fixture asserts the plugin asset copy cannot mask a skipped compile.
 
 ⚠️ **Every cli-scoped row starts from a COMPLETE cli build, and from a marker WRITTEN
-LAST** — rows 3, 5, 7, 8, 10, 11, 16, 17, 19, 20, 21, 22, 24, 25, 26 and 29's two cli fixtures (its `bundle-provenance-missing` and `stale-shipped-declarations` states): a chunk, the three entry
+LAST** — rows 3, 5, 7, 8, 10, 11, 16, 17, 19, 20, 21, 22, 24, 25, 26, 32, 33, 34 and 29's two cli fixtures (its `bundle-provenance-missing` and `stale-shipped-declarations` states): a chunk, the three entry
 outputs, `dist/index.d.ts`, the six plugin entries, plus `.bundle-meta/metafile.json` with
 an mtime at or after the newest member of §3's filtered output set, except where the row
-itself deletes or moves it. Otherwise the baseline is already `unbuilt` — through the
+itself deletes or moves it. ⚠️ **AND that marker's `outputs` must name EXACTLY the
+chunk-pattern files the fixture wrote (round 12, C11-6).** Clause 1's chunk membership is
+`metafile.outputs`-derived whenever a marker exists, so a fixture whose marker names a
+chunk the tree does not hold is already `unbuilt` at baseline, the mutation flips nothing
+and the row is **vacuous** — CF8-2's defect, at every cli-scoped row at once, which is why
+this requirement is stated here rather than in the one row that introduced the rule. Otherwise the baseline is already `unbuilt` — through the
 artifact set when a member is missing, through §3.3's clause 2 when the marker is merely
 present and older — the mutation flips nothing and the row is **vacuous**. That was row
 11's parenthetical, generalised in round 9 after CF9-2 found the requirement stated for one
@@ -1644,7 +1959,7 @@ exceptions: their whole subject is an absent artifact.
 
 **False-negative battery** (the check must stay quiet):
 
-- a unit with no `dist` → `skipped`: no finding, and **named** in the PASS line's skipped slot (§4's **PASS-line rule**) — "not reported" has been wrong since round 5, and beside a coverage line it would read as a mandate to stay silent;
+- a unit with no `dist` → `skipped`: no finding, and **named** in the PASS line's skipped slot (§4's **The `PASS` line NAMES SKIPPED UNITS**) — "not reported" has been wrong since round 5, and beside a coverage line it would read as a mandate to stay silent;
 - `.tsbuildinfo` newer than every `.js` → clean — asserted **twice**: once for
   `checkUnitFreshness`, and once for `packages/cli` with `dist/.tsbuildinfo` touched
   forward PAST the marker, which must stay `compared` and must not become `unbuilt`
@@ -1701,9 +2016,16 @@ expect(members.indexOf("npm run check:install-smoke")).toBeGreaterThan(0)
 // second it() would pin a wiring this design refuses.
 expect(root.scripts["check:stale-dist"]).toBe("node scripts/check-stale-dist.mjs")
 expect(root.scripts.pretest).toBe("node scripts/check-stale-dist.mjs")
+// No `pretest:watch` / `pretest:live` / `pretest:e2e` assertion, and that is a stated
+// decision rather than an omission: npm's pre-hook is NAME-EXACT, so the four `test:*`
+// siblings bypass this wiring and §5.1 states that as the measured bound rather than
+// closing it (round 12, OP12-2). If a later round takes the reach, they are pinned HERE
+// by equality in this same shape — never by membership, CF9-3's rule.
 
-// The EXISTING-file edits, asserted by READING them — FOUR in `scripts/bundle-cli.mjs`
-// (§1) and one in `.gitignore`. Without these an
+// The EXISTING-file edits, asserted by READING them — FOUR SOURCE PROPERTIES of
+// `scripts/bundle-cli.mjs` (§1), out of the FIVE edits §1 makes to that file: the
+// `writeFile` import is implied by the WRITE anchor below and is NOT separately
+// asserted (round 12, CF12-4). Plus one in `.gitignore`. Without these an
 // implementer builds the six new files, passes every battery row and the line
 // above, and leaves requirement 3's comparison permanently muted.
 const bundler = readFileSync("scripts/bundle-cli.mjs", "utf8")
@@ -1856,8 +2178,19 @@ working copy, and independent evidence the check is not vacuous against real inp
   problem assumption 2 rejects.
 - **(f) Anything about the other 8 `e2e/*` tsconfigs.** All 8 set `noEmit: true`
   (`grep -l '"noEmit": true' e2e/*/tsconfig.json e2e/matrix/*/tsconfig.json | wc -l` → 8),
-  emit no `dist`, and are outside the 19-unit enumeration by construction. `e2e/matrix`
-  has no top-level `tsconfig.json` at all.
+    emit no `dist`, and are outside the 19-unit enumeration by construction. `e2e/matrix`
+  has no top-level `tsconfig.json` at all. ⚠️ **They ARE handed to a compiler by a build
+  program, so requirement 9's wording reaches them and §8(l) counts them among its 9
+  (round 12).** `scripts/check-e2e-types.mjs:40` runs `npx tsc -p <config> --noEmit` for
+  exactly `E2E_TYPECHECK_PROJECTS` (`:24-32`), which is these 8 — re-derived 2026-08-20,
+  as is the fact that each declares `"extends": "../../tsconfig.base.json"` (or
+  `../../../`), so §3 rule 3 does not reach them (it covers `<unit>/tsconfig.json` for the
+  19 root references only) and rule 4 does not either (it reaches only configs whose chain
+  resolves INTO a unit). With (l)'s root config that is **9 of 30** outside every input
+  set, which is why §0's requirement 9 row and §3 rule 4 both state **21 of 30**.
+  `noEmit` is the whole of the bound: a config that emits nothing produces nothing that
+  can go stale, which is why they are excluded from every input set by design rather than
+  by oversight. Measured here, cited from §8(l) and §3 input rule 4.
 - **(g) That 1:1 stem mapping is permanent.** It holds for all 18 tsc units today. A
   future `allowJs`, a `.tsx` file, or an emitted `.json` would break it — which the
   orphan check would report as a finding rather than silently mis-handle, and which the
@@ -1866,9 +2199,12 @@ working copy, and independent evidence the check is not vacuous against real inp
   `tsc -b --clean` deletes `.tsbuildinfo` along with the outputs, so a `--clean`ed unit
   and one nobody has ever built are byte-identical, and §3.3's reason table gives both the
   same `skipped`. Accepted rather than papered over, and bounded rather than open: §3.3
-  records what `--clean` actually removes (`npx tsc -b packages/cli --clean --dry` →
-  exactly five deletions, nothing under `.bundle-meta/`, re-measured 2026-08-20), so the
-  cost is one verdict on one tree state and not a hole of unknown size. It is also why the
+    records what `--clean` actually removes **from `packages/cli`** (the `packages/cli/`
+  SUBSET of `npx tsc -b packages/cli --clean --dry` → exactly five deletions, nothing
+  under `.bundle-meta/`, re-measured 2026-08-20; the whole command lists **4,781** across
+  17 packages and the root `build:clean` **5,051** across all 19, because `--clean` cleans
+  the reference graph — round 12, C11-2), so the cost is one verdict on one tree state and
+  not a hole of unknown size. It is also why the
   verdict is a three-valued `unitState` and not a boolean (§2): a boolean must fold the
   empty tree into `stale`, which is noise on every fresh clone (CR6-2), or into `clean`,
   which is `PASS` on a tree with zero build output — round 3's `CR-2`, recorded there as
@@ -1891,8 +2227,18 @@ working copy, and independent evidence the check is not vacuous against real inp
   whose stated purpose is different, not by the clause written for it. Do NOT close it by
   making an absent marker `unbuilt` again: that is C9-3/O9-2, and it prints
   `rm -rf packages/cli/dist` to every developer on day one. Bounded rather than open:
-  the marker is written last, so every earlier step is proven by §3.3's artifact set, and
-  the second window is the milliseconds between two adjacent statements. It self-clears —
+    the marker is written last, so every earlier step is proven by §3.3's artifact set, and
+  the second window is the milliseconds between two adjacent statements. ⚠️ **A THIRD
+  cost, stated in round 12 (C11-6): while the marker is absent, clause 1 cannot verify the
+  chunk SET.** Its membership is `metafile.outputs`-derived only when there IS a metafile;
+  without one the clause falls back to "at least one file matching the pattern", so a
+  `dist` holding one chunk of five passes clause 1, passes clause 3, and passes clause 2
+  (which does not evaluate at all here — the first cost above), and the check reports
+  **PASS, exit 0 even under `--strict`** on a `bin.crabgic` that dies with
+  `ERR_MODULE_NOT_FOUND` (measured import graph, §3.3 clause 1). Bounded the same way as
+  the other two: no repo script produces the state, and the first completed build both
+  writes the marker and rewrites the whole chunk set. Accepted rather than closed by
+  hardcoding a count, which would be a rule keyed on today's import graph. It self-clears —
   the first completed build writes the marker, and the wipe step clears it thereafter, so
   the state recurs only on a genuinely interrupted build. Accepted rather than papered
   over, in the shape §3.3 uses for `build:clean` at unit granularity. Round 8 tried to
@@ -1920,16 +2266,31 @@ working copy, and independent evidence the check is not vacuous against real inp
   does". Stated in round 9, when the previous form of this assertion was measured to pass
     with no write in the file at all — a fix that replaced one overclaim with another would
   be the eleventh partly-true completion claim in this record.
-- **(l) That the root `tsconfig.json` is in any unit's input set — requirement 9,
-  residual.** `build` is `tsc -b && npm run bundle:types && npm run bundle:cli`
+- **(l) That the root `tsconfig.json` OR the 8 `e2e/*` `noEmit` configs are in any unit's
+  input set — requirement 9, residual. NINE files, not one (round 12, C11-1).** `build` is `tsc -b && npm run bundle:types && npm run bundle:cli`
   (`package.json:15`), so a build program DOES hand the root config to a compiler, and it
   is in **no** unit's input set: §3 input rule 3 reaches it only by an upward `extends`
   walk and it declares none; rule 4 reaches only configs whose own chain resolves INTO a
   unit, and this one has `"files": []` plus 19 `references` and nothing else (re-derived
   2026-08-20 — `Object.keys` on the parsed file returns exactly `files, references`).
-  Requirement 9 is therefore discharged for **29 of the 30** tracked `tsconfig*.json`
-  (§3's own count) and not for the thirtieth. Bounded rather than open, for two measured
-  reasons: it carries **no `compilerOptions`**, so it contributes nothing to any unit's
+    ⚠️ **And the root config is not alone — `29` was the size of `enumerateTsconfigs`'
+  RETURN, never the size of the covered set (round 12).** Re-derived 2026-08-20 by running
+  §3's rules 3 and 4 over all 30 tracked configs: **21** land in some unit's input set (the
+  19 unit `tsconfig.json` through rule 3, `tsconfig.base.json` through rule 3's upward
+  chain, and `packages/cli/tsconfig.dts.json` through rule 4) and **9** do not — the root
+  config plus the **8 `e2e/*` configs**, each of which declares
+  `"extends": "../../tsconfig.base.json"` (or `../../../`), resolving to the root-level
+  base and never INTO a unit, and none of which an upward walk from the 19 units reaches.
+  A build program DOES hand those 8 to a compiler — `scripts/check-e2e-types.mjs:40` runs
+  `npx tsc -p <config> --noEmit` for exactly `E2E_TYPECHECK_PROJECTS` (`:24-32`) — so
+  requirement 9's own wording reaches them. They are bounded by **§8(f)**'s
+  already-measured reason: all 8 set `noEmit: true`, so they emit no output that can go
+  stale, and omitting them from the COUNT rather than stating that bound was standing
+  rule 4 at the site of round 11's fix. Requirement 9 is therefore discharged for **21 of
+  the 30** — the count against THIS bullet's own definition of discharge, membership of
+  some unit's input set, and NOT §3 rule 4's 27 + 2 = 29 census population, which rule 4
+  now states apart. The root config specifically is bounded rather than open, for two
+  measured reasons: it carries **no `compilerOptions`**, so it contributes nothing to any unit's
   emitted output; and the one thing it does control — WHICH units exist — the check
   re-reads on every run, because §3 enumerates from this exact file
   (`enumerateRootReferences`, requirement 5), so a reference added or removed changes the
@@ -1955,8 +2316,19 @@ working copy, and independent evidence the check is not vacuous against real inp
   `import { build } from "esbuild"`, so `esbuild` must resolve at import time. Re-derived
   2026-08-20: it is a root `devDependency` (`package.json:61`, `0.28.1`), which `npm ci`
   installs, so `meta-checks` and every local invocation resolve it; an `--omit=dev`
-  install does not, and there the check throws at import and §4's internal-error row makes
-  that `ERROR`, exit **2**. Accepted rather than papered over, and bounded: no workflow
+  install does not. ⚠️ **What happens there depends on §1's IMPORT RULE, and the exit code
+  this bullet stated was wrong for one round (round 12, OP12-1).** Under the mandated
+  `await import(...)` at the entry module the throw lands in `check-stale-dist.mjs`'s catch
+  and §4's internal-error row holds: `WARN`/exit **0** by default, `ERROR`/exit **2** under
+  `--strict`. Under a STATIC entry import the resolve happens before the catch exists —
+  measured 2026-08-20 (node v24.18.0, npm 11.16.0, nothing else running but the shell):
+  `ERR_MODULE_NOT_FOUND`, a ten-frame node stack, no `check-stale-dist: ` line, and exit
+  **1** with `--strict` AND without, which under `pretest` blocks `npm test` entirely —
+  round 1's `O-2`. §6 row **31** proves the mandated form; without it this residual is a
+  claim nothing tests. ⚠️ **And the reachability is wider than `--omit=dev`**: any
+  incomplete or pruned `node_modules`, and any load-time throw anywhere in the six-module
+  graph, lands in the same uncatchable window. Accepted rather than papered
+  over, and bounded: no workflow
   under `.github/` and no root script installs with `--omit=dev` today (re-derived
   2026-08-20). §1 states the alternative that removes the residual entirely (a
   builtins-only `scripts/plugin-assets.mjs` both files import).
@@ -2117,6 +2489,13 @@ ad-hoc run punitive and passed `--strict --strict`; the fifth kind had no remedy
 its only stated remedy was the command round 2 had just banned; `stale-declarations`
 prints a **~5 minute** rebuild and now says so; and §5.1's "immediately above the
 failures" is corrected to the measured **~199 lines** with the reporter re-emit named.
+⚠️ **That last disposition was partly true, and round 12 (OP12-3) is the eleventh of its
+kind in this record.** The correction reached the paragraph that STATES the measurement;
+the sentence that RESTS on it — the closing argument for report-and-continue — still read
+"immediately above the failures" nine rounds later. Round 2's `O-A` and round 3's `OP-4`
+both dispositioned it `fixed`, and both verifications read the measuring paragraph rather
+than the argument. `grep -n "immediately above"` over the whole file returned two hits,
+one of them live in §5.1.
 
 ℹ️ **The reviewer disclosed that it mutated the working tree** — a probe imported
 `bundle-cli.mjs`, whose top-level `await main()` rebuilt `packages/cli/dist`. It checked
@@ -2163,7 +2542,7 @@ today's import graph, not a property of it — but the record now says so.
 banned; three of seven kinds had no non-vacuity row, so an implementer could have shipped
 `stale-plugin-assets` hardcoded never to fire (the exact defect class this change set
 exists for); `unbuilt` and `bundle-provenance-missing` had no line shape and would have
-printed `undefined undefined NaN` eighteen times after `build:clean`; seven remedies had
+printed `undefined undefined NaN` (round 4 wrote "eighteen times after `build:clean`"; round 12 re-derived that state as **18 `skipped` units and ONE `unbuilt packages/cli`**, so the count and the unit were wrong at the round that filed them — the finding stands, the example did not); seven remedies had
 no ORDER, and running them as listed wastes a full rebuild or undoes itself; and §5's
 consequence list omitted `ci.yml:129`, the only place CI runs `npm test` and therefore
 `pretest`.
@@ -2237,8 +2616,9 @@ throw.
 §3.3 names (`--clean` removes `.tsbuildinfo` too, so path (a) clears under plain
 `npm run build`); the entry-output rule against a fresh clone (row 1 precedes, so a fresh
 clone is silent); every other unit's `dist` for foreign files (`packages/journal` is the
-only one); `--clean` on `packages/cli` (exactly five deletions, chunks and `plugin/**`
-survive); §6's four-`stale-unit` live claim, re-derived independently; and every count and
+only one); `--clean` on `packages/cli` (exactly five deletions **in the `packages/cli/` subset** —
+round 12 re-derived the whole command at 4,781 across 17 packages, and the root
+`build:clean` at 5,051 across 19 — chunks and `plugin/**` survive); §6's four-`stale-unit` live claim, re-derived independently; and every count and
 anchor. Walk timing 0.20-0.28 s over six runs, spread 0.08 s — wider than round 2's 0.06,
 and the lens noted its machine was concurrently running vitest.
 
@@ -2246,9 +2626,10 @@ and the lens noted its machine was concurrently running vitest.
 appeared for the FOURTH time, and the diagnosis is now exact.**
 
 **CR6-3, high — `PASS` on a tree with no CLI, again, because the entry-output rule is
-also a `tsc`-writable proxy.** `tsc -b packages/cli --clean --dry` lists exactly the
-three entry outputs plus `index.d.ts` and `.tsbuildinfo` — so `tsc -b` alone satisfies
-round 4's rule. Interrupt `npm run build` during the **~5 minute** `bundle:types` step
+also a `tsc`-writable proxy.** The **`packages/cli/` subset** of
+`tsc -b packages/cli --clean --dry` is exactly the three entry outputs plus `index.d.ts`
+and `.tsbuildinfo` (round 12 re-scoped this: the whole command lists 4,781 across 17
+packages) — so `tsc -b` alone satisfies round 4's rule. Interrupt `npm run build` during the **~5 minute** `bundle:types` step
 and the tree has all three entries, no chunks, no `dist/plugin`, and a stale
 `.bundle-meta/` that `rm -rf dist` never touched. Reported PASS, exit 0, on a tree with
 no `crabgic` binary.
@@ -2487,7 +2868,10 @@ governs before writing any of them.
 
 ### Owner ruling, 2026-08-20 — keep the full design
 
-The manager put the accumulated evidence to the owner: eight rounds, seventy-five
+⚠️ **The counts below are the ones put to the owner AT ROUND 8's CLOSE and are not restated
+as current (round 12).** Rounds 9, 10, 11 and 12 followed the ruling and are logged above and
+below this subsection; the ruling itself — keep the full design and keep iterating — is
+unchanged by them. The manager put the accumulated evidence to the owner: eight rounds, seventy-five
 findings, one failure recurring six times with each fix introducing the next, and nine
 consecutive partly-true completion claims. The alternatives offered were narrowing to the
 single bundle-freshness comparison, going to the gate as-is, or splitting the work.
@@ -2572,3 +2956,137 @@ value gone. Now pinned by INDEX and by equality on the full member string (§5).
 `package.json` joins §1's existing-file table, which had listed two of the three files
 this change set must edit while its three script edits lived only in §5/§5.1 — the same
 shape as CF9-4's finding one paragraph above, at the third file.
+
+**Round 9 (2026-08-20) — O9-1, medium: the coverage the check computed was never
+printed.** `comparisonsSkipped` appeared exactly ONCE in this design — §2's signature —
+had no line shape in §4 and no battery row in §6, so on a tree whose bundle provenance was
+missing the operator read `PASS — 19 units compared, 0 skipped` while requirement 3's
+comparison had not run at all. A count also cannot say WHICH comparison declined, nor
+carry the reason §4 prints. Disposition: replaced by §2's
+`ComparisonCoverage = { comparison, status, reason }`, returned by all four cli-scoped
+comparisons; §4 gains the coverage line, printed on BOTH the PASS path and the findings
+path; §6 gains the rendered-text rows, which assert `formatFindings`' output because a row
+reading `result.coverage` goes green on the exact defect it exists to catch. `skipped`
+stays UNIT-scoped: naming skipped UNITS and not skipped COMPARISONS is round 5's own fix
+one level up.
+
+**Round 10 (2026-08-20) — four findings, all re-derived and all `fixed`, cited by
+identifier from §0, §1, §2, §3.2, §3.3, §3.4, §3.5, §4, §6, §7 and §8.** Recorded here in
+round 12 (C11-7/CF12-2), because rounds 10 and 11 dispositioned at the sites they govern
+and left §9 without an entry — so "all dispositioned" was true but uncheckable from the
+record the gate reads. Measured before writing this: six IDs (`C10-1`, `C10-2`, `C10-3`,
+`C10-4`, `O9-1`, `OP11-2`) carried **37** citations in the body against a §9 that stopped
+at round 9.
+
+- **C10-1, high — a `not-run` cause with no reason this design could spell.** All four
+  cli-scoped comparisons are suppressed when `unitState("packages/cli").state ===
+  "unbuilt"` (§3.2), and on that tree NOTHING is absent, so a coverage entry keyed on
+  absence had nothing to name. The tree is the most routine there is — §7's
+  `npm run typecheck` row — and it printed one `unbuilt` finding and no coverage line at
+  all, which §4's recipe step 5 reads as "all six ran". `not-run` now has exactly TWO
+  mandated causes, the second carrying the verbatim reason `packages/cli unbuilt`,
+  evaluated BEFORE any comparison inspects its own comparand.
+- **C10-2, high — the design's one repo-internal import could not be taken.** §3.3's
+  clause 1 and §3.4's source side both read `PLUGIN_ASSET_ENTRIES` from
+  `scripts/bundle-cli.mjs`, but `:89` is a bare `const` (re-derived: `grep -n "^export"`
+  returns `:71` `EXTERNAL_DEPENDENCIES` and nothing else), and the file's last statement is
+  `await main()`, so the only import that DID resolve would rebuild `packages/cli/dist`
+  from inside the check that observes it. Two further edits — `export` the const, and put
+  `await main()` behind the ino entry-point guard `scripts/repo-census.mjs:382` uses —
+  raising the file to **five** edits, of which §6 asserts **four source properties**. The
+  import also resolves `esbuild` at load time: residual §8(n).
+- **C10-3, medium — `readMetafile`'s `object | undefined` signature was an invitation to
+  throw.** The marker is 404,198 bytes over 758 inputs written by a plain `writeFile`, so
+  a truncated one is reachable on a tree where every artifact is complete. Absent OR
+  unparseable ⇒ `undefined`, never a throw, with a second mandated reason
+  `.bundle-meta/metafile.json unreadable`.
+- **C10-4, medium — §3.3's clause 2 is conditional on the marker, and the design said so
+  nowhere.** C9-1's freshness oracle is inert for exactly the window in which the marker
+  is absent. Stated as the CONJUNCTION residual in §8(i) and pinned by a false-negative
+  battery row that asserts the accepted verdict rather than a better one.
+
+Round 10 also deleted `reduced` as unreachable (§2, §3.2), relabelled §8's tail
+(i)/(j)/(k) after five bullets carried the label `(h)`, and appended battery rows 24-25.
+⚠️ **And round 10's own bulk apply wrote editor directives into the design as document
+text** — the finding that produced the standing lesson that an apply step needs a guard on
+WHAT it inserts, not only on WHERE.
+
+**Round 11 (2026-08-20) — 60 consolidated edits applied; `OP11-2`, high, plus four
+author-side site walks, all `fixed`.** `OP11-2`: §4's internal-error row had no owner in
+§2 and no row in §6 — `exitCodeFor` takes a `result` and a throw yields none, `kind` has no
+error member, and §1 gave `check-stale-dist.mjs` "arg parsing, CLI" and no catch. Closed
+by `formatInternalError(err, { strict })` in `report.mjs`, called from that file's
+try/catch, with both line texts written out and §6 row 27 exercising it. The round's four
+other subjects: the preamble's intra-document citation rule, after
+`grep -on '§[0-9][0-9.]*:[0-9]'` returned SIX anchors all resolving to the wrong text;
+§8 gained **(l)** and **(m)**, the two round-2 dispositions that had reached no section for
+ten rounds, and §0's requirement 2 and 9 rows gained the pointers that stop them claiming
+unqualified discharge over a measured gap; §3 rule 4 gained its tsconfig arithmetic where
+the input sets are DEFINED; §2's delta-less kinds are NAMED rather than counted; and §5's
+self-referential `run check:all` grep was re-scoped. Battery rows 26-30 were appended.
+
+⚠️ **Round 11's first apply CORRUPTED this document and the corruption was caught, not
+shipped.** One edit's replacement text contained a dollar sign immediately followed by an
+apostrophe, which JavaScript's `String.replace` expands to "everything after the match" —
+it spliced the rest of the file back in and doubled it to **4499** lines. Reverted and
+re-applied with a function replacement plus a line-delta guard. ⚠️ **The hazard is still
+live in the document, and round 12 re-derived it:** three lines carry that sequence inside
+backticked shell commands and one carries a dollar-backtick, so every future apply
+touching them must use a function replacement — now a standing rule in this file's
+preamble. Round 12 checked the CURRENT document for residual damage of that class —
+**2574** lines, no duplicated headings, no duplicated long line, no placeholder standing
+in as document text — and found none.
+
+**Round 12 (2026-08-20) — `contract-fit` / `correctness` / `operability`, seventeen
+findings: `CF12-1`, `CF12-2`, `CF12-3`, `CF12-4`, `C11-1`, `C11-2`, `C11-3`, `C11-4`,
+`C11-5`, `C11-6`, `C11-7`, `OP12-1`, `OP12-2`, `OP12-3`, `OP12-4`, `OP12-5`, `OP12-6`.**
+
+- **`CF12-1`** — §0's requirement 9 row carried an unescaped `|` inside a code span, so
+  GFM truncated the cell and dropped the whole bounded-residual statement round 11 had
+  just added. The preamble gains an escape-aware row census; the naive form reports a
+  correctly escaped row as malformed and so can never return nothing.
+- **`CF12-2`** — the round-11 citation rule was enforced only against `§N:line` anchors, so
+  a NAME or an ID that resolves to nothing passed it. Two more preamble passes, both
+  scoped below `## 0.`; four `PASS-line rule` citations renamed; this section's missing
+  entries written.
+- **`CF12-3` / `C11-1`** — requirement 9's numerator was the enumeration's return size
+  (29), not the covered set (21); nine configs are uncovered, not one.
+- **`CF12-4`** — §1's five `bundle-cli.mjs` edits were summarised as four, and §0 and §3.2
+  still said two.
+- **`C11-2`** — the `--clean` residual was bounded by a scoped measurement read as
+  unscoped: `npx tsc -b packages/cli --clean --dry` lists **4,781** deletions across 17
+  packages (the `packages/cli/` subset is the five named), and the root `build:clean`
+  **5,051** across all 19 units. `build:clean` is also caught by clause 1, not clause 3
+  alone.
+- **`C11-3`** — §4's `eighteen times over` example described a state that yields 18
+  `skipped` and ONE `unbuilt`, and the line printed there blames a step the operator never
+  ran; §3.3's cli reason table gains the `--clean` signature's own reason.
+- **`C11-4`** — the unfiltered `check:all` figure was wrong at the commit that wrote it
+  for the third time (measured: filtered 6, unfiltered 10, design said 9) and is deleted
+  rather than corrected.
+- **`C11-5`** — `--json` plus an internal error emitted a human line onto the JSON stream:
+  the failure `bundle-types.mjs:63-68` records this repository shipping.
+- **`C11-6`, advisory** — clause 1's chunk member was an at-least-one test over a set §3.2
+  takes a minimum across. Measured: `bin.js` → `chunk-FRJGAF5Y.js` → three more chunks, so
+  deleting three of four leaves a PASS on a `bin.crabgic` that dies with
+  `ERR_MODULE_NOT_FOUND` — the eighth appearance of the founding failure.
+- **`C11-7`, advisory** — this section, which had no entry for rounds 10 or 11.
+- **`OP12-1`** — §4's internal-error row cannot see a LOAD-TIME throw: a static ESM graph
+  is linked before the entry module's first statement runs, so the catch is not on the
+  stack. Measured on this design's own shape: `ERR_MODULE_NOT_FOUND`, a ten-frame stack,
+  no prefixed line, exit **1** with `--strict` AND without — under `pretest` a total block
+  on `npm test`, round 1's `O-2` re-opened by omission. §1 gains an IMPORT RULE.
+- **`OP12-2`** — §5.1's honest bound named ONE bypass; npm's pre-hook is name-exact and
+  this repository declares four `test:*` siblings, so the measured set is **five**, and
+  `test:watch` is the founding incident's own context.
+- **`OP12-3`** — §5.1's closing argument still read "immediately above the failures" 25
+  lines below the paragraph measuring it at ~199 lines; rounds 2 and 3 both dispositioned
+  it `fixed` and both verifications read the measuring paragraph rather than the argument.
+- **`OP12-4`** — §4's ordered remedy plan had no owner in §1 or §2, no position in the
+  prefix rule and no battery row for twelve rounds.
+- **`OP12-5`** — the internal-error line carried no locus (`JSON.parse` messages name no
+  file) and told the operator nothing about the re-run or the 14 members that did not run.
+- **`OP12-6`** — the `String.replace` hazard is a property of the apply step, now stated
+  as document text rather than as one round's remedy.
+
+Battery rows **31-34** were appended, nothing renumbered.
