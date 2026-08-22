@@ -38,8 +38,7 @@ and `:181` — and the next paragraph rules that those stay and stay exact, so t
 never return nothing. The four-digit-only form returns exactly the thirteen TODAY, and is
 refused because it keys on digit COUNT as a stand-in for "into this document": it is blind
 to a bare three-digit intra-document anchor — `:710` and `:724`, quoted as counterexamples
-above, are both — and this file is **7306** lines and has grown about 290 a round for
-twelve rounds, so it also goes blind to every other-file citation past 9999. The fourteenth
+above, are both — and it also goes blind to every other-file citation past 9999. The fourteenth
 reference carries no colon at all, so no colon-keyed form sees it either. §9's round-26
 entry carries both counts with the command and the sha. The rule is enforced by READING;
 this command bounds it, and this sentence states the bound.
@@ -876,9 +875,9 @@ export function unitState(unit)                      -> { state, reason }  // §
 // `cliArtifactGaps` below lists "an esbuild-named chunk" first — so a chunkless
 // `packages/cli` is `unbuilt` with `missing: chunk-*.js`, and §3.2 states that no
 // cli-scoped comparison runs on an `unbuilt` `packages/cli`. Both predicates read the
-// same `/-[A-Z0-9]{8}\.js$/` for PRESENCE, so they can never disagree that a chunkless
-// tree is `unbuilt` — round 12 (C11-6) made clause 1's chunk MEMBERSHIP metafile-derived
-// when a marker exists, which only NARROWS clause 1 and can never widen it — and
+// same `/-[A-Z0-9]{8}\.js$/` for PRESENCE, so they cannot disagree that a chunkless tree
+// is `unbuilt` — §3.2 carries that argument, the bound the metafile branch puts on it and
+// the element round 32 named for it, and this comment does not restate them — and
 // `checkBundleFreshness` never reaches the fallback to report anything.
 // ⚠️ **"Chunkless ⇒ `unbuilt`" holds only where clause 1 is REACHED (round 17, C17-1):**
 // §3.3's cli conjunction is one further step INSIDE the `compared` branch, so a present
@@ -1939,7 +1938,9 @@ paragraph's deletion argument covered only half of it. The conclusion is unchang
 already has. Both
 predicates read the same `/-[A-Z0-9]{8}\.js$/` for PRESENCE, so they can never disagree
 that a chunkless tree is `unbuilt` — round 12 (C11-6) made clause 1's chunk MEMBERSHIP
-metafile-derived when a marker exists, which only NARROWS clause 1 — and
+metafile-derived when a marker exists, which only NARROWS clause 1, and §6's false-negative
+battery's marker-absent gap bullet is what makes that agreement falsifiable on the
+no-metafile branch (round 32, `C32-1`) — and
 `checkBundleFreshness` never reaches the fallback to report anything. §6 row 16 mandated a
 rendered line — `bundle freshness reduced (no esbuild chunk)`, still exit 0 — that no
 correct implementation can print; what actually prints on that tree is §4's own worked
@@ -2140,7 +2141,19 @@ tool that carries the fix is the tool that did not run.
    reads the parse) — the clause keeps "at
    least one file matching the pattern", and **the completeness of the chunk set is then
    unverifiable** — stated in §8(i) beside the other marker-absent costs, never hidden
-   here. ⚠️ **Standing rule 8, at the site of the fix: do NOT close it by hardcoding
+   here. ⚠️ **THAT FALLBACK IS THE BRANCH EVERY TREE IN THIS REPOSITORY TAKES until its
+   first post-adoption build, and its chunk member was exercised by NOTHING until round 32
+   (`C32-1`) — standing rule 9, beside the marker-PRESENT reading this same sentence
+   pins.** Every element that reaches clause 1 with no marker holds a chunk-pattern file
+   PRESENT, so a `cliArtifactGaps` resolving that member as the metafile's outputs when
+   there is a metafile and as NOTHING when there is not — an EMPTY requirement, which
+   nothing can be missing from — passed every one of them while reporting `compared` plus
+   one advisory at exit 0 even under `--strict` on a `packages/cli/dist` holding no chunk
+   at all and a `dist/bin.js` whose first statement imports one. §6's false-negative
+   battery's marker-absent gap bullet is the element, and it binds the unparseable
+   sub-state with it: both sub-states reach this branch through the one value
+   `readMetafile` returns for each, `undefined` (§2), so no body takes the fallback on one
+   and not on the other. ⚠️ **Standing rule 8, at the site of the fix: do NOT close it by hardcoding
    five.** The chunk count is a function of the import graph and moves with any
    re-chunking under `splitting: true`, so a literal would be a rule keyed on today's tree
    — §3.3's own proxy lesson at a new site. Reachability is thin and said so: no repo
@@ -3986,7 +3999,18 @@ what that row tests.
   and this bullet's four existing conjuncts are unchanged;
 - cli `dist` present WITH a gap in §3.3's artifact set and the marker absent → `unbuilt`
   alone, never both kinds — the disjointness §3.3's cli table states, asserted rather than
-  assumed;
+  assumed. ⚠️ **The GAP is NAMED rather than left free (round 32, `C32-1`), which makes
+  this bullet the element for clause 1's chunk member on the no-metafile branch:** EVERY
+  chunk-pattern file absent, with every other member of that set present — the three entry
+  outputs, `dist/index.d.ts` and the six plugin entries under `dist/plugin`. The verdict
+  and this bullet's subject are unchanged: `unbuilt` alone, never both kinds, its gaps
+  naming the chunk, reached through §3.3's cli reason table's `bundle:cli did not finish`
+  row and not through its `--clean` signature row, whose own precondition is the inverse —
+  the tsc-written members ABSENT while a chunk SURVIVES. A `cliArtifactGaps` whose chunk
+  requirement is the metafile's outputs when there is a metafile and NOTHING when there is
+  not reports `compared` plus one advisory on this fixture and fails it, needing no mutant
+  swap, while an implementation emitting BOTH kinds still fails the disjointness half — so
+  nothing this bullet already proved is vacated;
 - **the C10-4 conjunction, pinned rather than left as prose (round 10):** cli `dist`
   COMPLETE — and holding the six `PLUGIN_ASSET_ENTRIES` SOURCES under `packages/plugin/`,
   OLDER than the newest file beneath `dist/plugin`, the complete-cli-build rule's
@@ -4037,9 +4061,6 @@ appended LAST with no flag passes, while §5 orders this member FIRST and chains
 `const members = root.scripts["check:all"].split("&&").map((s) => s.trim())
 expect(members[0]).toBe("npm run check:stale-dist -- --strict") // position AND flag
 expect(members.filter((m) => m.includes("check:stale-dist"))).toHaveLength(1)
-// the two dist-reading members §5 orders it before: present, and after it
-expect(members.indexOf("npm run check:tarball")).toBeGreaterThan(0)
-expect(members.indexOf("npm run check:install-smoke")).toBeGreaterThan(0)
 // no member COUNT is asserted, so a 16th member must not break this, and no ci.yml
 // assertion: unlike the two files above, §5 proposes no CI step, so copying their
 // second it() would pin a wiring this design refuses.
@@ -9264,10 +9285,12 @@ document reaches — dispositioned by DELETION instead of by scope: `CF31-3`, `C
   by a space, an open paren or a bold marker; a closing one followed only by a space, an
   apostrophe, a double quote, a close paren, a comma, a bold marker or a colon), which returns
   **0** exceptions there and **66** here. **The damage is CONFINED to row 26 and to `CF31-1`'s
-  comment:** the same census over the rest of the file is **33** at both commits, every one of
-  the 33 being this document's own English-suffix idiom — and because this bullet quotes the
-  broken command once above, that census re-runs at **34** after this apply and not 33, which
-  is this section's convention for telling a quotation from damage. PROOF IT IS DAMAGE AND NOT
+  comment:** the same census over the file EXCLUDING §6 row 26 AND `CF31-1`'s comment is **33**
+  at both commits, every one of the 33 being this document's own English-suffix idiom. The
+  arithmetic is stated so a later round re-derives that exclusion rather than guessing it: the
+  whole file is **35** at `187eb2d`, where row 26 contributes **0** and that comment **2**, and
+  **76** at `55666e8`, where row 26 contributes **40** and that comment **3**. PROOF IT IS
+  DAMAGE AND NOT
   INTENT: round 30's `OP30-1` bullet writes the identical clause WITH the space, so one apply
   wrote it two ways at two sites; and the restored text is prettier-STABLE, `norm()` diff **0**
   and a second run byte-identical, which also proves the elisions were the apply's and not the
@@ -9448,3 +9471,212 @@ byte-identical. **No working-tree mutation:** `scripts/bundle-cli.mjs` was never
 every probe ran `git`, `grep`, `awk`, `sed`, `node -e` over `package.json`, or `python3`
 read-only over files as text; prettier ran only over COPIES in the scratchpad; and
 `git status --porcelain` was empty before and after.
+
+**Round 32 (2026-08-22) — `contract-fit` / `correctness` / `operability`, each run as the SAME
+COVERAGE MATRIX as rounds 18-31 and each enumerated INDEPENDENTLY of round 31's list rather
+than as a check that its fixes landed. `contract-fit`: **57** obligations, the distinct
+(requirement, cited-section) pairs §0's ELEVEN requirement rows name, re-derived by
+deduplicating a section-sign extraction over each row's third cell — ZERO uncovered.
+`correctness`: **30** over §3.3's cli surface — its THREE clauses, clause 1's TWO metafile
+branches, its ELEVEN artifact-set members, the unit-state table's THREE rows, the
+`dist`-contents reason table's FIVE and the cli reason table's SIX — ONE uncovered.
+`operability`: **65** — §4's EIGHT exit-code obligations, being its FOUR exit-table rows under
+the default and under `--strict`, its EIGHT per-kind line shapes, its NINE mandated coverage
+reasons, its EIGHT remedy rows and its FIVE ordered-recipe steps; §7's THIRTEEN rows; and the
+preamble's TEN standing checks, the citation guard's THREE stated residuals and its
+four-digit-form refusal — ONE failed, FALSIFIED by measurement rather than uncovered. FOUR
+findings, all re-derived read-only at `944fc9d` on a clean tree and all dispositioned
+`fixed`.**
+⚠️ **The owner's instruction round 31 acted on FIRST governs this round too: before proposing
+a scope statement, ask whether the obligation should EXIST.** THREE of the four dispositions
+are policy step 1, DELETE; the fourth is policy step 3 and names an element for a mandate that
+had none. **NO battery row, NO twin, NO fixture, NO mutant and NO invocation is added, nothing
+is renumbered, and no kind, reason spelling, coverage status or exit code is added or
+removed** — so §1's **49** stays correct (`OP22-3`) and §6's sha-pinned outside-citer registry
+needs no re-run, renumbering being its only trigger.
+
+- **`CF32-1`, low, scope SUBSTANCE — §6's wiring block asserted two `check:all` members this
+  change set neither adds nor edits, and what it asserted of them was entailed by the line two
+  above it.** The comment read "the two dist-reading members §5 orders it before: present, and
+  after it" over an `indexOf` of `npm run check:tarball` compared greater than zero, and the
+  same for `check:install-smoke`. ⚠️ **VACUOUS BY THIS SECTION'S OWN STANDARD, re-derived
+  read-only 2026-08-22 at `944fc9d`** — `node -e` over `package.json`'s `check:all`, split on
+  the chain separator: **14** members, `check:tarball` at **12** and `check:install-smoke` at
+  **13**, matched exactly by those two literals; and the `members[0]` equality two lines above
+  already forces every OTHER member to an index of at least 1, so a greater-than-zero test
+  reduces to PRESENCE and the "after it" half of the comment was carried by that line and by
+  nothing here. Every implementation of this design passed both — the appended-last, no-flag
+  implementation `CF9-3` was filed for fails `members[0]` and nothing else, and so do a CLI
+  hardcoding a true `strict`, a `units.mjs` importing `enumerateWorkspaces` and a bundler with
+  no metafile write. Their only discriminating power was against `check:tarball` or
+  `check:install-smoke` being REMOVED from `check:all`, which is not an implementation of this
+  design at all. ⚠️ **AND THEY COULD FAIL A CORRECT IMPLEMENTATION** — `OP16-3`'s and
+  `CF20-1`'s class. Both literals pinned member TEXT this change set does not own: let a later
+  change set chain `npm run check:tarball` with a flag after it — this repository already
+  flags a check inside its own definition, `check:claim-scope` at `package.json:44` — and with
+  this design correctly implemented the index is -1 and the assertion fails on a wiring that
+  is exactly right. §6 refuses that shape in terms elsewhere: the live smoke test derives both
+  sides from the live tree "so no literal is pinned and it still cannot rot as the repository
+  grows", and this block already declines to assert a member COUNT for the same reason, one
+  line below. Fixed by DELETE (policy step 1) of the comment and both assertions. NOTHING
+  TRACED TO THEM: requirement 10 is "wire into `check:all`", §5's ordering claim is discharged
+  IN FULL by the `members[0]` equality, and the presence of two other members in `check:all`
+  is a repository fact this design does not own. **SITES:** §6's wiring block alone. §0's
+  requirement 10 row, §1's `package.json` row, §1's THREE-EXISTING-FILES paragraph, §5's
+  `CF9-3` bullet and §9's round-9 `CF9-3` entry are CHECKED and NOT touched: every one of them
+  cites `members[0]`, never these two assertions.
+- **`C32-1`, high, scope SUBSTANCE — clause 1's chunk member is specified in TWO branches, and
+  the branch every tree in this repository takes today had no element.** §3.3 states that
+  member as the chunk-pattern-matching entries of the marker's outputs when the marker exists
+  and as "at least one file matching the pattern" when there is no PARSED metafile, and §2's
+  `cliArtifactGaps` comment states the same split. §6 held an element for the first branch
+  alone: rows 25 and 33 both start from row 11's COMPLETE cli, so both carry a marker and both
+  read the SET. A `cliArtifactGaps` resolving that requirement as the marker's outputs when
+  there is a metafile and as NOTHING when there is not — an EMPTY requirement, which nothing
+  can be missing from — passed both of them, the `C10-4` conjunction and §8(p) partial-copy
+  bullets, rows 10, 12, 21, 22's twin, 39's negative twin and 46's marker-ABSENT twin, and the
+  live smoke test, which asserts the unit SET and the coverage SHAPE and explicitly not the
+  finding set. Every element reaching clause 1 with the marker absent holds a chunk-pattern
+  file PRESENT, so an empty requirement is missing nothing on every one of them. ⚠️ **MEASURED
+  read-only 2026-08-22 at `944fc9d`, `git status --porcelain` empty before and after and
+  `scripts/bundle-cli.mjs` never imported:** `ls -d packages/cli/.bundle-meta` reports no such
+  file while `packages/cli/dist` holds `bin.js`, `index.js`, `bin/supervisord.js`,
+  `index.d.ts`, `plugin/` and FIVE chunk-pattern files, so the fallback is the branch every
+  developer's tree takes until the first post-adoption build — the state §6's live-smoke
+  paragraph and §7's day-one row both already measure. Apply row 25's OWN mutation to it and
+  the design's reading is an `unbuilt packages/cli` line with the `bundle:cli did not finish`
+  reason and the chunk named, exit **1** under `--strict` at `check:all` member 0; that body
+  instead reports `compared`, one advisory and **exit 0 even under `--strict`** on a
+  `dist/bin.js` whose first import statement names a chunk that is gone — verbatim `C11-6`'s
+  own harm, at the branch `C11-6`'s fix created. **Fixed by policy step 3, a STRENGTHENED
+  VALUE, no deletion and no narrowing being available at the mandate:** the false-negative
+  battery's marker-absent gap bullet already existed and already held the marker absent, so
+  only its UNSPECIFIED gap moves — EVERY chunk-pattern file absent with every other member of
+  §3.3's artifact set present. The wrong body then reports `compared` plus the advisory and
+  fails on that bullet's own fixture, needing no mutant swap. ⚠️ **Standing rule 8, checked at
+  the fix:** the bullet's subject is disjointness, an implementation emitting BOTH kinds still
+  fails on the narrowed fixture, and a CORRECT implementation is not failed — clause 1's
+  fallback finds no matching file, the unit is not `compared`, and §3.2's gate on a
+  `packages/cli` that is not `compared` suppresses `bundle-provenance-missing` exactly as the
+  bullet requires. §8(i)'s third cost is CHECKED and NOT touched: it already quotes the "at
+  least one file matching the pattern" fallback and works its example at ONE chunk of five, so
+  the ZERO case it now excludes was never inside it. **SITES:** §3.3's clause-1
+  no-parsed-metafile sentence; §6's false-negative battery's marker-absent gap bullet; §3.2's
+  chunkless-agreement sentence, the second site of the same predicate, where the element is
+  named; and §2, where the restatement of that sentence is DELETED rather than given a third
+  copy of the citation (standing rule 8 — one predicate, three sites). §0, §1, §3, §3.1, §3.4,
+  §3.5, §4, §5, §5.1, §7 and §8 are CHECKED and NOT touched, as are §6's rows, its wiring
+  assertions and its live smoke test.
+- **`CF32-2`, low, scope META — §9's round-31 `CF31-2` bullet predicted a census figure for the
+  document it was published in, and the prediction was false on arrival.** It read: because
+  this bullet quotes the broken command once above, that census re-runs at **34** after this
+  apply and not 33. ⚠️ **Re-derived read-only 2026-08-22 at `944fc9d`, `git status --porcelain`
+  empty before and after:** the letter-backtick-letter census returns **33** over the whole
+  file, and **33** again scoped below the `## 0.` heading and again with §6 row 26's line
+  excluded — all three readings, never 34. That this IS the census the bullet names is
+  confirmed by the bullet's own other figure, re-derived exactly: row 26 alone returns **0** at
+  `187eb2d` and **40** at `55666e8`. MECHANISM: the quotation the plus-one rested on closes its
+  code span before a SPACE, so it is not a letter-backtick-letter adjacency and adds **0**, and
+  the whole `CF31-2` bullet region returns **0**. The bullet's own next sentence says why,
+  three lines later — that census is "narrower than the damage — **40 of 66**" — and the form
+  it quoted is one of the 26 the census provably cannot see. So the bullet predicted a movement
+  from a quotation its own named census is BLIND TO, one bullet before `CF31-4` deleted a
+  file-wide figure for being wrong in the commit that wrote it. Fixed by DELETE (policy step 1)
+  of the whole prediction clause. CORRECTING it to 33 was REFUSED for `CF13-6`'s and
+  `CF31-4`'s own reason: a file-wide literal about the CURRENT document is stale at the next
+  round that writes an English-suffix code span, and this document adds them routinely. NOTHING
+  IS LOST — the quotation-versus-damage convention is stated at its other site, in round 31's
+  own numbers paragraph. ⚠️ **SECOND HALF, policy step 2, NARROW: the SURVIVING 33 did not
+  re-derive from the words beside it either.** Same census: the whole file is **35** at
+  `187eb2d` and **76** at `55666e8`, row 26 is **0** and **40**, and `CF31-1`'s comment is
+  **2** and **3**. So "the rest of the file" silently excluded `CF31-1`'s comment as well as
+  row 26, and a later round re-deriving it as written gets 35 and 36 and reads a correct figure
+  as damage. The exclusion is now NAMED and the arithmetic stated beside it, both sha-pinned
+  per `CF13-6`. **SITES:** §9's round-31 `CF31-2` bullet alone.
+- **`OP32-1`, low, scope META — the preamble's four-digit-form refusal states this file's own
+  line count as an absolute literal, and that literal was already wrong in the commit that
+  wrote it.** The clause read: this file is **7306** lines and has grown about 290 a round for
+  twelve rounds. Re-derived read-only at `944fc9d`, `git status --porcelain` empty before and
+  after and `scripts/bundle-cli.mjs` never imported: `wc -l` over this file returns **9450**.
+  The literal was wrong at its own apply — `git show 2c203a0:<file> | wc -l` returns **7678**
+  at the commit that WROTE the sentence, and the figure it published is the PREVIOUS commit's
+  count, `git show e99b066:<file> | wc -l` — which is `C11-4`'s pattern and verbatim
+  `CF13-6`'s 2574-against-3092 one screen above it in this same preamble. ⚠️ **The consequence
+  is not cosmetic, because that sentence IS the refusal's headroom argument:** a reader
+  re-deriving the refusal from the stated figures gets nine rounds of room before this file's
+  own anchors go five-digit, while measured the file is **549** lines short of 9999 and the
+  last eleven applies added **3454** lines, a mean of **314** — `git show <sha>:<file> | wc -l`
+  over `3095116`, `5fef126`, `53996f5`, `8fdf3ed`, `7837d25`, `e99b066`, `2c203a0`, `e70c9bb`,
+  `c672565`, `187eb2d`, `55666e8` and `944fc9d` — so the real headroom is under TWO rounds and
+  the clause understates its own residual's urgency by a factor of five at the one sentence
+  that says when that residual expires. Fixed by DELETE (policy step 1), which is `C11-4`'s
+  own remedy, round 13's disposition of the 2574 baseline (`CF13-6` / `OP13-5`) and round 31's
+  disposition of this exact class one round earlier (`CF31-4`): the absolute count and the
+  rate-and-span pair go together, and the blindness the sentence states survives with no figure
+  in it for a later apply to invalidate. CORRECTING it to **9450** is REFUSED for the reason
+  round 13 refused correcting 2574 — a file-wide literal written here is stale in the same
+  apply that writes it, and this one provably was. NARROW and STRENGTHEN were checked first and
+  refused: narrowing to a sha-stamped figure reintroduces a literal the next apply invalidates,
+  and there is no VALUE to strengthen, the clause mandating nothing and pinning nothing. If a
+  figure is ever restored it carries its `git show <sha>:<file> | wc -l` command, which is
+  `CF13-6`'s standing ruling. ⚠️ **Standing rule 9 in the same pass:** round 31 deleted one
+  file-wide literal of this class and left this one standing, though it is both older and
+  further out, which is the eleventh consecutive round to find a completion claim only partly
+  true. **SITES:** the preamble's four-digit-only refusal sentence, the only LIVE one, and this
+  entry. §9's round-26 entry keeps BOTH of its occurrences — one sha-attributed to `e99b066`
+  and one stating what round 26 ruled at that sha — because this section preserves superseded
+  figures by design.
+
+**Round 32's numbers.** `contract-fit` **57** obligations, ZERO uncovered; `correctness` **30**,
+ONE uncovered; `operability` **65**, ONE failed. All four dispositioned `fixed`, and neither
+`contract-fit` finding is a coverage gap — both are the opposite class, an element that
+discharges NO obligation and a §9 figure that was false in the commit that published it.
+**DELETIONS, counted because the owner asked for them explicitly — FOUR removals at FOUR
+sites, and not one of them traces to a requirement in §0, which is why each is deleted rather
+than scoped:** ONE comment line and TWO assertions from §6's wiring block, requirement 10
+being discharged in full by the `members[0]` equality beside them (`CF32-1`); ONE prediction
+clause carrying one figure from §9's round-31 `CF31-2` bullet (`CF32-2`); this file's absolute
+line count with its per-round growth rate and the span that rate was measured over, THREE
+figures in ONE clause of the preamble's citation guard (`OP32-1`); and ONE
+twenty-two-word restatement of §3.2's chunkless-agreement provenance from §2, replaced by a
+pointer at the section that carries the argument in full, requirement 3's row being about the
+metafile-derived INLINED SET and not about clause 1's chunk membership (`C32-1`). **NO
+residual is added and none widened.** **COUNTS THIS EDIT CHANGES, and their sites:** above the
+`## 0.` heading the literal `7306` goes **1** to **0** and the string `290 a round` goes **1**
+to **0**, both by an `awk` cut at that heading piped into `grep -c -F` with the string; inside
+§9 they go **2** to **4** and **1** to **3**, this entry naming each on two lines, its
+quotation of the deleted clause and this declaration; so file-wide they go **3** to **4** and
+**2** to **3**, stated only so a later round re-deriving them does not read a moved count as
+damage — the pair SCOPED above the `## 0.` heading is the claim, per `CF31-4`'s own lesson
+that a round's own §9 entry re-inflates a file-wide count. §9's round-31
+`CF31-2` bullet LOSES **34** as a LIVE figure, its only live site — after this apply no claim
+about the current file carries it, the bolded-34 grep returning §6's row-number bullet, where
+**34** is a battery ROW NUMBER and stays, plus this round's own quotation of the superseded
+figure — and GAINS **35**, **2**, **76**, **40** and **3** as the arithmetic behind the
+surviving **33**, all five sha-pinned to `187eb2d` and `55666e8` beside the census that
+produced them, per `CF13-6`. Round 31's numbers paragraph carries neither **33** nor **34**
+(checked) and is untouched, as is round 30's entry. **Counts NOT moved, re-derived rather than
+restated:** §1's **49** battery rows and its `~680` estimate — NO row, twin, fixture, mutant
+or invocation is added or removed and no kind, reason spelling, coverage status or exit code
+moves, the prescribed test file losing ONE comment line and TWO assertions that assert nothing
+(`OP22-3`) and one free value in a false-negative bullet becoming specified — so §6's
+sha-pinned outside-citer registry needs no re-run, renumbering being its only trigger; §4's
+and §5's `check:all` MEMBERSHIP measurement, RE-DERIVED unmoved 2026-08-22 against the
+fourteen-member chain — **14** members, `check:tarball` at **12**, `check:install-smoke` at
+**13**, this check as FIRST member making **15**; §3.3's ELEVEN artifact-set members, its
+THREE unit-state rows, its FIVE `dist`-contents rows and its SIX cli rows; §4's FOUR
+exit-table rows, EIGHT kinds, NINE mandated reasons, EIGHT remedy rows and five recipe steps;
+and §7's THIRTEEN rows. Each was re-counted off its own table on THIS document rather than
+carried forward from round 31's entry (standing rule 2); `~680` is an estimate of a file this
+design has not written and is not a count. No numeral is written immediately before `mutant`
+or `mutants` by this apply, so round 26's mutant-count census is unread by it. The
+`see above`/`see below` and `TODO`/`TBD`/`FIXME`/`<insert` sweeps below `## 0.` were re-run
+and return only backticked quotations used as history, so round 10's "guard what an apply
+INSERTS, not only where" finds no live site. **ALL standing checks re-run on the FIXED file:** the
+anchor grep, passes 1, 2 and 3, the escape-aware row census, the orphan-row sweep, the
+comma-then-blank sentence-split sweep and the prettier plus `norm()` plus `diff` check all
+return nothing, and a second prettier run is byte-identical. **No working-tree mutation:**
+`scripts/bundle-cli.mjs` was never imported; every probe ran `git`, `grep`, `awk`, `sed`,
+`wc`, `ls`, `node -e` over `package.json`, or `python3` read-only over files as text; prettier
+ran only over COPIES in the scratchpad; and `git status --porcelain` was empty before and
+after.
