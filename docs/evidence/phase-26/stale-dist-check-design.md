@@ -13282,3 +13282,54 @@ and §8(m) included; and in this section every entry but the round-26 `CF26-2` b
 round-42 `CF42-2` bullet and round 42's two closing paragraphs — round 32's `OP32-1` ruling
 included, whose SITES line names the four-digit-only refusal SENTENCE and which survives this
 round's edit to that sentence intact.
+
+## 10. Stage closure and accepted debt
+
+**The `design` stage CLOSES here, on the owner's ruling of 2026-08-22, against the SUBSTANCE
+verdict rounds 37-43 measured. This section records what closes it and what is carried as debt
+rather than fixed, so a later reader is not left to infer either.**
+
+**What closed it.** Rounds 37 through 43 ran the same coverage matrix INDEPENDENTLY each time,
+enumerating every testable obligation from the document as it then stood and naming, per
+obligation, the §6 element that makes it falsifiable and the wrong implementation that element
+catches. An element a plausible wrong implementation also passes was not counted as coverage, and
+from round 20 an element that would FAIL A CORRECT implementation was not counted either.
+
+| round | obligations enumerated | uncovered |
+| ----- | ---------------------- | --------- |
+| 37    | 188                    | 0         |
+| 38    | 240                    | 0         |
+| 39    | 243                    | 0         |
+| 40    | 315                    | 0         |
+| 41    | 237                    | 1         |
+| 42    | 262                    | 0         |
+| 43    | 263                    | 1         |
+
+**What is carried as ACCEPTED DEBT, and against which paths.** Every finding from round 37
+onward concerned this document's SELF-DESCRIPTION — §9's round log and the preamble's account of
+its own checks — and not the algorithm, the six comparisons, the battery, the wiring or the
+output. Round 43's own verdict states the split: the substance had been clean for six consecutive
+rounds while the round log had not. The debt is:
+
+- **§9's round entries.** Forty-three entries, each written by the round it records. Rounds 39,
+  40, 41, 42 and 43 each had to amend a RULING or a COMPLETION CLAIM in an earlier entry, because
+  a later sweep reads such a claim as a disposition and stops at it. No round has found the log
+  free of them, and each round adds one entry, so the surface grows as fast as it is cleared.
+- **The preamble's account of its own six checks.** Rounds 40, 42 and 43 each found a check whose
+  stated scope or comment claimed more than its command did, or whose scope was stated nowhere.
+  All six now check what they claim, verified by running each exactly as printed — but the class
+  was found three times by three different methods, and round 43 records that round 42's method
+  structurally could not reach the three guards that print no command.
+
+**The debt turns BLOCKING when a later change set touches §9 or the preamble**, per this
+repository's disposition rule. It does not block the `plan` stage, because nothing in it changes
+what `check-stale-dist.mjs` does on any tree: no finding since round 37 moved a kind, a reason, an
+exit code, a remedy, a fixture, a mutant, a coverage entry or a rank.
+
+**What is NOT debt and was never in question.** The two residuals §0 has carried since round 4 —
+the bootstrap limit (§8(a)) and the build-program/toolchain limit (§8(b)) — plus the bounded
+residuals §8(f), §8(k), §8(l), §8(m) and §8(n), each stated at the clause that grants it. Those
+are design decisions with stated bounds, not gaps.
+
+**Next act: `crabgic design approve`.** It is a human act and nothing in this document can
+satisfy it.
