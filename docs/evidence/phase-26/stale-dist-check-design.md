@@ -31,17 +31,18 @@ fourteenth written as a section plus the word `line` and no colon at all — and
 them resolved at the commit that published them. They are DELETED in round 26, and the
 command is NOT widened. Two widenings were MEASURED before being refused (standing rule 5,
 and round 11's test for whether a check is a check). The bare three-or-four-digit form
-returns **128** hits below the `## 0.` heading, of which **13** are these anchors and
-**115** are LEGITIMATE line citations INTO OTHER FILES in this document's file-named-once
-shorthand — §1's `scripts/bundle-cli.mjs` cell alone carries `:55`, `:121`, `:176`, `:178`
-and `:181` — and the next paragraph rules that those stay and stay exact, so that form can
-never return nothing. The four-digit-only form returns exactly the thirteen TODAY, and is
+also matches this document's LEGITIMATE line citations INTO OTHER FILES, written in its
+file-named-once shorthand — §1's `scripts/bundle-cli.mjs` cell alone carries `:55`, `:121`,
+`:176`, `:178` and `:181` — and the next paragraph rules that those stay and stay exact, so
+that form can never return nothing. ⚠️ **NO COUNT IS STATED FOR EITHER FORM (round 43,
+`OP43-1`): both were, both were FALSE of this document, and a census of THIS file is stale in
+the apply that writes it — `OP32-1`'s standing ruling at this same sentence, which a restored
+figure satisfies only by travelling with its command AND its sha.** The four-digit-only form is
 refused because it keys on digit COUNT as a stand-in for "into this document": it is blind
 to a bare three-digit intra-document anchor — `:710` and `:724`, quoted as counterexamples
 above, are both — and it also goes blind to every other-file citation past 9999. The fourteenth
-reference carries no colon at all, so no colon-keyed form sees it either. §9's round-26
-entry carries both counts with the command and the sha. The rule is enforced by READING;
-this command bounds it, and this sentence states the bound.
+reference carries no colon at all, so no colon-keyed form sees it either. The rule is
+enforced by READING; this command bounds it, and this sentence states the bound.
 
 ⚠️ **A NAME THAT RESOLVES TO NOTHING IS INVISIBLE TO THAT GREP, so the check has TWO MORE
 PASSES (round 12), AND A THIRD (round 13, CF13-3).** The anchor grep guards WHERE a
@@ -71,10 +72,28 @@ live instance of this defect was ever found in. ⚠️ **Passes 2 and 3 STAY SCO
 rather than inherited, and their bound is STATED rather than claimed away:** both return nothing
 UNSCOPED at `512fe4f` too, so neither carries a live illustration today, and what their scope
 leaves unchecked is a bold or ALL-CAPS cross-section rule name cited in this preamble — THREE
-are live and all three RESOLVE, measured by running both passes unscoped at that sha. ⚠️ **The
-residual pass 1 keeps at EITHER scope is stated too, in the shape the anchor grep uses for its
-own bare-colon residual: a finding ID written in a form this regex does not match is invisible
-to it.** Measured 2026-08-20 before this round, both failed:
+are live and all three RESOLVE, measured by running both passes unscoped at that sha. ⚠️ **Pass 1
+keeps TWO residuals at EITHER scope and BOTH are stated, in the shape the anchor grep uses for
+its own bare-colon residual and in the shape `OP42-2` used one screen down, where a residual that
+sat only in a log entry was moved to the GUARD.** FIRST, a finding ID written in a form this
+regex does not match is invisible to it. SECOND, the command resolves an ID by FIXED-STRING
+PRESENCE anywhere below the `## 9.` heading, so it tests EXISTENCE and never ABOUTNESS: a body
+citation whose ID resolves to an entry describing a DIFFERENT defect passes silently, at either
+scope. ⚠️ **What stood here was "The residual pass 1 keeps at EITHER scope", a definite singular
+naming the first alone, and the second was already LIVE in the commit that wrote it (round 43,
+`C43-1`, standing rule 9 at the fan-out of a fix for a check's own blindness).** Round 41's ONE
+body citation of `CF41-2` resolved to the seventh structural clause's invocation repair, a
+DIFFERENT defect, for a full round while pass 1 printed nothing; round 42 repaired that citation
+(`CF42-2`) and stated no bound beside the command, the site its own rationale excluded. Falsified
+in BOTH directions read-only at `e6e353a` on scratchpad copies, the working tree never written:
+rewrite §3's input rule 2 non-vacuity attribution from `CF17-1` to `C10-3` — a real filed ID
+whose entry is about `readMetafile`'s never-throws rule and about neither that rule nor that row
+— and pass 1 prints NOTHING; rewrite that same citation to an ID no entry carries and it prints
+one `DANGLING` line. ⚠️ **So this bound is a FLOOR and not a certificate**, which is what the
+sixth and the seventh clauses below already state for theirs, and widening the pass to test
+ABOUTNESS is REFUSED UNMEASURED — no machine-resolvable form of "the entry describes this defect"
+is established here, and round 11's test governs a remedy as much as a check. Measured
+2026-08-20 before this round, both failed:
 
 ```
 # (1) every finding ID cited anywhere in this file, the preamble included, must have a §9 entry
@@ -272,7 +291,10 @@ proposal, round 15 shipped it at §7, and round 15 shipped it again at §6 in th
 filed it — round 10's "guard WHAT an apply inserts, not only WHERE" at its third site, and
 stated as document text rather than as one round's remedy per `OP12-6` —
 and no editor directive,
-placeholder or "see above"/"see below" standing in as document text, and — the sixth clause,
+placeholder or "see above"/"see below" standing in as document text ANYWHERE IN THE FILE, the
+PREAMBLE included, its scope STATED here rather than left to be inferred from §9's records of
+where past rounds ran it (round 43, `CF43-1`, with the probe, the sha and the residual in this
+clause's own paragraph below); and — the sixth clause,
 round 21, `CF21-2` — **NO SENTENCE SPLIT BY A PARAGRAPH**: a line ending in a comma whose
 successor is blank and which is not a table row, a list item, a heading or a blockquote; and
 — the seventh clause, round 36, `CF36-3` — **NO CODE SPAN RUN TOGETHER WITH ITS PROSE**: a
@@ -340,7 +362,43 @@ stale figure from damage. ⚠️ **And the placeholder clause was FALSE when it 
 `indistinguishable — see below`, an editor's cross-reference under a §4 rule that prints
 that field to a terminal (round 13, OP13-2). Fixed in this round; the clause now holds,
 and it scans for "see below" as well as "see above" because the surviving instance was the
-one the wording did not name. None survives.
+one the wording did not name. None survives. ⚠️ **AND ITS SCOPE WAS THE ONE THING NO SENTENCE
+STATED — DECIDED HERE BY WIDENING TO WHOLE-FILE RATHER THAN LEFT TO BE INFERRED FROM WHERE PAST
+ROUNDS HAPPENED TO RUN IT (round 43, `CF43-1`).** This is the clause round 42's audit method
+structurally could not reach: that method compares a PRINTED COMMAND against its own comment,
+and this clause prints NO command, so a guard with no command falls out of the comparison — the
+THIRD member of the class `C42-3` and `CF42-4` opened, each of which DECIDED one clause over.
+Re-derived read-only at `e6e353a` over the whitespace-collapsed file, the collapse being
+`tr -s` on space and newline and the pattern the sweep-plus-below-the-zero-heading phrase both
+live spellings share, §9 carries **14** records of this sweep run at the BODY-ONLY slice against
+round 42's ONE whole-file record; NOT ONE of the fourteen is a RULING, every one is history
+pinned to the round that ran it, and all fourteen are LEFT AS WRITTEN per `C29-1`. MEASURED
+read-only at `e6e353a` on a scratchpad copy, the working tree never written and
+`git status --porcelain` empty before and after, with the SIX-token pattern §9's entries record
+for this clause — its two cross-reference forms and its four editor-directive tokens, none of
+them re-quoted here, quoting one being what would add an occurrence to the very census this
+apply re-runs, which is the dollar-sequence census's own stated reason two screens up — and
+counting MATCHING LINES rather than occurrences, the granularity being part of the figure
+(standing rule 4): the body-only form returns **24** on the clean document and **24** on a copy
+carrying an invented directive inserted into this preamble's OPENING PARAGRAPH, immediately
+above the sentence naming the research record's third standing rule, a `diff` over the two
+numbered outputs printing NOTHING; the whole-file form returns **27** and **28** and prints that
+line. So the widening FLIPS and this clause is still a check, which is round 11's test. CONTROL,
+so the blindness is not shared: on that same copy the anchor grep, all three passes, the
+escape-aware row census, the orphan-row sweep, the sixth clause at its own newly widened
+whole-file scope, the seventh-clause code-span sweep, the heading census and the
+duplicated-long-line census each return nothing, and `prettier --parser markdown` plus `norm()`
+plus `diff` prints nothing — no guard at any scope sees it. ⚠️ **The residual is STATED rather
+than hidden**, in the shape the anchor grep above uses for its own bare-colon residual: at
+`e6e353a` the whole-file line count exceeds the body-only one by exactly THREE, all three lines
+are in this PREAMBLE, and all three are PROSE ABOUT THE SWEEP — the clause's own listing line
+above, the sentence recording `OP13-2`'s defect, and this sentence — which is why the widening
+costs nothing and why round 42's own whole-file re-run returned clean. ⚠️ **DELETE was checked
+FIRST and REFUSED**, `OP13-2` recording this clause catching a live defect and this section
+recording FOURTEEN re-runs of it since; **NARROWING was checked and REFUSED**, stating the scope as body-only
+being exactly what would ratify the blindness in the one region the measurement above shows the
+damage lands invisibly in — the region that DEFINES these checks and that every round
+rewrites.
 
 ⚠️ **THE SEVENTH CLAUSE IS A SWEEP, AND ITS SCOPE IS PART OF IT (round 36, `CF36-3`).**
 TWO applies have shipped a cell whose code spans lost the spaces around them. Round 31
@@ -8487,11 +8545,20 @@ invalidates (`C11-4`).**
   form the same entry already uses, and the nine history anchors go by `CF26-3`'s remedy
   below. ⚠️ **The anchor grep is NOT widened, and that is a ruling rather than an omission,
   both candidate widenings having been MEASURED (standing rule 5, round 22's own precedent
-  for the sentence-split guard).** The bare three-or-four-digit form returns **128** hits
-  below `## 0.`, of which **13** are these anchors and **115** are LEGITIMATE line citations
-  INTO OTHER FILES — §1's `scripts/bundle-cli.mjs` cell alone carries `:55`, `:121`, `:176`,
-  `:178` and `:181` — and the paragraph beside it rules that those stay exact, so it can
-  never return nothing: round 11's own test for whether a check is a check, at a fifth site.
+  for the sentence-split guard).** The bare three-or-four-digit form also matches this
+  document's LEGITIMATE line citations INTO OTHER FILES — §1's `scripts/bundle-cli.mjs` cell
+  alone carries `:55`, `:121`, `:176`, `:178` and `:181` — and the paragraph beside it rules
+  that those stay exact, so it can never return nothing: round 11's own test for whether a
+  check is a check, at a fifth site. ⚠️ **The three-figure partition that stood in that
+  sentence was FALSE ON ARRIVAL and is DELETED rather than preserved (round 43, `OP43-1`;
+  `CF32-2`'s own precedent for a §9 figure wrong in the commit that published it, this
+  section preserving SUPERSEDED figures and not wrong ones).** Its total read **128** and its
+  remainder **115**. Re-derived read-only at `e6e353a`,
+  `awk '/^## 0\./,0' <file> | grep -oE ':[0-9]{3,4}\b' | wc -l` returns **227** at `e99b066`,
+  the sha this bullet names, and **128** at NO sha in this file's history under any of three
+  spellings — occurrences scoped, occurrences whole-file, or matching LINES. The THIRTEEN
+  stands: the four-digit form does return exactly thirteen at `e99b066`, and **0** at every
+  other sha this file has, this one included.
   The four-digit-only form returns exactly the thirteen today and is refused for keying on
   digit COUNT as a stand-in for "into this document" — blind to the two bare three-digit
   intra-document anchors the guard quotes as its own counterexamples, `:710` and `:724`, and
@@ -12788,6 +12855,18 @@ guard obligations, and saying so keeps this audit's figure at the granularity it
   Their CONTENT was re-derived TRUE at `512fe4f`: **108** bold-prefix occurrences below `## 0.`
   against **102** full matches, difference **6**, and the six lines are exactly the SET's four live
   sites and its two entries here. **ONE live site: the round-41 entry's `CF41-2` paragraph.**
+  ⚠️ **THAT COMPLETION CLAIM WAS SHORT, and this listing is AMENDED IN PLACE on rounds 39's,
+  40's, 41's and 42's own stated ground — a log entry stating a RULING or a site count is read
+  as a disposition and stopped at (round 43, `C43-1`).** The defect repaired above is a property
+  of PASS 1 and not of that one citation: the command resolves an ID by fixed-string presence
+  below the `## 9.` heading, so it tests EXISTENCE and never ABOUTNESS, and repairing the
+  citation left every other body citation unguarded against the same mis-resolution. This entry
+  named the citation as the live site and named the guard not at all, which is why the
+  preamble's pass-1 residual sentence still read a definite singular a full round later — the
+  same shape `OP42-2` refused in this round's own slate, one finding down. The bound is stated
+  at the guard in round 43; this entry's measurements, its shas and its figures are untouched,
+  and no element is vacated. **TWO live sites: the round-41 entry's `CF41-2` paragraph, and
+  pass 1's residual sentence in the preamble.**
 
 - **`CF42-4`, medium, scope META — the SIXTH clause RUNS but does not check what its own listing
   says, and its scope is stated nowhere.** That clause is listed beside the heading census, the
@@ -12862,7 +12941,9 @@ the sixth clause at BOTH scopes and the seventh-clause code-span sweep each retu
 `prettier --parser markdown` plus `norm()` plus `diff` prints nothing with the second run
 byte-identical to the first.
 
-**Round 10's guard, re-checked whole-file rather than at the documented scope:** every live
+**Round 10's guard, re-checked whole-file rather than at the scope FOURTEEN entries here record
+and NO sentence anywhere stated — a disagreement this entry SAW and left undecided, decided in
+round 43 (`CF43-1`), which states that clause's scope as WHOLE-FILE at the clause itself:** every live
 `see above`, `see below`, `TODO`, `TBD`, `FIXME` and `<insert` hit is either a backticked quotation
 of the historical `indistinguishable — see below` defect or prose ABOUT the sweeps themselves; the
 clauses this round writes introduce no directive, no placeholder and no instruction standing in as
@@ -12886,9 +12967,18 @@ scratchpad.
 from §0, seven of this round's edits having landed above that heading (`C41-2`):** the anchor grep,
 whose scope its own prose states and whose whole-file result it prints; passes 2 and 3, which stay
 scoped and whose teaching illustration names a rule resolving to nothing; the escape-aware row
-census, the heading census, the duplicated-long-line census, the editor-directive and placeholder
-clause, the seventh clause and the formatter check, each of whose printed command was re-read
-against its own comment and found to claim exactly what it checks; the orphan-row sweep, already
+census, the seventh clause and the formatter check, each of whose printed command was re-read
+against its own comment and found to claim exactly what it checks; the heading census, the
+duplicated-long-line census and the editor-directive and placeholder clause, which PRINT NO
+COMMAND — this entry's own obligation enumeration above classifies all three as
+stated-but-unprinted guards — and which were therefore re-read as STATED CLAUSES and NOT against
+a command, a distinction restored in round 43 (`CF43-1`) so a later completeness audit does not
+read a disposition stronger than the evidence, which is `C41-2`'s and `CF41-1`'s own recorded
+harm; the residual beside the first two is that neither carries a measured blind region, both
+being naturally whole-file and both re-derived clean whole-file at `e6e353a` — **23** headings
+each occurring once, and no duplicated line over 120 characters — while the THIRD one's blind
+region WAS measured, and its scope is stated at the clause itself from round 43 (`CF43-1`);
+the orphan-row sweep, already
 repaired by round 41's apply and RECORDED rather than re-repaired here; §0's eleven requirement
 rows, requirement 2's re-keyed cell included and re-derived TRUE off §6's own cells; §1, both its
 new-file table and its existing-file edits; §2 in FULL; §3's algorithm and its input and output
@@ -12901,3 +12991,294 @@ FIVE recipe steps, the NINE verbatim `not-run` reasons, the `--json` surfaces an
 row 47 and BOTH its twins included, which this round re-derived AGAINST rather than edited — plus
 the false-negative battery, the wiring assertions and the live smoke test; §7's thirteen rows; and
 §8's residuals.
+
+**Round 43 (2026-08-28) — `contract-fit`, `correctness` and `operability`, run as the SAME
+COVERAGE MATRIX as rounds 18-42 and enumerated INDEPENDENTLY of round 42's list, with round 42's
+OWN fixes audited FIRST. **106** obligations, **7** uncovered, all seven `fixed`. THREE findings —
+`CF43-1`, `C43-1` and `OP43-1` — all re-derived read-only at `e6e353a` on a clean tree.**
+**106** obligations, written out so the figure is a sum and not an assertion: §0's ELEVEN
+requirement rows; the preamble's FOURTEEN structural guards — its NINE printed check invocations
+and its FIVE stated-but-unprinted ones — at THREE obligations each, for **42**; the **15** live
+sites round 42's seven fixes govern, re-derived off those findings' own SITES lines as three,
+one, four, three, one, two and one; the **14** edits round 42's own ledger names, each checked to
+have LANDED and the whole `git diff 512fe4f e6e353a` checked for an edit that ledger does not
+name; the **10** §6 rows whose own cell reads the orphan or stem side, re-derived read-only at
+`e6e353a` as rows 4, 14, 21, 28, 29, 42, 44, 47, 48 and 49; the **3** §9 entries carrying a
+completion claim over the stem-side enumeration; the **5** §9 entries carrying a figure or a
+disposition ABOUT a preamble guard — round 26's `CF26-2` bullet, round 32's `OP32-1` ruling,
+round 42's `CF42-2` bullet, round 42's checked-and-not-changed sentence and round 42's Round-10
+paragraph; and **6** geometry and citation obligations. NO element is vacated: no fixture, twin,
+mutant, invocation, kind, reason spelling, rank, remedy row, recipe step, coverage status or exit
+code is added, removed or renumbered, and no coverage verdict moves.
+
+⚠️ **THE THIRD GUARD OBLIGATION IS THIS ROUND'S OWN ADDITION AND IT IS WHY ROUND 42 MISSED TWO OF
+THESE THREE.** That round enumerated the same fourteen guards at TWO obligations each — that the
+command RUNS as printed, and that no comment or clause beside it CLAIMS MORE than the command
+checks. The third is that each guard's SCOPE and each guard's RESIDUAL SET are STATED beside it,
+neither left to be inferred from where past rounds happened to run it nor presented as complete
+when it is not. A guard whose stated bound is SHORT is read as a certificate exactly as a guard
+whose stated claim is WIDE is read as a proof, and a figure printed beside a command that the
+command does not produce is neither of round 42's two.
+
+⚠️ **ROUND 42'S OWN FIXES, AUDITED FOR COMPLETENESS BEFORE ANYTHING ELSE — TWENTY-TWO things
+checked, being the FIFTEEN live sites its seven findings name plus the SEVEN exclusions those
+findings' own rationales make. ALL FIFTEEN NAMED SITES ARE COMPLETE — the first audit in this log
+to find no listed site missed — and TWO of the seven EXCLUSIONS are not, which is the class
+`C42-4` named in this log one round ago as "the site this fix's own rationale would have
+excluded", found again here.** The fifteen were each re-derived off the LIVE TEXT and never off round 42's own
+entry: round 40's uniformity paragraph, its unchanged-claim and the FOURTH EDIT paragraph all
+carry the record `C42-1` prescribes; the sixth clause's flip sentence, its command and the
+paragraph below it all read whole-file with the scope, the probe and the sha stated; pass 1's
+comment and command are unscoped and the scope sentence above the block separates pass 1 from
+passes 2 and 3; round 41's carried-forward paragraph names the SITE where a bare line number
+stood; row **47** is present at §0's requirement 2 cell, at §6 row 4's ROUND-23 TWIN and in
+`C38-2`'s entry, the union re-deriving independently at `e6e353a` as rows 4, 14, 21, 28, 29, 42,
+44, 47, 48 and 49; the round-41 `CF41-2` paragraph describes the wrapped-citation subject first;
+and the `String.replace` claim sentence is re-keyed to what its command does with the
+capture-group residual stated beside it. ⚠️ **THE EDIT LEDGER IS COMPLETE, which is a first:**
+`git diff 512fe4f e6e353a` over this file carries **TEN** hunks, every one maps onto an entry in
+round 42's FOURTEEN EDITS list, and no hunk lands anywhere that list does not name — `C41-2` and
+`C42-1` each found an unrecorded edit in the round they audited. FIVE of the seven exclusions
+hold: `C42-3` excluded passes 2 and 3 on the ground that they must quote a rule name resolving to
+nothing, and run UNSCOPED at `e6e353a` both return nothing, so the exclusion costs nothing today
+and the guard already states that bound; `C42-4` excluded rows 1 and 2 and named row 28 apart
+from its list, and row 28 is dispositioned BY NAME at both sites; `C42-1`, `C42-2` and `OP42-2`
+each exclude only text their own measurements do not reach. ⚠️ **The TWO that do not hold are
+`CF42-4`'s and `CF42-2`'s, and they are `CF43-1` and `C43-1` below.**
+
+⚠️ **Round 41's carried-forward paragraph opens in the PRESENT TENSE on a scope round 42 then
+changed, and is LEFT AS WRITTEN under `C29-1`'s precedent** because it resolves its own universal
+inside its own paragraph, naming the widening four sentences later — `CF41-1`'s test applied
+rather than a sixteenth site opened.
+
+- **`CF43-1`, medium, scope META. obligationsEnumerated 106, obligationsUncovered 3 — the
+  editor-directive and placeholder clause states its scope NOWHERE, and round 42 disposed of it,
+  and of two guards beside it, on a re-reading that could not have happened.** That round's
+  checked-and-not-changed sentence read that the escape-aware row census, the heading census, the
+  duplicated-long-line census, the editor-directive and placeholder clause, the seventh clause and
+  the formatter check each had its PRINTED COMMAND re-read against its own comment, while the SAME
+  entry's obligation enumeration classifies three of those six as stated-but-unprinted guards.
+  Re-derived read-only at `e6e353a`: no printed command exists anywhere in this file for the
+  heading census, for the duplicated-long-line census or for the placeholder clause, the third
+  being prose only. That is what structurally excluded this clause from `CF42-4`'s audit — a guard
+  with no command falls out of a claim-versus-command comparison — and round 42 SAW the
+  disagreement and left it undecided, its own Round-10 paragraph naming a scope it neither
+  ratified nor changed, where `C42-3` and `CF42-4` each DECIDED one clause over. **Policy order
+  applied. DELETE checked FIRST and REFUSED** — `OP13-2` records this clause catching a live
+  defect, §3.3's unit-state reason table having carried an editor's cross-reference as the printed
+  reason for an existing-but-empty output directory, and this section recording FOURTEEN re-runs
+  of it since — none of which is a RULING on where it must run.
+  **NARROW checked and REFUSED** — stating the scope as body-only ratifies the blindness in the
+  one region the measurement shows the damage lands invisibly in. **Taken: STRENGTHEN A VALUE**,
+  the clause's scope stated as WHOLE-FILE with its probe, its sha and its residual, in the shape
+  `CF42-4` gave the sixth clause. This section was searched for a ruling before the widening was
+  written and carries none: re-derived read-only at `e6e353a` over the whitespace-collapsed file,
+  §9 holds **14** records of WHERE a round ran this sweep and not one RULING on where it must run,
+  and no finding ID has ever been filed against its scope. ⚠️ **The EIGHT-record figure this
+  finding arrived with was itself a search narrower than its claim** — it matched one of the two
+  live phrasings and missed the other six — and is re-derived at **14** here, standing rule 1
+  applied to the finding's own evidence rather than to the document. MEASURED read-only at
+  `e6e353a` on scratchpad copies, the working tree never written, counting MATCHING LINES rather
+  than occurrences and saying so because standing rule 4 makes the granularity part of the figure:
+  the body-only sweep returns **24** on the clean document and **24** on a copy carrying an
+  invented directive inserted into the preamble's opening paragraph, a `diff` over the two
+  numbered outputs printing NOTHING, while whole-file it returns **27** and **28** and prints that
+  line. CONTROL: on that same copy the anchor grep, all three passes, the escape-aware row census,
+  the orphan-row sweep, the sixth clause at its widened scope, the seventh-clause code-span sweep,
+  the heading census, the duplicated-long-line census and `prettier` plus `norm()` plus `diff`
+  each return nothing. No element is vacated, no §6 row is renumbered and no coverage verdict
+  moves. **FOUR live sites: the clause's own sentence, the clause's own paragraph, round 42's
+  checked-and-not-changed sentence, and round 42's Round-10 paragraph.**
+
+- **`C43-1`, low, scope META. obligationsEnumerated 106, obligationsUncovered 2 — pass 1's
+  residual sentence names ONE residual where the check has TWO, and the unstated one was proved
+  live by round 42 in the same commit that left the sentence standing.** The command resolves an
+  ID with a fixed-string search over the slice below the `## 9.` heading, so it tests EXISTENCE
+  and never ABOUTNESS: a body citation whose ID resolves to an entry about a DIFFERENT defect
+  passes silently at either scope. That bound is a property of the CHECK and it stood only in the
+  round-41 entry and in `CF42-2`, and NOWHERE beside the guard — against this preamble's own
+  convention at six other sites, the anchor grep's bare-colon residual, passes 2 and 3's three,
+  the dollar-sequence census's capture-group residual, and the sixth and seventh clauses' FLOORS.
+  `OP42-2` is the precedent in terms and it was filed in round 42 itself: its remedy moved a
+  residual out of a log entry and onto the guard, while `CF42-2` repaired the ONE wrong citation
+  and stopped at a **ONE live site** completion claim, the site its own rationale excluded —
+  standing rule 9 at the fan-out of a fix for a check's own blindness. LIVE INSTANCE, re-derived
+  at `512fe4f` rather than taken from round 42's word (standing rule 2): a file-wide search for
+  `CF41-2` returned four lines, one in the preamble where the ID attributes pass 2's
+  wrapped-citation SET and three here where the round-41 entry described a different defect, and
+  pass 1 printed no `DANGLING` line at either scope while that citation was wrong. CONTROL,
+  read-only at `e6e353a` on scratchpad copies and flipping in both directions: rewrite §3's input
+  rule 2 non-vacuity attribution from `CF17-1` to `C10-3`, a real filed ID whose entry is about
+  `readMetafile`'s never-throws rule, and pass 1 prints NOTHING; rewrite the same citation to an
+  ID no entry carries, and it prints one `DANGLING` line. So the check provably separates a
+  MISSING entry from a present one and provably cannot separate a RIGHT entry from a WRONG one,
+  and only the first bound was stated. **Policy step 1, DELETE, checked FIRST and REFUSED** — a
+  fixed-string search over the slice below the `## 9.` heading for this pass by name returns the
+  round-13 regex bullets, round 13's whole-file structural-clause note, round 41's carried-forward
+  paragraph and `C42-3`'s and `CF42-2`'s entries, and not one of them is a ruling narrowing what
+  this pass must state; the sentence is the guard's own bound and `CF26-2` and `OP42-2` both
+  mandate its shape. **Step 2, NARROW: nothing to narrow** — the command is correct for the rule
+  it enforces, and widening it to test ABOUTNESS is REFUSED UNMEASURED per round 11's test, no
+  machine-resolvable form of "the entry describes this defect" being established here. **Step 3,
+  STRENGTHEN A VALUE: no value is at issue. So step 4, ADD**, one clause, naming its new
+  obligation: the added sentence must itself be TRUE, and it is falsifiable by the control above.
+  **TWO live sites: pass 1's residual sentence in the preamble, and `CF42-2`'s entry here, amended
+  in place on rounds 39's, 40's, 41's and 42's own stated ground.**
+
+- **`OP43-1`, medium, scope META. obligationsEnumerated 106, obligationsUncovered 2 — the
+  preamble's anchor-grep residual paragraph states three census figures and one attribution, and
+  all four are false of the live document.** It read that the bare three-or-four-digit form
+  returns **128** hits below the `## 0.` heading, of which **13** are these anchors and **115**
+  are legitimate line citations into other files; that the four-digit-only form returns exactly
+  the thirteen TODAY; and that this section's round-26 entry carries both counts with the command
+  and the sha. Re-derived read-only at `e6e353a`, `git status --porcelain` empty before and after
+  and `scripts/bundle-cli.mjs` never imported:
+  `awk '/^## 0\./,0' <file> | grep -oE ':[0-9]{4}\b' | wc -l` returns **0**, not thirteen —
+  round 26 DELETED all thirteen anchors, which the same paragraph says two sentences earlier, so
+  the clause was false in the commit that published it, `CF39-2`'s tense-marker shape at a figure.
+  `awk '/^## 0\./,0' <file> | grep -oE ':[0-9]{3,4}\b' | wc -l` returns **278**, not 128; swept
+  read-only over the **42** shas that touch this file it runs **12** to **278** scoped, **12** to
+  **288** whole-file and **12** to **201** as a line count, and **128** appears at none of them
+  under any of the three — the reproduces-under-no-spelling ground round 26 itself used to refuse
+  shipping a widening figure. The partition falls with them: zero of the thirteen are live, so
+  thirteen plus 115 describes no state of this document. The attribution is false on both halves —
+  the round-26 entry carries the two counts but prints no command for either and attaches no sha
+  to either, its one sha belonging to the fourteen-anchor re-derivation and to the seven-check
+  re-run beside it. HARM is the recorded shape: a later round re-deriving this refusal reads that
+  thirteen bad intra-document anchors are live here when round 26 removed all of them, and is sent
+  to this section for a command and a sha that are not there — trusting a figure instead of
+  re-reading, at the one paragraph whose whole job is to say what the anchor grep cannot see.
+  **Policy step 1, DELETE, and it is the RULED remedy.** This section was searched first: round 26
+  rules only that the residual is STATED in the preamble beside the rule it bounds, at ONE host
+  and not two, which survives figure-free; and `OP32-1` already DELETED a figure from this same
+  sentence, REFUSED to correct it because a file-wide literal written there is stale in the same
+  apply that writes it, and ruled that a restored figure carries its command. NARROW and
+  STRENGTHEN were checked and refused: re-keying to a sha reintroduces a literal the next apply
+  invalidates, which is round 32's own refusal at this sentence, and there is no VALUE to
+  strengthen, the figures mandating nothing and pinning nothing. BOTH refusal REASONS survive
+  unchanged and figure-free — the three-or-four-digit widening can never return nothing because
+  this document's citations into OTHER files stay exact, and the four-digit form is refused for
+  keying on digit COUNT, blind to the two bare three-digit intra-document anchors the guard quotes
+  as its own counterexamples and blind past 9999. Nothing else is vacated: the anchor grep's own
+  command and its two results, **0** scoped and **2** whole-file and both re-derived at `e6e353a`,
+  and passes 1, 2 and 3, are untouched. ⚠️ **THREE live sites, the third being the one this fix's
+  own rationale would have excluded:** the preamble's two census clauses, its attribution
+  sentence, and this section's round-26 `CF26-2` bullet, whose **128** and **115** are the SAME
+  two figures and are FALSE ON ARRIVAL rather than superseded — the scoped three-or-four-digit
+  census returns **227** at `e99b066`, the sha that bullet names. `OP32-1` ruled that this section
+  preserves superseded figures by design and named the round-26 entry as keeping BOTH of its own;
+  that ruling is ENGAGED rather than stepped around and it reaches the **7306** LINE COUNT, which
+  `git show e99b066:<file> | wc -l` re-derives as genuinely superseded, not a figure reproducing
+  at no sha — the distinction `CF32-2` settled when it deleted one from inside a round-31 bullet.
+  The round-26 entry's THIRTEEN is right at its own sha and STAYS.
+
+**TEN EDITS, listed so the next round's completeness audit has a denominator (`C41-2`):** the
+placeholder clause's own sentence and its own paragraph; pass 1's residual sentence; the
+anchor-grep residual paragraph's two census clauses (ONE edit, contiguous) and its attribution
+sentence; the round-26 `CF26-2` bullet; the round-42 `CF42-2` bullet; round 42's Round-10
+paragraph; round 42's checked-and-not-changed sentence; and this entry, which the same rule makes
+the tenth.
+
+⚠️ **WHETHER ANOTHER AUDIT ROUND WOULD FIND ANYTHING, answered plainly rather than left for the
+next round to discover.** The per-round yield on the completeness audit has fallen and its shape
+has changed: round 41's fixes came back TEN incomplete of TWENTY-SEVEN, round 42's come back TWO
+of TWENTY-TWO, and neither of the two is a listed site missed — all fifteen listed sites are
+complete, a first — but a class each fix's own rationale ruled out. In BOTH rounds EVERY
+incomplete site sat in the PREAMBLE or in an entry here and never in §0 through §8 — round 42
+states that of its own ten, and this round's two are both preamble guards — and the mechanism is
+stated so the pattern is checkable rather than anecdotal: the numbered sections are rewritten
+only when a finding reaches them, while the preamble and this section are rewritten by EVERY
+round, so each round leaves fresh self-describing text that the next round is the first to read.
+⚠️ **On that evidence the SUBSTANCE half of this class is EXHAUSTED and the META half is not**, and
+the honest form of the exhaustion claim is narrower than it looks: what is exhausted is the audit
+that walks a fix's LISTED SITES, which now returns empty. What is NOT exhausted is the audit that
+walks a fix's EXCLUSIONS — `C42-4` records that class as the miss in each of the three rounds
+before it, and it produced two of this round's three findings; nor is the enumeration of NEW obligations over the
+same fourteen guards, which is how round 42 found four and this round found three. A later round
+reporting the META half empty should be re-read before it is believed, and no round can audit its
+own edits, which this one's ten are.
+
+⚠️ **NON-VACUITY, checked and reported as NOT APPLICABLE rather than skipped:** this round proposes
+NO battery row, NO twin and NO mutant, so there is no clean fixture to re-derive and no single
+mutation to flip. The three findings repair an argument's accuracy, state a scope and state a
+bound; the widening was MEASURED to flip in both directions and the pass-1 bound was MEASURED to
+flip in both directions, rather than either being asserted, which is round 11's test applied to a
+remedy.
+
+**Round 43's numbers.** COVERED **99**; UNCOVERED **7**, all seven dispositioned `fixed`;
+UNCOVERED-AND-RULED **2**, being §3.2's rank 5 against ranks 1-4 and §3's `.tsbuildinfo`
+minus-bullet, both re-affirmed by rounds 38 through 42 and neither touched here.
+**DELETIONS, counted because the owner asks for them explicitly — THREE figures and ONE sentence
+at TWO sites:** the 128-13-115 partition and the four-digit form's present-tense thirteen from the
+preamble's anchor-grep residual paragraph, the attribution sentence naming this section, and the
+same partition's total and remainder from the round-26 `CF26-2` bullet. **ONE residual is ADDED**,
+pass 1's second, and its own obligation is named at `C43-1` above.
+
+**COUNTS THIS EDIT CHANGES: none.** No numbered section's arithmetic is touched, so §1's **49**
+battery rows, §3's arithmetic, §0's `29 PATHS`, §4's NINE mandated reasons, §3.2's FIVE ranks,
+§8(l)'s NINE, §5.1's measured 204 and §6's mutant-count census are all unmoved. Round 42's **85**
+obligations and its TWENTY-SEVEN-site audit are HISTORY pinned to `512fe4f` and are not restated
+here. The figures this round adds — **106**, **22**, **15**, **14**, **10**, **278**, **288**,
+**201**, **227**, **24**, **27**, **28**, **23** and **12** — each travel with the sha or the sha
+range they were run at.
+
+**GEOMETRY.** All ten edits are PROSE, none lands in a table cell, none introduces a pipe escaped
+or otherwise, and none adds a heading — so §0's thirteen table lines stay at **6553** and §6's
+fifty-one at **19285**, both re-derived read-only at `e6e353a`, and no column width changes.
+⚠️ **THIS APPLY OWES NO `npm run format:write`, and that is MEASURED rather than assumed** —
+unlike rounds 39 through 42, whose edits landed in cells prettier then re-padded:
+`node_modules/.bin/prettier --parser markdown` over the fully edited candidate is a
+BYTE-IDENTICAL no-op, `diff` against the candidate itself printing nothing before `norm()` is
+applied at all, so there is no padding for a format run to change. On that candidate the anchor
+grep, all three passes at their decided scopes, the escape-aware row census, the orphan-row sweep,
+the heading census, the duplicated-long-line census, the sixth clause at BOTH scopes and the
+seventh-clause code-span sweep each return nothing; the dollar-sequence census returns **12**,
+unchanged, no edit here quoting either sequence; pass 1 extracts **292** IDs against this
+document's **289** with no `DANGLING` line; and the placeholder clause at its newly stated
+WHOLE-FILE scope returns **27** matching lines, the SAME as this document, no edit here quoting
+any of its six tokens.
+
+**Round 10's guard, re-checked whole-file:** every live cross-reference and editor-directive hit
+this document carries is either a backticked quotation of the historical reason-cell defect
+`OP13-2` records or prose ABOUT the sweeps themselves; the clauses this round writes introduce no
+directive, no placeholder and no instruction standing in as document text, and every command they
+print is COMPLETE, pattern AND input included. The six tokens are named in words rather than
+quoted, for the dollar-sequence census's own stated reason.
+
+⚠️ **UNCOVERED-AND-RULED, re-checked this round and filed by no lens:** §3.2's rank 5 against
+ranks 1-4, and §3's `.tsbuildinfo` minus-bullet, neither touched here. ⚠️ **HISTORICAL entries
+carrying the spellings this round repairs are LEFT AS WRITTEN**, the fourteen records of this
+sweep run at the body-only slice included, so a later round does not hunt them; the round-26
+bullet is amended for a figure that reproduces at NO sha and for nothing else.
+
+**No working-tree mutation:** `git status --porcelain` was EMPTY at `e6e353a` before and after;
+`scripts/bundle-cli.mjs` was never imported; every probe ran `git`, `grep`, `awk`, `sed`, `tr`,
+`wc`, `diff`, `python3` or the repository's own `node_modules/.bin/prettier` reading files as
+text, and every scratch write — the placeholder-directive and the two pass-1 control copies
+included — went to the scratchpad.
+
+**Checked and NOT changed, stated rather than omitted, and enumerated from the PREAMBLE rather
+than from §0, FIVE of this round's ten edits having landed above that heading (`C41-2`):** the
+anchor grep's own command and both its results, **0** scoped and **2** whole-file; passes 2 and 3,
+which stay scoped, whose teaching illustration names a rule resolving to nothing, and which both
+return nothing UNSCOPED at `e6e353a` as well; pass 1's comment, command and scope sentence, all
+three correct as round 42 left them; the escape-aware row census, the orphan-row sweep, the
+heading census, the duplicated-long-line census, the dollar-sequence census, the sixth clause, the
+seventh clause and the formatter check, each re-run as printed or re-read as stated and each
+clean; §0's eleven requirement rows, requirement 2's stem-side list included and re-derived TRUE
+off §6's own cells; §1, both its new-file table and its existing-file edits, the
+`scripts/bundle-cli.mjs` cell's five line citations into that file being the citations the
+preamble's surviving illustration points at and all five still live there; §2 in FULL; §3's
+algorithm and its input and output sets, input rule 2's non-vacuity attribution being `C43-1`'s
+MEASUREMENT SUBJECT and NOT edited; §3.1's stem exclusion; §3.2, its FIVE precedence ranks and its
+rank-5 residual; §3.3's declaration cache, unit-state reason table and cli rules, the fixed
+reason cell `OP13-2` records being exactly what the placeholder clause is meant to leave standing;
+§3.4; §3.5; §4 in FULL — the exit table, the prefix rule, the per-kind line shapes, the EIGHT
+remedy rows, the FIVE recipe steps, the NINE verbatim `not-run` reasons, the `--json` surfaces and
+the plan gate; §5 and §5.1, whose measured 204 is unmoved; §6 in FULL — all forty-nine rows and
+every twin, row 4 and row 47 both re-derived AGAINST rather than edited, the false-negative
+battery, the wiring assertions and the live smoke test; §7's thirteen rows; §8's residuals, §8(l)
+and §8(m) included; and in this section every entry but the round-26 `CF26-2` bullet, the
+round-42 `CF42-2` bullet and round 42's two closing paragraphs — round 32's `OP32-1` ruling
+included, whose SITES line names the four-digit-only refusal SENTENCE and which survives this
+round's edit to that sentence intact.
