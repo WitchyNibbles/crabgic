@@ -338,6 +338,53 @@ describe("coverage gate — changed-line coverage (owner ruling R6)", () => {
   });
 
   /** The three checks are independent — a change set can be fully covered and still regress the repository. */
+  /**
+   * ⚠️ BOTH HALVES, IN ONE REFUSAL. `belowEffectiveFloor` used to be computed
+   * and then dropped on this path, so a run failing both checks reported only
+   * the changed-line half. The author covers their diff, spends another whole
+   * attempt, and is refused again for a condition that was already known when
+   * the first refusal was written.
+   *
+   * The changed-line half still LEADS, because it is the half the author can
+   * act on — that ordering is deliberate and unchanged.
+   */
+  it("names the aggregate failure too when a run fails BOTH checks", async () => {
+    const verdict = await fire({
+      projectId: randomUUID(),
+      summary: {
+        linePct: 40,
+        branchPct: 40,
+        toolchain: "lcov",
+        lines: lines({ "src/a.ts": { 1: 0, 2: 0 } }),
+      },
+      diffText: diffAdding("src/a.ts", 2),
+    });
+
+    expect(verdict.passed).toBe(false);
+    expect(verdict.detail).toContain("changed-line coverage");
+    expect(verdict.detail).toContain("greenfield minimum never yet met");
+    // The actionable half leads; the repository-wide one follows it.
+    expect(verdict.detail.indexOf("changed-line coverage")).toBeLessThan(
+      verdict.detail.indexOf("greenfield minimum never yet met"),
+    );
+  });
+
+  /** The complement: a changed-line failure in a repository whose aggregate is fine says so and nothing more. */
+  it("does not blame the aggregate when only the changed lines fail", async () => {
+    const verdict = await fire({
+      projectId: randomUUID(),
+      summary: {
+        ...PASSING_AGGREGATE,
+        toolchain: "lcov",
+        lines: lines({ "src/a.ts": { 1: 0, 2: 0 } }),
+      },
+      diffText: diffAdding("src/a.ts", 2),
+    });
+
+    expect(verdict.passed).toBe(false);
+    expect(verdict.detail).not.toMatch(/aggregate is ALSO failing/);
+  });
+
   it("still fails on the aggregate floor even when the changed lines are perfectly covered", async () => {
     const verdict = await fire({
       projectId: randomUUID(),

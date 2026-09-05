@@ -79,6 +79,20 @@ function baseTreeSurface(baseTree: string): Pick<AttemptSurface, "withBaseTree">
   };
 }
 
+/**
+ * The ceiling these fixtures run their granted commands under.
+ *
+ * ⚠️ IT BOUNDS THE COMMANDS THAT MUST COMPLETE, TOO, which is what sets the
+ * floor. A fixture's `npm run <script>` costs ~90 ms idle on the reference
+ * host; under the full suite's worker fan-out that is several times higher,
+ * and a ceiling tight enough to catch it turns a passing case into "the base
+ * build did not complete" — measured, as an intermittent failure of the
+ * candidate-suite case at 300 ms. Three seconds is ~30x the idle cost of the
+ * commands that must finish and ~20x under the 60 s sleep the hanging ones
+ * use, so it discriminates without racing the host.
+ */
+const FIXTURE_COMMAND_CEILING_MS = 3_000;
+
 /** A worktree that is nothing but a `package.json` with the named scripts. */
 async function scriptedTree(scripts: Record<string, string>): Promise<string> {
   const treeDir = await mkdtemp(join(tmpdir(), "crabgic-candidate-"));
@@ -592,7 +606,7 @@ describe("the candidate suite runs the granted build first", () => {
       projectId: "fixture-project",
       requirements: requirements([buildRequirement({ id: REQ_1 })]),
       workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
-      commandTimeoutMs: 300,
+      commandTimeoutMs: FIXTURE_COMMAND_CEILING_MS,
     });
     const results = await registry.firePerWorkUnit({
       stage: "verifying",
@@ -835,7 +849,7 @@ describe("the base tree is built while it is still the base", () => {
       test: "exit 1",
     });
 
-    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+    const tdd = await fireTdd({ commandTimeoutMs: FIXTURE_COMMAND_CEILING_MS });
 
     expect(tdd.detail).toMatch(/did not complete in the base tree/);
     expect(tdd.detail).toContain("npm run build");
@@ -856,7 +870,7 @@ describe("the base tree is built while it is still the base", () => {
       test: `node -e "setTimeout(()=>{},60000)"`,
     });
 
-    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+    const tdd = await fireTdd({ commandTimeoutMs: FIXTURE_COMMAND_CEILING_MS });
 
     expect(tdd.detail).toMatch(/the base-code test run did not complete/);
     expect(tdd.hasGateVerdict).toBe(false);
@@ -878,7 +892,7 @@ describe("the base tree is built while it is still the base", () => {
     baseTree = await scriptedTree({ build: "exit 0", test: "exit 1" });
 
     const startedAt = Date.now();
-    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+    const tdd = await fireTdd({ commandTimeoutMs: FIXTURE_COMMAND_CEILING_MS });
 
     expect(Date.now() - startedAt).toBeLessThan(10_000);
     expect(tdd.passed).toBe(false);
