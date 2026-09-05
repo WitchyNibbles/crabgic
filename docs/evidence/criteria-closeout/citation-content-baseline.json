@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-19",
-  "generatedAtSha": "b2a2e584a1f019c0d5f30df25ecf45a5b4f47e02",
+  "generatedAt": "2026-09-05",
+  "generatedAtSha": "91f3bbd3bf3224bae15a34ce8ec26021c4dd894d",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
@@ -383,11 +383,11 @@
       ],
       "frozen": true
     },
-    "phase-01.json#c4#vitest.config.ts:150-155": {
-      "qa": "382e137e0b51",
+    "phase-01.json#c4#vitest.config.ts:168-173": {
+      "qa": "bf20e16f10a6",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@150-155"
+        "OK/collapsed@168-173"
       ]
     },
     "phase-01.json#c5#commitlint.config.js:8": {
@@ -11137,15 +11137,15 @@
         "OK/collapsed@70,144~repeat"
       ]
     },
-    "phase-23.json#c2#vitest.config.ts:150-155": {
-      "qa": "d592ca185638",
+    "phase-23.json#c2#vitest.config.ts:168-173": {
+      "qa": "f76ddb67351f",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@150",
-        "OK/collapsed@151",
-        "OK/collapsed@152",
-        "OK/collapsed@153",
-        "OK/collapsed@154",
+        "OK/collapsed@168",
+        "OK/collapsed@169",
+        "OK/collapsed@170",
+        "OK/collapsed@171",
+        "OK/collapsed@172",
         "SKIP-short"
       ]
     },
