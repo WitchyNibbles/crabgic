@@ -111,6 +111,57 @@ describe("withRedBaselineTree", () => {
     expect(calls[1]).toEqual(["checkout", CANDIDATE_OBJECT_ID, "--", "src/feature.test.ts"]);
   });
 
+  /**
+   * ⚠️ BEFORE THE OVERLAY, NOT MERELY BEFORE `use`. The hook exists so the
+   * envelope's granted build runs on a PRISTINE base tree. Running it after the
+   * candidate's test files are checked out makes the build typecheck those
+   * tests against base source, so a change set adding `foo.test.ts` for a
+   * not-yet-existing `foo.ts` fails it — and the gate reads the strongest red
+   * signal there is as a broken tree. The assertion is therefore on the git
+   * calls made SO FAR at the moment the hook runs.
+   */
+  it("prepares the tree while it is still pristine, before the candidate checkout", async () => {
+    const { plumbing, calls } = fakePlumbing();
+    const options = await optionsFor(plumbing);
+    let callsWhenPrepared: string[][] = [];
+
+    await withRedBaselineTree(
+      {
+        ...options,
+        prepareBaseTree: (worktreePath) => {
+          callsWhenPrepared = calls.map((call) => [...call]);
+          // Provisioning has already happened, so the tree is usable.
+          expect(existsSync(join(worktreePath, "node_modules", SHARED_PACKAGE))).toBe(true);
+          return Promise.resolve(undefined);
+        },
+      },
+      () => Promise.resolve(undefined),
+    );
+
+    expect(callsWhenPrepared.some((call) => call[0] === "checkout")).toBe(false);
+    expect(calls.some((call) => call[0] === "checkout")).toBe(true);
+  });
+
+  /** A preparation that returns a value is the result — the overlay never happens and `use` is never called. */
+  it("stops on a preparation result, without checking the candidate out", async () => {
+    const { plumbing, calls } = fakePlumbing();
+    const options = await optionsFor(plumbing);
+    let entered = false;
+
+    const result = await withRedBaselineTree<string>(
+      { ...options, prepareBaseTree: () => Promise.resolve("the base tree would not build") },
+      () => {
+        entered = true;
+        return Promise.resolve("used");
+      },
+    );
+
+    expect(result).toBe("the base tree would not build");
+    expect(entered).toBe(false);
+    expect(calls.some((call) => call[0] === "checkout")).toBe(false);
+    expect(calls.some((call) => call[0] === "worktree" && call[1] === "remove")).toBe(true);
+  });
+
   it("removes the tree even when the caller throws", async () => {
     const { plumbing, calls } = fakePlumbing();
     const options = await optionsFor(plumbing);

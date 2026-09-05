@@ -90,11 +90,12 @@ const NON_INSTRUMENTABLE_MARKERS: readonly string[] = Object.freeze([
  * ⚠️ NO PRODUCTION CALLER, AND THAT IS DELIBERATE (corrected 2026-09-05).
  *
  * This was introduced on the strength of crabgic's own configuration: at the
- * time `coverage.include` was scoped to `packages/*​/src/**` plus two named
- * files, so `scripts/*.mjs` was absent from every report the repository
+ * time `coverage.include` reached only each package's own `src` tree plus two
+ * named files, so `scripts/*.mjs` was absent from every report the repository
  * produced and any change set touching a build script was refused. That premise
- * no longer holds — `scripts/**​/*.mjs` is in `coverage.include`, and the case
- * was closed by MEASURING those files rather than by exempting them.
+ * no longer holds: a recursive `.mjs` glob under `scripts` is in
+ * `coverage.include`, and the case was closed by MEASURING those files rather
+ * than by exempting them.
  *
  * It was closed that way because wiring this knob was measured and rejected. An
  * excluded path `continue`s below before any counter is touched, so a change set

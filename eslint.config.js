@@ -5,7 +5,21 @@ import globals from "globals";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "**/*.d.ts", ".changeset/**"],
+    /**
+     * The recursive coverage glob names GENERATED report directories, which every workspace
+     * root grows on `npm test`. It also matched `packages/gates/src/coverage/**`
+     * — the changed-line coverage gate's own source — so 25 tracked source files
+     * were exempt from `npm run lint` entirely, and were hiding real errors. The
+     * re-inclusion is anchored on `src/`, which no generated report is ever under.
+     */
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "!**/src/coverage/**",
+      "**/node_modules/**",
+      "**/*.d.ts",
+      ".changeset/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

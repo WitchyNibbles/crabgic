@@ -220,11 +220,17 @@ export interface AttemptSurface {
    */
   /** The frozen base object id of the named change set's run, when this dispatcher still holds it. */
   baseObjectIdFor?(changeSetId: string): string | undefined;
+  /**
+   * `prepareBaseTree` runs while the tree is still PRISTINE — provisioned, but
+   * before the candidate's test files are laid over it. Returning a value stops
+   * the flow and becomes the result.
+   */
   withBaseTree<T>(
     changeSetId: string,
     candidateObjectId: string,
     testPaths: readonly string[],
     use: (worktreePath: string) => Promise<T>,
+    prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
   ): Promise<T | undefined>;
 }
 
@@ -242,6 +248,16 @@ export type GateRegistryDependencies = Pick<
    * own project hash is the identity that lasts.
    */
   readonly projectId: string;
+  /**
+   * Ceiling for the stack commands this registry runs in an attempt worktree.
+   *
+   * Omitted in production, where `@crabgic/gates`' own `TDD_BASELINE_TIMEOUT_MS`
+   * applies. It exists because the "the granted build did not complete" branch
+   * is otherwise unreachable in under fifteen minutes, and a branch no test can
+   * reach is a branch nothing pins — which is exactly how the guard it replaced
+   * shipped wrong.
+   */
+  readonly commandTimeoutMs?: number;
 };
 
 /**
@@ -337,14 +353,13 @@ interface CandidateSuiteRun {
 }
 
 /**
- * What a candidate's verdict says when the granted build failed.
+ * What a candidate's verdict says when the granted build never COMPLETED —
+ * killed on the timeout, or never spawned.
  *
- * Exported because it is the whole product of the refusal: the TDD gate
- * surfaces this string verbatim as its verdict's `command`, and an operator
- * reading "the granted build failed" goes and looks at the build, where the
- * fault is. The message this replaces was the coverage gate's "no coverage
- * report was produced for this candidate", which is true and points at the
- * wrong thing entirely.
+ * Distinct from its sibling below for the reason the outcome members are: a
+ * build that FAILED sends the reader to a build log, and one that never
+ * finished sends them to a budget or a host. Collapsing the two would tell an
+ * operator to go read a log that does not exist.
  */
 export function describeIncompleteIntegrityCommand(command: string, reason: string): string {
   return (
@@ -353,6 +368,16 @@ export function describeIncompleteIntegrityCommand(command: string, reason: stri
   );
 }
 
+/**
+ * What a candidate's verdict says when the granted build RAN and failed.
+ *
+ * Exported because it is the whole product of the refusal: the TDD gate
+ * surfaces this string verbatim as its verdict's `command`, and an operator
+ * reading "the granted build failed" goes and looks at the build, where the
+ * fault is. The message this replaces was the coverage gate's "no coverage
+ * report was produced for this candidate", which is true and points at the
+ * wrong thing entirely.
+ */
 export function describeFailedIntegrityCommand(command: string, exitStatus: number): string {
   return (
     `eo-gates: the granted build failed in this candidate's worktree ` +
@@ -364,6 +389,7 @@ export function describeFailedIntegrityCommand(command: string, exitStatus: numb
 async function runCandidateSuite(
   attempts: AttemptSurface,
   context: GateContext,
+  commandTimeoutMs?: number,
 ): Promise<CandidateSuiteRun> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) {
@@ -422,7 +448,11 @@ async function runCandidateSuite(
    */
   const integrityCommand = selectIntegrityCommand(granted);
   if (integrityCommand !== undefined) {
-    const build = await runGrantedIntegrityCommand({ grantedCommands: granted, worktreePath });
+    const build = await runGrantedIntegrityCommand({
+      grantedCommands: granted,
+      worktreePath,
+      ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
+    });
     /**
      * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION — the same correction
      * `captureTddBaseline` carries. A build killed on the timeout reports
@@ -546,6 +576,30 @@ async function measureRedAtBase(
         grantedCommands: granted,
         testPaths,
       }),
+    /**
+     * ⚠️ THE BUILD RUNS HERE, ON THE PRISTINE BASE, and never inside the
+     * capture. The capture receives a tree that already carries the candidate's
+     * test files, so a build there typechecks those tests against base source —
+     * and a change set adding `foo.test.ts` for a not-yet-existing `foo.ts`
+     * fails it. Measured on this repository's own history: one added test file
+     * flipped `tsc -b` from exit 0 to exit 2, which the gate then read as a
+     * broken tree rather than as the red signal it is.
+     */
+    async (worktreePath): Promise<ChangedTestsBaselineOutcome | undefined> => {
+      const integrityCommand = selectIntegrityCommand(granted);
+      if (integrityCommand === undefined) return undefined;
+      const build = await runGrantedIntegrityCommand({
+        grantedCommands: granted,
+        worktreePath,
+      });
+      if (!build.ran) {
+        return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
+      }
+      if (build.exitStatus !== 0) {
+        return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+      }
+      return undefined;
+    },
   );
   return (
     outcome ?? {
@@ -579,13 +633,14 @@ function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): st
  */
 function createCandidateSuiteRunner(
   attempts: AttemptSurface,
+  commandTimeoutMs?: number,
 ): (context: GateContext) => Promise<CandidateSuiteRun> {
   const inFlight = new Map<string, Promise<CandidateSuiteRun>>();
   return (context) => {
     const key = `${context.changeSetId}:${context.workUnitId ?? "-"}:${context.objectId}`;
     let pending = inFlight.get(key);
     if (pending === undefined) {
-      pending = runCandidateSuite(attempts, context);
+      pending = runCandidateSuite(attempts, context, commandTimeoutMs);
       inFlight.set(key, pending);
     }
     return pending;
@@ -595,7 +650,7 @@ function createCandidateSuiteRunner(
 export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistry {
   const registry = createGateRegistry();
   /** Shared so a candidate's suite is executed once, however many gates need its result. */
-  const runCandidateOnce = createCandidateSuiteRunner(deps.attempts);
+  const runCandidateOnce = createCandidateSuiteRunner(deps.attempts, deps.commandTimeoutMs);
   registerCriteriaSealGate(registry, {
     requirements: (context): readonly Requirement[] =>
       resolveRequirementsStrict(

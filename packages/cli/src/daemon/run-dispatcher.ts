@@ -616,6 +616,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       candidateObjectId: string,
       testPaths: readonly string[],
       use: (worktreePath: string) => Promise<T>,
+      prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
     ): Promise<T | undefined> {
       const base = runBaseByChangeSetId.get(changeSetId);
       if (base === undefined) return undefined;
@@ -628,6 +629,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           projectDir,
           candidateObjectId,
           testPaths,
+          ...(prepareBaseTree !== undefined ? { prepareBaseTree } : {}),
         },
         use,
       );

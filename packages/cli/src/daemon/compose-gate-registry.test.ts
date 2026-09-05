@@ -530,6 +530,68 @@ describe("the candidate suite runs the granted build first", () => {
     await rm(baseTree, { recursive: true, force: true });
   });
 
+  /**
+   * ⚠️ THE BRANCH THE WHOLE REPAIR EXISTS FOR, executed rather than described.
+   *
+   * The first cut of this ordering guarded on `build.ran && exitStatus !== 0`,
+   * so a build killed on the timeout fell through into an unbuilt tree. The
+   * corrected guard was then measured as unreachable by any test — flipping its
+   * `suiteRan: false` to `true` left the whole `packages/cli` suite green — and
+   * a branch nothing reaches is a branch nothing pins, which is how the guard it
+   * replaced shipped wrong in the first place. `commandTimeoutMs` exists so this
+   * can run in milliseconds instead of fifteen minutes.
+   *
+   * Both halves are asserted: the operator-facing reason, and the fact that a
+   * pre-planted report is still not scored.
+   */
+  it("refuses a build that never completed, and still scores no stale report", async () => {
+    candidateTree = await scriptedTree({
+      build: `node -e "setTimeout(()=>{},60000)"`,
+      test: "exit 0",
+    });
+    await mkdir(join(candidateTree, "coverage"), { recursive: true });
+    await writeFile(
+      join(candidateTree, "coverage", "lcov.info"),
+      ["TN:", "SF:src/a.ts", "DA:1,1", "LF:1", "LH:1", "end_of_record", ""].join("\n"),
+      "utf8",
+    );
+    const baseTree = await scriptedTree({ build: "exit 0", test: "exit 1" });
+    const registry = composeGateRegistry({
+      attempts: {
+        ...attemptsFor(candidateTree),
+        diffAgainstBase: (): Promise<string | undefined> =>
+          Promise.resolve("--- a/src/x.test.ts\n+++ b/src/x.test.ts\n+it('x', () => {});\n"),
+        withBaseTree: (async (
+          _changeSetId: string,
+          _objectId: string,
+          _testPaths: readonly string[],
+          use: (worktreePath: string) => Promise<unknown>,
+        ) => use(baseTree)) as typeof NO_ATTEMPTS.withBaseTree,
+      },
+      projectId: "fixture-project",
+      requirements: requirements([buildRequirement({ id: REQ_1 })]),
+      workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
+      commandTimeoutMs: 300,
+    });
+    const results = await registry.firePerWorkUnit({
+      stage: "verifying",
+      changeSetId: CHANGE_SET_ID,
+      workUnitId: UNIT_A,
+      objectId: OBJECT_ID,
+      journal,
+    });
+
+    const tdd = results.find((result) => result.name === "tdd-evidence");
+    expect(tdd?.verdict.passed).toBe(false);
+    expect(tdd?.verdict.command).toMatch(/did not complete/i);
+    expect(tdd?.verdict.command).toContain("npm run build");
+
+    const coverage = results.find((result) => result.name === "changed-line-coverage");
+    expect(coverage?.verdict.passed).toBe(false);
+    expect(coverage?.verdict.detail).not.toMatch(/coverage OK/);
+    await rm(baseTree, { recursive: true, force: true });
+  });
+
   /** The string itself, as a cheap sibling of the wiring assertion above. */
   it("says the build and its exit status, and never blames the reporter", () => {
     const message = describeFailedIntegrityCommand("npm run build", 3);

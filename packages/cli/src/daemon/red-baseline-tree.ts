@@ -14,7 +14,7 @@
 import { join } from "node:path";
 import { provisionWorktreeDependencies, type GitPlumbing } from "@crabgic/git-engine";
 
-export interface RedBaselineTreeOptions {
+export interface RedBaselineTreeOptions<T> {
   readonly plumbing: GitPlumbing;
   /** The control clone the worktree is cut from and removed through. */
   readonly controlDir: string;
@@ -27,6 +27,24 @@ export interface RedBaselineTreeOptions {
   readonly candidateObjectId: string;
   /** The candidate's test files, checked out over the base. Empty means there is nothing to measure. */
   readonly testPaths: readonly string[];
+  /**
+   * Work the tree needs while it is still PRISTINE — before the candidate's
+   * tests are laid over it. Returning a value stops the flow and becomes the
+   * result; returning `undefined` proceeds.
+   *
+   * ⚠️ THE TIMING IS THE WHOLE POINT, and getting it wrong cost a round. The
+   * only caller uses this to run the envelope's granted build, and a build run
+   * AFTER the candidate's test files are in the tree typechecks those tests
+   * against base source — so a change set adding `foo.test.ts` for a
+   * not-yet-existing `foo.ts` fails the build, and the gate reads the strongest
+   * possible red signal as a broken tree. Measured: 938e98a's own change set
+   * flipped `tsc -b` from exit 0 to exit 2 on one added test file.
+   *
+   * Before the overlay, a build failure means what it says — the base tree is
+   * broken — and the candidate's new tests are then free to fail at RUN time,
+   * which is the red the gate is asking for.
+   */
+  readonly prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>;
 }
 
 /**
@@ -39,7 +57,7 @@ export interface RedBaselineTreeOptions {
  * against the code they were written for and pass, which is the opposite of
  * what is being measured.
  *
- * ⚠️ PROVISIONED BEFORE `use`, AND THAT ORDER IS THE POINT. Until 2026-09-05
+ * ⚠️ PROVISIONED AND PREPARED BEFORE THE OVERLAY, AND BOTH ORDERS ARE THE POINT. Until 2026-09-05
  * this tree got no `node_modules` at all while the attempt worktree beside it
  * had been provisioned since roast round 1 (F7) found the same defect there.
  * The cost was not a failed run but a FABRICATED one: `npm` exits non-zero for
@@ -58,7 +76,7 @@ export interface RedBaselineTreeOptions {
  * baseline.
  */
 export async function withRedBaselineTree<T>(
-  options: RedBaselineTreeOptions,
+  options: RedBaselineTreeOptions<T>,
   use: (worktreePath: string) => Promise<T>,
 ): Promise<T | undefined> {
   if (options.testPaths.length === 0) return undefined;
@@ -76,14 +94,23 @@ export async function withRedBaselineTree<T>(
     return undefined;
   }
   try {
-    await options.plumbing.run(
-      ["checkout", options.candidateObjectId, "--", ...options.testPaths],
-      { cwd: treePath },
-    );
     await provisionWorktreeDependencies({
       worktreePath: treePath,
       sourceDir: options.projectDir,
     });
+    /**
+     * PRISTINE FIRST. Everything the tree needs in order to be the BASE happens
+     * here; only then does the candidate's overlay go on. See
+     * `prepareBaseTree`'s own comment for what running this in the other order
+     * costs.
+     */
+    const prepared = await options.prepareBaseTree?.(treePath);
+    if (prepared !== undefined) return prepared;
+
+    await options.plumbing.run(
+      ["checkout", options.candidateObjectId, "--", ...options.testPaths],
+      { cwd: treePath },
+    );
     return await use(treePath);
   } catch {
     return undefined;
