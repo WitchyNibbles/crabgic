@@ -120,3 +120,63 @@ export async function withRedBaselineTree<T>(
       .catch(() => undefined);
   }
 }
+
+/** Where a run's frozen base lives, as the dispatcher knows it. */
+export interface RunBaseResolution {
+  readonly baseObjectId: string;
+  /** The control clone the throwaway tree is cut from and removed through. */
+  readonly controlDir: string;
+}
+
+export interface BaseTreeSurfaceOptions {
+  readonly plumbing: GitPlumbing;
+  /** The user's checkout, whose `node_modules` every base tree shares. */
+  readonly projectDir: string;
+  /** Where throwaway trees are cut, given a control clone. */
+  readonly worktreesRootDirFor: (controlDir: string) => string;
+  /** The dispatcher's run-scoped state: the ONE frozen base of `changeSetId`'s run, or `undefined`. */
+  readonly resolveRunBase: (changeSetId: string) => RunBaseResolution | undefined;
+}
+
+/**
+ * The dispatcher's `AttemptSurface.withBaseTree` — run-scoped state resolved
+ * into a `withRedBaselineTree` call, and nothing else.
+ *
+ * ⚠️ EXTRACTED FOR THE SAME REASON THIS MODULE WAS, one round later. As an
+ * inline method on the attempt surface, this adapter was measured at ZERO
+ * statement hits across 727 files / 7940 tests — so the one line that forwards
+ * `prepareBaseTree` could be deleted, making the entire base-tree build inert
+ * in production, while every test that pins the build (they drive a stub
+ * surface) stayed green. Both halves being individually tested is not the same
+ * claim as the wire between them existing.
+ *
+ * `undefined` when this dispatcher does not know the run's base — an unknown
+ * change set, or a re-drive after a restart that lost it. NO WORKTREE IS CUT in
+ * that case, which is what makes "the gate reports the red half as
+ * unestablished" cheap rather than a git operation that then fails.
+ */
+export function createBaseTreeSurface(options: BaseTreeSurfaceOptions) {
+  return async function withBaseTree<T>(
+    changeSetId: string,
+    candidateObjectId: string,
+    testPaths: readonly string[],
+    use: (worktreePath: string) => Promise<T>,
+    prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
+  ): Promise<T | undefined> {
+    const base = options.resolveRunBase(changeSetId);
+    if (base === undefined) return undefined;
+    return withRedBaselineTree(
+      {
+        plumbing: options.plumbing,
+        controlDir: base.controlDir,
+        worktreesRootDir: options.worktreesRootDirFor(base.controlDir),
+        baseObjectId: base.baseObjectId,
+        projectDir: options.projectDir,
+        candidateObjectId,
+        testPaths,
+        ...(prepareBaseTree !== undefined ? { prepareBaseTree } : {}),
+      },
+      use,
+    );
+  };
+}

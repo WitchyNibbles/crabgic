@@ -26,13 +26,14 @@ import {
   createWorkUnitsRegistry,
   type Registry,
 } from "@crabgic/supervisor";
-import { REQUIRED_SECURITY_FIXTURE_IDS } from "@crabgic/gates";
+import { REQUIRED_SECURITY_FIXTURE_IDS, hasRedBaseline } from "@crabgic/gates";
 import { buildRequirement, buildWorkUnit } from "@crabgic/testkit";
 import {
   COMPOSED_GATE_NAMES,
   changeSetRequirementIds,
   composeGateRegistry,
   describeFailedIntegrityCommand,
+  type AttemptSurface,
 } from "./compose-gate-registry.js";
 
 /**
@@ -42,12 +43,52 @@ import {
  * candidate SHOULD produce; a stub that answered would be this test file
  * asserting against a fiction.
  */
-const NO_ATTEMPTS = {
+const NO_ATTEMPTS: AttemptSurface = {
   worktreePathFor: (): string | undefined => undefined,
   grantedCommandsFor: (): readonly string[] | undefined => undefined,
   diffAgainstBase: (): Promise<string | undefined> => Promise.resolve(undefined),
   withBaseTree: <T>(): Promise<T | undefined> => Promise.resolve(undefined),
 };
+
+/**
+ * A `withBaseTree` that honours PRODUCTION'S CONTRACT rather than a weaker one
+ * of its own: `prepareBaseTree` runs first, on the pristine tree, and a value
+ * it returns IS the result — exactly what `withRedBaselineTree` does.
+ *
+ * ⚠️ WHY THIS IS SHARED AND TYPED, MEASURED. Both call sites used to inline a
+ * FOUR-parameter arrow cast `as typeof NO_ATTEMPTS.withBaseTree`, and
+ * TypeScript accepts a function of lower arity anywhere a higher-arity one is
+ * wanted — so the fifth parameter was silently dropped and the registry's own
+ * `prepareBaseTree` closure was executed by no test at all. Deleting that
+ * closure, the entire base-tree build, left the suite green at 727 files /
+ * 7940 tests. One honouring helper means a test cannot re-declare the seam.
+ */
+function baseTreeSurface(baseTree: string): Pick<AttemptSurface, "withBaseTree"> {
+  return {
+    async withBaseTree<T>(
+      _changeSetId: string,
+      _candidateObjectId: string,
+      _testPaths: readonly string[],
+      use: (worktreePath: string) => Promise<T>,
+      prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
+    ): Promise<T | undefined> {
+      const prepared = await prepareBaseTree?.(baseTree);
+      if (prepared !== undefined) return prepared;
+      return use(baseTree);
+    },
+  };
+}
+
+/** A worktree that is nothing but a `package.json` with the named scripts. */
+async function scriptedTree(scripts: Record<string, string>): Promise<string> {
+  const treeDir = await mkdtemp(join(tmpdir(), "crabgic-candidate-"));
+  await writeFile(
+    join(treeDir, "package.json"),
+    JSON.stringify({ name: "candidate", private: true, scripts }),
+    "utf8",
+  );
+  return treeDir;
+}
 
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_CHANGE_SET_ID = "33333333-3333-4333-8333-333333333333";
@@ -427,16 +468,6 @@ describe("changeSetRequirementIds", () => {
 describe("the candidate suite runs the granted build first", () => {
   let candidateTree: string;
 
-  async function scriptedTree(scripts: Record<string, string>): Promise<string> {
-    const treeDir = await mkdtemp(join(tmpdir(), "crabgic-candidate-"));
-    await writeFile(
-      join(treeDir, "package.json"),
-      JSON.stringify({ name: "candidate", private: true, scripts }),
-      "utf8",
-    );
-    return treeDir;
-  }
-
   function attemptsFor(treeDir: string): typeof NO_ATTEMPTS {
     return {
       ...NO_ATTEMPTS,
@@ -505,12 +536,7 @@ describe("the candidate suite runs the granted build first", () => {
         ...attemptsFor(candidateTree),
         diffAgainstBase: (): Promise<string | undefined> =>
           Promise.resolve("--- a/src/x.test.ts\n+++ b/src/x.test.ts\n+it('x', () => {});\n"),
-        withBaseTree: (async (
-          _changeSetId: string,
-          _objectId: string,
-          _testPaths: readonly string[],
-          use: (worktreePath: string) => Promise<unknown>,
-        ) => use(baseTree)) as typeof NO_ATTEMPTS.withBaseTree,
+        ...baseTreeSurface(baseTree),
       },
       projectId: "fixture-project",
       requirements: requirements([buildRequirement({ id: REQ_1 })]),
@@ -561,12 +587,7 @@ describe("the candidate suite runs the granted build first", () => {
         ...attemptsFor(candidateTree),
         diffAgainstBase: (): Promise<string | undefined> =>
           Promise.resolve("--- a/src/x.test.ts\n+++ b/src/x.test.ts\n+it('x', () => {});\n"),
-        withBaseTree: (async (
-          _changeSetId: string,
-          _objectId: string,
-          _testPaths: readonly string[],
-          use: (worktreePath: string) => Promise<unknown>,
-        ) => use(baseTree)) as typeof NO_ATTEMPTS.withBaseTree,
+        ...baseTreeSurface(baseTree),
       },
       projectId: "fixture-project",
       requirements: requirements([buildRequirement({ id: REQ_1 })]),
@@ -681,5 +702,211 @@ describe("the candidate suite runs the granted build first", () => {
     });
     await fireCoverage(candidateTree, ["npm run test", "npm run build"]);
     expect(existsSync(join(candidateTree, "sentinel.txt"))).toBe(true);
+  });
+});
+
+/**
+ * The BASE tree's build — the half of the ordering repair that had no test at
+ * all until 2026-09-05, measured rather than asserted: v8 reported ZERO hits on
+ * every statement of the `prepareBaseTree` closure across 727 files / 7940
+ * tests, and deleting the closure outright left the suite green.
+ *
+ * ⚠️ WHY AN UNEXECUTED GUARD HERE IS BLOCKING RATHER THAN UNTIDY. A base
+ * worktree is materialised from tracked files only, and a workspace package's
+ * `main` points into a gitignored `dist/`. With no build, the scoped acceptance
+ * command exits non-zero on `ERR_MODULE_NOT_FOUND` before one test executes,
+ * and `captureRedBaselineForChangedTests` cannot tell that from a genuinely
+ * failing test: it mints `captured` plus one red-baseline `EvidenceRecord` per
+ * requirement. The failure direction is therefore PASS — the strongest evidence
+ * this system has, earned by an absent build output.
+ *
+ * So each case below asserts the journal as well as the verdict. A refusal that
+ * still minted a baseline would be a refusal in name only.
+ */
+describe("the base tree is built while it is still the base", () => {
+  let candidateTree: string | undefined;
+  let baseTree: string | undefined;
+
+  afterEach(async () => {
+    for (const tree of [candidateTree, baseTree]) {
+      if (tree !== undefined) await rm(tree, { recursive: true, force: true });
+    }
+    candidateTree = undefined;
+    baseTree = undefined;
+  });
+
+  async function fireTdd(
+    options: {
+      readonly commandTimeoutMs?: number;
+      /** `false` models a candidate whose attempt worktree the dispatcher no longer retains. */
+      readonly candidateWorktreeRetained?: boolean;
+    } = {},
+  ): Promise<{
+    readonly passed: boolean;
+    readonly inconclusive: boolean;
+    readonly detail: string;
+    readonly command: string;
+    readonly hasGateVerdict: boolean;
+  }> {
+    const registry = composeGateRegistry({
+      attempts: {
+        ...NO_ATTEMPTS,
+        worktreePathFor: (): string | undefined =>
+          options.candidateWorktreeRetained === false ? undefined : candidateTree,
+        grantedCommandsFor: (): readonly string[] | undefined => ["npm run test", "npm run build"],
+        diffAgainstBase: (): Promise<string | undefined> =>
+          Promise.resolve("--- a/src/x.test.ts\n+++ b/src/x.test.ts\n+it('x', () => {});\n"),
+        ...baseTreeSurface(baseTree!),
+      },
+      projectId: "fixture-project",
+      requirements: requirements([buildRequirement({ id: REQ_1 })]),
+      workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
+      ...(options.commandTimeoutMs !== undefined
+        ? { commandTimeoutMs: options.commandTimeoutMs }
+        : {}),
+    });
+    const results = await registry.firePerWorkUnit({
+      stage: "verifying",
+      changeSetId: CHANGE_SET_ID,
+      workUnitId: UNIT_A,
+      objectId: OBJECT_ID,
+      journal,
+    });
+    const tdd = results.find((result) => result.name === "tdd-evidence");
+    expect(tdd).toBeDefined();
+    return {
+      passed: tdd!.verdict.passed,
+      inconclusive: tdd!.verdict.inconclusive === true,
+      detail: tdd!.verdict.detail,
+      command: tdd!.verdict.command,
+      hasGateVerdict: tdd!.evidence.gateVerdict !== undefined,
+    };
+  }
+
+  /**
+   * ⚠️ A MEASURED RED HALF AND NO CANDIDATE TO MEASURE AGAINST — the one
+   * ordering in which this refusal is reachable, since the gate short-circuits
+   * before the candidate run whenever the red half is unestablished. It FAILS
+   * rather than going inconclusive, and it must: the red baseline says these
+   * tests were failing, and "we could not check whether they now pass" is not a
+   * green half.
+   */
+  it("fails, naming the unit, when the candidate's own worktree is no longer retained", async () => {
+    candidateTree = await scriptedTree({ build: "exit 0", test: "exit 0" });
+    baseTree = await scriptedTree({ build: "exit 0", test: "exit 1" });
+
+    const tdd = await fireTdd({ candidateWorktreeRetained: false });
+
+    expect(tdd.passed).toBe(false);
+    expect(tdd.command).toContain("no retained worktree");
+    expect(tdd.command).toContain(UNIT_A);
+  });
+
+  /**
+   * Deleting the closure makes the base suite run in an unbuilt tree, exit 1,
+   * and mint `captured` — so both assertions below flip. That is the mutation
+   * this case exists to redden.
+   */
+  it("refuses when the granted build FAILS in the base tree, and mints no baseline", async () => {
+    candidateTree = await scriptedTree({ build: "exit 0", test: "exit 0" });
+    baseTree = await scriptedTree({ build: "exit 3", test: "exit 1" });
+
+    const tdd = await fireTdd();
+
+    expect(tdd.detail).toMatch(/FAILED in the base tree with exit 3/);
+    expect(tdd.inconclusive).toBe(true);
+    // Inconclusive is normalised to non-blocking, so the record is the claim:
+    // an unestablished red half must prove nothing at all.
+    expect(tdd.hasGateVerdict).toBe(false);
+    expect(await hasRedBaseline(journal, REQ_1)).toBe(false);
+  });
+
+  /**
+   * ⚠️ THE BRANCH THAT WAS FIFTEEN MINUTES OUT OF REACH. `commandTimeoutMs`
+   * bounded only the CANDIDATE build when it was introduced, so this
+   * structurally identical guard on the base side could not be reached by any
+   * test in under `TDD_BASELINE_TIMEOUT_MS` — and a branch nothing reaches is a
+   * branch nothing pins, which is how the guard it replaced shipped wrong.
+   */
+  it("refuses a base build that never completed, and says so in the operator's words", async () => {
+    candidateTree = await scriptedTree({ build: "exit 0", test: "exit 0" });
+    baseTree = await scriptedTree({
+      build: `node -e "setTimeout(()=>{},60000)"`,
+      test: "exit 1",
+    });
+
+    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+
+    expect(tdd.detail).toMatch(/did not complete in the base tree/);
+    expect(tdd.detail).toContain("npm run build");
+    expect(await hasRedBaseline(journal, REQ_1)).toBe(false);
+  });
+
+  /**
+   * ⚠️ THE THIRD OF THE FOUR COMMANDS THE CEILING NAMES. A base suite killed on
+   * the timeout also exits non-zero, and folding that into the red path would
+   * let a hung runner mint a baseline. `captureRedBaselineForChangedTests`
+   * separates them — but only if it is given the ceiling, which it was not
+   * until this case existed to require it.
+   */
+  it("refuses a base suite that never completed, rather than reading it as red", async () => {
+    candidateTree = await scriptedTree({ build: "exit 0", test: "exit 0" });
+    baseTree = await scriptedTree({
+      build: "exit 0",
+      test: `node -e "setTimeout(()=>{},60000)"`,
+    });
+
+    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+
+    expect(tdd.detail).toMatch(/the base-code test run did not complete/);
+    expect(tdd.hasGateVerdict).toBe(false);
+    expect(await hasRedBaseline(journal, REQ_1)).toBe(false);
+  });
+
+  /**
+   * ⚠️ THE FOURTH, and the one whose only honest observable is the CLOCK. A
+   * candidate suite killed on the timeout produces the same "STILL failing"
+   * detail a genuinely failing one does, so the message cannot discriminate.
+   * What can is that this finishes at all: unbounded, the granted command runs
+   * on `TDD_BASELINE_TIMEOUT_MS` and this case takes fifteen minutes.
+   */
+  it("bounds the candidate SUITE too, not only the candidate build", async () => {
+    candidateTree = await scriptedTree({
+      build: "exit 0",
+      test: `node -e "setTimeout(()=>{},60000)"`,
+    });
+    baseTree = await scriptedTree({ build: "exit 0", test: "exit 1" });
+
+    const startedAt = Date.now();
+    const tdd = await fireTdd({ commandTimeoutMs: 300 });
+
+    expect(Date.now() - startedAt).toBeLessThan(10_000);
+    expect(tdd.passed).toBe(false);
+    expect(await hasRedBaseline(journal, REQ_1)).toBe(true);
+  });
+
+  /**
+   * ⚠️ THE ORDER, PROVEN BY A MARKER — the base-side mirror of the candidate
+   * test above, and the one case that can tell "the build ran" from "the build
+   * ran FIRST". The base suite is red exactly when the build already wrote its
+   * marker, so `captured` is reachable only through the correct ordering.
+   *
+   * `passed` is deliberately NOT the discriminator: an unestablished red half
+   * is normalised to non-blocking, so it reads `true` in both worlds. The
+   * detail and the journal are what differ.
+   */
+  it("runs the base build BEFORE the base suite, proven by a marker the suite requires", async () => {
+    candidateTree = await scriptedTree({ build: "exit 0", test: "exit 0" });
+    baseTree = await scriptedTree({
+      build: `node -e "require('fs').writeFileSync('built.txt','1')"`,
+      test: `node -e "process.exit(require('fs').existsSync('built.txt')?1:0)"`,
+    });
+
+    const tdd = await fireTdd();
+
+    expect(tdd.detail).toMatch(/fail against base and pass against the candidate/);
+    expect(tdd.passed).toBe(true);
+    expect(tdd.hasGateVerdict).toBe(true);
+    expect(await hasRedBaseline(journal, REQ_1)).toBe(true);
   });
 });

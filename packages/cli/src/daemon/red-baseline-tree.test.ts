@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { GitPlumbing } from "@crabgic/git-engine";
-import { withRedBaselineTree } from "./red-baseline-tree.js";
+import { createBaseTreeSurface, withRedBaselineTree } from "./red-baseline-tree.js";
 
 /**
  * ⚠️ THE TEST THAT DID NOT EXIST.
@@ -49,7 +49,7 @@ interface FakePlumbing {
 }
 
 /** Creates the directory `worktree add` names, so the rest of the flow is real. */
-function fakePlumbing(options: { failAdd?: boolean } = {}): FakePlumbing {
+function fakePlumbing(options: { failAdd?: boolean; failRemove?: boolean } = {}): FakePlumbing {
   const calls: string[][] = [];
   const plumbing = {
     gitBinary: "git",
@@ -59,6 +59,9 @@ function fakePlumbing(options: { failAdd?: boolean } = {}): FakePlumbing {
       if (args[0] === "worktree" && args[1] === "add") {
         if (options.failAdd === true) throw new Error("worktree add refused");
         await mkdir(args[args.length - 2]!, { recursive: true });
+      }
+      if (args[0] === "worktree" && args[1] === "remove" && options.failRemove === true) {
+        throw new Error("worktree remove refused");
       }
       return { stdout: "", stderr: "", exitCode: 0 };
     },
@@ -189,6 +192,22 @@ describe("withRedBaselineTree", () => {
     expect(calls).toHaveLength(0);
   });
 
+  /**
+   * ⚠️ CLEANUP FAILURE IS NOT A MEASUREMENT FAILURE. The removal is best-effort
+   * on purpose: a tree that cannot be removed costs disk and a stale metadata
+   * entry, and turning that into "the red half is unestablished" would throw
+   * away a measurement that already happened for a reason unrelated to it.
+   */
+  it("keeps the caller's result when the tree cannot be removed afterwards", async () => {
+    const { plumbing, calls } = fakePlumbing({ failRemove: true });
+    const options = await optionsFor(plumbing);
+
+    const result = await withRedBaselineTree(options, () => Promise.resolve("measured"));
+
+    expect(result).toBe("measured");
+    expect(calls.some((call) => call[0] === "worktree" && call[1] === "remove")).toBe(true);
+  });
+
   it("returns undefined, never a half-made tree, when the worktree cannot be cut", async () => {
     const { plumbing } = fakePlumbing({ failAdd: true });
     const options = await optionsFor(plumbing);
@@ -201,5 +220,105 @@ describe("withRedBaselineTree", () => {
 
     expect(result).toBeUndefined();
     expect(entered).toBe(false);
+  });
+});
+
+/**
+ * The DISPATCHER'S half of the seam. Both ends of it were individually tested
+ * and the wire between them was not: measured at zero statement hits across 727
+ * files / 7940 tests while it lived as an inline method on the attempt surface,
+ * so the one line forwarding `prepareBaseTree` could be deleted — making the
+ * base-tree build inert in production — with every test that pins the build
+ * still green, because those drive a stub surface rather than this one.
+ */
+describe("createBaseTreeSurface", () => {
+  const RESOLVED = { baseObjectId: BASE_OBJECT_ID, controlDir: "" };
+
+  async function surfaceFor(options: {
+    readonly plumbing: GitPlumbing;
+    readonly resolves?: boolean;
+  }): Promise<{
+    readonly withBaseTree: ReturnType<typeof createBaseTreeSurface>;
+    readonly controlDir: string;
+    readonly worktreesRoot: string;
+  }> {
+    const controlDir = await tempDir("crabgic-control-");
+    const worktreesRoot = join(await tempDir("crabgic-wt-"), "red-baselines");
+    return {
+      withBaseTree: createBaseTreeSurface({
+        plumbing: options.plumbing,
+        projectDir: await sourceCheckout(),
+        worktreesRootDirFor: (dir) => (dir === controlDir ? worktreesRoot : "/nowhere"),
+        resolveRunBase: () =>
+          options.resolves === false ? undefined : { ...RESOLVED, controlDir },
+      }),
+      controlDir,
+      worktreesRoot,
+    };
+  }
+
+  /**
+   * ⚠️ AND NO WORKTREE IS CUT. "Reports the red half as unestablished" is only
+   * cheap if an unknown base costs nothing; cutting a tree first and failing
+   * would leave the control clone's metadata holding a path that then blocks
+   * the next `worktree add` at it.
+   */
+  it("returns undefined without touching git when the run's base is unknown", async () => {
+    const { plumbing, calls } = fakePlumbing();
+    const { withBaseTree } = await surfaceFor({ plumbing, resolves: false });
+
+    const outcome = await withBaseTree(
+      "unknown-change-set",
+      CANDIDATE_OBJECT_ID,
+      ["src/feature.test.ts"],
+      () => Promise.reject(new Error("must not run")),
+    );
+
+    expect(outcome).toBeUndefined();
+    expect(calls).toStrictEqual([]);
+  });
+
+  it("cuts the tree at the resolved run's base, under that control clone's own root", async () => {
+    const { plumbing, calls } = fakePlumbing();
+    const { withBaseTree, controlDir, worktreesRoot } = await surfaceFor({ plumbing });
+
+    await withBaseTree("cs", CANDIDATE_OBJECT_ID, ["src/feature.test.ts"], (worktreePath) =>
+      Promise.resolve(worktreePath),
+    );
+
+    const add = calls.find((args) => args[0] === "worktree" && args[1] === "add");
+    expect(add?.[3]).toBe(join(worktreesRoot, `red-baseline-${CANDIDATE_OBJECT_ID.slice(0, 12)}`));
+    expect(add?.[4]).toBe(BASE_OBJECT_ID);
+    const remove = calls.find((args) => args[0] === "worktree" && args[1] === "remove");
+    expect(remove).toBeDefined();
+    expect(controlDir).not.toBe("");
+  });
+
+  /**
+   * ⚠️ THE LINE THIS DESCRIBE BLOCK EXISTS FOR. Deleting the `prepareBaseTree`
+   * spread reddens exactly this case and nothing else in the repository: the
+   * caller's pristine-tree work — in production, the envelope's granted build —
+   * silently stops running, and the base suite then measures an unbuilt tree.
+   */
+  it("forwards prepareBaseTree, and honours the result it returns", async () => {
+    const { plumbing, calls } = fakePlumbing();
+    const { withBaseTree } = await surfaceFor({ plumbing });
+    const prepared: string[] = [];
+
+    const outcome = await withBaseTree(
+      "cs",
+      CANDIDATE_OBJECT_ID,
+      ["src/feature.test.ts"],
+      () => Promise.reject(new Error("use must not run once preparation returned a result")),
+      (worktreePath) => {
+        prepared.push(worktreePath);
+        return Promise.resolve("refused in the base tree");
+      },
+    );
+
+    expect(outcome).toBe("refused in the base tree");
+    expect(prepared).toHaveLength(1);
+    // The overlay never happened, which is what "stops the flow" has to mean.
+    expect(calls.some((args) => args[0] === "checkout")).toBe(false);
   });
 });

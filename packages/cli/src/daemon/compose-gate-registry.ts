@@ -249,13 +249,18 @@ export type GateRegistryDependencies = Pick<
    */
   readonly projectId: string;
   /**
-   * Ceiling for the stack commands this registry runs in an attempt worktree.
+   * Ceiling for the stack commands this registry runs in a worktree — ALL FOUR
+   * of them: the candidate's build and acceptance run, and the base tree's.
+   *
+   * ⚠️ THE PLURAL IS LOAD-BEARING, and it was false when this was introduced.
+   * It bound the candidate build alone, so the base tree's identical "did not
+   * complete" branch stayed fifteen minutes out of reach and no test could pin
+   * it — which is exactly how the guard it replaced shipped wrong. A ceiling
+   * that covers one of the commands it names sends the next reader to debug a
+   * test timeout instead of the unbounded command that caused it.
    *
    * Omitted in production, where `@crabgic/gates`' own `TDD_BASELINE_TIMEOUT_MS`
-   * applies. It exists because the "the granted build did not complete" branch
-   * is otherwise unreachable in under fifteen minutes, and a branch no test can
-   * reach is a branch nothing pins — which is exactly how the guard it replaced
-   * shipped wrong.
+   * applies to each.
    */
   readonly commandTimeoutMs?: number;
 };
@@ -474,7 +479,11 @@ async function runCandidateSuite(
     }
   }
 
-  const run = await runGrantedAcceptanceCommand({ grantedCommands: granted, worktreePath });
+  const run = await runGrantedAcceptanceCommand({
+    grantedCommands: granted,
+    worktreePath,
+    ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
+  });
   if (!run.ran) {
     return {
       command: run.command ?? "eo-gates: candidate suite",
@@ -543,6 +552,7 @@ async function measureRedAtBase(
   workUnits: GateRegistryDependencies["workUnits"],
   _projectId: string,
   context: GateContext,
+  commandTimeoutMs?: number,
 ): Promise<ChangedTestsBaselineOutcome> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) return { kind: "noRequirements" };
@@ -575,6 +585,7 @@ async function measureRedAtBase(
         worktreePath,
         grantedCommands: granted,
         testPaths,
+        ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
       }),
     /**
      * ⚠️ THE BUILD RUNS HERE, ON THE PRISTINE BASE, and never inside the
@@ -591,7 +602,15 @@ async function measureRedAtBase(
       const build = await runGrantedIntegrityCommand({
         grantedCommands: granted,
         worktreePath,
+        ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
       });
+      /**
+       * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION — the mirror of
+       * `runCandidateSuite`'s guard, and it has to be, because the two are
+       * structurally identical and only one of them was ever reachable. A build
+       * killed on the timeout reports `ran: false`, and reading that as "no
+       * build was granted" measures the base tree unbuilt.
+       */
       if (!build.ran) {
         return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
       }
@@ -718,7 +737,13 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
         ? []
         : workUnitRequirementIds(deps.workUnits, context.workUnitId),
     measureRedAtBase: (context) =>
-      measureRedAtBase(deps.attempts, deps.workUnits, deps.projectId, context),
+      measureRedAtBase(
+        deps.attempts,
+        deps.workUnits,
+        deps.projectId,
+        context,
+        deps.commandTimeoutMs,
+      ),
     runCandidate: (context) => runCandidateOnce(context),
   });
   /**

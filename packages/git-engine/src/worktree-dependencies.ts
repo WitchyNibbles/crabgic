@@ -41,12 +41,22 @@ import { isAbsolute, join, relative, resolve } from "node:path";
  * package's `main` usually points into `dist/`, which is gitignored — so in a
  * fresh worktree the redirected link resolves to a package with no build
  * output, and the first cross-package `import` fails with
- * `ERR_MODULE_NOT_FOUND` until something runs the build. Nothing currently
- * orders that build first, so an attempt can fail for this reason and look
- * like a genuine test failure. The trade is still right — validating against
- * the owner's checkout would be silently WRONG, where this is loudly broken —
- * but it is a real gap between here and a first green run, and it belongs to
- * the scheduler's ordering rather than to this module.
+ * `ERR_MODULE_NOT_FOUND` until something runs the build. The trade is still
+ * right — validating against the owner's checkout would be silently WRONG,
+ * where this is loudly broken — and the gap belongs to the scheduler's
+ * ordering rather than to this module.
+ *
+ * ⚠️ DISCHARGED 2026-09-05, and the successor reading this needs to know it is,
+ * because the failure it now prevents is INDISTINGUISHABLE from a genuine one:
+ * a scoped `npm run test` that dies on `ERR_MODULE_NOT_FOUND` exits non-zero
+ * before a single test runs, and a red-baseline capture cannot tell that from a
+ * failing test. Three call sites order the granted `integrity`-class command
+ * ahead of the run — `@crabgic/gates`' `captureTddBaseline`, and
+ * `@crabgic/cli`'s `runCandidateSuite` and `measureRedAtBase` (the latter on
+ * the PRISTINE tree, before the candidate's tests are laid over it). A fourth
+ * ordering site is not wanted; an `ERR_MODULE_NOT_FOUND` past those three is a
+ * regression to investigate, not the expected state this paragraph once
+ * described.
  *
  * WHAT MAKES SHARING EXTERNAL PACKAGES SAFE — and what it does not cover. A
  * shared entry points at the source checkout, outside the worktree, so a

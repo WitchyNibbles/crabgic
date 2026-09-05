@@ -108,7 +108,7 @@ import {
 import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { composeGateRegistry } from "./compose-gate-registry.js";
-import { withRedBaselineTree } from "./red-baseline-tree.js";
+import { createBaseTreeSurface } from "./red-baseline-tree.js";
 import {
   createRealPostCompletionGitEffects,
   type PostCompletionGitEffects,
@@ -599,41 +599,23 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     /**
      * A throwaway worktree at the FROZEN BASE, carrying the candidate's versions
      * of `testPaths` and nothing else of the candidate — owner ruling
-     * 2026-08-18's "new tests against base code".
+     * 2026-08-18's "new tests against base code". What that tree must be, and
+     * why it is cut with `--detach` and removed in a `finally`, is
+     * `./red-baseline-tree.ts`'s to state; this line supplies only the
+     * run-scoped state it needs.
      *
-     * ⚠️ `--detach` AT THE BASE, then a path-scoped checkout. Checking the whole
-     * candidate out would answer the wrong question entirely: the tests would run
-     * against the code they were written for and pass, which is the opposite of
-     * what is being measured.
-     *
-     * ⚠️ REMOVED IN `finally`, and `--force` because the test run leaves the tree
-     * dirty by construction — a failed suite writes reports and caches. A worktree
-     * left behind pins disk and, worse, is registered in the control clone's
-     * metadata, so the next `worktree add` at the same path fails.
+     * ⚠️ THE ADAPTER IS `createBaseTreeSurface`, NOT AN INLINE METHOD, and the
+     * move is the same correction `withRedBaselineTree`'s own extraction was.
+     * Inline here it was executed by no test at all, so the one line forwarding
+     * `prepareBaseTree` — the whole base-tree build — could be deleted with the
+     * suite green.
      */
-    async withBaseTree<T>(
-      changeSetId: string,
-      candidateObjectId: string,
-      testPaths: readonly string[],
-      use: (worktreePath: string) => Promise<T>,
-      prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
-    ): Promise<T | undefined> {
-      const base = runBaseByChangeSetId.get(changeSetId);
-      if (base === undefined) return undefined;
-      return withRedBaselineTree(
-        {
-          plumbing,
-          controlDir: base.controlDir,
-          worktreesRootDir: worktreesRootDirFor(base.controlDir),
-          baseObjectId: base.baseObjectId,
-          projectDir,
-          candidateObjectId,
-          testPaths,
-          ...(prepareBaseTree !== undefined ? { prepareBaseTree } : {}),
-        },
-        use,
-      );
-    },
+    withBaseTree: createBaseTreeSurface({
+      plumbing,
+      projectDir,
+      worktreesRootDirFor,
+      resolveRunBase: (changeSetId) => runBaseByChangeSetId.get(changeSetId),
+    }),
   };
 
   /**
