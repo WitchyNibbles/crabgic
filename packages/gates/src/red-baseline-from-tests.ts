@@ -3,7 +3,9 @@ import type { JournalStore } from "@crabgic/journal";
 import { captureRedBaseline } from "./tdd-gate.js";
 import {
   runGrantedAcceptanceCommand,
+  runGrantedIntegrityCommand,
   selectAcceptanceCommand,
+  selectIntegrityCommand,
   TDD_BASELINE_TIMEOUT_MS,
 } from "./tdd-baseline.js";
 
@@ -54,6 +56,19 @@ export type ChangedTestsBaselineOutcome =
   | { readonly kind: "noTestFiles" }
   | { readonly kind: "noAcceptanceCommand" }
   | { readonly kind: "didNotRun"; readonly command: string; readonly reason: string }
+  /**
+   * The granted `integrity`-class command ran and FAILED, so the base tree was
+   * never built and nothing run in it is evidence of anything.
+   *
+   * ⚠️ THIS PATH IS THE ONE THAT DECIDES THE GATE. `registerTddGate`'s
+   * `measureRedAtBase` calls this function, not `captureTddBaseline` — so an
+   * ordering that stopped at the other producer would have left the deciding
+   * half running its scoped acceptance command against a tree with no `dist/`,
+   * minting a red baseline out of `ERR_MODULE_NOT_FOUND`.
+   */
+  | { readonly kind: "integrityFailed"; readonly command: string; readonly exitStatus: number }
+  /** The granted build never completed — killed on the timeout, or never spawned. Distinct because the repair is. */
+  | { readonly kind: "integrityDidNotRun"; readonly command: string; readonly reason: string }
   | { readonly kind: "noRequirements" };
 
 export interface ChangedTestsBaselineInput {
@@ -94,6 +109,27 @@ export async function captureRedBaselineForChangedTests(
    * covers reads as "restrict to these files" — and which the compiled
    * `Bash(<prefix>:*)` rule permits, because it is a prefix grant.
    */
+  /**
+   * ⚠️ BUILD BEFORE THE SCOPED RUN, guarded on SELECTION rather than on
+   * completion: a build killed on the timeout reports `ran: false`, and reading
+   * that as permission to proceed is how the first cut of this ordering
+   * reintroduced the defect it was written to close.
+   */
+  const integrityCommand = selectIntegrityCommand(input.grantedCommands);
+  if (integrityCommand !== undefined) {
+    const build = await runGrantedIntegrityCommand({
+      grantedCommands: input.grantedCommands,
+      worktreePath: input.worktreePath,
+      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+    });
+    if (!build.ran) {
+      return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
+    }
+    if (build.exitStatus !== 0) {
+      return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+    }
+  }
+
   const scoped = `${command} -- ${input.testPaths.join(" ")}`;
   const run = await runGrantedAcceptanceCommand({
     grantedCommands: [scoped],

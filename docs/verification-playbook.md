@@ -719,7 +719,9 @@ a better artifact than the list that would have been published had the claim bee
 
 Two committed files said the root `vitest.config.ts` projects are "`packages/*` plus `e2e/report`" —
 and the transcript added _"Verified in this tree, not assumed."_ The config declares a **third**
-project, `scripts` (`vitest.config.ts:84`). The plan had it right; the write-up dropped it.
+project, `scripts` (`vitest.config.ts:85`; was `:84` until 2026-09-05, when
+`scripts/**/*.mjs` joined `coverage.include` and the comment above the block grew a line).
+The plan had it right; the write-up dropped it.
 
 The conclusion was unaffected (the missing item only strengthened it), but a **false exhaustive claim
 carrying a verification stamp** is worse than an unstamped approximation — the stamp is what stops the

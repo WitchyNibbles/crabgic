@@ -339,3 +339,51 @@ describe("captureTddBaseline — the granted build runs BEFORE the granted test"
     expect(outcome.kind).toBe("captured");
   });
 });
+
+/**
+ * A BUILD THAT NEVER COMPLETED IS NOT A BUILD THAT SUCCEEDED (2026-09-05,
+ * found by adversarial review of the commit that ordered the build).
+ *
+ * The first version of the ordering guarded on `build.ran && exitStatus !== 0`,
+ * which reads "a build that RAN and failed refuses". A build killed on the
+ * timeout, or one that could not be spawned at all, reports `ran: false` — so
+ * it fell straight through to the acceptance command in a tree that was never
+ * built, and minted exactly the fabricated red baseline the ordering exists to
+ * prevent. The bug was the same shape as the one being fixed, one branch over.
+ *
+ * The guard is therefore on SELECTION, not on completion: if the envelope
+ * granted a build, that build must have completed successfully before any test
+ * result from this tree means anything.
+ */
+describe("captureTddBaseline — a granted build that did not complete refuses too", () => {
+  it("refuses when the granted build is killed on the timeout", async () => {
+    worktree = await makeScriptedWorktree({
+      build: `node -e "setTimeout(()=>{},60000)"`,
+      test: "exit 1",
+    });
+    const outcome = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+      timeoutMs: 300,
+    });
+    expect(outcome.kind).toBe("integrityDidNotRun");
+    expect(await hasRedBaseline(tj.store, REQUIREMENT_ID)).toBe(false);
+  });
+
+  /**
+   * ⚠️ DISTINCT FROM `integrityFailed`, because the repairs differ: a failed
+   * build is a broken tree, an incomplete one is a budget or a host problem.
+   * Folding them would tell an operator to go read a build log that does not
+   * exist.
+   */
+  it("distinguishes a build that did not complete from one that failed", async () => {
+    worktree = await makeScriptedWorktree({ build: "exit 3", test: "exit 1" });
+    const failed = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(failed.kind).toBe("integrityFailed");
+  });
+});

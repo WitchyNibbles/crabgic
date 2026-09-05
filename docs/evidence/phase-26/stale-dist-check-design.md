@@ -538,7 +538,9 @@ Round 10's "guard WHAT an apply inserts, not only WHERE" has a second mechanism 
   `SCANNED_ROOTS` includes `"scripts"` and `SCANNED_EXTENSIONS` includes `".mjs"`
   (`:114,116`).
 - Its colocated tests run under `npm test` via the `scripts` vitest project
-  (`vitest.config.ts:84`, `test: { root: "scripts", name: "scripts" }`).
+  (`vitest.config.ts:85`, `test: { root: "scripts", name: "scripts" }` — line corrected
+  2026-09-05 from `:84`; the quoted text is unchanged and moved down one when
+  `scripts/**/*.mjs` joined `coverage.include`).
 
 Node builtins, plus **exactly TWO** repo-internal imports — and the second one IS
 requirement 11 (round 13, CF13-1). `units.mjs` imports `enumerateRootReferences` and

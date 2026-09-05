@@ -89,6 +89,16 @@ function describeUnestablishedRed(outcome: ChangedTestsBaselineOutcome): string 
       return "the approved envelope grants no acceptance-class command, so nothing could be run";
     case "didNotRun":
       return `the base-code test run did not complete: ${outcome.reason}`;
+    case "integrityFailed":
+      return (
+        `the approved build ("${outcome.command}") FAILED in the base tree with exit ` +
+        `${String(outcome.exitStatus)}, so no test run there could be evidence of anything`
+      );
+    case "integrityDidNotRun":
+      return (
+        `the approved build ("${outcome.command}") did not complete in the base tree: ` +
+        `${outcome.reason}`
+      );
     case "noRequirements":
       return "no requirement was declared to scope a baseline to";
     /* c8 ignore next 2 -- `captured` is handled by the caller before this is reached. */

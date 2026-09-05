@@ -110,6 +110,20 @@ export type TddBaselineOutcome =
    * build, not the tests, and not the policy.
    */
   | { readonly kind: "integrityFailed"; readonly command: string; readonly exitStatus: number }
+  /**
+   * The granted `integrity`-class command never completed — it could not be
+   * spawned, or it was killed on the timeout — so the tree was not built and
+   * nothing run in it means anything.
+   *
+   * ⚠️ DISTINCT FROM `integrityFailed`, on the same grounds `didNotRun` is
+   * distinct from `notRed`: a build that FAILED is a broken tree and sends the
+   * reader to a build log, while a build that never finished is a budget or a
+   * host problem and sends them somewhere else entirely. The first cut of this
+   * ordering guarded on `build.ran && exitStatus !== 0` and so had no member
+   * here at all — a timed-out build fell through to the acceptance command and
+   * minted the fabricated red baseline the ordering exists to prevent.
+   */
+  | { readonly kind: "integrityDidNotRun"; readonly command: string; readonly reason: string }
   /** The envelope grants no `acceptance`-class command, so nothing was run. */
   | { readonly kind: "noAcceptanceCommand" }
   /** The work unit declares no requirements, so there is nothing to scope a record to. */
@@ -292,13 +306,26 @@ export async function captureTddBaseline(input: TddBaselineInput): Promise<TddBa
    * `ERR_MODULE_NOT_FOUND` rather than by a test. A build that RAN and failed
    * refuses here; a project granting no build proceeds unchanged.
    */
-  const build = await runGrantedIntegrityCommand({
-    grantedCommands: input.grantedCommands,
-    worktreePath: input.worktreePath,
-    ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
-  });
-  if (build.ran && build.exitStatus !== 0) {
-    return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+  const integrityCommand = selectIntegrityCommand(input.grantedCommands);
+  if (integrityCommand !== undefined) {
+    const build = await runGrantedIntegrityCommand({
+      grantedCommands: input.grantedCommands,
+      worktreePath: input.worktreePath,
+      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+    });
+    /**
+     * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION. `ran: false` means the
+     * build did not finish — killed on the timeout, or never spawned — which is
+     * not a reason to proceed as though the tree were built. Reading it as one
+     * is how the first cut of this ordering reintroduced the very defect it
+     * was written to close.
+     */
+    if (!build.ran) {
+      return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
+    }
+    if (build.exitStatus !== 0) {
+      return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+    }
   }
 
   const run = await runGrantedAcceptanceCommand({

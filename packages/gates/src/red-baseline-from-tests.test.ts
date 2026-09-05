@@ -204,3 +204,69 @@ describe("hasRedBaseline — scoped to the base object id", () => {
     ).toBe(false);
   }, 60_000);
 });
+
+/**
+ * THE BUILD IS ORDERED HERE TOO — and this is the path that actually decides
+ * the gate (2026-09-05).
+ *
+ * `captureTddBaseline` got the ordering first, but `registerTddGate`'s
+ * `measureRedAtBase` calls THIS function, so a change that stopped at the other
+ * one would have left the deciding path running its scoped acceptance command
+ * in a tree with no `dist/` — minting a red baseline out of
+ * `ERR_MODULE_NOT_FOUND` exactly as before. An adversarial review round raised
+ * that gap; a first verifier refuted it; the code was plain.
+ *
+ * The two refusals stay distinct for the reason every other member here is
+ * distinct: a build that FAILED sends the reader to a build log, and one that
+ * never completed sends them to a budget or a host.
+ */
+describe("captureRedBaselineForChangedTests — the granted build runs first", () => {
+  async function scriptedTree(scripts: Record<string, string>): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "crabgic-red-integrity-"));
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "fixture", private: true, scripts }),
+      "utf8",
+    );
+    return dir;
+  }
+
+  it("captures red only because the build ran first", async () => {
+    const tree = await scriptedTree({
+      build: `node -e "require('fs').writeFileSync('built.txt','1')"`,
+      test: `node -e "process.exit(require('fs').existsSync('built.txt') ? 1 : 0)"`,
+    });
+    const outcome = await captureRedBaselineForChangedTests({
+      ...baseInput(tree),
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(outcome.kind).toBe("captured");
+    await rm(tree, { recursive: true, force: true });
+  });
+
+  it("refuses, minting nothing, when the granted build fails", async () => {
+    const tree = await scriptedTree({ build: "exit 3", test: "exit 1" });
+    const outcome = await captureRedBaselineForChangedTests({
+      ...baseInput(tree),
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(outcome.kind).toBe("integrityFailed");
+    expect(await hasRedBaseline(tj.store, REQ_A)).toBe(false);
+    await rm(tree, { recursive: true, force: true });
+  });
+
+  it("refuses when the granted build is killed on the timeout", async () => {
+    const tree = await scriptedTree({
+      build: `node -e "setTimeout(()=>{},60000)"`,
+      test: "exit 1",
+    });
+    const outcome = await captureRedBaselineForChangedTests({
+      ...baseInput(tree),
+      grantedCommands: ["npm run test", "npm run build"],
+      timeoutMs: 300,
+    });
+    expect(outcome.kind).toBe("integrityDidNotRun");
+    expect(await hasRedBaseline(tj.store, REQ_A)).toBe(false);
+    await rm(tree, { recursive: true, force: true });
+  });
+});

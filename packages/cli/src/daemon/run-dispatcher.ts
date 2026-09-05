@@ -108,6 +108,7 @@ import {
 import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { composeGateRegistry } from "./compose-gate-registry.js";
+import { withRedBaselineTree } from "./red-baseline-tree.js";
 import {
   createRealPostCompletionGitEffects,
   type PostCompletionGitEffects,
@@ -617,46 +618,19 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       use: (worktreePath: string) => Promise<T>,
     ): Promise<T | undefined> {
       const base = runBaseByChangeSetId.get(changeSetId);
-      if (base === undefined || testPaths.length === 0) return undefined;
-      const treePath = join(
-        worktreesRootDirFor(base.controlDir),
-        `red-baseline-${candidateObjectId.slice(0, 12)}`,
+      if (base === undefined) return undefined;
+      return withRedBaselineTree(
+        {
+          plumbing,
+          controlDir: base.controlDir,
+          worktreesRootDir: worktreesRootDirFor(base.controlDir),
+          baseObjectId: base.baseObjectId,
+          projectDir,
+          candidateObjectId,
+          testPaths,
+        },
+        use,
       );
-      try {
-        await plumbing.run(["worktree", "add", "--detach", treePath, base.baseObjectId], {
-          cwd: base.controlDir,
-        });
-      } catch {
-        return undefined;
-      }
-      try {
-        await plumbing.run(["checkout", candidateObjectId, "--", ...testPaths], { cwd: treePath });
-        /**
-         * ⚠️ THE BASE TREE NEEDS ITS DEPENDENCIES TOO, and until 2026-09-05 it
-         * never got them — the attempt worktree above was provisioned and this
-         * one was not, so the red-baseline command ran with no `node_modules`
-         * at all.
-         *
-         * That did not merely fail; it FABRICATED. `npm` exits non-zero for a
-         * missing dependency tree, `runToExitStatus` reports `ran: true`, and
-         * `captureTddBaseline` mints `captured` — a red baseline, the strongest
-         * evidence this system has, earned by an uninstalled tree rather than
-         * by a failing test. Every unit's red half was vacuous for the same
-         * reason, which is exactly the confusion `didNotRun` exists to prevent,
-         * arriving one layer below it.
-         *
-         * Same call, same source checkout and same trade as the attempt path
-         * below; a non-Node project provisions nothing and proceeds.
-         */
-        await provisionWorktreeDependencies({ worktreePath: treePath, sourceDir: projectDir });
-        return await use(treePath);
-      } catch {
-        return undefined;
-      } finally {
-        await plumbing
-          .run(["worktree", "remove", "--force", treePath], { cwd: base.controlDir })
-          .catch(() => undefined);
-      }
     },
   };
 

@@ -13,7 +13,8 @@
  * `engine-conformance` are what still pin the UNregistered remainder, and they
  * are as load-bearing as the membership ones.
  */
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -486,32 +487,76 @@ describe("the candidate suite runs the granted build first", () => {
   });
 
   /**
-   * ⚠️ WHERE THE REASON IS ACTUALLY SAID. `loadCandidateCoverage` discards the
-   * candidate run's status by construction — it reads a report or it does not —
-   * so the coverage verdict cannot carry this. The TDD gate can: it surfaces
-   * `CandidateTestRun.command` verbatim as its verdict's `command`. This pins
-   * the string that gets there, so the one line an operator reads names the
-   * build rather than a reporter they never misconfigured.
+   * ⚠️ ASSERTED THROUGH THE WIRING, not as a pure function. A review round
+   * showed the first form of this test called `describeFailedIntegrityCommand`
+   * directly while its comment claimed to pin what an operator reads — so
+   * replacing the call site with any other string would have kept it green.
+   *
+   * The TDD gate is the verdict that can carry the reason: it surfaces
+   * `CandidateTestRun.command` verbatim. Reaching it needs the red half
+   * established first, so the BASE tree here builds and fails its tests
+   * (a genuine red baseline) while the CANDIDATE tree's build is broken.
    */
-  it("names the failed build, and the exit status, for the verdict that can carry it", () => {
+  it("names the failed build in the verdict an operator actually reads", async () => {
+    candidateTree = await scriptedTree({ build: "exit 3", test: "exit 0" });
+    const baseTree = await scriptedTree({ build: "exit 0", test: "exit 1" });
+    const registry = composeGateRegistry({
+      attempts: {
+        ...attemptsFor(candidateTree),
+        diffAgainstBase: (): Promise<string | undefined> =>
+          Promise.resolve("--- a/src/x.test.ts\n+++ b/src/x.test.ts\n+it('x', () => {});\n"),
+        withBaseTree: (async (
+          _changeSetId: string,
+          _objectId: string,
+          _testPaths: readonly string[],
+          use: (worktreePath: string) => Promise<unknown>,
+        ) => use(baseTree)) as typeof NO_ATTEMPTS.withBaseTree,
+      },
+      projectId: "fixture-project",
+      requirements: requirements([buildRequirement({ id: REQ_1 })]),
+      workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [REQ_1])]),
+    });
+    const results = await registry.firePerWorkUnit({
+      stage: "verifying",
+      changeSetId: CHANGE_SET_ID,
+      workUnitId: UNIT_A,
+      objectId: OBJECT_ID,
+      journal,
+    });
+    const tdd = results.find((result) => result.name === "tdd-evidence");
+    expect(tdd?.verdict.passed).toBe(false);
+    expect(tdd?.verdict.command).toContain("npm run build");
+    expect(tdd?.verdict.command).toMatch(/build failed/i);
+    await rm(baseTree, { recursive: true, force: true });
+  });
+
+  /** The string itself, as a cheap sibling of the wiring assertion above. */
+  it("says the build and its exit status, and never blames the reporter", () => {
     const message = describeFailedIntegrityCommand("npm run build", 3);
     expect(message).toContain("npm run build");
     expect(message).toContain("3");
-    expect(message).toMatch(/build failed/i);
     expect(message).not.toMatch(/coverage report/);
   });
 
   /**
-   * The build genuinely runs, proven by its side effect: only the build writes
-   * the report, so a gate that got past "unmeasured" can only have run it.
+   * ⚠️ THE ORDER IS PROVEN, NOT THE EXECUTION. An earlier version of this test
+   * had the BUILD write the report, which a review round showed pins nothing:
+   * `loadCandidateCoverage` reads the report only after the whole run resolves,
+   * so a build moved BELOW the acceptance command would still have left the
+   * file there in time and the test would still have passed.
+   *
+   * Now the build writes only a marker and the SUITE writes the report, and
+   * only when the marker is already there. "coverage OK" is then reachable
+   * exactly when the build genuinely preceded the suite.
    */
-  it("runs the build before the suite, so its output is on disk", async () => {
+  it("runs the build BEFORE the suite, proven by a marker the suite requires", async () => {
     candidateTree = await scriptedTree({
-      build:
-        `node -e "require('fs').mkdirSync('coverage',{recursive:true});` +
+      build: `node -e "require('fs').writeFileSync('built.txt','1')"`,
+      test:
+        `node -e "if(!require('fs').existsSync('built.txt'))process.exit(1);` +
+        `require('fs').mkdirSync('coverage',{recursive:true});` +
         `require('fs').writeFileSync('coverage/lcov.info',` +
         `['TN:','SF:src/a.ts','DA:1,1','LF:1','LH:1','end_of_record',''].join(String.fromCharCode(10)))"`,
-      test: "exit 0",
     });
     const outcome = await fireCoverage(candidateTree);
     expect(outcome.detail).not.toMatch(/no coverage report was produced/);
@@ -519,13 +564,60 @@ describe("the candidate suite runs the granted build first", () => {
   });
 
   /**
-   * No integrity grant means no build to order, and the build fixture here
-   * would FAIL if it were run — so this also proves the ordering is driven by
-   * the envelope's grants rather than by the presence of a `build` script.
+   * ⚠️ A STALE REPORT FROM THE PRE-DISPATCH BASE RUN MUST NOT BE SCORED AS THE
+   * CANDIDATE'S (2026-09-05, raised by adversarial review of this very fix).
+   *
+   * `captureTddBaseline` runs pre-dispatch in the ATTEMPT'S OWN worktree — "the
+   * worktree comes from `retainedWorkers`, not a second `git worktree add`" —
+   * so once the build is ordered, that base run leaves a real
+   * `coverage/lcov.info` behind describing BASE coverage. Ordering the build
+   * therefore created a report where none used to exist, and the refusal
+   * added beside it returns BEFORE the suite runs, so nothing overwrites it.
+   * `loadCandidateCoverage` would then read the base's report, score the diff
+   * against it, and publish `passed: true` for a candidate whose build is
+   * broken — strictly worse than the misleading refusal being fixed.
+   *
+   * The rule this restores is the gate's own: an unmeasured candidate is
+   * refused. A suite that never ran produced no measurement, whatever file
+   * happens to be on disk.
+   */
+  it("never scores a report the candidate's own suite did not produce", async () => {
+    candidateTree = await scriptedTree({ build: "exit 3", test: "exit 0" });
+    await mkdir(join(candidateTree, "coverage"), { recursive: true });
+    await writeFile(
+      join(candidateTree, "coverage", "lcov.info"),
+      ["TN:", "SF:src/a.ts", "DA:1,1", "LF:1", "LH:1", "end_of_record", ""].join("\n"),
+      "utf8",
+    );
+    const outcome = await fireCoverage(candidateTree);
+    expect(outcome.passed).toBe(false);
+    expect(outcome.detail).not.toMatch(/coverage OK/);
+  });
+
+  /**
+   * ⚠️ ASSERTED ON THE FILESYSTEM, not on the verdict. A review round showed
+   * the previous form of this test watched a channel that cannot tell the two
+   * worlds apart: the coverage verdict says "no report" whether the build was
+   * skipped or merely useless, so both the correct behaviour and its opposite
+   * were green. A sentinel the build itself writes is the observable that
+   * actually discriminates.
    */
   it("does not run a build the envelope does not grant", async () => {
-    candidateTree = await scriptedTree({ build: "exit 3", test: "exit 0" });
-    const outcome = await fireCoverage(candidateTree, ["npm run test"]);
-    expect(outcome.detail).toMatch(/no coverage report was produced/);
+    candidateTree = await scriptedTree({
+      build: `node -e "require('fs').writeFileSync('sentinel.txt','ran')"`,
+      test: "exit 0",
+    });
+    await fireCoverage(candidateTree, ["npm run test"]);
+    expect(existsSync(join(candidateTree, "sentinel.txt"))).toBe(false);
+  });
+
+  /** The same sentinel, the same fixture, one grant added — so the pair isolates the grant. */
+  it("runs exactly the build the envelope does grant", async () => {
+    candidateTree = await scriptedTree({
+      build: `node -e "require('fs').writeFileSync('sentinel.txt','ran')"`,
+      test: "exit 0",
+    });
+    await fireCoverage(candidateTree, ["npm run test", "npm run build"]);
+    expect(existsSync(join(candidateTree, "sentinel.txt"))).toBe(true);
   });
 });

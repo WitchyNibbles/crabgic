@@ -87,13 +87,27 @@ const NON_INSTRUMENTABLE_MARKERS: readonly string[] = Object.freeze([
  * Paths a project's own coverage configuration deliberately leaves out of the
  * denominator — supplied by the caller, because only the project knows.
  *
- * ⚠️ REQUIRED FOR CORRECTNESS, not a convenience knob, and found by running this
- * gate against crabgic itself. `vitest.config.ts` here scopes `coverage.include`
- * to `packages/*​/src/**` (plus two named files), so `scripts/*.mjs` is genuinely
- * absent from every report this repository produces. Without a way to say so,
- * the absent-file branch would refuse any change set touching a build script —
- * a false refusal, and one that looks exactly like the true refusal it exists
- * to raise.
+ * ⚠️ NO PRODUCTION CALLER, AND THAT IS DELIBERATE (corrected 2026-09-05).
+ *
+ * This was introduced on the strength of crabgic's own configuration: at the
+ * time `coverage.include` was scoped to `packages/*​/src/**` plus two named
+ * files, so `scripts/*.mjs` was absent from every report the repository
+ * produced and any change set touching a build script was refused. That premise
+ * no longer holds — `scripts/**​/*.mjs` is in `coverage.include`, and the case
+ * was closed by MEASURING those files rather than by exempting them.
+ *
+ * It was closed that way because wiring this knob was measured and rejected. An
+ * excluded path `continue`s below before any counter is touched, so a change set
+ * touching ONLY excluded paths scores `pct === undefined` with no absent files,
+ * and `../coverage-gate.ts` returns `passed: true` with "no instrumentable lines
+ * changed" — a full pass with zero measurement, which is precisely the
+ * self-exemption `../coverage-gate-registration.ts` says "must not be reopened
+ * one level up".
+ *
+ * So this is an unexercised parameter kept for a project whose own tooling
+ * genuinely cannot instrument a path crabgic can see changing. Before wiring it
+ * anywhere, close the vacuity above first: an exclusion that empties the
+ * denominator must refuse, not pass.
  *
  * Segment-aware prefixes, matching the containment convention
  * `EnvelopePolicy.allowedPathPrefixes` already uses: `scripts` excludes

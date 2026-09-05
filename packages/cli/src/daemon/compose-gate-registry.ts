@@ -120,6 +120,7 @@ import {
   REQUIRED_SECURITY_FIXTURE_IDS,
   runGrantedAcceptanceCommand,
   runGrantedIntegrityCommand,
+  selectIntegrityCommand,
   TDD_GATE_NAME,
   type GateContext,
   type GateRegistry,
@@ -317,6 +318,25 @@ export function workUnitRequirementIds(
  * owner ruling R5 exists to refuse.
  */
 /**
+ * One candidate suite execution.
+ *
+ * ⚠️ `suiteRan` IS NOT DERIVABLE FROM `exitStatus`, and conflating them is what
+ * made the ordering fix briefly worse than the bug. Every refusal here is a
+ * non-zero status, but only some of them mean the acceptance command actually
+ * executed — and `loadCandidateCoverage` reads a report off the same worktree
+ * afterwards. Once the build is ordered, the pre-dispatch base run leaves a
+ * real `coverage/lcov.info` in the attempt's own worktree, so a candidate that
+ * refused BEFORE its suite ran would have had the BASE's report scored as its
+ * own and published `passed: true` on a broken build.
+ */
+interface CandidateSuiteRun {
+  readonly command: string;
+  readonly exitStatus: number;
+  /** True only when the granted acceptance command itself ran to completion. */
+  readonly suiteRan: boolean;
+}
+
+/**
  * What a candidate's verdict says when the granted build failed.
  *
  * Exported because it is the whole product of the refusal: the TDD gate
@@ -326,6 +346,13 @@ export function workUnitRequirementIds(
  * report was produced for this candidate", which is true and points at the
  * wrong thing entirely.
  */
+export function describeIncompleteIntegrityCommand(command: string, reason: string): string {
+  return (
+    `eo-gates: the granted build did not complete in this candidate's worktree ` +
+    `("${command}": ${reason}), so the tree was never built`
+  );
+}
+
 export function describeFailedIntegrityCommand(command: string, exitStatus: number): string {
   return (
     `eo-gates: the granted build failed in this candidate's worktree ` +
@@ -337,18 +364,26 @@ export function describeFailedIntegrityCommand(command: string, exitStatus: numb
 async function runCandidateSuite(
   attempts: AttemptSurface,
   context: GateContext,
-): Promise<{ readonly command: string; readonly exitStatus: number }> {
+): Promise<CandidateSuiteRun> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) {
-    return { command: "eo-gates: no work unit to measure", exitStatus: 1 };
+    return { command: "eo-gates: no work unit to measure", exitStatus: 1, suiteRan: false };
   }
   const worktreePath = attempts.worktreePathFor(workUnitId);
   if (worktreePath === undefined) {
-    return { command: `eo-gates: no retained worktree for "${workUnitId}"`, exitStatus: 1 };
+    return {
+      command: `eo-gates: no retained worktree for "${workUnitId}"`,
+      exitStatus: 1,
+      suiteRan: false,
+    };
   }
   const granted = attempts.grantedCommandsFor(context.changeSetId);
   if (granted === undefined) {
-    return { command: "eo-gates: no envelope resolved for this change set", exitStatus: 1 };
+    return {
+      command: "eo-gates: no envelope resolved for this change set",
+      exitStatus: 1,
+      suiteRan: false,
+    };
   }
   /**
    * ⚠️ THE PRODUCER'S OWN RUNNER, not a second one, and not `captureTddBaseline`.
@@ -385,19 +420,39 @@ async function runCandidateSuite(
    * reads as a project that forgot to configure a reporter and sends the reader
    * to fix something that is not broken.
    */
-  const build = await runGrantedIntegrityCommand({ grantedCommands: granted, worktreePath });
-  if (build.ran && build.exitStatus !== 0) {
-    return {
-      command: describeFailedIntegrityCommand(build.command, build.exitStatus),
-      exitStatus: build.exitStatus,
-    };
+  const integrityCommand = selectIntegrityCommand(granted);
+  if (integrityCommand !== undefined) {
+    const build = await runGrantedIntegrityCommand({ grantedCommands: granted, worktreePath });
+    /**
+     * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION — the same correction
+     * `captureTddBaseline` carries. A build killed on the timeout reports
+     * `ran: false`, and proceeding on that is proceeding into an unbuilt tree.
+     */
+    if (!build.ran) {
+      return {
+        command: describeIncompleteIntegrityCommand(integrityCommand, build.reason),
+        exitStatus: 1,
+        suiteRan: false,
+      };
+    }
+    if (build.exitStatus !== 0) {
+      return {
+        command: describeFailedIntegrityCommand(build.command, build.exitStatus),
+        exitStatus: build.exitStatus,
+        suiteRan: false,
+      };
+    }
   }
 
   const run = await runGrantedAcceptanceCommand({ grantedCommands: granted, worktreePath });
   if (!run.ran) {
-    return { command: run.command ?? "eo-gates: candidate suite", exitStatus: 1 };
+    return {
+      command: run.command ?? "eo-gates: candidate suite",
+      exitStatus: 1,
+      suiteRan: false,
+    };
   }
-  return { command: run.command, exitStatus: run.exitStatus };
+  return { command: run.command, exitStatus: run.exitStatus, suiteRan: true };
 }
 
 /**
@@ -418,7 +473,7 @@ async function runCandidateSuite(
  */
 async function loadCandidateCoverage(
   attempts: AttemptSurface,
-  runCandidateOnce: (context: GateContext) => Promise<{ readonly exitStatus: number }>,
+  runCandidateOnce: (context: GateContext) => Promise<CandidateSuiteRun>,
   context: GateContext,
 ): Promise<CoverageMeasurement | undefined> {
   const workUnitId = context.workUnitId;
@@ -431,7 +486,13 @@ async function loadCandidateCoverage(
    * nothing. Shared with the TDD gate, so this costs one execution per candidate
    * rather than one per gate.
    */
-  await runCandidateOnce(context);
+  const run = await runCandidateOnce(context);
+  /**
+   * ⚠️ NO SUITE, NO MEASUREMENT — whatever file is on disk. See
+   * `CandidateSuiteRun.suiteRan`: the report in this worktree may be the
+   * pre-dispatch BASE run's, and scoring it would attest the wrong tree.
+   */
+  if (!run.suiteRan) return undefined;
   const report = await readCoverageSummary(worktreePath);
   if (report === undefined) return undefined;
   const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
@@ -518,8 +579,8 @@ function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): st
  */
 function createCandidateSuiteRunner(
   attempts: AttemptSurface,
-): (context: GateContext) => Promise<{ readonly command: string; readonly exitStatus: number }> {
-  const inFlight = new Map<string, Promise<{ command: string; exitStatus: number }>>();
+): (context: GateContext) => Promise<CandidateSuiteRun> {
+  const inFlight = new Map<string, Promise<CandidateSuiteRun>>();
   return (context) => {
     const key = `${context.changeSetId}:${context.workUnitId ?? "-"}:${context.objectId}`;
     let pending = inFlight.get(key);
