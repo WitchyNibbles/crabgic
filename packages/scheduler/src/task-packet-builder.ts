@@ -25,6 +25,7 @@
 import {
   CURRENT_SCHEMA_VERSION,
   TaskPacketSchema,
+  isPathAtOrBelow,
   type AuthorizationEnvelope,
   type TaskPacket,
   type SpecRecord,
@@ -80,15 +81,44 @@ export interface BuildTaskPacketResult {
   readonly lessonPreamble: string | undefined;
 }
 
-function assertSubset(
-  offendingKind: "ownedPaths" | "commands",
-  requested: readonly string[],
-  allowed: readonly string[],
-): void {
-  const allowedSet = new Set(allowed);
-  const offending = requested.filter((p) => !allowedSet.has(p));
+/**
+ * Owned paths are CONTAINED, never merely members.
+ *
+ * An envelope granting the directory `scripts/stale-dist` covers a work unit
+ * owning `scripts/stale-dist/units.mjs`, and this must say so: the compiled
+ * permission profile already emits `Write(//<worktree>/scripts/stale-dist/**)`
+ * for that grant, the standing-policy gate reads the pair as contained, and
+ * the intake's unused-authority report counts the grant as used. Exact
+ * string-set membership disagreed with all three, and on 2026-09-05 run
+ * `aff03e3a` died of that disagreement 36ms after its intake freeze — refused
+ * at dispatch with zero work units attempted, by a rule no written authority
+ * in this repository states.
+ *
+ * `isPathAtOrBelow` is imported rather than reimplemented, and that is the
+ * whole point: a private matcher here is exactly what failed, and the
+ * repository has measured what a second implementation costs (6895 mismatches
+ * over a 51,911-prefix corpus — see `normalizePathPrefix`'s own comment).
+ */
+function assertPathSubset(requested: readonly string[], allowed: readonly string[]): void {
+  const offending = requested.filter((p) => !isPathAtOrBelow(p, allowed));
   if (offending.length > 0) {
-    throw new PacketEnvelopeViolationError(offendingKind, offending);
+    throw new PacketEnvelopeViolationError("ownedPaths", offending);
+  }
+}
+
+/**
+ * Commands stay on EXACT membership — a command is not a path.
+ *
+ * `npm run build` does not confer `npm run build --workspace x`, and there is
+ * no containment relation between two command strings that this system has
+ * ever ruled on. `is-contained.ts`'s `exactlyContained` (03) draws the same
+ * line for the same reason.
+ */
+function assertCommandSubset(requested: readonly string[], allowed: readonly string[]): void {
+  const allowedSet = new Set(allowed);
+  const offending = requested.filter((c) => !allowedSet.has(c));
+  if (offending.length > 0) {
+    throw new PacketEnvelopeViolationError("commands", offending);
   }
 }
 
@@ -103,10 +133,10 @@ function assertSubset(
  * truncated.
  */
 export function buildTaskPacket(options: BuildTaskPacketOptions): BuildTaskPacketResult {
-  assertSubset("ownedPaths", options.ownedPaths, options.envelope.ownedPaths);
+  assertPathSubset(options.ownedPaths, options.envelope.ownedPaths);
 
   const allowedCommands = options.allowedCommands ?? options.envelope.commands;
-  assertSubset("commands", allowedCommands, options.envelope.commands);
+  assertCommandSubset(allowedCommands, options.envelope.commands);
 
   const commandConstraints = allowedCommands.map((cmd) => `Allowed command: ${cmd}`);
   const constraints = [...commandConstraints, ...(options.additionalConstraints ?? [])];

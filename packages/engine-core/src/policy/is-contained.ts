@@ -1,4 +1,4 @@
-import { normalizePathPrefix } from "@crabgic/contracts";
+import { isPathAtOrBelow, normalizePathPrefix } from "@crabgic/contracts";
 import type { AuthorizationEnvelope, EnvelopePolicy } from "@crabgic/contracts";
 import { validateOwnedPath } from "../compiler/owned-path.js";
 
@@ -67,14 +67,15 @@ function normalizePath(raw: string): string | undefined {
  * phase's CRITICAL owned-path confinement escape lived.
  */
 function pathContained(ownedPath: string, allowedPrefixes: readonly string[]): boolean {
-  const owned = normalizePath(ownedPath);
-  if (owned === undefined) return false;
-
-  return allowedPrefixes.some((rawPrefix) => {
-    const prefix = normalizePath(rawPrefix);
-    if (prefix === undefined) return false;
-    return owned === prefix || owned.startsWith(`${prefix}/`);
-  });
+  // 03's own boundary still runs FIRST on both sides (see `normalizePath`),
+  // for the reason its comment gives. The COMPARISON is 02's one predicate —
+  // `isPathAtOrBelow` — and no longer a fourth copy of the same three lines.
+  // Round 12 (2026-09-05): the copy in `@crabgic/scheduler`'s TaskPacket
+  // builder had never been written at all, was exact string membership
+  // instead, and refused a whole run at dispatch.
+  if (normalizePath(ownedPath) === undefined) return false;
+  const screened = allowedPrefixes.filter((prefix) => normalizePath(prefix) !== undefined);
+  return isPathAtOrBelow(ownedPath, screened);
 }
 
 /** Exact-set membership over trimmed values — used for every non-path dimension. */

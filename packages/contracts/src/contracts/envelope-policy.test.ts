@@ -231,3 +231,67 @@ describe("isUsablePathPrefix is exactly normalizePathPrefix", () => {
     expect(normalizePathPrefix("src /")).toBe("src ");
   });
 });
+
+/**
+ * `isPathAtOrBelow` — the repository's ONE authority-path containment
+ * predicate (2026-09-05).
+ *
+ * These cases pin the two properties the callers rely on, and nothing else:
+ * containment is SEGMENT-AWARE (so a grant of `src` never leaks `srcfoo`),
+ * and it is ONE-DIRECTIONAL (a grant of `src/login` never covers `src`,
+ * which is the direction `debt-index.ts`'s deliberately bidirectional
+ * `touches` differs on — reusing that one here would admit a real widening).
+ */
+describe("isPathAtOrBelow — segment-aware, one-directional authority containment", () => {
+  it("covers a file beneath a granted directory — the run aff03e3a case", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("scripts/stale-dist/units.mjs", ["scripts/stale-dist"])).toBe(true);
+    expect(isPathAtOrBelow("scripts/stale-dist/walk.mjs", ["scripts/stale-dist"])).toBe(true);
+  });
+
+  it("covers the granted path itself", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("scripts/stale-dist", ["scripts/stale-dist"])).toBe(true);
+    expect(isPathAtOrBelow("package.json", ["package.json"])).toBe(true);
+  });
+
+  it("is spelling-insensitive on both sides, through the one canonical normalizer", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("./scripts/stale-dist/units.mjs", ["scripts/stale-dist/"])).toBe(true);
+    expect(isPathAtOrBelow("scripts//stale-dist/units.mjs", ["./scripts/./stale-dist"])).toBe(true);
+  });
+
+  it("never matches a sibling that merely shares a string prefix", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("srcfoo/x.ts", ["src"])).toBe(false);
+    expect(isPathAtOrBelow("scripts/stale-dist-extra/x.mjs", ["scripts/stale-dist"])).toBe(false);
+  });
+
+  it("is one-directional: a grant of a child never covers its parent", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("scripts", ["scripts/stale-dist"])).toBe(false);
+  });
+
+  it("fails closed on either side when a spelling cannot grant anything", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("scripts/stale-dist/../../etc/passwd", ["scripts"])).toBe(false);
+    expect(isPathAtOrBelow("/etc/passwd", ["etc"])).toBe(false);
+    expect(isPathAtOrBelow("~/.ssh/id_rsa", ["~"])).toBe(false);
+    expect(isPathAtOrBelow("scripts/stale-dist/*.mjs", ["scripts"])).toBe(false);
+    expect(isPathAtOrBelow("scripts/x.mjs", ["scripts/**"])).toBe(false);
+    expect(isPathAtOrBelow("scripts/x.mjs", [])).toBe(false);
+  });
+
+  /**
+   * `normalizePathPrefix` trims the WHOLE string and never an interior
+   * segment, so a directory genuinely named `" "` stays distinct from the
+   * root. Both sides go through it, so the two spellings of one directory
+   * agree and two different directories never collide.
+   */
+  it("does not trim interior segments, matching what the compiler actually grants", async () => {
+    const { isPathAtOrBelow } = await import("./envelope-policy.js");
+    expect(isPathAtOrBelow("src/x.ts", ["./ /src"])).toBe(false);
+    expect(isPathAtOrBelow("./ /src/x.ts", ["./ /src"])).toBe(true);
+    expect(isPathAtOrBelow("src/x.ts", ["src "])).toBe(true);
+  });
+});
