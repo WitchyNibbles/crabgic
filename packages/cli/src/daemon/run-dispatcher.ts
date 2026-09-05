@@ -631,6 +631,24 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       }
       try {
         await plumbing.run(["checkout", candidateObjectId, "--", ...testPaths], { cwd: treePath });
+        /**
+         * ⚠️ THE BASE TREE NEEDS ITS DEPENDENCIES TOO, and until 2026-09-05 it
+         * never got them — the attempt worktree above was provisioned and this
+         * one was not, so the red-baseline command ran with no `node_modules`
+         * at all.
+         *
+         * That did not merely fail; it FABRICATED. `npm` exits non-zero for a
+         * missing dependency tree, `runToExitStatus` reports `ran: true`, and
+         * `captureTddBaseline` mints `captured` — a red baseline, the strongest
+         * evidence this system has, earned by an uninstalled tree rather than
+         * by a failing test. Every unit's red half was vacuous for the same
+         * reason, which is exactly the confusion `didNotRun` exists to prevent,
+         * arriving one layer below it.
+         *
+         * Same call, same source checkout and same trade as the attempt path
+         * below; a non-Node project provisions nothing and proceeds.
+         */
+        await provisionWorktreeDependencies({ worktreePath: treePath, sourceDir: projectDir });
         return await use(treePath);
       } catch {
         return undefined;

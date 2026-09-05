@@ -119,6 +119,7 @@ import {
   type CoverageMeasurement,
   REQUIRED_SECURITY_FIXTURE_IDS,
   runGrantedAcceptanceCommand,
+  runGrantedIntegrityCommand,
   TDD_GATE_NAME,
   type GateContext,
   type GateRegistry,
@@ -315,6 +316,24 @@ export function workUnitRequirementIds(
  * answer that would let a run publish unverified work, which is the failure
  * owner ruling R5 exists to refuse.
  */
+/**
+ * What a candidate's verdict says when the granted build failed.
+ *
+ * Exported because it is the whole product of the refusal: the TDD gate
+ * surfaces this string verbatim as its verdict's `command`, and an operator
+ * reading "the granted build failed" goes and looks at the build, where the
+ * fault is. The message this replaces was the coverage gate's "no coverage
+ * report was produced for this candidate", which is true and points at the
+ * wrong thing entirely.
+ */
+export function describeFailedIntegrityCommand(command: string, exitStatus: number): string {
+  return (
+    `eo-gates: the granted build failed in this candidate's worktree ` +
+    `("${command}" exited ${String(exitStatus)}), so the suite would have measured an ` +
+    `unbuilt tree rather than this change`
+  );
+}
+
 async function runCandidateSuite(
   attempts: AttemptSurface,
   context: GateContext,
@@ -346,6 +365,34 @@ async function runCandidateSuite(
    * own `EvidenceRecord`, and a second record would be a duplicate claim about
    * one execution.
    */
+  /**
+   * ⚠️ BUILD FIRST, AND SAY SO WHEN IT FAILS.
+   *
+   * `git worktree add` materialises tracked files only, and a workspace
+   * package's `main` points into a gitignored `dist/` — so the acceptance
+   * command in a fresh worktree resolves nothing and emits no report.
+   * `@crabgic/git-engine`'s `worktree-dependencies.ts` documents that gap and
+   * assigns it here ("it belongs to the scheduler's ordering rather than to
+   * this module"); until this existed, nothing anywhere ordered the build.
+   *
+   * The command is the envelope's own `integrity`-class grant, already compiled
+   * into the worker's profile beside it — no authority the owner did not give.
+   * A project granting no build proceeds unchanged, because a project with no
+   * build step is a normal project.
+   *
+   * A FAILED BUILD REFUSES WITH ITS OWN REASON. Letting it fall through to the
+   * suite produces "no coverage report was produced for this candidate", which
+   * reads as a project that forgot to configure a reporter and sends the reader
+   * to fix something that is not broken.
+   */
+  const build = await runGrantedIntegrityCommand({ grantedCommands: granted, worktreePath });
+  if (build.ran && build.exitStatus !== 0) {
+    return {
+      command: describeFailedIntegrityCommand(build.command, build.exitStatus),
+      exitStatus: build.exitStatus,
+    };
+  }
+
   const run = await runGrantedAcceptanceCommand({ grantedCommands: granted, worktreePath });
   if (!run.ran) {
     return { command: run.command ?? "eo-gates: candidate suite", exitStatus: 1 };

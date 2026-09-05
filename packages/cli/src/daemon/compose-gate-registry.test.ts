@@ -13,7 +13,7 @@
  * `engine-conformance` are what still pin the UNregistered remainder, and they
  * are as load-bearing as the membership ones.
  */
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -31,6 +31,7 @@ import {
   COMPOSED_GATE_NAMES,
   changeSetRequirementIds,
   composeGateRegistry,
+  describeFailedIntegrityCommand,
 } from "./compose-gate-registry.js";
 
 /**
@@ -404,5 +405,127 @@ describe("changeSetRequirementIds", () => {
     expect(
       changeSetRequirementIds(units([unit(UNIT_A, CHANGE_SET_ID, [])]), CHANGE_SET_ID),
     ).toEqual([]);
+  });
+});
+
+
+/**
+ * ORDER THE BUILD IN THE CANDIDATE'S WORKTREE TOO (2026-09-05).
+ *
+ * The same defect `captureTddBaseline` carries at base: an attempt worktree has
+ * its `node_modules` provisioned but never its `dist/`, so the granted
+ * acceptance command measures a missing build output. On the candidate side the
+ * cost is a REFUSAL WITH THE WRONG REASON — the suite emits no report, the
+ * coverage gate says "no coverage report was produced", and an operator reads
+ * that as a project that forgot its reporter rather than as a tree nobody built.
+ *
+ * `worktree-dependencies.ts` predicted this and assigned it here: "Nothing
+ * currently orders that build first, so an attempt can fail for this reason and
+ * look like a genuine test failure... it belongs to the scheduler's ordering."
+ */
+describe("the candidate suite runs the granted build first", () => {
+  let candidateTree: string;
+
+  async function scriptedTree(scripts: Record<string, string>): Promise<string> {
+    const treeDir = await mkdtemp(join(tmpdir(), "crabgic-candidate-"));
+    await writeFile(
+      join(treeDir, "package.json"),
+      JSON.stringify({ name: "candidate", private: true, scripts }),
+      "utf8",
+    );
+    return treeDir;
+  }
+
+  function attemptsFor(treeDir: string): typeof NO_ATTEMPTS {
+    return {
+      ...NO_ATTEMPTS,
+      worktreePathFor: (): string | undefined => treeDir,
+      grantedCommandsFor: (): readonly string[] | undefined => ["npm run test", "npm run build"],
+    };
+  }
+
+  async function fireCoverage(
+    treeDir: string,
+    grantedCommands: readonly string[] = ["npm run test", "npm run build"],
+  ): Promise<{ passed: boolean; detail: string }> {
+    const registry = composeGateRegistry({
+      attempts: {
+        ...attemptsFor(treeDir),
+        grantedCommandsFor: (): readonly string[] | undefined => grantedCommands,
+      },
+      projectId: "fixture-project",
+      requirements: requirements([]),
+      workUnits: units([unit(UNIT_A, CHANGE_SET_ID, [])]),
+    });
+    const results = await registry.firePerWorkUnit({
+      stage: "verifying",
+      changeSetId: CHANGE_SET_ID,
+      workUnitId: UNIT_A,
+      objectId: OBJECT_ID,
+      journal,
+    });
+    const coverage = results.find((result) => result.name === "changed-line-coverage");
+    expect(coverage).toBeDefined();
+    return { passed: coverage!.verdict.passed, detail: coverage!.verdict.detail };
+  }
+
+  afterEach(async () => {
+    if (candidateTree !== undefined) await rm(candidateTree, { recursive: true, force: true });
+  });
+
+  /**
+   * A build that failed must never reach a PASSING coverage verdict. Without
+   * the build ordered, the suite ran in an unbuilt tree, emitted no report, and
+   * the gate refused for a reason that had nothing to do with the cause; with
+   * it ordered the refusal stands on the real one. Either way it refuses —
+   * which is the safety property, and it is asserted here rather than assumed.
+   */
+  it("never lets a failed build reach a passing coverage verdict", async () => {
+    candidateTree = await scriptedTree({ build: "exit 3", test: "exit 0" });
+    expect((await fireCoverage(candidateTree)).passed).toBe(false);
+  });
+
+  /**
+   * ⚠️ WHERE THE REASON IS ACTUALLY SAID. `loadCandidateCoverage` discards the
+   * candidate run's status by construction — it reads a report or it does not —
+   * so the coverage verdict cannot carry this. The TDD gate can: it surfaces
+   * `CandidateTestRun.command` verbatim as its verdict's `command`. This pins
+   * the string that gets there, so the one line an operator reads names the
+   * build rather than a reporter they never misconfigured.
+   */
+  it("names the failed build, and the exit status, for the verdict that can carry it", () => {
+    const message = describeFailedIntegrityCommand("npm run build", 3);
+    expect(message).toContain("npm run build");
+    expect(message).toContain("3");
+    expect(message).toMatch(/build failed/i);
+    expect(message).not.toMatch(/coverage report/);
+  });
+
+  /**
+   * The build genuinely runs, proven by its side effect: only the build writes
+   * the report, so a gate that got past "unmeasured" can only have run it.
+   */
+  it("runs the build before the suite, so its output is on disk", async () => {
+    candidateTree = await scriptedTree({
+      build:
+        `node -e "require('fs').mkdirSync('coverage',{recursive:true});` +
+        `require('fs').writeFileSync('coverage/lcov.info',` +
+        `['TN:','SF:src/a.ts','DA:1,1','LF:1','LH:1','end_of_record',''].join(String.fromCharCode(10)))"`,
+      test: "exit 0",
+    });
+    const outcome = await fireCoverage(candidateTree);
+    expect(outcome.detail).not.toMatch(/no coverage report was produced/);
+    expect(outcome.detail).toMatch(/coverage OK/);
+  });
+
+  /**
+   * No integrity grant means no build to order, and the build fixture here
+   * would FAIL if it were run — so this also proves the ordering is driven by
+   * the envelope's grants rather than by the presence of a `build` script.
+   */
+  it("does not run a build the envelope does not grant", async () => {
+    candidateTree = await scriptedTree({ build: "exit 3", test: "exit 0" });
+    const outcome = await fireCoverage(candidateTree, ["npm run test"]);
+    expect(outcome.detail).toMatch(/no coverage report was produced/);
   });
 });
