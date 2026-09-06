@@ -367,6 +367,101 @@ describe("driveRun — the DAG dispatch loop", () => {
     expect(fired).toEqual([A]);
   });
 
+  /**
+   * ⚠️ THE RESUME DOOR HAS ITS OWN GUARD, and it is a SECOND copy of the
+   * success test — a resumed unit that fails hands its successors nothing, and
+   * firing here would invite the caller to collect a broken tree as a chained
+   * base. The fold's guard passing says nothing about this one.
+   */
+  it("does not fire the succeeded hook for a RESUMED unit that failed", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    await parkWorkUnit({ journal, workUnitId: A, sessionId: SESSION, resetsAt: 500, runId: RUN_ID });
+
+    const fired: string[] = [];
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      {
+        ...buildDeps(new Map(), newObserved(), new Map()),
+        nowSeconds: () => 1000,
+        resumeParkedUnit: (_ctx, sessionId) =>
+          Promise.resolve({
+            kind: "failed" as const,
+            sessionId,
+            evidenceKind: "workerResultFailure" as const,
+            diagnostics: ["the resumed session ended without a result"],
+          }),
+        onUnitSucceeded: (ctx) => {
+          fired.push(ctx.workUnit.id);
+          return Promise.resolve();
+        },
+      },
+    );
+
+    expect(result.statusById.get(A)).toBe("failed");
+    expect(fired).toEqual([]);
+  });
+
+  /**
+   * ⚠️ AWAITED AT THE RESUME DOOR TOO. `resumeReadyParkedUnits` runs at the TOP
+   * of a round, before that round computes readiness — so a successor of the
+   * resumed unit is dispatched in the SAME round, and a hook that were only
+   * started would let it be cut from a base missing its predecessor's work.
+   *
+   * The hook resolves on a later macrotask on purpose: with the `await` in
+   * place `hookDone:A` precedes `dispatch:B`, and without it the two swap.
+   */
+  it("awaits the succeeded hook at the RESUME door before dispatching a successor", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    await parkWorkUnit({ journal, workUnitId: A, sessionId: SESSION, resetsAt: 500, runId: RUN_ID });
+
+    const events: string[] = [];
+    const deps = buildDeps(new Map(), newObserved(), new Map());
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain() },
+      {
+        ...deps,
+        nowSeconds: () => 1000,
+        createAdapter: (ctx) => {
+          events.push(`dispatch:${ctx.workUnit.id}`);
+          return deps.createAdapter(ctx);
+        },
+        resumeParkedUnit: (_ctx, sessionId) =>
+          Promise.resolve({
+            kind: "succeeded",
+            sessionId,
+            result: buildWorkerResult({ outcome: "succeeded" }),
+          }),
+        onUnitSucceeded: async (ctx) => {
+          events.push(`hookStart:${ctx.workUnit.id}`);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          events.push(`hookDone:${ctx.workUnit.id}`);
+        },
+      },
+    );
+
+    expect(result.statusById.get(A)).toBe("succeeded");
+    // `A` never reaches `createAdapter` — it is RESUMED, not dispatched — so
+    // its hook must still have closed before `B` is cut.
+    expect(events).toEqual([
+      `hookStart:${A}`,
+      `hookDone:${A}`,
+      `dispatch:${B}`,
+      `hookStart:${B}`,
+      `hookDone:${B}`,
+    ]);
+  });
+
   it("resumes a parked-ready unit via the resume seam and completes, instead of sitting parked", async () => {
     const SESSION = "77777777-7777-4777-8777-777777777777";
     // Park A in THIS run with a reset window already in the past.

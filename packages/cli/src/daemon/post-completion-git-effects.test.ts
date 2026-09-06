@@ -333,6 +333,9 @@ describe("integrateCandidate", () => {
     const integrated = await effects.integrateCandidate({
       ref,
       tipObjectId: baseObjectId,
+      // Every candidate in this file is cut from the frozen base, which is
+      // therefore also its three-way merge base.
+      candidateBaseObjectId: baseObjectId,
       candidateObjectId: await candidateFor("export const shared = 2;\n"),
       workUnit: unit(),
       changeSet: changeSet(),
@@ -378,6 +381,9 @@ describe("integrateCandidate", () => {
     const integrated = await effects.integrateCandidate({
       ref,
       tipObjectId: baseObjectId,
+      // Every candidate in this file is cut from the frozen base, which is
+      // therefore also its three-way merge base.
+      candidateBaseObjectId: baseObjectId,
       candidateObjectId,
       workUnit: unit({ title: "co-authored-by somebody else" }),
       changeSet: changeSet(),
@@ -414,6 +420,9 @@ describe("integrateCandidate", () => {
     const integrated = await effects.integrateCandidate({
       ref,
       tipObjectId: baseObjectId,
+      // Every candidate in this file is cut from the frozen base, which is
+      // therefore also its three-way merge base.
+      candidateBaseObjectId: baseObjectId,
       candidateObjectId: await candidateFor("export const shared = 2;\n"),
       workUnit: unit(),
       changeSet: changeSet(),

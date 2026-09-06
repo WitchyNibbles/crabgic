@@ -153,6 +153,17 @@ export interface PostCompletionGitEffects {
     readonly ref: string;
     readonly tipObjectId: string;
     readonly candidateObjectId: string;
+    /**
+     * The base THIS candidate was cut from — the three-way merge base, stated
+     * rather than left to git's ancestry walk.
+     *
+     * ⚠️ NOT OPTIONAL IN PRACTICE once "chain the base" is in force. Integration
+     * commits are single-parent, so no candidate is ever an ancestor of the tip
+     * and git derives the run's frozen base every time. For a chained candidate
+     * that base is wrong in both directions — see `preflightMerge`'s
+     * `mergeBaseObjectId`.
+     */
+    readonly candidateBaseObjectId: string;
     readonly workUnit: WorkUnit;
     readonly changeSet: ChangeSet;
     readonly branchType: BranchType;
@@ -405,6 +416,7 @@ export function createRealPostCompletionGitEffects(
         candidateRef: input.candidateObjectId,
         // The ADVANCING tip, never the frozen base — see the file-level note.
         integrationTipObjectId: input.tipObjectId,
+        mergeBaseObjectId: input.candidateBaseObjectId,
         changeSetId: input.changeSet.id,
       });
       if (!preflight.ok) return { status: "conflict", resolutionUnits: preflight.conflicts };
@@ -436,6 +448,8 @@ export function createRealPostCompletionGitEffects(
             repoDir: controlDir,
             candidateRef: input.candidateObjectId,
             integrationTipObjectId: currentRefValue,
+            // The candidate's base does not move when the REF races ahead.
+            mergeBaseObjectId: input.candidateBaseObjectId,
             changeSetId: input.changeSet.id,
           });
           if (!repreflight.ok) {

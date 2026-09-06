@@ -109,7 +109,8 @@ import {
 import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
 import { changeSetRequirementIds, composeGateRegistry } from "./compose-gate-registry.js";
-import { createBaseTreeSurface } from "./red-baseline-tree.js";
+import { createBaseTreeSurface, type RunBaseResolution } from "./red-baseline-tree.js";
+import { createUnitBaseRegistry } from "./unit-base-registry.js";
 import {
   createRealPostCompletionGitEffects,
   deriveBranchType,
@@ -298,6 +299,15 @@ interface DrivenRun {
    * from "this unit's tip is its predecessor's commit".
    */
   readonly preCollectedByUnitId: ReadonlyMap<string, CollectCandidateResult>;
+  /**
+   * The base each unit was cut from, when it is not the run's frozen base.
+   *
+   * The pipeline needs it as the THREE-WAY MERGE BASE: integration commits are
+   * single-parent, so git derives the frozen base for every candidate, and for
+   * a chained one that is wrong in both directions — see `preflightMerge`'s
+   * `mergeBaseObjectId`.
+   */
+  readonly chainedBaseByUnitId: ReadonlyMap<string, string>;
   /** The very effects object the drive collected through, so the pipeline integrates through one instance rather than a second one built over the same control clone. */
   readonly git: PostCompletionGitEffects;
 }
@@ -536,6 +546,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const clearRetainedRun = (runId: string): void => {
     retainedByRun.delete(runId);
     preCollectedByRun.delete(runId);
+    unitBases.closeRun(runId);
   };
 
   /**
@@ -558,37 +569,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const worktreesRootDirFor = (controlDir: string): string =>
     join(controlDir, "..", "red-baselines");
 
-  const runBaseByChangeSetId = new Map<
-    string,
-    { readonly baseObjectId: string; readonly controlDir: string }
-  >();
-
   /**
-   * The base each WORK UNIT's attempt was actually cut from — owner ruling
-   * 2026-09-06, "chain the base". Absent means the run's frozen base, which is
-   * every unit of a dependency-free DAG and every unit of every run before this
-   * existed.
-   *
-   * ⚠️ THE GATES READ THIS, NOT THE FREEZE, and that is the whole reason it is
-   * keyed per unit. `git diff <base> <candidate>` against the run's freeze would
-   * hand the coverage gate a diff containing the PREDECESSORS' lines and score
-   * this unit against work it did not do; the red baseline would be measured in
-   * a tree missing the very modules the unit's tests import.
+   * Where each run's frozen base, control clone and per-unit chained bases live
+   * — `./unit-base-registry.ts`, extracted so the per-unit answer the GATES read
+   * is reachable by a test that can tell it from the run-scoped one.
    */
-  const unitBaseByKey = new Map<string, string>();
-  const unitBaseKey = (changeSetId: string, workUnitId: string): string =>
-    `${changeSetId}:${workUnitId}`;
+  const unitBases = createUnitBaseRegistry();
 
   /** The run's control clone plus the base THIS unit was cut from, or `undefined` when this dispatcher does not hold the run. */
   const resolveUnitBase = (
     changeSetId: string,
     workUnitId: string,
-  ): { readonly baseObjectId: string; readonly controlDir: string } | undefined => {
-    const run = runBaseByChangeSetId.get(changeSetId);
-    if (run === undefined) return undefined;
-    const chained = unitBaseByKey.get(unitBaseKey(changeSetId, workUnitId));
-    return chained === undefined ? run : { baseObjectId: chained, controlDir: run.controlDir };
-  };
+  ): RunBaseResolution | undefined => unitBases.resolve(changeSetId, workUnitId);
 
   const attempts = {
     /**
@@ -870,7 +862,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * long after this scope has returned. Keyed by change set because that is
      * what a `GateContext` carries; a run id would be unreachable from the gate.
      */
-    runBaseByChangeSetId.set(changeSet.id, { baseObjectId, controlDir });
+    unitBases.openRun(changeSet.id, { runId, baseObjectId, controlDir });
 
     /**
      * ⚠️ BUILT ONCE PER DRIVE, NOT ONCE PER PIPELINE. The drive now commits a
@@ -946,11 +938,25 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * either it committed nothing (`nothing-to-commit`) or its collection was
      * refused, and the pipeline reports the refusal with its own reason.
      */
+    /**
+     * The chained bases this RUN has already resolved, surviving its re-drives.
+     *
+     * ⚠️ RE-RESOLVING IS NOT IDEMPOTENT for a unit with two or more
+     * predecessors: the fold BUILDS a commit, and a second fold of the same
+     * trees yields a different object id (the timestamp moves). A unit resumed
+     * on a later drive would then be collected against a base its worktree was
+     * never cut at, and `commitWorktreeCandidate`'s clean arm would report the
+     * PREDECESSORS' fold commit as that unit's candidate.
+     */
+    const chainedBases = unitBases.chainedBasesFor(runId);
+
     const baseByUnitId = new Map<string, Promise<string>>();
     const baseFor = (workUnit: WorkUnit): Promise<string> => {
       const existing = baseByUnitId.get(workUnit.id);
       if (existing !== undefined) return existing;
       const resolving = (async (): Promise<string> => {
+        const alreadyResolved = chainedBases.get(workUnit.id);
+        if (alreadyResolved !== undefined) return alreadyResolved;
         /**
          * ⚠️ AN UNKNOWN PREDECESSOR REFUSES, IT DOES NOT FALL BACK. Readiness
          * only offers this unit once every id in `dependsOn` is `succeeded`, so
@@ -992,17 +998,48 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
            * A unit dispatched against a base its plan says already contains its
            * dependencies' work would fail its own tests for a reason no
            * operator could read off the verdict.
+           *
+           * ⚠️ THE TYPED RESOLUTION UNITS ARE JOURNALED FIRST, and the paths
+           * ride the message. `preflightMerge` produces a `WorkUnit` per
+           * conflicting path precisely so an operator can see WHICH file to
+           * fix; a count would send them to read a diff they have no id for.
+           * Same entry shape as `runPostCompletionPipeline`'s own
+           * `integration_conflict`, because it is the same fact about the same
+           * change set, reached one stage earlier — ids, roles and repository
+           * paths only, no worker-authored text.
            */
+          if (chained.status === "conflict") {
+            await deps.journal.appendEntry({
+              type: "adjudication_decision",
+              runId,
+              changeSetId: changeSet.id,
+              payload: {
+                decision: "integration_conflict",
+                subjectId: changeSet.id,
+                rationale: JSON.stringify({
+                  workUnitId: workUnit.id,
+                  resolutionWorkUnits: chained.resolutionUnits.map((unit) => ({
+                    id: unit.id,
+                    role: unit.role,
+                    ownedPaths: [...unit.ownedPaths],
+                  })),
+                }),
+              },
+            });
+          }
           throw new Error(
             `run dispatcher: work unit "${workUnit.id}" could not be based on its ` +
               `${String(predecessors.length)} predecessor(s): ${
                 chained.status === "conflict"
-                  ? `their work conflicts in ${String(chained.resolutionUnits.length)} path(s)`
+                  ? `their work conflicts in ${chained.resolutionUnits
+                      .flatMap((unit) => unit.ownedPaths)
+                      .join(", ")}, and ${String(chained.resolutionUnits.length)} resolution ` +
+                    `work unit(s) were journaled`
                   : chained.reason
               }`,
           );
         }
-        unitBaseByKey.set(unitBaseKey(changeSet.id, workUnit.id), chained.objectId);
+        chainedBases.set(workUnit.id, chained.objectId);
         return chained.objectId;
       })();
       baseByUnitId.set(workUnit.id, resolving);
@@ -1309,7 +1346,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     // `baseObjectId` and `controlDir` are resolved HERE and nowhere else, so the
     // post-completion pipeline integrates against the same frozen base every
     // attempt was cut from rather than re-deriving it.
-    return { result, baseObjectId, controlDir, preCollectedByUnitId, git };
+    return {
+      result,
+      baseObjectId,
+      controlDir,
+      preCollectedByUnitId,
+      chainedBaseByUnitId: chainedBases,
+      git,
+    };
   }
 
   /**
@@ -1430,6 +1474,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         statusById: driven.result.statusById,
         worktreePathByUnitId,
         preCollectedByUnitId: driven.preCollectedByUnitId,
+        chainedBaseByUnitId: driven.chainedBaseByUnitId,
       },
       {
         journal: deps.journal,

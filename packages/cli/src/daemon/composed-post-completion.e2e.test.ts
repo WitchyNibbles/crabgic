@@ -37,7 +37,7 @@
  *     ever holds, so a cached per-unit object id cannot satisfy it.
  */
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -302,6 +302,12 @@ interface BootOptions {
    * look different.
    */
   readonly observeWorktree?: (workUnitId: string, worktreePath: string) => void;
+  /**
+   * What a unit WITH dependencies does to its predecessor's file, on top of
+   * writing its own. Only reachable at all because the unit's worktree is cut
+   * from that predecessor's collected work — which is the point.
+   */
+  readonly chainEdit?: "append" | "delete";
 }
 
 /**
@@ -367,6 +373,10 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
            * Spawning is when a worker starts doing work, so that is when the
            * edit belongs. Synchronous because `spawn` is.
            */
+          const chained =
+            options.chainEdit !== undefined && ctx.workUnit.dependsOn.length > 0
+              ? join(worktreePath, unitFilePath(UNIT_A_ID))
+              : undefined;
           const adapter = new FakeEngineAdapter(
             buildFakeEngineScript({
               /**
@@ -398,6 +408,17 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
           adapter.spawn = (spawnPacket, profile, adjudicateCall) => {
             mkdirSync(dirname(target), { recursive: true });
             writeFileSync(target, `export const unit = "${ctx.workUnit.title}"\n`, "utf8");
+            if (chained !== undefined) {
+              if (options.chainEdit === "delete") {
+                rmSync(chained, { force: true });
+              } else {
+                writeFileSync(
+                  chained,
+                  `${readFileSync(chained, "utf8")}export const consumed = true\n`,
+                  "utf8",
+                );
+              }
+            }
             return spawn(spawnPacket, profile, adjudicateCall);
           };
           return Promise.resolve(adapter);
@@ -525,6 +546,11 @@ function treePaths(ref: string): readonly string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+/** One file's content in `ref`'s tree, read out of real git. */
+function fileAt(ref: string, path: string): string {
+  return runFixtureGit(projectDir, ["show", `${ref}:${path}`]);
 }
 
 /**
@@ -741,6 +767,92 @@ describe("a completed run walks to published_local through a fired gate (defect 
     expect(paths).toContain(unitFilePath(UNIT_B_ID));
   }, 180_000);
 
+  /**
+   * ⚠️ THE MERGE BASE THREE-WAY MERGES ARE ACTUALLY GIVEN. Integration commits
+   * are SINGLE-PARENT (`buildIntegrationCommit`), so no candidate is ever an
+   * ancestor of the integration tip and `git merge-tree` derives the run's
+   * FROZEN base every time. Harmless while every candidate was cut from that
+   * base; wrong in both directions once one is cut from another's work.
+   *
+   * This arm is the FALSE CONFLICT. `B` legitimately edits the file `A`
+   * created — the plainest shape of "primitives, then the code that consumes
+   * them", and the shape the ruling exists to enable. Against the frozen base
+   * both sides read as having ADDED that file, so merge-ort reports add/add,
+   * the run settles `blocked`, a bogus resolution work unit is journaled, and
+   * nothing publishes. Measured 2026-09-06 by an adversarial round.
+   */
+  it("T7 — a dependent unit may edit its predecessor's file, and the run still publishes both", async () => {
+    const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
+    await seedApprovalSeal(approved.criteriaHash);
+    seedIntakeState({
+      requirement: approved,
+      workUnits: [
+        unitFixture(UNIT_A_ID, "add the greeting export"),
+        unitFixture(UNIT_B_ID, "consume the greeting export", [UNIT_A_ID]),
+      ],
+      changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        ownedPaths: [`${OWNED_PREFIX}/`],
+        commands: ["npm run test"],
+      }),
+    });
+
+    composed = await bootDaemon({ chainEdit: "append" });
+    const runId = await dispatchAndSettle(composed);
+
+    expect(driveErrors).toEqual([]);
+    expect(composed.deps.runs.get(runId)?.runState).toBe("published_local");
+    const branches = publishedBranches();
+    expect(branches).toHaveLength(1);
+    // BOTH lines: `A` wrote the first, `B` appended the second in a worktree
+    // that could only contain the first because it was cut from `A`'s work.
+    const consumed = fileAt(branches[0]!, unitFilePath(UNIT_A_ID));
+    expect(consumed).toContain("add the greeting export");
+    expect(consumed).toContain("export const consumed = true");
+  }, 180_000);
+
+  /**
+   * ⚠️ AND THE OTHER DIRECTION, WHICH IS WORSE THAN A BLOCKED RUN. `B` removes
+   * the file `A` created — the natural end of a chain like "add the shim,
+   * migrate the callers, remove the shim". Against the frozen base `B`'s side
+   * reads as having done NOTHING to a file the tip added, so the tip's version
+   * wins: `B`'s deletion is silently reverted, `integrateCandidate` reports
+   * `integrated`, and the branch ships a tree no unit's own verification ever
+   * saw. No conflict, no refusal, no operator signal.
+   */
+  it("T8 — a dependent unit's deletion survives integration rather than being silently reverted", async () => {
+    const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
+    await seedApprovalSeal(approved.criteriaHash);
+    seedIntakeState({
+      requirement: approved,
+      workUnits: [
+        unitFixture(UNIT_A_ID, "add the temporary shim"),
+        unitFixture(UNIT_B_ID, "remove the temporary shim", [UNIT_A_ID]),
+      ],
+      changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        ownedPaths: [`${OWNED_PREFIX}/`],
+        commands: ["npm run test"],
+      }),
+    });
+
+    composed = await bootDaemon({ chainEdit: "delete" });
+    const runId = await dispatchAndSettle(composed);
+
+    expect(driveErrors).toEqual([]);
+    expect(composed.deps.runs.get(runId)?.runState).toBe("published_local");
+    const branches = publishedBranches();
+    expect(branches).toHaveLength(1);
+    const paths = treePaths(branches[0]!);
+    expect(paths).not.toContain(unitFilePath(UNIT_A_ID));
+    // `B` did do work of its own, so this is a deletion rather than an empty unit.
+    expect(paths).toContain(unitFilePath(UNIT_B_ID));
+  }, 180_000);
+
   it("T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement", async () => {
     const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
     // Self-consistent by construction: its own `criteriaHash` matches its
@@ -827,29 +939,25 @@ describe("a completed run walks to published_local through a fired gate (defect 
       requirement: approved,
       workUnits: [
         unitFixture(UNIT_A_ID, "rewrite the base export"),
-        // SEQUENTIAL BY DEPENDENCY, deliberately. This case's subject is
-        // conflict detection against the ADVANCING integration tip, not the
-        // scheduler's concurrency, and this test failed once on
-        // `ubuntu-24.04-arm` with the run `failed` rather than `blocked` — a
-        // shape only reachable BEFORE the pipeline runs, since a conflict
-        // settles `blocked` at `integrating`.
-        //
-        // THE CAUSE IS UNCONFIRMED. The most plausible candidate is per-round
-        // concurrency in attempt provisioning — two `git worktree add`s racing
-        // the control clone's shared `.git/config` lock — but the measurement
-        // does not support asserting it: `configureGitIdentity` already retries
-        // that exact failure signature 30 times with jitter, and exhausting
-        // those retries takes longer than the 137 ms the failing run reported.
-        // So `dependsOn` removes concurrency from THIS test's path rather than
-        // fixing a diagnosed defect. What IS established is that the failure is
-        // not a race inside the new walk: the pipeline is one sequential async
-        // function per run, and T3 above still dispatches two units
-        // concurrently, so that coverage is retained per push.
-        //
-        // The conflict is unaffected either way: every attempt worktree is cut
-        // at the frozen base regardless of round, so B's candidate still
-        // diverges from A's integrated tip.
-        unitFixture(UNIT_B_ID, "rewrite the base export differently", [UNIT_A_ID]),
+        /**
+         * ⚠️ INDEPENDENT, AND IT HAD TO BECOME SO (2026-09-06). This pair
+         * carried `dependsOn: [UNIT_A_ID]` to keep the case sequential, on the
+         * stated grounds that "every attempt worktree is cut at the frozen base
+         * regardless of round, so B's candidate still diverges from A's
+         * integrated tip". Owner ruling "chain the base" ended that: a
+         * DEPENDENT unit is now cut from its predecessor's collected work, so
+         * B would SEE A's line and overwrite it — a sequential edit, not a
+         * conflict, and exactly what the ruling exists to allow. Measured: with
+         * the edge in place this case stopped conflicting at all.
+         *
+         * The edge's other purpose was to remove concurrency from this path,
+         * for an UNCONFIRMED `ubuntu-24.04-arm` flake (a suspected `git
+         * worktree add` race on the control clone's config lock). That risk is
+         * knowingly reaccepted rather than bought with an assertion that is no
+         * longer true; T3 above already dispatches two units concurrently, so
+         * the shape is not new to this file.
+         */
+        unitFixture(UNIT_B_ID, "rewrite the base export differently"),
       ],
       changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
       envelope: buildAuthorizationEnvelope({
@@ -863,11 +971,12 @@ describe("a completed run walks to published_local through a fired gate (defect 
       }),
     });
 
-    // Both workers overwrite the SAME tracked line. The first candidate
-    // integrates and advances the tip; the second is then preflighted against
-    // that ADVANCED tip and conflicts for real — which is only detectable
-    // because the tip advances. Against the frozen base both would merge
-    // cleanly, which is the documented vacuity `merge-preflight.ts` warns about.
+    // Both workers overwrite the SAME tracked line, from the SAME base. The
+    // first candidate integrates and advances the tip; the second is then
+    // preflighted against that ADVANCED tip and conflicts for real — which is
+    // only detectable because the tip advances. Comparing the two candidates
+    // against each other's own bases, or against nothing, would merge cleanly,
+    // which is the documented vacuity `merge-preflight.ts` warns about.
     composed = await bootDaemon({ collide: true });
     const runId = await dispatchAndSettle(composed);
 

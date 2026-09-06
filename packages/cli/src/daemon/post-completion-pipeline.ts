@@ -146,6 +146,19 @@ export interface PostCompletionPipelineInput {
    * caller of this function, and only a direct caller, still takes.
    */
   readonly preCollectedByUnitId?: ReadonlyMap<string, CollectCandidateResult>;
+  /**
+   * The base each unit's attempt was cut from, when it is NOT the run's frozen
+   * base — owner ruling 2026-09-06, "chain the base".
+   *
+   * ⚠️ IT IS THE THREE-WAY MERGE BASE, and integration is wrong without it.
+   * Integration commits are single-parent, so no candidate is ever an ancestor
+   * of the integration tip and git derives the frozen base every time. For a
+   * chained candidate that produces a false add/add conflict on any file its
+   * predecessor created, and — worse — silently drops any change it made BACK
+   * to the frozen base's content, publishing a tree no unit's own verification
+   * saw. Both measured 2026-09-06.
+   */
+  readonly chainedBaseByUnitId?: ReadonlyMap<string, string>;
 }
 
 export interface PostCompletionPipelineDeps {
@@ -220,7 +233,12 @@ async function collectHere(
     changeSet: input.changeSet,
     branchType,
     worktreePath,
-    baseObjectId: input.baseObjectId,
+    // THE UNIT'S OWN BASE, for the same reason the drive's own collection uses
+    // it: `commitWorktreeCandidate` tells "changed nothing" apart from
+    // "committed its own work" by comparing the worktree tip against exactly
+    // this id, and against the freeze a chained unit that produced nothing
+    // reports its PREDECESSOR's commit as its own candidate.
+    baseObjectId: input.chainedBaseByUnitId?.get(workUnit.id) ?? input.baseObjectId,
   });
 }
 
@@ -418,6 +436,8 @@ export async function runPostCompletionPipeline(
       // undetectable.
       tipObjectId,
       candidateObjectId: candidate.objectId,
+      candidateBaseObjectId:
+        input.chainedBaseByUnitId?.get(candidate.workUnit.id) ?? input.baseObjectId,
       workUnit: candidate.workUnit,
       changeSet: input.changeSet,
       branchType,
