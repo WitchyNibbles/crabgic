@@ -295,6 +295,90 @@ describe("GatewayHttpClient — retry ladder + backoff", () => {
   });
 });
 
+describe("GatewayHttpClient — redirect hops versus retry budget", () => {
+  /**
+   * `attempt` was incremented at the TOP of the loop, and a redirect
+   * `continue`d back to that top — so every hop spent one of the request's
+   * `maxAttempts`. A server that redirects twice left one attempt for the
+   * request itself, and a 429 at the end got no retry at all, even though
+   * redirect hops already have their own separate bound
+   * (`MAX_REDIRECT_HOPS`). The comment beside the `continue` asserted the
+   * opposite.
+   */
+  it("spends no attempt budget on a redirect hop", async () => {
+    const origin = "https://example.atlassian.net";
+    const finalUrl = `${origin}/rest/api/3/issue/EX-3`;
+    const sendRequest = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: { location: `${origin}/rest/api/3/issue/EX-2` },
+        bodyText: "",
+      } satisfies HttpTransportResponse)
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: { location: finalUrl },
+        bodyText: "",
+      } satisfies HttpTransportResponse)
+      .mockResolvedValue({
+        status: 429,
+        headers: {},
+        bodyText: "",
+      } satisfies HttpTransportResponse);
+
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest,
+      resolveHostAddresses: async () => ["203.0.113.7"],
+      sleep: async () => undefined,
+      random: () => 0,
+      maxAttempts: 3,
+    });
+
+    const result = await client.request(baseReq());
+
+    expect(result.status).toBe(429);
+    // Two hops, then the full three-attempt ladder at the target. With the
+    // hops charged to the same counter it was two hops and ONE attempt.
+    const dialedFinal = sendRequest.mock.calls.filter(
+      (call) => String((call[0] as { url: URL }).url) === finalUrl,
+    );
+    expect(dialedFinal).toHaveLength(3);
+    expect(sendRequest).toHaveBeenCalledTimes(5);
+  });
+
+  /**
+   * The counter was doing double duty: `#preflight(url, attempt === 1)` used
+   * it to label an SSRF refusal "initial request" or "redirect". With hops no
+   * longer charged to `attempt`, only `redirectHops` can answer that — and
+   * asking it also fixes the inverse mislabel this control pins, where a plain
+   * RETRY of the original URL was reported as a redirect.
+   */
+  it("labels an SSRF refusal on a retry as the initial request, not a redirect", async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      status: 503,
+      headers: {},
+      bodyText: "",
+    } satisfies HttpTransportResponse);
+    const resolveHostAddresses = vi
+      .fn()
+      .mockResolvedValueOnce(["203.0.113.7"])
+      .mockResolvedValue(["127.0.0.1"]);
+
+    const client = new GatewayHttpClient({
+      allowlist: ALLOWLIST,
+      sendRequest,
+      resolveHostAddresses,
+      sleep: async () => undefined,
+      random: () => 0,
+    });
+
+    const err = await client.request(baseReq()).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SsrfRefusedError);
+    expect((err as SsrfRefusedError).reason).toMatch(/^initial request:/);
+  });
+});
+
 describe("GatewayHttpClient — budgets", () => {
   it("throws BudgetExceededError when the response body exceeds the result budget", async () => {
     const sendRequest = vi.fn().mockResolvedValue({

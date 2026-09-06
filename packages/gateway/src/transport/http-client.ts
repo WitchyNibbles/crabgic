@@ -167,13 +167,21 @@ export class GatewayHttpClient {
   }
 
   async #requestWithRetries(req: GatewayHttpRequest): Promise<HttpTransportResponse> {
-    let attempt = 0;
+    // `attempt` counts LADDER ATTEMPTS, not loop iterations. A redirect hop
+    // continues the SAME attempt and is bounded separately by
+    // `MAX_REDIRECT_HOPS`, so the counter is spent in exactly one place: the
+    // `retry` branch below. It used to be incremented here, at the top, which
+    // charged every hop one of `maxAttempts` — two redirects left a request
+    // with one attempt and no retry at all.
+    let attempt = 1;
     let currentUrl = req.url;
     let redirectHops = 0;
 
     for (;;) {
-      attempt += 1;
-      const pinnedAddress = await this.#preflight(currentUrl, attempt === 1);
+      // First hop == no redirect followed yet. `attempt` cannot answer that
+      // any more, and asking it was already wrong in the other direction: a
+      // plain RETRY of the original URL reported its refusal as a redirect.
+      const pinnedAddress = await this.#preflight(currentUrl, redirectHops === 0);
 
       const response = await this.#sendRequest({
         url: currentUrl,
@@ -196,7 +204,7 @@ export class GatewayHttpClient {
         // resolved address is used exactly once, never stale from a prior
         // hop (HIGH #1).
         currentUrl = new URL(response.headers.location, currentUrl);
-        continue; // redirect hop consumed no retry-attempt budget of its own here
+        continue; // same attempt, next hop — no retry-attempt budget is spent
       }
 
       enforceResultBudget(response.bodyText);
@@ -217,6 +225,10 @@ export class GatewayHttpClient {
           random: this.#random,
         });
         await this.#sleep(delayMs);
+        // The one place attempt budget is spent, deliberately AFTER
+        // `computeBackoffDelayMs`, whose curve is indexed by the attempt that
+        // just failed — incrementing first would double every delay.
+        attempt += 1;
         continue;
       }
 
