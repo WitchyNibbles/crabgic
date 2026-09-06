@@ -120,10 +120,26 @@ export class WriteSerializer {
     // THIS caller. The SAME sibling becomes the tail of every named key,
     // which is what makes a later single-key acquisition on any member
     // wait for this whole multi-key task.
-    const tailSibling = runPromise.then(
-      () => undefined,
-      () => undefined,
-    );
+    //
+    // The sibling ALSO unregisters its own keys, and that is what bounds
+    // `#tails`. Without it the map is append-only for the life of the process:
+    // `../mutation-pipeline/mutation-pipeline.js`'s `IdempotencyKeyLock` wraps
+    // ONE `WriteSerializer` per gateway process, keyed on
+    // `plan.idempotencyKey`, and those keys embed `Date.now()`, so they never
+    // repeat — one dead entry per mutation, forever.
+    //
+    // The `=== tailSibling` identity test is the whole correctness argument
+    // and must not be reduced to a bare `delete`: a task that queued behind
+    // this one has already overwritten the tail, and deleting THAT would let a
+    // third acquisition mint a fresh queue and run concurrently with it. The
+    // test is exact because a later caller's `get`/`set` pair is synchronous,
+    // so this handler can never observe it half-done.
+    const releaseTails = (): void => {
+      for (const k of distinct) {
+        if (this.#tails.get(k) === tailSibling) this.#tails.delete(k);
+      }
+    };
+    const tailSibling: Promise<void> = runPromise.then(releaseTails, releaseTails);
     for (const k of distinct) this.#tails.set(k, tailSibling);
 
     return runPromise;

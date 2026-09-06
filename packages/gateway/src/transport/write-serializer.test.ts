@@ -83,11 +83,81 @@ describe("WriteSerializer", () => {
     expect(started.indexOf("b-end")).toBeLessThan(started.indexOf("a-end"));
   });
 
-  it("activeKeyCount reflects distinct keys seen", async () => {
+  /**
+   * Rewritten 2026-09-06. This used to be titled "reflects distinct keys SEEN"
+   * and asserted 2 after both tasks had finished — written to the behaviour
+   * rather than to the documented contract, because `#tails` had no `delete`
+   * anywhere in the class. `IdempotencyKeyLock` wraps ONE `WriteSerializer`
+   * per gateway process, keyed on `plan.idempotencyKey`, and those keys embed
+   * `Date.now()` so they never repeat: one dead entry per mutation, for the
+   * life of the daemon.
+   */
+  it("activeKeyCount counts keys with work outstanding, and returns to zero once they drain", async () => {
     const serializer = new WriteSerializer();
-    await serializer.runExclusive({ tenant: "t1", resource: "r1" }, async () => undefined);
-    await serializer.runExclusive({ tenant: "t1", resource: "r2" }, async () => undefined);
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const pending = [
+      serializer.runExclusive({ tenant: "t1", resource: "r1" }, () => gate),
+      serializer.runExclusive({ tenant: "t1", resource: "r2" }, () => gate),
+    ];
+    await new Promise((resolve) => setImmediate(resolve));
     expect(serializer.activeKeyCount).toBe(2);
+
+    release();
+    await Promise.all(pending);
+    expect(serializer.activeKeyCount).toBe(0);
+  });
+
+  it("does not retire a key another task has already queued behind", async () => {
+    const serializer = new WriteSerializer();
+    const key = { tenant: "t1", resource: "r1" };
+    let releaseFirst = (): void => {};
+    const first = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let releaseSecond = (): void => {};
+    const second = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+
+    const p1 = serializer.runExclusive(key, () => first);
+    const p2 = serializer.runExclusive(key, () => second);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    releaseFirst();
+    await p1;
+    // The second task still holds the key. Retiring it here would let a third
+    // acquisition mint a fresh queue and run concurrently with the second.
+    expect(serializer.activeKeyCount).toBe(1);
+
+    releaseSecond();
+    await p2;
+    expect(serializer.activeKeyCount).toBe(0);
+  });
+
+  it("retires a key even when its task rejected", async () => {
+    const serializer = new WriteSerializer();
+    await expect(
+      serializer.runExclusive({ tenant: "t1", resource: "r1" }, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(serializer.activeKeyCount).toBe(0);
+  });
+
+  it("retires every key a multi-key task named", async () => {
+    const serializer = new WriteSerializer();
+    await serializer.runExclusiveMulti(
+      [
+        { tenant: "t1", resource: "r1" },
+        { tenant: "t1", resource: "r2" },
+      ],
+      async () => undefined,
+    );
+    expect(serializer.activeKeyCount).toBe(0);
   });
 
   it("the key separator is unambiguous — a sliding field boundary yields two queues, not one", async () => {
@@ -124,9 +194,14 @@ describe("WriteSerializer", () => {
       const pending = [serializer.runExclusive(a, task), serializer.runExclusive(b, task)];
       // Yield past the chain's own microtasks so every task that CAN start has.
       await new Promise((resolve) => setImmediate(resolve));
+      // Sampled WHILE the work is parked. `activeKeyCount` is documented as
+      // keys "with in-flight or queued work", so reading it after the drain
+      // measures a different thing — and used to return the same number only
+      // because nothing was ever unregistered.
+      const activeKeyCount = serializer.activeKeyCount;
       release();
       await Promise.all(pending);
-      return { maxInFlight, activeKeyCount: serializer.activeKeyCount };
+      return { maxInFlight, activeKeyCount };
     };
 
     expect(
@@ -360,11 +435,16 @@ describe("WriteSerializer.runExclusiveMulti", () => {
   it("duplicate keys in the set are deduplicated and the task runs exactly once", async () => {
     const serializer = new WriteSerializer();
     let calls = 0;
+    let heldWhileRunning = -1;
     const key = { tenant: "t", resource: "issue:A" };
 
     await expect(
       serializer.runExclusiveMulti([key, key, { ...key }], async () => {
         calls += 1;
+        // Sampled DURING the task: the tails are registered before it runs and
+        // retired after it settles, so this is the window in which the dedup
+        // is observable at all.
+        heldWhileRunning = serializer.activeKeyCount;
         return "done";
       }),
     ).resolves.toBe("done");
@@ -373,7 +453,8 @@ describe("WriteSerializer.runExclusiveMulti", () => {
     // One key registered, not three — the dedup is observable, not just
     // an internal detail. (A task that waited on its OWN freshly-set tail
     // would never resolve, so the resolution above is the stronger half.)
-    expect(serializer.activeKeyCount).toBe(1);
+    expect(heldWhileRunning).toBe(1);
+    expect(serializer.activeKeyCount).toBe(0);
   });
 
   it("an EMPTY key set runs the task rather than leaving it queued forever", async () => {
