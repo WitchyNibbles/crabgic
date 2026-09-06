@@ -1,8 +1,9 @@
 import { isNegativeEvidence } from "@crabgic/contracts";
 import { findEvidenceForRequirement } from "@crabgic/gates";
 import type { JournalStore } from "@crabgic/journal";
-import { assertNoContamination } from "./contamination.js";
+import { EmptyCaseSetError } from "../errors.js";
 import type { EvalCase } from "./case-schema.js";
+import { assertNoContamination } from "./contamination.js";
 
 export interface CaseResult {
   readonly caseId: string;
@@ -74,11 +75,21 @@ export async function gradeCase(
  * a caller can run the contamination check once against both sets before
  * running either eval, matching the "detected before eval runs" ordering
  * exit criterion.
+ *
+ * Throws `EmptyCaseSetError` on a case set of zero rather than returning the
+ * vacuous `passed: true` that `results.every` yields for an empty array.
+ * `label` names which set refused, so a pair run says which half was empty.
  */
 export async function runEvalSuite(
   cases: readonly EvalCase[],
   journal: Pick<JournalStore, "queryEntries">,
+  label = "eval",
 ): Promise<EvalSuiteResult> {
+  // `results.every(...)` is vacuously true on an empty array, so without this
+  // an unreadable case set graded as a clean pass — see `EmptyCaseSetError`.
+  if (cases.length === 0) {
+    throw new EmptyCaseSetError(label);
+  }
   const results = await Promise.all(cases.map((c) => gradeCase(c, journal)));
   return { passed: results.every((r) => r.passed), results };
 }

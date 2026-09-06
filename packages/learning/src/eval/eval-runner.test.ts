@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { emitEvidence, type GateContext, type GateVerdict } from "@crabgic/gates";
 import { EvalCaseSchema } from "./case-schema.js";
+import { EmptyCaseSetError } from "../errors.js";
 import { gradeCase, runEvalSuite } from "./eval-runner.js";
 
 let root: string;
@@ -151,5 +152,17 @@ describe("runEvalSuite", () => {
     ];
     const suite = await runEvalSuite(cases, journal);
     expect(suite.passed).toBe(false);
+  });
+
+  /**
+   * `results.every(...)` is vacuously true on an empty array, so a case set of
+   * zero graded as a clean pass. The only feeder, `CaseFixtureStore.read()`,
+   * returns `[]` for a fixture it could not read at all — which made an
+   * unreadable held-out set indistinguishable, AT THE VERDICT, from a fully
+   * passing one. Refusing is the honest answer: an empty set is not an eval
+   * that passed, it is an eval that did not run.
+   */
+  it("refuses an empty case set instead of reporting a vacuous pass", async () => {
+    await expect(runEvalSuite([], journal)).rejects.toThrow(EmptyCaseSetError);
   });
 });

@@ -52,13 +52,25 @@ export class CaseFixtureStore {
     await atomicWriteFile(join(this.#dir, CASES_FILE_NAME), encodeCasesJsonl(cases), 0o600);
   }
 
+  /**
+   * An ABSENT fixture is an empty set; anything else is an error.
+   *
+   * This used to `catch { return []; }` around the whole body, so a fixture
+   * that existed but did not decode — a truncated line, a hand-edit, a
+   * `ZodError` from one bad record, an unreadable file — read as zero cases.
+   * That made a corrupt grader indistinguishable from an empty one, and
+   * `runEvalSuite` then graded the empty set. Only `ENOENT` is the absence
+   * this method is entitled to paper over.
+   */
   async read(): Promise<readonly EvalCase[]> {
+    let content: string;
     try {
-      const content = await readFile(join(this.#dir, CASES_FILE_NAME), "utf8");
-      return decodeCasesJsonl(content);
-    } catch {
-      return [];
+      content = await readFile(join(this.#dir, CASES_FILE_NAME), "utf8");
+    } catch (err) {
+      if (isNotFound(err)) return [];
+      throw err;
     }
+    return decodeCasesJsonl(content);
   }
 
   /** Seals this directory and every file in it read-only at the OS level — irreversible from within this class (there is no `unseal()`). */
@@ -74,4 +86,11 @@ export class CaseFixtureStore {
   get isSealed(): boolean {
     return this.#sealed;
   }
+}
+
+/** True for the one filesystem error `read()` treats as an empty set: the fixture was never written. */
+function isNotFound(err: unknown): boolean {
+  return (
+    typeof err === "object" && err !== null && (err as NodeJS.ErrnoException).code === "ENOENT"
+  );
 }

@@ -94,13 +94,13 @@ export async function runEvalPair(
   assertNoContamination(devCases, heldOutCases);
   const pinnedDigest = caseSetDigest(heldOutCases);
 
-  const dev = await runEvalSuite(devCases, journal);
+  const dev = await runEvalSuite(devCases, journal, "dev");
 
   const heldOutAtGradeTime = await sources.heldOut.read();
   const observedDigest = caseSetDigest(heldOutAtGradeTime);
   if (observedDigest !== pinnedDigest) {
     throw new GraderDriftError(pinnedDigest, observedDigest);
   }
-  const heldOut = await runEvalSuite(heldOutAtGradeTime, journal);
+  const heldOut = await runEvalSuite(heldOutAtGradeTime, journal, "held-out");
   return { dev, heldOut };
 }

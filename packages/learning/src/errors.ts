@@ -105,6 +105,28 @@ export class ProposalNotFoundError extends Error {
  * how every current caller of `runEvalSuite` supplies its cases. Neither
  * subsumes the other.
  */
+/**
+ * An eval was asked to grade zero cases.
+ *
+ * WHY THIS IS AN ERROR AND NOT `passed: false`. `runEvalSuite` derived its
+ * verdict from `results.every(...)`, which is vacuously true on an empty
+ * array — so a case set of zero reported a clean pass. Its only feeder,
+ * `CaseFixtureStore.read()`, returns `[]` for a fixture it could not read,
+ * which made an unreadable or absent held-out set indistinguishable, at the
+ * verdict, from a fully passing one. An empty set is not an eval that failed
+ * either: it is an eval that did not run, and the two deserve different
+ * outcomes. `docs/verification-playbook.md` calls this the vacuity pattern.
+ */
+export class EmptyCaseSetError extends Error {
+  constructor(readonly label: string) {
+    super(
+      `learning: refusing to grade an empty ${label} case set — ` +
+        `zero cases is an eval that did not run, not one that passed`,
+    );
+    this.name = "EmptyCaseSetError";
+  }
+}
+
 export class GraderDriftError extends Error {
   constructor(
     readonly expectedDigest: string,

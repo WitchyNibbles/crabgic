@@ -116,4 +116,4 @@ export type { PromptfooAssertion, PromptfooConfig, PromptfooTestCase } from "./p
 // statement about grouping.
 export { caseSetDigest, runEvalPair } from "./eval/eval-pair.js";
 export type { EvalCaseSource, EvalPairResult } from "./eval/eval-pair.js";
-export { GraderDriftError } from "./errors.js";
+export { EmptyCaseSetError, GraderDriftError } from "./errors.js";
