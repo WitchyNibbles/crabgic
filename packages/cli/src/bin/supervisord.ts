@@ -100,6 +100,14 @@ async function main(): Promise<void> {
                   // Named in containment refusals: editing this file is the
                   // only remedy that works for an out-of-policy envelope.
                   standingPolicyPath: resolveEnvelopePolicyPath(xdgEnv, projectHash),
+                  onEvidenceCaptureError: (err, context) => {
+                    process.stderr.write(
+                      `supervisord: work unit ${context.workUnitId}: the session ` +
+                        `transcript pointer was not journaled ` +
+                        `(${toErrorMessage(err)}); \`crabgic evidence\` will not ` +
+                        `link this unit to session ${context.sessionId}\n`,
+                    );
+                  },
                   onDriveError: (runId, err) => {
                     process.stderr.write(
                       `supervisord: run ${runId} failed to drive: ${toErrorMessage(err)}\n`,

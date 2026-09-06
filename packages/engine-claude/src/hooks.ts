@@ -274,9 +274,18 @@ function toError(err: unknown): Error {
  * of the generic string fields (`systemMessage`/`reason`, meant for
  * human-facing text, not machine-checked diagnostics) or silently swallow
  * the failure, this hook exposes the failure on the returned
- * `SessionEndEvidenceHookHandle.lastError` — the adapter (W4) can poll it
- * after the stream ends. The hook itself still never throws (fail-safe,
- * per this file's top-of-file doc comment).
+ * `SessionEndEvidenceHookHandle.lastError`. The adapter (W4) reads it once
+ * its event stream has ended and hands it to its own
+ * `onEvidenceCaptureError` sink. Until 2026-09-06 this paragraph claimed
+ * that poll while `adapter.ts` held the handle as a generator-body local
+ * that went out of scope when the generator returned — nothing outside this
+ * file's own tests could read `lastError` at all, so the failure WAS
+ * silently swallowed, the one option this paragraph names and rejects.
+ * Deliberately reported and not thrown, unlike the sibling PostToolUse
+ * channel: a throw at stream end reaches 05's `pumpWorkerEvents`, which
+ * treats a thrown iterator as a crash, and would flip a settled worker to
+ * `crashed` over a lost diagnostic pointer. The hook itself still never
+ * throws (fail-safe, per this file's top-of-file doc comment).
  *
  * `EvidenceRecord` FIELD-FIT NOTE (documented deviation): 04's
  * `evidence_pointer` payload schema validates as `EvidenceRecordSchema`

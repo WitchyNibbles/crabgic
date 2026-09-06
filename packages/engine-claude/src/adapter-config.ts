@@ -77,6 +77,25 @@ export interface ClaudeEngineAdapterConfig {
    * model when omitted.
    */
   readonly model?: string;
+  /**
+   * Called once, after a worker's event stream has ended, when this worker's
+   * `SessionEnd` evidence capture failed — the transcript pointer that links
+   * this work unit to its own session was not journaled.
+   *
+   * Reported rather than thrown. The hook itself is fail-safe by design and
+   * records the failure on `SessionEndEvidenceHookHandle.lastError`; before
+   * this option existed nothing could read that handle at all, because the
+   * adapter held it as a generator-body local. Throwing instead would reach
+   * 05's `pumpWorkerEvents`, which treats any thrown iterator as a crash, and
+   * flip a settled worker to `crashed` over a lost diagnostic pointer.
+   *
+   * Never throws into the adapter: an observability sink that fails must not
+   * take the worker with it.
+   */
+  readonly onEvidenceCaptureError?: (
+    err: Error,
+    context: { readonly workUnitId: string; readonly sessionId: string },
+  ) => void;
   /** Role preamble appended to the `claude_code` system-prompt preset. */
   readonly rolePreamble?: string;
   /**

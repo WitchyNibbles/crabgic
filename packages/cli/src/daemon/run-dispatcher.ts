@@ -200,6 +200,11 @@ export interface RealRunDispatcherOptions {
   readonly targetRef?: string;
   /** Adjudication bus (05). Defaults to refusing every escalation. */
   readonly adjudicate?: AdjudicationCallback;
+  /** Reported when a worker's SessionEnd transcript pointer could not be journaled. Diagnostic only — the attempt is not failed for it. */
+  readonly onEvidenceCaptureError?: (
+    err: Error,
+    context: { readonly workUnitId: string; readonly sessionId: string },
+  ) => void;
   /**
    * Seam: prepares the repository for a run and yields the frozen base
    * object id. Defaults to control-clone + `freezeIntake` (07). Injected in
@@ -1324,6 +1329,12 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
                   journal: deps.journal,
                   model: ctx.model,
                   runId,
+                  // The transcript pointer is what links a work unit to its
+                  // own session for `crabgic evidence`. Losing it is not a
+                  // reason to fail the attempt, but it is a reason to say so.
+                  ...(options.onEvidenceCaptureError !== undefined
+                    ? { onEvidenceCaptureError: options.onEvidenceCaptureError }
+                    : {}),
                 });
           retainedWorkers.set(ctx.workUnit.id, {
             adapter,

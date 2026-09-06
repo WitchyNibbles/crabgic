@@ -72,6 +72,7 @@ import {
   createSessionEndEvidenceHook,
   type AdjudicationAuditLog,
   type AdjudicationAuditViolation,
+  type SessionEndEvidenceHookHandle,
 } from "./hooks.js";
 import { createToolAdjudicationHook } from "./tool-adjudication-hook.js";
 import { createSessionRef } from "./session.js";
@@ -609,6 +610,11 @@ export class ClaudeEngineAdapter implements EngineAdapter {
     });
 
     async function* run(): AsyncGenerator<EngineEvent> {
+      // Declared out here so the `finally` below can still read its
+      // `lastError` after the body has returned. Held as a body-local, the
+      // hook's own documented failure channel was unreachable to every
+      // caller — see `onEvidenceCaptureError`.
+      let sessionEndEvidenceHook: SessionEndEvidenceHookHandle | undefined;
       try {
         // (a) Pre-spawn `session_assignment` — journaled BEFORE this
         // generator makes its own `sdkQueryFn` call, i.e. before the engine
@@ -659,7 +665,7 @@ export class ClaudeEngineAdapter implements EngineAdapter {
           audit,
         });
         const postToolUseAuditHook = createPostToolUseAuditHook({ audit });
-        const sessionEndEvidenceHook = createSessionEndEvidenceHook({
+        sessionEndEvidenceHook = createSessionEndEvidenceHook({
           journal: config.journal,
           ...(config.runId === undefined ? {} : { runId: config.runId }),
           workUnitId: params.workUnitId,
@@ -717,6 +723,23 @@ export class ClaudeEngineAdapter implements EngineAdapter {
           }
         }
       } finally {
+        // (g) the evidence hook's failure channel, drained here because this
+        // is the only place that still holds the handle. `lastError` is set
+        // when the `evidence_pointer` append failed, which leaves the work
+        // unit with no link to its own transcript. Reported, never thrown:
+        // see `onEvidenceCaptureError`'s own doc comment.
+        const evidenceError = sessionEndEvidenceHook?.lastError;
+        if (evidenceError !== undefined) {
+          try {
+            config.onEvidenceCaptureError?.(evidenceError, {
+              workUnitId: params.workUnitId,
+              sessionId: params.sessionRef.sessionId,
+            });
+          } catch {
+            // An observability sink that throws must not take the worker
+            // with it — the same fail-safe rule the hook itself follows.
+          }
+        }
         resolveEnded();
       }
     }

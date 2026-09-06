@@ -808,3 +808,100 @@ describe("ClaudeEngineAdapter — the prompt carries the spec", () => {
     expect(text.toLowerCase()).toContain("tests first");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The SessionEnd evidence hook's failure channel.
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️ THE FAILURE CHANNEL HAD NO READER.
+ *
+ * `createSessionEndEvidenceHook` deliberately never throws, and documents
+ * `SessionEndEvidenceHookHandle.lastError` as its reporting channel — chosen
+ * explicitly over "silently swallow the failure", with the note that "the
+ * adapter (W4) can poll it after the stream ends".
+ *
+ * Measured 2026-09-06: the adapter built the handle as a local inside the
+ * generator body and consumed only `.callback`; the handle went out of scope
+ * the moment the generator returned. A repo-wide grep for `lastError` outside
+ * tests found only this hook's own writes and its getter — no reader anywhere,
+ * so the failure WAS silently swallowed, which is the one option the comment
+ * names and rejects. The sibling PostToolUse channel IS read
+ * (`audit.violations.length > 0`), which is what makes this a missed wire
+ * rather than a deliberate no-op.
+ *
+ * Reported, not thrown. A throw at stream end reaches 05's
+ * `pumpWorkerEvents`, which treats any thrown iterator as a crash, and would
+ * flip a settled worker to `crashed` over a lost diagnostic pointer.
+ */
+describe("ClaudeEngineAdapter — a failed SessionEnd evidence capture reaches the caller", () => {
+  async function fireSessionEnd(calls: readonly ProbedCall[], sessionId: string): Promise<void> {
+    const sessionEndHook = calls[calls.length - 1]?.options?.hooks?.SessionEnd?.[0]?.hooks[0];
+    if (sessionEndHook === undefined) {
+      throw new Error("test setup failure: SessionEnd hook not captured");
+    }
+    const input: SessionEndHookInput = {
+      session_id: sessionId,
+      transcript_path: "/does-not-matter.jsonl",
+      cwd: "/fixture/worktree",
+      hook_event_name: "SessionEnd",
+      reason: "other",
+    };
+    await sessionEndHook(input, undefined, { signal: new AbortController().signal });
+  }
+
+  it("reports the journal-append failure through onEvidenceCaptureError once the stream ends", async () => {
+    const { sdkQuery, calls } = createScriptedSdkQuery([
+      [initMessage("s", "/fixture/worktree"), initMessage("s", "/fixture/worktree")],
+    ]);
+    const refusingJournal: JournalStore = {
+      ...store,
+      appendEntry: async (input: JournalEntryInput) => {
+        if (input.type === "evidence_pointer") {
+          throw new Error("evidence_pointer rejected by the journal");
+        }
+        return store.appendEntry(input);
+      },
+    };
+    const seen: Error[] = [];
+    const adapter = new ClaudeEngineAdapter(
+      buildConfig({
+        sdkQuery,
+        journal: refusingJournal,
+        onEvidenceCaptureError: (err) => seen.push(err),
+      }),
+    );
+
+    const handle = adapter.spawn(buildPacket(), READ_ONLY_PROFILE, allowAdjudicate);
+    const iterator = handle.events[Symbol.asyncIterator]();
+    await iterator.next();
+    await fireSessionEnd(calls, handle.sessionRef.sessionId);
+    // Drain: the report is owed once the stream has ended, not before.
+    while (!(await iterator.next()).done) {
+      /* drain */
+    }
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.message).toContain("evidence_pointer rejected by the journal");
+  });
+
+  it("says nothing when the evidence capture succeeded", async () => {
+    const { sdkQuery, calls } = createScriptedSdkQuery([
+      [initMessage("s", "/fixture/worktree"), initMessage("s", "/fixture/worktree")],
+    ]);
+    const seen: Error[] = [];
+    const adapter = new ClaudeEngineAdapter(
+      buildConfig({ sdkQuery, onEvidenceCaptureError: (err) => seen.push(err) }),
+    );
+
+    const handle = adapter.spawn(buildPacket(), READ_ONLY_PROFILE, allowAdjudicate);
+    const iterator = handle.events[Symbol.asyncIterator]();
+    await iterator.next();
+    await fireSessionEnd(calls, handle.sessionRef.sessionId);
+    while (!(await iterator.next()).done) {
+      /* drain */
+    }
+
+    expect(seen).toEqual([]);
+  });
+});
