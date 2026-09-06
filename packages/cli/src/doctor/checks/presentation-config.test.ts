@@ -41,10 +41,23 @@ describe("presentation.config check", () => {
   });
 
   it("names the offending member, not just that something was wrong", async () => {
-    await writeConfig(JSON.stringify({ limits: { bulletMaxColumns: -3 } }));
+    await writeConfig(JSON.stringify({ formatGate: { mode: "shouty" } }));
     const finding = await createPresentationConfigCheck({ projectRoot: root }).run();
     expect(finding.passed).toBe(false);
-    expect(finding.evidence).toContain("bulletMaxColumns");
+    expect(finding.evidence).toContain("formatGate.mode");
+  });
+
+  /**
+   * `limits` was accepted by the loader and reached no renderer, so a project
+   * that narrowed one saw this check report the file "applied" and its output
+   * unchanged. The member is rejected now, and this is the surface that has to
+   * say so — silence was the actual defect.
+   */
+  it("names limits as the reason, rather than reporting an inert file as applied", async () => {
+    await writeConfig(JSON.stringify({ limits: { bulletMaxColumns: 60 } }));
+    const finding = await createPresentationConfigCheck({ projectRoot: root }).run();
+    expect(finding.passed).toBe(false);
+    expect(finding.evidence).toContain("limits");
   });
 
   it("is a warning, not an error — nothing is broken, an intention was not honoured", () => {

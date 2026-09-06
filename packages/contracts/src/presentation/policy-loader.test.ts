@@ -37,12 +37,46 @@ describe("loadPresentationPolicy", () => {
     expect(loadPresentationPolicy(root).source).toBe("default");
   });
 
-  it("applies a partial override, leaving every unnamed limit at its default", async () => {
-    await writeConfig(JSON.stringify({ limits: { bulletMaxColumns: 60 } }));
+  it("applies a partial override, leaving the unnamed gate switch at its default", async () => {
+    await writeConfig(JSON.stringify({ formatGate: { mode: "advisory" } }));
     const { policy, source } = loadPresentationPolicy(root);
     expect(source).toBe("file");
-    expect(policy.limits.bulletMaxColumns).toBe(60);
-    expect(policy.limits.bulletMaxWords).toBe(DEFAULT_PRESENTATION_POLICY.limits.bulletMaxWords);
+    expect(policy.formatGate.mode).toBe("advisory");
+    expect(policy.formatGate.enabled).toBe(DEFAULT_PRESENTATION_POLICY.formatGate.enabled);
+  });
+
+  /**
+   * ⚠️ `limits` USED TO BE ACCEPTED AND REACH NOTHING.
+   *
+   * It was merged into the returned policy, and no renderer read that policy:
+   * `renderHeading`, `renderHumanReport` and `renderMarkdownReport` each
+   * destructure the module-scope `DEFAULT_PRESENTATION_POLICY.limits`, and not
+   * one of `renderHumanReport`, `renderMarkdownReport`, `renderItemListReport`
+   * or `renderResultLine` takes a policy. So a project that narrowed
+   * `bulletMaxColumns` got `source: "file"`, `crabgic doctor` reporting the
+   * file "applied", and byte-identical output — exactly the "silently
+   * discarding an edit someone made deliberately" this loader's own header
+   * calls the worse failure.
+   *
+   * Rejecting the member by name is what turns that silent no-op into the
+   * doctor warning `problems` exists to produce. Wiring it instead would mean
+   * threading a policy through some thirty call sites across `packages/cli`,
+   * `packages/detect` and here; both changelogs advertise this file as the
+   * format gate's two switches and nothing else.
+   */
+  it("rejects a limits override rather than accepting one that reaches no renderer", async () => {
+    await writeConfig(JSON.stringify({ limits: { bulletMaxColumns: 60 } }));
+    const { policy, source, problems } = loadPresentationPolicy(root);
+    expect(source).toBe("invalid");
+    expect(policy).toEqual(DEFAULT_PRESENTATION_POLICY);
+    expect(problems.join(" ")).toContain("limits");
+  });
+
+  it("still applies the gate switches in a file that names nothing else", async () => {
+    await writeConfig(JSON.stringify({ formatGate: { enabled: false, mode: "advisory" } }));
+    const { source, policy } = loadPresentationPolicy(root);
+    expect(source).toBe("file");
+    expect(policy.formatGate).toEqual({ enabled: false, mode: "advisory" });
   });
 
   it("carries the format-gate switch, defaulting to enabled", async () => {
@@ -65,9 +99,13 @@ describe("loadPresentationPolicy", () => {
   it.each([
     ["malformed JSON", "{ not json"],
     ["a non-object", '"a string"'],
-    ["a negative limit", JSON.stringify({ limits: { bulletMaxColumns: -1 } })],
-    ["a non-integer limit", JSON.stringify({ limits: { bulletMaxColumns: 1.5 } })],
-    ["an unknown member", JSON.stringify({ limits: { madeUpLimit: 3 } })],
+    [
+      "a limits override, which reaches no renderer",
+      JSON.stringify({ limits: { bulletMaxColumns: 60 } }),
+    ],
+    ["an unknown member", JSON.stringify({ madeUpMember: 3 })],
+    ["an unknown gate switch", JSON.stringify({ formatGate: { madeUpSwitch: true } })],
+    ["an out-of-vocabulary gate mode", JSON.stringify({ formatGate: { mode: "shouty" } })],
     ["a wrong-typed switch", JSON.stringify({ formatGate: { enabled: "yes" } })],
   ])("falls back to the default on %s, and reports why", async (_label, body) => {
     await writeConfig(body);

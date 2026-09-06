@@ -17,8 +17,22 @@
  * discarding an edit someone made deliberately is the worse failure.
  *
  * PARTIAL OVERRIDES are merged over the defaults per member, so a project that
- * only wants a narrower `bulletMaxColumns` does not have to restate the other
- * seven limits and thereby freeze them against future change.
+ * only wants `formatGate.mode` does not have to restate `enabled` and thereby
+ * freeze it against future change.
+ *
+ * THE LIMITS ARE NOT OVERRIDABLE, and were removed from the schema below on
+ * 2026-09-06 rather than left accepted-and-inert. They were merged here and
+ * reached nothing: `renderHeading`, `renderHumanReport` and
+ * `renderMarkdownReport` each read the module-scope
+ * `DEFAULT_PRESENTATION_POLICY.limits`, and not one of `renderHumanReport`,
+ * `renderMarkdownReport`, `renderItemListReport` or `renderResultLine` takes a
+ * policy. A project that narrowed `bulletMaxColumns` therefore got
+ * `source: "file"`, `doctor` reporting the file "applied", and byte-identical
+ * output. Making them reach a renderer means threading a policy through some
+ * thirty call sites across `packages/cli`, `packages/detect` and here; nothing
+ * has asked for it, and both changelogs advertise this file as the format
+ * gate's two switches and nothing else. Rejecting the member by name is what
+ * turns a silent no-op into the `doctor` warning `problems` exists to produce.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -37,12 +51,14 @@ export const PRESENTATION_CONFIG_RELPATH = join(".crabgic", "presentation.json")
  * vocabulary and the colour table are closed by design — "a glyph is a
  * navigation aid only if the same shape always means the same thing" — so
  * letting a project redefine them would remove the property they exist for.
- * Limits and the gate's own controls are what an operator has a legitimate
- * reason to change.
+ * The gate's own controls are what an operator has a legitimate reason to
+ * change AND what a consumer actually honours: `readGateConfig` in
+ * `packages/plugin/hooks/stop-report-format-gate.mjs` reads exactly these two
+ * switches. Every other member, `limits` included, is rejected — see the
+ * header for the measurement behind that.
  */
 const PresentationOverrideSchema = z
   .object({
-    limits: PresentationPolicySchema.shape.limits.partial().optional(),
     formatGate: z
       .object({
         enabled: z.boolean().optional(),
@@ -99,7 +115,6 @@ export function loadPresentationPolicy(projectRoot: string): PresentationPolicyL
   // still caught here rather than reaching a renderer.
   const merged = PresentationPolicySchema.safeParse({
     ...DEFAULT_PRESENTATION_POLICY,
-    limits: { ...DEFAULT_PRESENTATION_POLICY.limits, ...definedOnly(result.data.limits) },
     formatGate: {
       ...DEFAULT_PRESENTATION_POLICY.formatGate,
       ...definedOnly(result.data.formatGate),
