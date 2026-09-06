@@ -205,11 +205,31 @@ async function runToExitStatus(
   cwd: string,
   timeoutMs: number,
 ): Promise<CommandRun> {
-  const child = spawn(command, { cwd, shell: true, stdio: "ignore" });
+  /**
+   * ⚠️ `detached` IS WHAT MAKES THE KILL BELOW REACH ANYTHING. With
+   * `shell: true` the direct child is `/bin/sh`, so `child.kill()` signals the
+   * shell and nothing it started: `npm` keeps running, `vitest` keeps running,
+   * both reparented to init and competing with every unit still to come.
+   * Measured 2026-09-06 — twelve such orphans from runs fifteen hours dead were
+   * still resident. `detached` puts the shell in its own process GROUP, which
+   * is the only handle a parent has on a subtree it did not spawn directly.
+   */
+  const child = spawn(command, { cwd, shell: true, stdio: "ignore", detached: true });
   let timedOut = false;
+  const killTree = (): void => {
+    // Negative pid signals the whole group. ESRCH means the group is already
+    // gone, which is the outcome this is trying to produce — never an error.
+    // `pid` is undefined if the spawn itself failed; there is no group then.
+    if (child.pid === undefined) return;
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {
+      // Already gone.
+    }
+  };
   const timer = setTimeout(() => {
     timedOut = true;
-    child.kill("SIGKILL");
+    killTree();
   }, timeoutMs);
   try {
     const run = await new Promise<CommandRun>((resolve) => {
