@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { captureTddBaseline } from "./tdd-baseline.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { captureTddBaseline, runGrantedAcceptanceCommand } from "./tdd-baseline.js";
 import { hasRedBaseline } from "./tdd-gate.js";
 import { createTestJournal, type TestJournal } from "./test-support/test-journal.js";
 
@@ -386,4 +386,62 @@ describe("captureTddBaseline — a granted build that did not complete refuses t
     });
     expect(failed.kind).toBe("integrityFailed");
   });
+});
+
+/**
+ * ⚠️ A TIMEOUT MUST KILL THE TREE, and this function's own doc comment already
+ * says it does ("A timeout kills the tree and reports a non-zero status").
+ * Measured 2026-09-06, it did not: `spawn(command, { shell: true })` makes the
+ * direct child `/bin/sh`, and `child.kill()` signals only that shell. Whatever
+ * the shell started keeps running, reparented to init.
+ *
+ * Found by `ps`, not by a test: twelve orphaned `npm run test` / `npm run build`
+ * processes from runs fifteen hours dead were still resident, each holding
+ * ~50MB. A six-unit run does build+test at base and again per candidate, so
+ * every timeout leaks a suite that then competes with the units still to come.
+ */
+describe("a timed-out granted command", () => {
+  it("kills the process the shell started, not just the shell", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "crabgic-tdd-grouplkill-"));
+    try {
+      const pidFile = join(dir, "grandchild.pid");
+      const script = join(dir, "grandchild.mjs");
+      // Records its own pid and then outlives any plausible timeout, so the
+      // assertion below is about the kill and never about a race with exit.
+      await writeFile(
+        script,
+        `import { writeFileSync } from "node:fs";\n` +
+          `writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));\n` +
+          `setTimeout(() => {}, 60_000);\n`,
+        "utf8",
+      );
+
+      // Granted as an `acceptance`-class string by its prefix; the suffix is
+      // what a real `npm run test` does anyway — start further processes.
+      const command = `npm run test --silent & node ${JSON.stringify(script)}`;
+      const run = await runGrantedAcceptanceCommand({
+        grantedCommands: [command],
+        worktreePath: dir,
+        timeoutMs: 3_000,
+      });
+      expect(run.ran).toBe(false);
+
+      const grandchildPid = Number(await readFile(pidFile, "utf8"));
+      expect(Number.isInteger(grandchildPid)).toBe(true);
+
+      // `kill(pid, 0)` throws ESRCH once the process is gone — the only way to
+      // ask "is it still there" without signalling it.
+      const stillAlive = (): boolean => {
+        try {
+          process.kill(grandchildPid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      await vi.waitFor(() => expect(stillAlive()).toBe(false), { timeout: 5_000, interval: 50 });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 20_000);
 });
