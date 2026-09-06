@@ -65,6 +65,7 @@ const RUN_ID = "11111111-1111-4111-8111-111111111111";
 const CHANGE_SET_ID = "22222222-2222-4222-8222-222222222222";
 const UNIT_A = "33333333-3333-4333-8333-333333333333";
 const UNIT_B = "44444444-4444-4444-8444-444444444444";
+const UNIT_C = "66666666-6666-4666-8666-666666666666";
 const REQ_ID = "55555555-5555-4555-8555-555555555555";
 const BASE = "a".repeat(40);
 
@@ -930,6 +931,60 @@ describe("the pipeline carries each unit's own base into git", () => {
     expect(outcome.status).toBe("published");
     expect(collectBases.get(UNIT_A)).toBe(BASE);
     expect(collectBases.get(UNIT_B)).toBe(CHAINED);
+  });
+
+  /**
+   * ⚠️ THE TIP ADVANCES WHILE EACH BASE STAYS ITS OWN, and two units cannot
+   * tell the two apart: with a single chained candidate, "the tip the previous
+   * fold returned", "the frozen base" and "this candidate's own base" all name
+   * the same id for the one call that matters. Three units separate them, which
+   * is the depth the six-unit stale-dist plan actually integrates at.
+   *
+   * Passing a STALE tip is silently wrong rather than failing: every candidate
+   * still merges, and the units folded in between are simply dropped from the
+   * published branch.
+   */
+  it("folds each candidate onto the tip the previous fold returned", async () => {
+    const CHAINED_C = "c".repeat(40);
+    await seedRunningRun();
+    const seen: { unitId: string; tip: string; base: string }[] = [];
+    const returned: string[] = [];
+    const inner = createFakePostCompletionGitEffects();
+    const outcome = await run({
+      units: [
+        unit(UNIT_A),
+        unit(UNIT_B, { dependsOn: [UNIT_A] }),
+        unit(UNIT_C, { dependsOn: [UNIT_B] }),
+      ],
+      registry: passingRegistry(),
+      chainedBases: new Map([
+        [UNIT_B, CHAINED],
+        [UNIT_C, CHAINED_C],
+      ]),
+      git: {
+        ...inner,
+        integrateCandidate: async (input) => {
+          seen.push({
+            unitId: input.workUnit.id,
+            tip: input.tipObjectId,
+            base: input.candidateBaseObjectId,
+          });
+          const result = await inner.integrateCandidate(input);
+          if (result.status === "integrated") returned.push(result.tipObjectId);
+          return result;
+        },
+      },
+    });
+
+    expect(outcome.status).toBe("published");
+    expect(seen.map((call) => call.unitId)).toEqual([UNIT_A, UNIT_B, UNIT_C]);
+    // Each fold starts from what the fold before it produced.
+    expect(seen[1]?.tip).toBe(returned[0]);
+    expect(seen[2]?.tip).toBe(returned[1]);
+    // Three DISTINCT tips, so "always the frozen base" cannot satisfy this.
+    expect(new Set(seen.map((call) => call.tip)).size).toBe(3);
+    // ...while every candidate keeps its own three-way base under the moving tip.
+    expect(seen.map((call) => call.base)).toEqual([BASE, CHAINED, CHAINED_C]);
   });
 });
 

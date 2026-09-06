@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-09-06",
-  "generatedAtSha": "e9a537498a8eef1f6f56a67f94af3625ce532b3b",
+  "generatedAtSha": "043f1736c1b3f7821e25d93e4bd4a61ea460510a",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2629,
-    "seededStale": 766,
-    "outsideSpan": 883,
+    "anchored": 2630,
+    "seededStale": 765,
+    "outsideSpan": 882,
     "repeatText": 532,
     "crossFile": 19,
     "skipped": 611
@@ -1621,19 +1621,19 @@
         "OK/collapsed@134!span"
       ]
     },
-    "phase-04.json#c4#packages/journal/src/lease.test.ts:437": {
-      "qa": "140d4712a8d9",
+    "phase-04.json#c4#packages/journal/src/lease.test.ts:466-475": {
+      "qa": "39dbe95f54a8",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@434!span",
-        "MOVED/collapsed@437"
+        "OK/collapsed@472",
+        "OK/collapsed@475"
       ]
     },
-    "phase-04.json#c4#packages/journal/src/lease.test.ts:450": {
-      "qa": "ea90b252c59f",
+    "phase-04.json#c4#packages/journal/src/lease.test.ts:483-488": {
+      "qa": "a3bf65bdad36",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@450"
+        "OK/collapsed@488"
       ]
     },
     "phase-04.json#c4#packages/journal/src/lease.test.ts:97": {
