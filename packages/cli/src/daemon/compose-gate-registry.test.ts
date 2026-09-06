@@ -465,7 +465,6 @@ describe("changeSetRequirementIds", () => {
   });
 });
 
-
 /**
  * ORDER THE BUILD IN THE CANDIDATE'S WORKTREE TOO (2026-09-05).
  *

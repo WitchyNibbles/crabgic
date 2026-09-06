@@ -803,7 +803,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
     });
@@ -892,7 +894,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
     });
@@ -967,7 +971,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
     });
@@ -978,7 +984,9 @@ describe("createRealRunDispatcher — dispatch", () => {
 
     // `B` first, then `A` -- the declared order, not the id sort.
     expect(basesGiven.get(UNIT_C)).toBe(
-      fakeObjectId(`${fakeObjectId(`candidate:${UNIT_B}`)}+${fakeObjectId(`candidate:${UNIT_ID}`)}`),
+      fakeObjectId(
+        `${fakeObjectId(`candidate:${UNIT_B}`)}+${fakeObjectId(`candidate:${UNIT_ID}`)}`,
+      ),
     );
   });
 
@@ -1085,7 +1093,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
     });
@@ -1140,7 +1150,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
     });
@@ -1211,7 +1223,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
       postCompletionGitEffects: {
@@ -1290,7 +1304,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
       postCompletionGitEffects: {
@@ -1339,7 +1355,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
       postCompletionGitEffects: {
@@ -1537,7 +1555,9 @@ describe("createRealRunDispatcher — dispatch", () => {
       createAdapter: () =>
         Promise.resolve(
           new FakeEngineAdapter(
-            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
           ),
         ),
       onDriveError: (_runId: string, err: unknown) => errors.push(err),

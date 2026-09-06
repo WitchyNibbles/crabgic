@@ -138,7 +138,8 @@ async function candidateWriting(file: string, content: string): Promise<string> 
     baseObjectId,
     worktreePath: await attemptWorktree({ edit: content, file }),
   });
-  if (collected.status !== "collected") throw new Error(`expected a candidate: ${collected.status}`);
+  if (collected.status !== "collected")
+    throw new Error(`expected a candidate: ${collected.status}`);
   return collected.objectId;
 }
 

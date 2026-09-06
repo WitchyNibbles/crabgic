@@ -173,9 +173,7 @@ describe("commitlint conformance", () => {
       outcome: "Enumeration and mtime primitives: units.mjs and walk.mjs, tests first",
     };
     const subject = assembleCommitSubject(overLong);
-    expect(subject.length).toBeLessThanOrEqual(
-      COMMUNICATION_POLICY_LIMITS.commitSubject.maxChars,
-    );
+    expect(subject.length).toBeLessThanOrEqual(COMMUNICATION_POLICY_LIMITS.commitSubject.maxChars);
     // Trimmed at a WORD boundary, and with no trailing punctuation --
     // commitlint's `subject-full-stop` rejects a trailing period, so an
     // ellipsis would trade one block for another.

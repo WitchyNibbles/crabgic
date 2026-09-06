@@ -86,10 +86,9 @@ export async function withRedBaselineTree<T>(
     `red-baseline-${options.candidateObjectId.slice(0, 12)}`,
   );
   try {
-    await options.plumbing.run(
-      ["worktree", "add", "--detach", treePath, options.baseObjectId],
-      { cwd: options.controlDir },
-    );
+    await options.plumbing.run(["worktree", "add", "--detach", treePath, options.baseObjectId], {
+      cwd: options.controlDir,
+    });
   } catch {
     return undefined;
   }

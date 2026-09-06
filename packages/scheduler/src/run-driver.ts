@@ -533,7 +533,8 @@ export async function driveRun(
       if (status === "succeeded" && deps.onUnitSucceeded !== undefined) {
         const workUnit = unitById.get(entry.workUnitId);
         /* c8 ignore next -- unreachable: every id in `roundOutcomes` came from `selected`, which came from `options.workUnits` */
-        if (workUnit === undefined) throw new Error(`run driver: unknown work unit "${entry.workUnitId}"`);
+        if (workUnit === undefined)
+          throw new Error(`run driver: unknown work unit "${entry.workUnitId}"`);
         await deps.onUnitSucceeded({
           workUnit,
           model: resolveModel(workUnit.role),

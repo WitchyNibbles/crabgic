@@ -73,12 +73,16 @@ describe("findUnusedAuthority", () => {
    */
   it("collapses doubled and dotted separators, which name one directory", () => {
     expect(
-      findUnusedAuthority(envelope(["scripts//stale-dist"]), units(["scripts/stale-dist/units.mjs"]))
-        .tight,
+      findUnusedAuthority(
+        envelope(["scripts//stale-dist"]),
+        units(["scripts/stale-dist/units.mjs"]),
+      ).tight,
     ).toBe(true);
     expect(
-      findUnusedAuthority(envelope(["scripts/./stale-dist"]), units(["scripts/stale-dist/walk.mjs"]))
-        .tight,
+      findUnusedAuthority(
+        envelope(["scripts/./stale-dist"]),
+        units(["scripts/stale-dist/walk.mjs"]),
+      ).tight,
     ).toBe(true);
   });
 
@@ -91,7 +95,10 @@ describe("findUnusedAuthority", () => {
    * matcher passed globs through untouched and reported the opposite.
    */
   it("counts a grant as UNUSED when the only claim on it cannot name a path", () => {
-    const result = findUnusedAuthority(envelope(["packages/gateway/src"]), units(["packages/gateway/src/**"]));
+    const result = findUnusedAuthority(
+      envelope(["packages/gateway/src"]),
+      units(["packages/gateway/src/**"]),
+    );
     expect(result.tight).toBe(false);
     expect(result.unusedOwnedPaths).toEqual(["packages/gateway/src"]);
   });

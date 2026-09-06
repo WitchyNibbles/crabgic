@@ -375,7 +375,13 @@ describe("driveRun — the DAG dispatch loop", () => {
    */
   it("does not fire the succeeded hook for a RESUMED unit that failed", async () => {
     const SESSION = "77777777-7777-4777-8777-777777777777";
-    await parkWorkUnit({ journal, workUnitId: A, sessionId: SESSION, resetsAt: 500, runId: RUN_ID });
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
 
     const fired: string[] = [];
     const result = await driveRun(
@@ -423,7 +429,13 @@ describe("driveRun — the DAG dispatch loop", () => {
    */
   it("awaits the succeeded hook at the RESUME door before dispatching a successor", async () => {
     const SESSION = "77777777-7777-4777-8777-777777777777";
-    await parkWorkUnit({ journal, workUnitId: A, sessionId: SESSION, resetsAt: 500, runId: RUN_ID });
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
 
     const events: string[] = [];
     const deps = buildDeps(new Map(), newObserved(), new Map());

@@ -143,12 +143,8 @@ async function run(options: {
         options.statuses ?? new Map(units.map((u) => [u.id, "succeeded" as WorkUnitAttemptStatus])),
       worktreePathByUnitId:
         options.worktrees ?? new Map(units.map((u) => [u.id, join(dir, "wt", u.id)])),
-      ...(options.preCollected !== undefined
-        ? { preCollectedByUnitId: options.preCollected }
-        : {}),
-      ...(options.chainedBases !== undefined
-        ? { chainedBaseByUnitId: options.chainedBases }
-        : {}),
+      ...(options.preCollected !== undefined ? { preCollectedByUnitId: options.preCollected } : {}),
+      ...(options.chainedBases !== undefined ? { chainedBaseByUnitId: options.chainedBases } : {}),
     },
     {
       journal,

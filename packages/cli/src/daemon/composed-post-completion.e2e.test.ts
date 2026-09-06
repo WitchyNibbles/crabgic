@@ -745,10 +745,7 @@ describe("a completed run walks to published_local through a fired gate (defect 
     const sawPredecessorFile = new Map<string, boolean>();
     composed = await bootDaemon({
       observeWorktree: (workUnitId, worktreePath) => {
-        sawPredecessorFile.set(
-          workUnitId,
-          existsSync(join(worktreePath, unitFilePath(UNIT_A_ID))),
-        );
+        sawPredecessorFile.set(workUnitId, existsSync(join(worktreePath, unitFilePath(UNIT_A_ID))));
       },
     });
     const runId = await dispatchAndSettle(composed);

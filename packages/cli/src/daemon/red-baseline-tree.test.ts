@@ -69,7 +69,9 @@ function fakePlumbing(options: { failAdd?: boolean; failRemove?: boolean } = {})
   return { plumbing, calls };
 }
 
-async function optionsFor(plumbing: GitPlumbing): Promise<Parameters<typeof withRedBaselineTree>[0]> {
+async function optionsFor(
+  plumbing: GitPlumbing,
+): Promise<Parameters<typeof withRedBaselineTree>[0]> {
   return {
     plumbing,
     controlDir: await tempDir("crabgic-control-"),
@@ -283,8 +285,12 @@ describe("createBaseTreeSurface", () => {
     const { plumbing, calls } = fakePlumbing();
     const { withBaseTree, controlDir, worktreesRoot } = await surfaceFor({ plumbing });
 
-    await withBaseTree("cs", "unit-1", CANDIDATE_OBJECT_ID, ["src/feature.test.ts"], (worktreePath) =>
-      Promise.resolve(worktreePath),
+    await withBaseTree(
+      "cs",
+      "unit-1",
+      CANDIDATE_OBJECT_ID,
+      ["src/feature.test.ts"],
+      (worktreePath) => Promise.resolve(worktreePath),
     );
 
     const add = calls.find((args) => args[0] === "worktree" && args[1] === "add");
