@@ -26,7 +26,7 @@
  * have re-initialized it rather than the temp dir. Recorded here because the
  * guard biting on the way in is exactly why it exists.
  */
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -318,5 +318,25 @@ describe("runHygieneChecks", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(runHygieneChecks(makeRepo({ ...required, "src/x.ts": `"${NUL}"\n` }))).toBe(1);
     expect(runHygieneChecks(makeRepo({ ...required, "src/x.ts": '"\\0"\n' }))).toBe(0);
+  });
+});
+
+/**
+ * ⚠️ `format` HAD NO LOCAL GATE, and that is how eleven unformatted files
+ * reached `origin` — measured 2026-09-06, PR #176. `prettier --check .` is its
+ * own CI job, separate from `lint`, and no local aggregate ran it: a green
+ * `build`/`typecheck`/`lint`/`test`/`check:all` chain said nothing about
+ * formatting, four of those files having already been pushed by then.
+ *
+ * The same shape as the guard hole that reddened `main` the same day: a check
+ * that exists, in a lane nothing local reaches. `docs/verification-playbook.md`
+ * states the rule this pins — a lane outside the default fan-out is unrun
+ * evidence.
+ */
+describe("repo wiring", () => {
+  it("chains `format` into check:all, so a local run cannot miss what CI checks", () => {
+    const root = JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"));
+    expect(root.scripts.format).toBe("prettier --check .");
+    expect(root.scripts["check:all"]).toContain("npm run format");
   });
 });
