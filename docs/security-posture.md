@@ -427,7 +427,18 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
 
   **Deliberately NOT extended to `Read`/`Glob`/`Grep`/other tools:** the envelope policy
   default-denies any unlisted tool, while the engine grants read-only tools without any
-  rule. Covering them would journal a meaningless deny verdict for every read and
+  rule. Covering them would journal a meaningless deny verdict for every read, and
+  black-hole every one of them whenever adjudication is unavailable — the fail-closed
+  arm above is enforced for covered tools, so widening the set widens what a missing
+  adjudicator can stop.
+
+  `canUseTool` stays installed as a backstop for grant shapes not yet measured; no
+  document here claims it adjudicates the compiled profile's own grants. Known measured/unmeasured divergences between the policy
+  and the engine, kept enumerable: unproven-metacharacter fail-closed (measured stricter,
+  §4.8), quote-unaware compound splitting (measured stricter, §4.8), `//`-anchored
+  substituted path matching (unprobed live — see the worktree-anchor residual below);
+  Pre→Post `tool_input` stability is measured for `Bash` and `Write` by
+  `adjudication-bridge.live.test.ts`, not for `Edit`.
 
   #### Correction 2026-09-06 — this described the component, not the daemon
 
@@ -451,14 +462,16 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   `packages/cli/src/daemon/run-dispatcher.test.ts` — an allow inside the unit's owned path,
   a deny for an ungranted command, and the same adjudicator surviving a park resume.
 
-  black-hole them all whenever adjudication is unavailable. `canUseTool` stays installed as
-  a backstop for grant shapes not yet measured; no document here claims it adjudicates the
-  compiled profile's own grants. Known measured/unmeasured divergences between the policy
-  and the engine, kept enumerable: unproven-metacharacter fail-closed (measured stricter,
-  §4.8), quote-unaware compound splitting (measured stricter, §4.8), `//`-anchored
-  substituted path matching (unprobed live — see the worktree-anchor residual below);
-  Pre→Post `tool_input` stability is measured for `Bash` and `Write` by
-  `adjudication-bridge.live.test.ts`, not for `Edit`.
+  **What the wiring does NOT yet buy, measured the same day.** The record it produces is
+  not yet readable as an alarm for `Edit`/`Write`. Worktrees are cut under the cache root,
+  and the compiled profile carries a blanket `Edit(<cacheRoot>/**)` / `Write(<cacheRoot>/**)`
+  deny; `evaluateToolCall` is deny-wins, so a correctly-substituted
+  `Edit(//<worktree>/<owned>/**)` allow is overridden by it. Probed against the built dist
+  with the deny list as the only variable: with the cache-root denies the verdict is
+  `deny`, and with them removed the same call on the same path resolves `allow`. Every
+  legitimate worker `Edit`/`Write` therefore journals a `deny`. This is not an enforcement
+  break — a built-in's verdict is recorded and never acted on — but it is a 100%
+  false-positive rate on the one record this wiring exists to produce, and it is open.
 
 - **Worktree-anchor (`//<worktree>/…/**`) matching semantics — MEASURED 2026-08-01, and the
   answer splits by channel (§3).** The differential probe

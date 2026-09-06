@@ -90,22 +90,6 @@ export class ProposalNotFoundError extends Error {
 }
 
 /**
- * Thrown by `../eval/eval-pair.ts` when the held-out case set observed at
- * held-out-eval time differs from the set that was pinned before the dev
- * eval ran — the between-stage mutation window "grader drift" names
- * (roadmap/22 §In scope, Separation of duties: "proposer cannot modify its
- * grader, held-out cases, or promotion criteria"; §Exit criteria:
- * "grader-drift attempt blocked").
- *
- * DISTINGUISHED FROM grader isolation's `EACCES` seal, because the two are
- * easy to conflate and only one of them is this: the seal refuses a WRITE,
- * at the OS layer, to one directory. This refuses to GRADE against anything
- * but the pre-committed set, whoever wrote it and wherever it came from —
- * including an in-memory array that never touched the filesystem, which is
- * how every current caller of `runEvalSuite` supplies its cases. Neither
- * subsumes the other.
- */
-/**
  * An eval was asked to grade zero cases.
  *
  * WHY THIS IS AN ERROR AND NOT `passed: false`. `runEvalSuite` derived its
@@ -127,6 +111,22 @@ export class EmptyCaseSetError extends Error {
   }
 }
 
+/**
+ * Thrown by `../eval/eval-pair.ts` when the held-out case set observed at
+ * held-out-eval time differs from the set that was pinned before the dev
+ * eval ran — the between-stage mutation window "grader drift" names
+ * (roadmap/22 §In scope, Separation of duties: "proposer cannot modify its
+ * grader, held-out cases, or promotion criteria"; §Exit criteria:
+ * "grader-drift attempt blocked").
+ *
+ * DISTINGUISHED FROM grader isolation's `EACCES` seal, because the two are
+ * easy to conflate and only one of them is this: the seal refuses a WRITE,
+ * at the OS layer, to one directory. This refuses to GRADE against anything
+ * but the pre-committed set, whoever wrote it and wherever it came from —
+ * including an in-memory array that never touched the filesystem, which is
+ * how every current caller of `runEvalSuite` supplies its cases. Neither
+ * subsumes the other.
+ */
 export class GraderDriftError extends Error {
   constructor(
     readonly expectedDigest: string,

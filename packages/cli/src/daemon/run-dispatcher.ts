@@ -732,7 +732,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     for (const runId of [...retainedByRun.keys()]) {
       const run = deps.runs.get(runId);
       if (run === undefined || isRunLifecycleAbsorbing(run.runState)) {
-        retainedByRun.delete(runId);
+        // `clearRetainedRun`, NOT a bare `retainedByRun.delete`. Run-scoped
+        // state is now three maps, not one, and this path deleted only the
+        // first — so a run cancelled while parked left `preCollectedByRun`
+        // and the chained bases behind for the daemon's whole life, on
+        // exactly the path this sweep exists to bound. Routing every
+        // eviction through the single owner makes that drift unrepresentable
+        // rather than merely fixed: a fourth map is dropped here for free.
+        clearRetainedRun(runId);
       }
     }
   };
@@ -953,9 +960,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * let both run, and the packet would then declare a different base object
      * than the worktree was actually cut from.
      *
-     * A predecessor that is not in `preCollectedByUnitId` contributes nothing:
-     * either it committed nothing (`nothing-to-commit`) or its collection was
-     * refused, and the pipeline reports the refusal with its own reason.
+     * A predecessor MISSING from `preCollectedByUnitId` is REFUSED, not
+     * skipped — see the throw below. What contributes nothing is a
+     * predecessor that IS present having committed nothing
+     * (`nothing-to-commit`): it is in the map with an unchanged base.
      */
     /**
      * The chained bases this RUN has already resolved, surviving its re-drives.
@@ -1126,7 +1134,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * `REFUSE_ALL_ADJUDICATIONS`: a constant deny the bus never wrapped and
      * therefore never journaled — and, because `tool-adjudication-hook.ts`
      * enforces the deny for the gateway family, one that refused every
-     * the gateway MCP family call a worker made.
+     * gateway MCP family call a worker made.
      *
      * PER ATTEMPT, NOT PER RUN, which is the policy's own binding
      * precondition: it requires `permissions` to have ALREADY had
@@ -1135,6 +1143,25 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * owned-path rule at all — it would deny every legitimate Edit and Write
      * in the unit's own paths and journal the denial, turning the alarm an
      * auditor reads into noise.
+     *
+     * ⚠️ NECESSARY, NOT SUFFICIENT — MEASURED 2026-09-06, and the alarm is
+     * noise today for a SECOND reason this comment used to imply away.
+     * Worktrees are cut under the cache root
+     * (`resolveWorktreesRootDir` = `<cacheRoot>/<hash>/worktrees/...`), and
+     * `mandatoryPathDenyRoots` emits a blanket `Edit(<cacheRoot>/**)` /
+     * `Write(<cacheRoot>/**)`. `evaluateToolCall` is deny-wins, so a
+     * correctly-substituted `Edit(//<worktree>/<owned>/**)` allow is
+     * overridden by it. Probed against the built dist with the deny list as
+     * the only variable: WITH the cache-root denies the verdict is `deny`;
+     * with them removed the SAME call on the SAME path resolves `allow` —
+     * so the allow rule matches fine and the blanket deny is the cause.
+     * Consequence: every legitimate worker Edit/Write journals a `deny`.
+     * NOT an enforcement break — `tool-adjudication-hook.ts` records a
+     * built-in's verdict and never acts on it — but a 100% false-positive
+     * rate on exactly the record this wiring exists to produce. The remedy
+     * (whether the compiled profile stops denying a unit's own worktree, or
+     * only the adjudication view does) is an owner decision, not this
+     * comment's to assume.
      */
     const buildWorkerAdjudicator = (
       workUnitId: string,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-09-06",
-  "generatedAtSha": "3288e5a5a44a1fc41ad881c2a443eb2f87754f50",
+  "generatedAtSha": "61790792d228117aed5fe472bd038721798249fc",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@836!span",
-        "MOVED/collapsed@858!span"
+        "MOVED/collapsed@843!span",
+        "MOVED/collapsed@865!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -11888,8 +11888,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@1235!span",
-        "MOVED-AMBIG/collapsed@1241,1440!span~repeat",
+        "MOVED/collapsed@1262!span",
+        "MOVED-AMBIG/collapsed@1268,1467!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]
