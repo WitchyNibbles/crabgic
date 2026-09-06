@@ -80,6 +80,7 @@ import {
   type TerminableWorker,
 } from "@crabgic/supervisor";
 import {
+  analyzeOverlap,
   createGitPlumbing,
   createNodeGitSpawn,
   createWorktree,
@@ -1060,8 +1061,35 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       cacheRoot: `${resolveXdgCacheHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
     });
 
+    /**
+     * Phase 07's rename-aware collision verdicts, which is how two units that
+     * own the same path are kept out of the same round.
+     *
+     * ⚠️ NOT THE DAG'S JOB, and `dependsOn` does not stand in for it. Two
+     * independent units may legitimately own an overlapping path (the run
+     * whose four units all owned `scripts/check-stale-dist.test.mjs` is the
+     * shape this exists for), and nothing in the graph orders them. Dispatched
+     * together they each get a worktree cut from the same base, each rewrites
+     * the shared file, and the second candidate conflicts at integration — a
+     * run blocked on work that was never in conflict, only mis-scheduled.
+     *
+     * ⚠️ MEASURED INERT BEFORE THIS: the composition root passed no verdicts,
+     * so `selectDispatchSet` saw an empty list and the round journaled
+     * "independence proven by zero pairwise overlap collisions among them" for
+     * units that overlapped completely — a false claim in the audit trail, not
+     * merely a missing check. Every scheduler test that pins the mechanism
+     * passed throughout, because they all supply the verdicts themselves.
+     *
+     * `ownedPaths` is the only write set this daemon has: a unit declares no
+     * renames ahead of its attempt, and the non-Git resource registry is
+     * caller-supplied config this composition root is not given.
+     */
+    const overlapVerdicts = analyzeOverlap(
+      workUnits.map((unit) => ({ unitId: unit.id, paths: [...unit.ownedPaths] })),
+    );
+
     const result = await driveRun(
-      { runId, changeSetId: changeSet.id, workUnits },
+      { runId, changeSetId: changeSet.id, workUnits, overlapVerdicts },
       {
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,

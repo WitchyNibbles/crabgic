@@ -983,6 +983,66 @@ describe("createRealRunDispatcher — dispatch", () => {
   });
 
   /**
+   * ⚠️ TWO UNITS THAT OWN THE SAME PATH MUST NOT RUN IN THE SAME ROUND, and
+   * `dependsOn` is not what stops them: independent units with overlapping
+   * `ownedPaths` are a supported plan shape (phase 07 serializes them through
+   * `analyzeOverlap`'s verdicts) and the DAG has no edge to order them by.
+   *
+   * Dispatched together they each get a worktree cut from the same base, each
+   * rewrites the shared file, and the second candidate conflicts at integration
+   * — a run blocked on work that was never in conflict, only mis-scheduled.
+   *
+   * `driveRun` takes the verdicts and `selectDispatchSet` honours them; until
+   * this existed the composition root passed NONE, so the whole mechanism was
+   * inert in production while every scheduler test that pins it passed.
+   */
+  it("never dispatches two units that own the same path in the same round", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    let inFlight = 0;
+    let peak = 0;
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [UNIT_ID, UNIT_B].map((id) =>
+        buildWorkUnit({
+          id,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+          // The SAME owned path, and no edge between them.
+          ownedPaths: ["packages/example/src/shared.ts"],
+        }),
+      ),
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        inFlight -= 1;
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // Both still ran -- SERIALIZED, not dropped.
+    const succeeded = new Set<string>();
+    for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+      const payload = entry.payload as { status?: string };
+      if (payload.status === "succeeded" && entry.workUnitId !== undefined) {
+        succeeded.add(entry.workUnitId);
+      }
+    }
+    expect([...succeeded].sort()).toEqual([UNIT_ID, UNIT_B].sort());
+    expect(peak).toBe(1);
+  });
+
+  /**
    * ⚠️ THE BRANCH-TYPE DERIVATION MUST NOT CRASH THE DRIVE. Resolving this
    * change set's requirements is STRICT — a declared id with no record throws —
    * and `resolveChainedBase` needs a branch type to render its commit message.
