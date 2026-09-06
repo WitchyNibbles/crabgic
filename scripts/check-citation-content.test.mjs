@@ -453,6 +453,36 @@ describe("the ratchet", () => {
     expect(main(["--update-baseline", "--repo", root, "--allow-unanchored"])).toBe(0);
   });
 
+  /**
+   * ⚠️ THE REF ITSELF IS UNCHECKED, and a ref pointing at nothing is worse than
+   * one pointing at the wrong line. `diffAgainstBaseline` computes its
+   * `unanchored` verdict from the FRAGMENT pins only, so a citation whose own
+   * `ref` names a file that does not exist is classed `added` and blessed —
+   * pinned as `"ref": "FILE-MISSING"` with exit 0.
+   *
+   * Found 2026-09-06 while scripting a burn-down of the known-stale list: a bug
+   * in that script emitted `…/project-inspect.test.ts:-13--13`, and
+   * `--update-baseline` accepted it. This is exactly the outcome the refusal
+   * message names — "regenerating would pin the defect as the new normal, which
+   * is exactly how a ratchet becomes paper".
+   */
+  it("refuses to regenerate a baseline that would bless a citation whose ref names no file", () => {
+    const { root, write } = makeFixtureRepo(drifted(4));
+    expect(main(["--seed", "--repo", root])).toBe(0);
+    write(
+      "docs/evidence/criteria-closeout/phase-99.json",
+      record([
+        {
+          kind: "test",
+          // Resolves to no file at all — the shape a mangled span produces.
+          ref: "src/guard.ts:-13--13",
+          quotedAssertion: "src/guard.ts:-13--13 — the guard is asserted here.",
+        },
+      ]),
+    );
+    expect(main(["--update-baseline", "--repo", root])).toBe(1);
+  });
+
   it("cannot be bypassed by deleting the baseline — first-seeding needs --seed", () => {
     const { root, write } = makeFixtureRepo(drifted(4));
     expect(main(["--seed", "--repo", root])).toBe(0);
