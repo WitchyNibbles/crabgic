@@ -502,6 +502,57 @@ describe("resumeAttempt", () => {
     expect(latest?.sessionId).toBe("99999999-9999-4999-8999-999999999999");
   });
 
+  /**
+   * `ResumeAttemptOptions` carried no `onWorkerHandle` member at all, so the
+   * only handle a resumed attempt ever has never escaped this function. The
+   * driver's park-resume door was therefore structurally incapable of
+   * registering the worker in `liveWorkers`, and 05's `worker.terminate`
+   * could not reach a unit continued after a rate-limit park.
+   */
+  it("hands the resumed worker's handle over before consuming any event", async () => {
+    const SESSION = "99999999-9999-4999-8999-999999999999";
+    const parkScript = buildFakeEngineScript({
+      sessionId: SESSION,
+      failure: { kind: "limitSignal", payload: RATE_LIMIT_REJECTED },
+      onResume: buildFakeEngineScript({
+        sessionId: SESSION,
+        structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+      }),
+    });
+    const adapter = new FakeEngineAdapter(parkScript);
+
+    await dispatchAttempt({
+      adapter,
+      journal: store,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+      packet: buildTaskPacket({ workUnitId: WORK_UNIT_ID }),
+      profile: buildMinimalCompiledProfile(),
+      adjudicate: allowAllAdjudicate,
+      evidenceKind: "none",
+    });
+
+    const handles: { readonly sessionRef: { readonly sessionId: string } }[] = [];
+    await resumeAttempt({
+      adapter,
+      criteriaSeal: { requirements: [], approvalSeal: undefined },
+      journal: store,
+      sessionRef: {
+        sessionId: SESSION,
+        projectDirectory: "/fake/project",
+        worktreePath: "/fake/project/worktree",
+        configDir: "/fake/project/.claude-config",
+      },
+      workUnitId: WORK_UNIT_ID,
+      adjudicate: allowAllAdjudicate,
+      trigger: { kind: "parkResume" },
+      onWorkerHandle: (handle) => handles.push(handle),
+    });
+
+    // Exactly one handover, and it is the RESUMED session — not a fresh one.
+    expect(handles).toHaveLength(1);
+    expect(handles[0]?.sessionRef.sessionId).toBe(SESSION);
+  });
+
   it("MAJOR-1 fix: resumeAttempt with trigger 'crashRepair' IS gated identically to dispatchAttempt — refused with a typed error once the cap is exhausted", async () => {
     const workUnitId = "dddddddd-0000-4000-8000-00000000000d";
     // Exhaust the cap: 1 initial + 2 evidence-driven repairs, all via

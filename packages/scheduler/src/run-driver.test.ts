@@ -524,6 +524,69 @@ describe("driveRun — the DAG dispatch loop", () => {
     expect(result.stopped).toBe("completed");
   });
 
+  /**
+   * `runDispatch` registers every fresh attempt in `liveWorkers` and retires
+   * it in `finally`. `resumeReadyParkedUnits` — the OTHER door a unit runs
+   * through — touched that map nowhere, and `ResumeAttemptOptions` had no
+   * `onWorkerHandle` member at all, so the seam was structurally incapable of
+   * registering one. A unit continued after a rate-limit park therefore ran
+   * with no entry, and 05's `worker.terminate` could not reach it. The file
+   * header claimed the opposite for both doors.
+   */
+  it("registers a resumed park attempt in liveWorkers for exactly the window it runs", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    await parkWorkUnit({
+      journal,
+      workUnitId: A,
+      sessionId: SESSION,
+      resetsAt: 500,
+      runId: RUN_ID,
+    });
+
+    const liveWorkers = new RecordingLiveWorkers();
+    let sizeDuringResume = -1;
+    const deps: RunDriverDependencies = {
+      ...buildDeps(new Map(), newObserved(), liveWorkers),
+      nowSeconds: () => 1000,
+      resumeParkedUnit: (_ctx, sessionId, registerWorker) => {
+        registerWorker({ terminate: () => Promise.resolve({ outcome: "terminated" }) });
+        // Read INSIDE the resume: registration that only outlives the attempt
+        // would satisfy a post-hoc check while helping nobody.
+        sizeDuringResume = liveWorkers.size;
+        return Promise.resolve({
+          kind: "succeeded",
+          sessionId,
+          result: buildWorkerResult({ outcome: "succeeded" }),
+        });
+      },
+    };
+
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: [
+          buildWorkUnit({
+            id: A,
+            changeSetId: CHANGE_SET_ID,
+            dependsOn: [],
+            attemptStatus: "pending",
+          }),
+        ],
+      },
+      deps,
+    );
+
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(sizeDuringResume).toBe(1);
+    expect(liveWorkers.registered).toEqual([A]);
+    // Retired once the resume settled — the control plane never holds a
+    // handle to a worker that is already gone.
+    expect(liveWorkers.size).toBe(0);
+    const registered = liveWorkers.handles[0];
+    await expect(registered?.terminate(5_000)).resolves.toEqual({ outcome: "terminated" });
+  });
+
   it("completes a chain where each unit parks on dispatch then resumes — no false roundLimit", async () => {
     // A→B chain: A parks on dispatch, resumes → succeeds → B becomes ready, B
     // parks on dispatch, resumes → succeeds. That is FOUR rounds (dispatch A,

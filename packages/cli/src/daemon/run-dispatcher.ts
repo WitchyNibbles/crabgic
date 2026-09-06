@@ -1343,7 +1343,11 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           });
           return adapter;
         },
-        resumeParkedUnit: async (ctx, sessionId): Promise<DispatchAttemptOutcome | undefined> => {
+        resumeParkedUnit: async (
+          ctx,
+          sessionId,
+          registerWorker,
+        ): Promise<DispatchAttemptOutcome | undefined> => {
           const retained = retainedWorkers.get(ctx.workUnit.id);
           // No retained adapter — a re-drive after a daemon restart lost it.
           // Decline rather than resume into a read-only fallback session that
@@ -1383,6 +1387,21 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             adjudicate,
             trigger: { kind: "parkResume" },
             runId,
+            // The driver owns `liveWorkers` but holds no adapter at this
+            // door; this closure does, so it is where the terminable worker
+            // is built. Without it a resumed unit ran unreachable to
+            // `worker.terminate`.
+            onWorkerHandle: (handle) => {
+              registerWorker({
+                terminate: async (graceMs) => {
+                  await retained.adapter.cancel(
+                    handle,
+                    new Date(Date.now() + graceMs).toISOString(),
+                  );
+                  return { outcome: "terminated" };
+                },
+              });
+            },
           });
         },
         /**

@@ -567,6 +567,14 @@ export interface ResumeAttemptOptions {
   readonly nowSeconds?: () => number;
   /** Threaded onto every `recordAttempt`/`parkWorkUnit` call this resume produces — see `ConsumeEventsParams`'s own doc comment. Optional: a caller resuming without a known run id (e.g. a standalone work-unit-scoped test) simply omits it, unchanged from before this fix. */
   readonly runId?: string;
+  /**
+   * Handed the resumed worker's handle immediately after `adapter.resume` and
+   * before any event is consumed — the same seam `DispatchAttemptOptions`
+   * carries, for the same reason: otherwise the handle `EngineAdapter.cancel`
+   * needs never escapes this function, and a resumed attempt is as live as a
+   * fresh one.
+   */
+  readonly onWorkerHandle?: (handle: WorkerHandle) => void;
 }
 
 /**
@@ -602,6 +610,9 @@ export async function resumeAttempt(
 
   const handle = options.adapter.resume(options.sessionRef, options.adjudicate);
   const sessionId = handle.sessionRef.sessionId;
+  // Handed over BEFORE any event is consumed, exactly as `dispatchAttempt`
+  // does and for the same reason.
+  options.onWorkerHandle?.(handle);
 
   await recordAttempt(options.journal, options.workUnitId, sessionId, "dispatched", options.runId);
 

@@ -29,7 +29,14 @@
  * `liveWorkers` is the same map `@crabgic/supervisor`'s composition root hands to
  * its router, structurally typed here so this package needs no dependency on
  * the supervisor: registering an in-flight attempt there is what makes 05's
- * `worker.terminate` operation able to reach a running worker at all.
+ * `worker.terminate` operation able to reach a running worker at all — for
+ * BOTH doors a unit runs through, the fresh dispatch and the park resume.
+ *
+ * That was measured false for the second door until 2026-09-06. Only
+ * `runDispatch` registered; `resumeReadyParkedUnits` touched the map nowhere,
+ * and `ResumeAttemptOptions` had no `onWorkerHandle` member, so the seam could
+ * not have registered one even if asked. A unit continued after a rate-limit
+ * park ran unreachable.
  */
 import { getLatestAttemptForRun, type JournalStore } from "@crabgic/journal";
 import type {
@@ -150,6 +157,15 @@ export interface RunDriverDependencies {
   readonly resumeParkedUnit?: (
     ctx: WorkerDispatchContext,
     sessionId: string,
+    /**
+     * Registers the resumed worker so `worker.terminate` can reach it. The
+     * driver owns `liveWorkers` but holds no adapter at this door, so the
+     * implementation — which does hold the retained one — hands back a
+     * terminable worker rather than a raw handle. Call it before the resume
+     * consumes any event; the driver retires the entry when this promise
+     * settles.
+     */
+    registerWorker: (worker: DriverTerminableWorker) => void,
   ) => Promise<DispatchAttemptOutcome | undefined>;
   /**
    * Called for each unit that just SUCCEEDED, and AWAITED BEFORE THE NEXT
@@ -418,15 +434,30 @@ export async function driveRun(
       const park = await getParkStatus(deps.journal, unit.id, nowSeconds(), options.runId);
       if (!park.parked || !park.readyToResume || park.sessionId === undefined) continue;
       try {
-        const outcome = await deps.resumeParkedUnit(
-          {
-            workUnit: unit,
-            model: resolveModel(unit.role),
-            runId: options.runId,
-            changeSetId: options.changeSetId,
-          },
-          park.sessionId,
-        );
+        // Registered for exactly the window the resume runs, and retired in
+        // the `finally` below — the same contract `runDispatch` gives a fresh
+        // attempt. Without it a unit continued after a park ran with no entry
+        // in the map at all, and `worker.terminate` could not reach it.
+        let outcome: DispatchAttemptOutcome | undefined;
+        try {
+          outcome = await deps.resumeParkedUnit(
+            {
+              workUnit: unit,
+              model: resolveModel(unit.role),
+              runId: options.runId,
+              changeSetId: options.changeSetId,
+            },
+            park.sessionId,
+            (worker) => {
+              deps.liveWorkers.set(unit.id, worker);
+            },
+          );
+        } finally {
+          // Retired as soon as the resume settles — NOT after
+          // `onUnitSucceeded` below, which is post-completion collection and
+          // has no worker to terminate.
+          deps.liveWorkers.delete(unit.id);
+        }
         // `undefined` = the caller could not resume it (no retained adapter,
         // e.g. after a daemon restart) and declined rather than resume into a
         // read-only session — leave it parked.
