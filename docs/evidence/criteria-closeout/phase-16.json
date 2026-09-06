@@ -183,8 +183,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/gateway/src/transport/http-client.test.ts:316-340",
-          "quotedAssertion": "The serializer observed through the client, on the write path the criterion is about: :317 'preserves write order for the same tenant+resource under concurrent submission' with both requests marked 'method: \"PUT\", isWrite: true, hasPrecondition: true' (:335-336), the first artificially slower ('mine === 0 ? 20 : 1', :323), and :339 'expect(order).toEqual([0, 1]);'."
+          "ref": "packages/gateway/src/transport/http-client.test.ts:400-424",
+          "quotedAssertion": "The serializer observed through the client, on the write path the criterion is about: :401 'preserves write order for the same tenant+resource under concurrent submission', with the first request artificially slower at :407 'mine === 0 ? 20 : 1', both submitted concurrently as writes with a precondition (lines 419-420), and the order asserted at :423 'expect(order).toEqual([0, 1]);'. Correction 2026-09-06: unchanged in content, moved +84 lines by the redirect-hop/retry-budget tests inserted above it (was :316-340). Each marker now precedes the fragment it pins, and the two identical `isWrite` request lines are described rather than quoted — repeat text is content-verifiable but not position-verifiable."
         },
         {
           "kind": "test",
@@ -255,8 +255,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/gateway/src/transport/http-client.test.ts:298-313",
-          "quotedAssertion": "The result budget enforced on the transport's own response path too: :299 'throws BudgetExceededError when the response body exceeds the result budget' with 'bodyText: \"x\".repeat(256 * 1024 + 1),' (:303) and :312 'await expect(client.request(baseReq())).rejects.toThrow(/budget/);'. One byte over the literal 256 KiB."
+          "ref": "packages/gateway/src/transport/http-client.test.ts:382-397",
+          "quotedAssertion": "The result budget enforced on the transport's own response path too: :383 'throws BudgetExceededError when the response body exceeds the result budget', :387 'bodyText: \"x\".repeat(256 * 1024 + 1),' and :396 'await expect(client.request(baseReq())).rejects.toThrow(/budget/);'. One byte over the literal 256 KiB. Correction 2026-09-06: unchanged in content, moved +84 lines by the redirect-hop/retry-budget tests inserted above it (was :298-313); each marker now precedes the fragment it pins."
         },
         {
           "kind": "artifact",

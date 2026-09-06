@@ -237,8 +237,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/learning/src/store/case-fixture-store.ts:65",
-          "quotedAssertion": "packages/learning/src/store/case-fixture-store.ts:65-72 — what makes the boundary OS-level rather than a convention: 'async seal(): Promise<void> {' / 'await chmod(join(this.#dir, name), LEARNING_SEALED_FILE_MODE);' / 'await chmod(this.#dir, LEARNING_SEALED_DIR_MODE);'. Modes pinned at store/layout.ts:47-50 as 0o500 / 0o400. :47-50's in-process refusal ('is sealed — refusing write', :49) is the weaker, layered companion — the EACCES above holds without it."
+          "ref": "packages/learning/src/store/case-fixture-store.ts:77-84",
+          "quotedAssertion": "What makes the boundary OS-level rather than a convention: :77 'async seal(): Promise<void> {', :80 'await chmod(join(this.#dir, name), LEARNING_SEALED_FILE_MODE);' and :82 'await chmod(this.#dir, LEARNING_SEALED_DIR_MODE);'. Modes pinned at store/layout. Correction 2026-09-06: unchanged in content, moved +12 lines by the doc comment added to read() above it (was :65, markers :65/:68/:70). The CLAIM was amended the same day: seal() really did set the mode, but write()'s own ensureDir chmodded it straight back, so the boundary held only against callers outside this class — see packages/learning/src/red-team/grader-unseal.redteam.test.ts."
         },
         {
           "kind": "test",

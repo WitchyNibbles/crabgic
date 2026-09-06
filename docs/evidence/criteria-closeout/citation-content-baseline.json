@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-09-06",
-  "generatedAtSha": "43a3789a8e3593a544d8a38cbcf224e268c95c67",
+  "generatedAtSha": "3288e5a5a44a1fc41ad881c2a443eb2f87754f50",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
-    "fragments": 4006,
-    "anchored": 2630,
-    "seededStale": 765,
-    "outsideSpan": 882,
-    "repeatText": 532,
-    "crossFile": 19,
-    "skipped": 611
+    "fragments": 4004,
+    "anchored": 2632,
+    "seededStale": 762,
+    "outsideSpan": 880,
+    "repeatText": 531,
+    "crossFile": 18,
+    "skipped": 610
   },
   "citations": {
     "phase-00.json#c1#docs/engine-baseline.md:12": {
@@ -2809,10 +2809,10 @@
       "qa": "c3062777af15",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@493!span",
         "MOVED/collapsed@494!span",
         "MOVED/collapsed@495!span",
-        "MOVED-AMBIG/collapsed@496,520,548!span~repeat"
+        "MOVED/collapsed@496!span",
+        "MOVED-AMBIG/collapsed@497,521,549!span~repeat"
       ]
     },
     "phase-06.json#c9#packages/engine-claude/src/version-gate.test.ts:108-128": {
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@808!span",
-        "MOVED/collapsed@840!span"
+        "MOVED/collapsed@836!span",
+        "MOVED/collapsed@858!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -6820,7 +6820,7 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "OK/collapsed@90,117,200~repeat",
+        "OK/collapsed@90,117,200,365~repeat",
         "OK/collapsed@91",
         "OK/collapsed@66,93,122~repeat",
         "OK/collapsed@77,110~repeat"
@@ -6929,14 +6929,13 @@
         "OK/collapsed@294"
       ]
     },
-    "phase-16.json#c3#packages/gateway/src/transport/http-client.test.ts:316-340": {
-      "qa": "8772ce101937",
+    "phase-16.json#c3#packages/gateway/src/transport/http-client.test.ts:400-424": {
+      "qa": "5258591f5253",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@317",
-        "MOVED-AMBIG/collapsed@335,336~repeat",
-        "MOVED/collapsed@323",
-        "OK/collapsed@339"
+        "OK/collapsed@401",
+        "OK/collapsed@407",
+        "OK/collapsed@423"
       ]
     },
     "phase-16.json#c3#packages/gateway/src/transport/retry-ladder.test.ts:49-65": {
@@ -7027,7 +7026,7 @@
         "SKIP-commentary",
         "OK/collapsed@273",
         "MOVED/collapsed@286",
-        "OK/collapsed@180,203,229,269,298,446~repeat",
+        "OK/collapsed@180,203,229,269,298,512~repeat",
         "OK/collapsed@299"
       ]
     },
@@ -7086,13 +7085,13 @@
         "OK/collapsed@30"
       ]
     },
-    "phase-16.json#c4#packages/gateway/src/transport/http-client.test.ts:298-313": {
-      "qa": "3ef703f16f39",
+    "phase-16.json#c4#packages/gateway/src/transport/http-client.test.ts:382-397": {
+      "qa": "cfcdf40459a4",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@299",
-        "MOVED/collapsed@303",
-        "OK/collapsed@312"
+        "OK/collapsed@383",
+        "OK/collapsed@387",
+        "OK/collapsed@396"
       ]
     },
     "phase-16.json#c4#packages/gateway/src/transport/pagination.test.ts:48-56": {
@@ -7146,7 +7145,7 @@
         "OK/collapsed@232",
         "MOVED/collapsed@255",
         "OK/collapsed@270",
-        "OK/collapsed@180,203,229,269,298,446~repeat"
+        "OK/collapsed@180,203,229,269,298,512~repeat"
       ]
     },
     "phase-16.json#c5#packages/gateway/src/mcp/native-tools/provider-dispatch-tool.ts:66-67": {
@@ -7506,7 +7505,7 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@202,228,268,297~repeat",
-        "OK/collapsed@180,203,229,269,298,446~repeat"
+        "OK/collapsed@180,203,229,269,298,512~repeat"
       ]
     },
     "phase-16.json#c9#packages/gateway/src/mcp/native-registry.test.ts:206-230": {
@@ -7515,7 +7514,7 @@
       "pins": [
         "OK/collapsed@206",
         "OK/collapsed@218",
-        "OK/collapsed@180,203,229,269,298,446~repeat",
+        "OK/collapsed@180,203,229,269,298,512~repeat",
         "SKIP-commentary",
         "SKIP-commentary"
       ]
@@ -7527,7 +7526,7 @@
         "OK/collapsed@75",
         "MOVED/collapsed@79",
         "OK/collapsed@88",
-        "OK/collapsed@102,390,484~repeat",
+        "OK/collapsed@102,456,550~repeat",
         "OK/collapsed@104"
       ]
     },
@@ -10457,14 +10456,13 @@
         "OK/collapsed@68!span"
       ]
     },
-    "phase-22.json#c5#packages/learning/src/store/case-fixture-store.ts:65": {
-      "qa": "c3940cff3fa0",
+    "phase-22.json#c5#packages/learning/src/store/case-fixture-store.ts:77-84": {
+      "qa": "ff9b2290f107",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@65",
-        "OK/collapsed@68!span",
-        "OK/collapsed@70!span",
-        "SKIP-commentary"
+        "OK/collapsed@77",
+        "OK/collapsed@80",
+        "OK/collapsed@82"
       ]
     },
     "phase-22.json#c5#packages/learning/src/store/layout.test.ts:14": {
@@ -11822,10 +11820,10 @@
       "qa": "ec309bfba344",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@67,94,120,136,704!span~repeat",
-        "MOVED/collapsed@705!span",
-        "MOVED/collapsed@709!span",
-        "MOVED/collapsed@711!span"
+        "MOVED-AMBIG/collapsed@67,94,120,136,755!span~repeat",
+        "MOVED/collapsed@756!span",
+        "MOVED/collapsed@760!span",
+        "MOVED/collapsed@762!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:599-621": {
@@ -11833,30 +11831,30 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED-AMBIG/collapsed@64,117,439,738,861!span~repeat",
-        "MOVED/collapsed@739!span",
-        "MOVED/collapsed@741!span"
+        "MOVED-AMBIG/collapsed@64,117,439,789,912!span~repeat",
+        "MOVED/collapsed@790!span",
+        "MOVED/collapsed@792!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:623-666": {
       "qa": "0b313dd52618",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@266,765,800,843!span~repeat",
-        "MOVED-AMBIG/collapsed@178,771!span~repeat",
-        "MOVED-AMBIG/collapsed@778,808!span~repeat",
-        "MOVED/collapsed@779!span",
-        "MOVED-AMBIG/collapsed@780,810!span~repeat"
+        "MOVED-AMBIG/collapsed@266,816,851,894!span~repeat",
+        "MOVED-AMBIG/collapsed@178,822!span~repeat",
+        "MOVED-AMBIG/collapsed@829,859!span~repeat",
+        "MOVED/collapsed@830!span",
+        "MOVED-AMBIG/collapsed@831,861!span~repeat"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:668-691": {
       "qa": "8b644b805462",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@802!span",
-        "MOVED-AMBIG/collapsed@778,808!span~repeat",
-        "MOVED/collapsed@809!span",
-        "MOVED/collapsed@785!span"
+        "MOVED/collapsed@853!span",
+        "MOVED-AMBIG/collapsed@829,859!span~repeat",
+        "MOVED/collapsed@860!span",
+        "MOVED/collapsed@836!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.ts:177-192": {
@@ -11874,7 +11872,7 @@
       "pins": [
         "MOVED/collapsed@381!span",
         "MOVED/collapsed@391!span",
-        "MOVED-AMBIG/collapsed@349,392,412,423,433,451,530,606!span~repeat"
+        "MOVED-AMBIG/collapsed@349,392,412,423,433,451,530,617!span~repeat"
       ]
     },
     "phase-24.json#c6#docs/evidence/phase-24/closeout-c6-rollback-latest-seal-wins.txt": {
@@ -11890,8 +11888,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@1174!span",
-        "MOVED-AMBIG/collapsed@1180,1368!span~repeat",
+        "MOVED/collapsed@1235!span",
+        "MOVED-AMBIG/collapsed@1241,1440!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]
