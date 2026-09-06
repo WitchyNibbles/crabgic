@@ -79,6 +79,14 @@ export class Lease {
   #record: LeaseRecord;
   #released = false;
   #heartbeat: NodeJS.Timeout | undefined;
+  /**
+   * A renewal that is already past `#renew`'s `#released` guard. `#release`
+   * awaits it so its `unlink` is strictly the last write to `leasePath` —
+   * `clearInterval` only stops FUTURE ticks. Never rejects: the tracked
+   * promise is the settled projection, so awaiting it cannot throw into a
+   * caller of `release()`.
+   */
+  #inFlightRenew: Promise<void> | undefined;
   readonly #clock: LeaseClock;
   readonly #ttlMs: number;
   readonly #heartbeatIntervalMs: number;
@@ -228,7 +236,26 @@ export class Lease {
    *     underlying error (not `LeaseLostError`) until the TTL is actually
    *     exceeded.
    */
+  /**
+   * Tracks itself as in flight for `#release`, then delegates. Both callers go
+   * through here — the heartbeat timer and the public `renewNow()` — so the
+   * ordering guarantee does not depend on which one started the renewal.
+   */
   async #renew(): Promise<void> {
+    const running = this.#renewOnce();
+    const settled = running.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.#inFlightRenew = settled;
+    try {
+      await running;
+    } finally {
+      if (this.#inFlightRenew === settled) this.#inFlightRenew = undefined;
+    }
+  }
+
+  async #renewOnce(): Promise<void> {
     if (this.#released) return;
     const nowMs = this.#clock.now();
 
@@ -316,6 +343,15 @@ export class Lease {
     if (this.#released) return;
     this.#released = true;
     if (this.#heartbeat !== undefined) clearInterval(this.#heartbeat);
+
+    /**
+     * ⚠️ `clearInterval` STOPS FUTURE TICKS, NOT THE ONE ALREADY RUNNING. A
+     * renewal past its `#released` guard still finishes with a `rename` onto
+     * `leasePath`, which would land AFTER the unlink below and resurrect a
+     * lease this process no longer holds — refusing the next acquirer until
+     * the TTL lapses. Awaiting it here makes the unlink strictly last.
+     */
+    await this.#inFlightRenew;
 
     // Only unlink if the file still holds OUR record: if a takeover
     // already replaced it (this holder's TTL lapsed before this release

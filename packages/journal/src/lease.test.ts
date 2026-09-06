@@ -227,6 +227,44 @@ describe("Lease.acquire / release — unit (real filesystem, injected clock + pr
     renewed();
   });
 
+  /**
+   * ⚠️ `clearInterval` DOES NOT STOP A HEARTBEAT ALREADY IN FLIGHT, and the one
+   * already past `#renew`'s `#released` guard finishes with a `rename` onto
+   * `leasePath` — AFTER `release()` unlinked it. The released holder leaves an
+   * orphan lease file it does not hold, and the next acquirer is refused until
+   * the TTL lapses.
+   *
+   * Found 2026-09-06 as an intermittent `ENOTEMPTY` teardown failure in this
+   * very suite: the resurrected file reappeared inside the tmpdir `afterEach`
+   * was removing. The flake was the symptom; this is the defect.
+   *
+   * ASSERTS THE ORDERING, not a sleep. `release()` must not resolve while a
+   * renewal is in flight — which is what makes "the unlink happens last" true
+   * for every interleaving rather than for the fast ones.
+   */
+  it("release() waits for an in-flight renewal, so its unlink is never undone", async () => {
+    const order: string[] = [];
+    const lease = await Lease.acquire(dir, "proj-release-race", {
+      pid: 1,
+      readProcessStartTime: async () => 1,
+      autoRenew: false,
+      ttlMs: 10_000,
+    });
+
+    // Deliberately NOT awaited: this is the in-flight heartbeat, reproduced
+    // through the same `#renew` the timer calls.
+    const renewing = lease.renewNow().then(
+      () => order.push("renew"),
+      () => order.push("renew"),
+    );
+    await lease.release();
+    order.push("release");
+    await renewing;
+
+    expect(order).toEqual(["renew", "release"]);
+    await expect(readFile(lease.leasePath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("renewNow() advances renewedAtMs/expiresAtMs on disk without changing pid/startTimeTicks", async () => {
     let now = 1_000_000;
     const clock = { now: () => now };

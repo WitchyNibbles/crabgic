@@ -142,13 +142,13 @@
         },
         {
           "kind": "test",
-          "ref": "packages/journal/src/lease.test.ts:437",
-          "quotedAssertion": "packages/journal/src/lease.test.ts:428-437 — the integration test the criterion names: two real, concurrently-spawned child processes, each holding its decision until the test releases them (`:434` 'const [outputA, outputB] = await Promise.all([a.announced, b.announced]);' — the contended window is enforced, not hoped for), then 'expect(outcomes.sort()).toEqual([\"ACQUIRED\", \"DENIED\"]);'"
+          "ref": "packages/journal/src/lease.test.ts:466-475",
+          "quotedAssertion": "packages/journal/src/lease.test.ts:466-475 — the integration test the criterion names: two real, concurrently-spawned child processes, each holding its decision until the test releases them (`:472` 'const [outputA, outputB] = await Promise.all([a.announced, b.announced]);' — the contended window is enforced, not hoped for), then `:475` 'expect(outcomes.sort()).toEqual([\"ACQUIRED\", \"DENIED\"]);' Corrected 2026-09-06: was `lease.test.ts:428-437` with the walked quote at `:434`, now :466-475 and :472 — a 38-line test (release() must outlive an in-flight renewal) was inserted above it, shifting every line below `:230` by 38."
         },
         {
           "kind": "test",
-          "ref": "packages/journal/src/lease.test.ts:450",
-          "quotedAssertion": "packages/journal/src/lease.test.ts:445-450 — the anti-vacuity pin that makes the denial mean the right thing: it reads the winner's pid back off disk and asserts 'expect(await readProcessStartTimeFromProc(holderPid)).toBeDefined();'. Without it, the children could be denied by the 15s TTL rather than by liveness, and the test would keep passing on an idle machine while certifying nothing (this is the second of three historical causes, named in the test's own :383-401 comment block)."
+          "ref": "packages/journal/src/lease.test.ts:483-488",
+          "quotedAssertion": "packages/journal/src/lease.test.ts:483-488 — the anti-vacuity pin that makes the denial mean the right thing: it reads the winner's pid back off disk and asserts 'expect(await readProcessStartTimeFromProc(holderPid)).toBeDefined();'. Without it, the children could be denied by the 15s TTL rather than by liveness, and the test would keep passing on an idle machine while certifying nothing (this is the second of three historical causes, named in the test's own :421-439 comment block). Corrected 2026-09-06: was `lease.test.ts:445-450` naming the comment block at `:383-401`, now :483-488 and :421-439 — a 38-line test (release() must outlive an in-flight renewal) was inserted above it, shifting every line below `:230` by 38."
         },
         {
           "kind": "test",
