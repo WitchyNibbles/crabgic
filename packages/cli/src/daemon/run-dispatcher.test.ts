@@ -54,7 +54,10 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
-import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
+import {
+  createFakePostCompletionGitEffects,
+  fakeObjectId,
+} from "./test-support/fake-post-completion-git-effects.js";
 import { createRealRunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
@@ -825,6 +828,172 @@ describe("createRealRunDispatcher — dispatch", () => {
     await vi.waitFor(() => {
       expect(deps.runs.get(result.runId!)?.runState).toBe("failed");
     });
+  });
+
+  /**
+   * ⚠️ A CHAINED BASE MUST SURVIVE A RE-DRIVE OF THE SAME RUN. Owner ruling
+   * 2026-09-06 makes a dependent unit's worktree cut from its predecessors'
+   * collected work — and the first cut of that held the collected work in a
+   * map built inside `drive()`. A run that parks and is later resumed drives
+   * again, so on that drive every successor of an already-succeeded unit would
+   * have been cut from the run's frozen base instead: the exact behaviour the
+   * ruling ends, reappearing only on a rate-limited account.
+   *
+   * The topology forces the split: `P` parks with a reset in the FUTURE, and
+   * `parkWorkUnit` writes the account-wide pause timer, so the next round of
+   * the FIRST drive stops before `B` — which became ready the moment `A`
+   * succeeded — is ever dispatched.
+   */
+  it("keeps a unit's collected work across drives, so a resumed run still chains", async () => {
+    const PARKING_UNIT = "77777777-7777-4777-8777-777777777777";
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    let clock = 1000;
+    const chainCalls: { readonly unitId: string; readonly predecessors: readonly string[] }[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: PARKING_UNIT,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAdapter: (ctx: { readonly workUnit: { readonly id: string } }) =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript(
+              ctx.workUnit.id === PARKING_UNIT
+                ? {
+                    failure: {
+                      kind: "limitSignal",
+                      payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
+                    },
+                  }
+                : { structuredOutput: buildWorkerResult({ outcome: "succeeded" }) },
+            ),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        resolveChainedBase: (input: {
+          readonly workUnit: { readonly id: string };
+          readonly predecessorCandidateObjectIds: readonly string[];
+          readonly frozenBaseObjectId: string;
+        }) => {
+          chainCalls.push({
+            unitId: input.workUnit.id,
+            predecessors: [...input.predecessorCandidateObjectIds],
+          });
+          return Promise.resolve({
+            status: "resolved" as const,
+            objectId: input.predecessorCandidateObjectIds[0] ?? input.frozenBaseObjectId,
+          });
+        },
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    await dispatcher.whenIdle();
+
+    // The first drive stopped at the account-wide pause: `A` succeeded, and `B`
+    // — ready since that moment — was never dispatched.
+    expect(chainCalls).toEqual([]);
+
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(chainCalls.some((call) => call.unitId === UNIT_B)).toBe(true);
+    });
+
+    // `B` was chained onto `A`'s candidate, which only the FIRST drive
+    // collected. A per-drive map would have offered the second drive nothing.
+    expect(chainCalls.find((call) => call.unitId === UNIT_B)?.predecessors).toEqual([
+      fakeObjectId(`candidate:${UNIT_ID}`),
+    ]);
+  });
+
+  /**
+   * ⚠️ AND WHEN IT GENUINELY CANNOT BE RECOVERED, IT REFUSES. A restarted
+   * daemon holds neither the retained worktrees nor what they were collected
+   * to; readiness still offers a successor whose predecessor the JOURNAL says
+   * succeeded. Cutting it from the frozen base then would hand it a tree its
+   * plan says already holds that work, and it would fail its own tests for a
+   * reason no operator could read off any verdict.
+   *
+   * The fresh dispatcher over the same journal and registries IS the restart.
+   */
+  it("refuses a successor whose predecessor's work a restarted daemon no longer holds", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const SESSION_ID = "99999999-9999-4999-8999-999999999999";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-31T00:00:00.000Z",
+    });
+    // The journal says the predecessor succeeded in this run; nothing in this
+    // process holds what it produced.
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "succeeded", RUN_ID);
+
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+          ),
+        ),
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    expect(message).toContain(UNIT_ID);
+    expect(message).toMatch(/no longer holds/i);
+    expect(message).toMatch(/dispatch the change set again/i);
   });
 
   /**

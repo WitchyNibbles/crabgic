@@ -518,8 +518,24 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
     >
   >();
+  /**
+   * Each succeeded unit's collected work, PER RUN and across this daemon's
+   * re-drives of it — owner ruling 2026-09-06, "chain the base".
+   *
+   * ⚠️ PER RUN FOR THE SAME REASON `retainedByRun` IS. A unit parked on a rate
+   * limit is resumed on a LATER drive, and its successors are dispatched on
+   * that drive; a per-`drive()` map would be empty then, so every successor of
+   * an already-succeeded unit would silently be cut from the run's frozen base
+   * instead of from its predecessor's work — the exact behaviour this ruling
+   * exists to end, reappearing only on resume.
+   *
+   * SAME-DAEMON only, exactly like `retainedByRun`. A daemon restart loses it,
+   * and `baseFor` then REFUSES rather than falling back to the freeze.
+   */
+  const preCollectedByRun = new Map<string, Map<string, CollectCandidateResult>>();
   const clearRetainedRun = (runId: string): void => {
     retainedByRun.delete(runId);
+    preCollectedByRun.delete(runId);
   };
 
   /**
@@ -902,8 +918,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       return branchTypeMemo;
     };
 
-    /** Every unit's collected work, as it happens — the drive's half of `DrivenRun.preCollectedByUnitId`. */
-    const preCollectedByUnitId = new Map<string, CollectCandidateResult>();
+    /**
+     * Every unit's collected work, as it happens — the drive's half of
+     * `DrivenRun.preCollectedByUnitId`. Resolved out of the per-RUN map so a
+     * re-drive sees what earlier drives of the same run collected.
+     */
+    const preCollectedByUnitId = ((): Map<string, CollectCandidateResult> => {
+      const existing = preCollectedByRun.get(runId);
+      if (existing !== undefined) return existing;
+      const created = new Map<string, CollectCandidateResult>();
+      preCollectedByRun.set(runId, created);
+      return created;
+    })();
 
     /**
      * The base ONE unit is dispatched against: its predecessors' collected
@@ -925,6 +951,25 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       const existing = baseByUnitId.get(workUnit.id);
       if (existing !== undefined) return existing;
       const resolving = (async (): Promise<string> => {
+        /**
+         * ⚠️ AN UNKNOWN PREDECESSOR REFUSES, IT DOES NOT FALL BACK. Readiness
+         * only offers this unit once every id in `dependsOn` is `succeeded`, so
+         * a missing entry here means this daemon cannot say what that unit
+         * produced — a re-drive after a restart, or a worktree it no longer
+         * retains. Cutting from the frozen base then would hand the unit a tree
+         * its plan says already holds that work, and it would fail its own
+         * tests for a reason no operator could read off any verdict.
+         */
+        const unknown = workUnit.dependsOn.filter(
+          (dependencyId) => !preCollectedByUnitId.has(dependencyId),
+        );
+        if (unknown.length > 0) {
+          throw new Error(
+            `run dispatcher: work unit "${workUnit.id}" depends on ${String(unknown.length)} ` +
+              `unit(s) whose collected work this daemon no longer holds (${unknown.join(", ")}). ` +
+              `Cancel the run and dispatch the change set again.`,
+          );
+        }
         const predecessors = orderedUnits
           .filter((unit) => workUnit.dependsOn.includes(unit.id))
           .map((unit) => preCollectedByUnitId.get(unit.id))
