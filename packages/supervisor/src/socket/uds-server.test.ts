@@ -236,3 +236,82 @@ describe("UDS server — MAX_LINE_BYTES cap on the real socket read path", () =>
     client.close();
   });
 });
+
+describe("UDS server — close() disconnects admitted peers instead of waiting for them", () => {
+  /** Resolves true if `p` settles first, false if `ms` elapses. Bounded so a regression FAILS rather than hanging the file until the suite timeout. */
+  function within<T>(p: Promise<T>, ms: number): Promise<boolean> {
+    return Promise.race([
+      p.then(() => true),
+      new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), ms);
+        timer.unref?.();
+      }),
+    ]);
+  }
+
+  it("resolves close() while an idle admitted peer is still connected, disconnects it, and stops listening", async () => {
+    const started = await startServer();
+    const client = await connectTestClient(started.socketPath);
+    await client.handshake();
+
+    // A same-uid peer past peer-auth AND the handshake, now holding the
+    // connection open without sending anything — `crabgic status --watch` and
+    // an attached gateway both look exactly like this. `net.Server.close`
+    // fires its callback only once every established connection has ended,
+    // and `net.Server` has no `closeAllConnections` (that member is
+    // `http.Server`-only), so a server that tracks no sockets never resolves.
+    const closedInTime = await within(started.close(), 2_000);
+
+    // ...and the peer really is disconnected, not merely abandoned.
+    const peerDisconnected = await new Promise<boolean>((resolve) => {
+      if (client.socket.destroyed) {
+        resolve(true);
+        return;
+      }
+      client.socket.once("close", () => resolve(true));
+      const timer = setTimeout(() => resolve(false), 2_000);
+      timer.unref?.();
+    });
+
+    // ...and the LISTENER is really closed. Without this, a `close()` that
+    // just resolves its own promise and destroys the peers passes both checks
+    // above while leaving the control socket accepting new connections.
+    const stillAccepting = await new Promise<boolean>((resolve) => {
+      const probe = createConnection(started.socketPath);
+      probe.once("connect", () => {
+        probe.destroy();
+        resolve(true);
+      });
+      probe.once("error", () => resolve(false));
+    });
+
+    // Cleared BEFORE the assertions: a failing `expect` must not leave
+    // `afterEach` awaiting a `close()` this test already owns.
+    server = undefined;
+    client.socket.destroy();
+
+    expect(closedInTime).toBe(true);
+    expect(peerDisconnected).toBe(true);
+    expect(stillAccepting).toBe(false);
+  });
+
+  it("resolves close() against a peer that does not close its own end on FIN", async () => {
+    const started = await startServer();
+    // `allowHalfOpen` keeps this socket open when the server ends its side, so
+    // a half-close is not enough to retire the connection. That is the
+    // difference between `socket.end()` and `socket.destroy()` in `close()`:
+    // a well-behaved peer hides it by closing itself, this one does not.
+    const stubborn = createConnection({ path: started.socketPath, allowHalfOpen: true });
+    await new Promise<void>((resolve, reject) => {
+      stubborn.once("connect", () => resolve());
+      stubborn.once("error", reject);
+    });
+
+    const closedInTime = await within(started.close(), 2_000);
+
+    server = undefined;
+    stubborn.destroy();
+
+    expect(closedInTime).toBe(true);
+  });
+});

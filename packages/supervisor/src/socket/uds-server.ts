@@ -44,6 +44,29 @@ export interface SupervisorServerOptions {
 
 export interface SupervisorServer {
   readonly socketPath: string;
+  /**
+   * Stops accepting AND disconnects every already-admitted peer, then
+   * resolves.
+   *
+   * `net.Server.close` alone only does the first half: its callback fires
+   * only once every established connection has ended, and `net.Server` has no
+   * `closeAllConnections` (that member is `http.Server`-only; `getConnections`
+   * merely counts). So this module tracks the accepted sockets itself and
+   * destroys them, exactly as Node's own `http.Server.closeAllConnections`
+   * does.
+   *
+   * `../compose/boot-supervisor.ts` awaits this as step (a) of shutdown,
+   * BEFORE the dispatcher drain and the lease decision. A single idle peer —
+   * `crabgic status --watch`, an attached gateway — waited on here made the
+   * whole graceful sequence unreachable: no drain, no lease hand-back, no
+   * `onShutdown`, and eventually the SIGKILL-mid-drive that the sequence
+   * exists to prevent.
+   *
+   * A peer with an RPC in flight loses its response. That is the deliberate
+   * trade: the control socket carries short requests, while the WORK is
+   * protected by the dispatcher drain that this step used to make
+   * unreachable.
+   */
   close(): Promise<void>;
 }
 
@@ -149,7 +172,14 @@ export async function startSupervisorServer(
 ): Promise<SupervisorServer> {
   await ensureRuntimeDir(options.runtimeDir);
 
+  // Every accepted connection, so `close()` can end them. `net.Server` keeps
+  // no reachable set of its own and its `close()` waits on all of them, which
+  // makes an untracked peer an unclosable server.
+  const connections = new Set<Socket>();
+
   const server = await createControlSocketServer(options.socketPath, (socket) => {
+    connections.add(socket);
+    socket.once("close", () => connections.delete(socket));
     handleConnection(socket, options).catch((err: unknown) => {
       options.onConnectionError?.(err instanceof Error ? err : new Error(toErrorMessage(err)));
     });
@@ -157,6 +187,17 @@ export async function startSupervisorServer(
 
   return {
     socketPath: options.socketPath,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve) => {
+        // Order is the guarantee, and both statements run in the same tick:
+        // stop accepting FIRST, so nothing can be admitted into the set after
+        // the loop below has emptied it. `destroy()` rather than `end()` — a
+        // half-close leaves the connection open until the peer sends its own
+        // FIN, which an idle peer never does.
+        server.close(() => resolve());
+        for (const socket of connections) {
+          socket.destroy();
+        }
+      }),
   };
 }

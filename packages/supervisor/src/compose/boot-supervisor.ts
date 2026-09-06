@@ -186,6 +186,9 @@ export async function bootSupervisor(config: BootSupervisorConfig): Promise<Boot
     for (const s of signals) unregisterSignal(s, signalHandler);
     // (a) STOP ACCEPTING. Closing the control plane first means no new
     //     `run.dispatch` can arrive while we are draining the old ones.
+    //     `close()` also disconnects already-admitted peers; without that it
+    //     waited for them to leave, and one idle `--watch` client made every
+    //     step below unreachable.
     await composed.close();
     // (b) DRAIN. Wait for every detached drive to stop writing to the
     //     journal; at the deadline, terminate its workers and journal the
