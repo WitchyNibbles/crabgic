@@ -418,3 +418,26 @@ it will until something outside the agent's reach signs the human's answer.
 
 **This annotation does not move the certification line.** It corrects a claim that was stronger than
 the control behind it.
+
+#### Correction 2026-09-06 — the sixth rule covers less than the sentence above says
+
+The paragraph above says the sixth rule "covers the other route to a forged approval: read the
+signing key and mint a token." Measured, it covers that route only for the **`Read` tool**.
+
+`docs/engine-baseline.md` §6 records that `Read(...)` deny rules are merged into
+`sandbox.filesystem.denyRead` (line 303, quoting the SDK's own docstring), and that it is
+`denyRead` which makes a Bash `cat` of a denied path fail — ENOENT-masked, both arms executed
+(line 290). Without a sandbox there is no merge, and a `Read(...)` rule does not reach Bash.
+
+This project's `.claude/settings.json` carries `permissions` and **no `sandbox` block**, and the
+installer never writes one for a manager session (`packages/cli/src/installer/settings-merge.ts`
+adds deny rules only). So for the manager, reading the key with Bash is not denied.
+
+**Not proved by doing it**, for the reason this section already gives: the settings file and the
+engine baseline decide the question, and performing the act the agent must never perform is not an
+acceptable proof.
+
+This does not change the conclusion two paragraphs up — approval integrity already rested on
+operator trust under the single-tenant scope, and this document already declined to call the deny
+rules a boundary. It adds the missing entry to the list of routes they do not close, beside `npx`,
+a direct `node …/dist/bin.js`, and a process that writes the state files directly.
