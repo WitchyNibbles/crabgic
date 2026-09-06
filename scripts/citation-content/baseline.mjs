@@ -89,6 +89,23 @@ export function isOutOfSpanPin(pin) {
 }
 
 /**
+ * A citation's own `ref` failed to resolve — `FILE-MISSING`, or a span past the
+ * end of the file. Anything but `OK`.
+ *
+ * ⚠️ CHECKED ALONGSIDE THE FRAGMENT PINS, and it was not until 2026-09-06. The
+ * `unanchored` verdict below read the FRAGMENT pins only, so a citation whose
+ * own `ref` pointed at nothing was classed `added` and blessed by
+ * `--update-baseline` with exit 0, pinned as `"ref": "FILE-MISSING"`. A ref
+ * pointing at nothing is worse than one pointing at the wrong line, and taking
+ * it is precisely what that refusal's own message calls "how a ratchet becomes
+ * paper". Found when a burn-down script emitted a mangled span and the gate
+ * took it.
+ */
+export function isBrokenRefStatus(refStatus) {
+  return refStatus !== undefined && refStatus !== "OK";
+}
+
+/**
  * Compares the resolved corpus against the committed baseline.
  *
  * Divergence classes, in the order a reader should act on them:
@@ -112,21 +129,23 @@ export function diffAgainstBaseline(entries, baseline) {
     const pinned = baseline.citations[entry.key];
     if (pinned === undefined) {
       const bad = entry.pins.filter((pin) => isStalePin(pin) || isOutOfSpanPin(pin));
+      const brokenRef = isBrokenRefStatus(entry.refStatus);
       divergences.push({
-        class: bad.length > 0 ? "unanchored" : "added",
+        class: bad.length > 0 || brokenRef ? "unanchored" : "added",
         key: entry.key,
         entry,
-        offending: bad,
+        offending: brokenRef ? [...bad, `REF ${entry.refStatus}`] : bad,
       });
       continue;
     }
     if (pinned.qa !== entry.quotedAssertionHash) {
       const bad = entry.pins.filter((pin) => isStalePin(pin) || isOutOfSpanPin(pin));
+      const brokenRef = isBrokenRefStatus(entry.refStatus);
       divergences.push({
-        class: bad.length > 0 ? "unanchored" : "added",
+        class: bad.length > 0 || brokenRef ? "unanchored" : "added",
         key: entry.key,
         entry,
-        offending: bad,
+        offending: brokenRef ? [...bad, `REF ${entry.refStatus}`] : bad,
         edited: true,
       });
       continue;
