@@ -99,4 +99,42 @@ describe("sweepExpiredProposals", () => {
     expect(result.expiredProposalIds).toEqual([proposal.id]);
     expect((await registry.get(proposal.id))?.state).toBe("expired");
   });
+
+  /**
+   * `independent_review` is non-terminal but has NO `expired` edge — the state
+   * machine says so deliberately: "an expiry concern discovered during review
+   * is modeled as a `rejected` verdict with rationale, not a distinct edge."
+   * The sweeper reached the transition anyway, so `registry.transition(id,
+   * "expired")` threw `IllegalTransitionError` and took the whole sweep with
+   * it — every proposal after this one in the list went unswept.
+   */
+  it("reports a stale under-review proposal instead of throwing, and still sweeps the rest", async () => {
+    const underReview = await registry.create({
+      content: "under review",
+      evidenceRecordIds: [STALE_EVIDENCE_ID],
+    });
+    for (const next of [
+      "reproducer",
+      "candidate",
+      "dev_eval",
+      "held_out_eval",
+      "shadow_run",
+      "independent_review",
+    ] as const) {
+      await registry.transition(underReview.id, next);
+    }
+    // Created second, so `registry.list()` reaches it AFTER the under-review
+    // one: if the sweep aborts, this is the proposal that goes unswept.
+    const sweepable = await registry.create({
+      content: "sweepable",
+      evidenceRecordIds: [STALE_EVIDENCE_ID],
+    });
+
+    const result = await sweepExpiredProposals(registry, isStale);
+
+    expect(result.staleUnderReviewProposalIds).toEqual([underReview.id]);
+    expect((await registry.get(underReview.id))?.state).toBe("independent_review");
+    expect(result.expiredProposalIds).toEqual([sweepable.id]);
+    expect((await registry.get(sweepable.id))?.state).toBe("expired");
+  });
 });
