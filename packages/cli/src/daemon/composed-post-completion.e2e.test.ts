@@ -93,6 +93,7 @@ const CHANGE_SET_ID = "55555555-5555-4555-8555-555555555555";
 const ENVELOPE_ID = "66666666-6666-4666-8666-666666666666";
 const UNIT_A_ID = "77777777-7777-4777-8777-777777777777";
 const UNIT_B_ID = "88888888-8888-4888-8888-888888888888";
+const UNIT_C_ID = "99999999-9999-4999-8999-999999999999";
 const REQ_ID = "99999999-9999-4999-8999-999999999999";
 
 const APPROVED_CRITERIA = ["The example module exports a greeting"];
@@ -307,7 +308,7 @@ interface BootOptions {
    * writing its own. Only reachable at all because the unit's worktree is cut
    * from that predecessor's collected work — which is the point.
    */
-  readonly chainEdit?: "append" | "delete";
+  readonly chainEdit?: "append" | "delete" | "append-per-unit";
 }
 
 /**
@@ -412,11 +413,14 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
               if (options.chainEdit === "delete") {
                 rmSync(chained, { force: true });
               } else {
-                writeFileSync(
-                  chained,
-                  `${readFileSync(chained, "utf8")}export const consumed = true\n`,
-                  "utf8",
-                );
+                // `append-per-unit` names its author, so the integrated file
+                // says WHICH links of the chain actually saw it — an anonymous
+                // line cannot tell two appends from one.
+                const line =
+                  options.chainEdit === "append-per-unit"
+                    ? `export const consumed_${ctx.workUnit.id.slice(0, 8)} = true\n`
+                    : "export const consumed = true\n";
+                writeFileSync(chained, `${readFileSync(chained, "utf8")}${line}`, "utf8");
               }
             }
             return spawn(spawnPacket, profile, adjudicateCall);
@@ -849,6 +853,65 @@ describe("a completed run walks to published_local through a fired gate (defect 
     // `B` did do work of its own, so this is a deletion rather than an empty unit.
     expect(paths).toContain(unitFilePath(UNIT_B_ID));
   }, 180_000);
+
+  /**
+   * ⚠️ DEPTH THREE IS WHERE THE CHAIN BECOMES RECURSIVE, and T6-T8 cannot reach
+   * it. At depth two a predecessor's own base IS the run's freeze, so
+   * "chained onto the predecessor" and "chained onto the freeze, which happens
+   * to be the predecessor's base too" produce the same tree. At depth three
+   * they diverge: `C`'s base must be `B`'s collected commit, which is itself
+   * chained onto `A`'s — and a resolver that folds predecessors onto the
+   * FROZEN base instead hands `C` a tree holding `A`'s work without `B`'s.
+   *
+   * MEASURED, not assumed: with chaining forced to stop at depth two, T6-T8 all
+   * still pass and only this case fails. Six units is the depth the stale-dist
+   * plan runs at, so two is not the depth to pin.
+   */
+  it("T9 — three deep: the last unit's tree holds every ancestor's work, not just its parent's", async () => {
+    const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
+    await seedApprovalSeal(approved.criteriaHash);
+    seedIntakeState({
+      requirement: approved,
+      workUnits: [
+        unitFixture(UNIT_A_ID, "add the greeting export"),
+        unitFixture(UNIT_B_ID, "consume the greeting export", [UNIT_A_ID]),
+        unitFixture(UNIT_C_ID, "extend the consumed greeting", [UNIT_B_ID]),
+      ],
+      changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID, UNIT_C_ID]),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        ownedPaths: [`${OWNED_PREFIX}/`],
+        commands: ["npm run test"],
+      }),
+    });
+
+    composed = await bootDaemon({ chainEdit: "append-per-unit" });
+    const runId = await dispatchAndSettle(composed);
+
+    expect(driveErrors).toEqual([]);
+    expect(composed.deps.runs.get(runId)?.runState).toBe("published_local");
+    const branches = publishedBranches();
+    expect(branches).toHaveLength(1);
+
+    // Every unit's OWN file survived integration.
+    const paths = treePaths(branches[0]!);
+    for (const id of [UNIT_A_ID, UNIT_B_ID, UNIT_C_ID]) {
+      expect(paths).toContain(unitFilePath(id));
+    }
+
+    /**
+     * The load-bearing assertion: ONE file carries all three links. `A` created
+     * it, `B` appended in a worktree cut from `A`, and `C` appended in a
+     * worktree that could only hold `B`'s line by being cut from `B` — whose
+     * own base was already chained. A frozen-base resolver loses `B`'s line
+     * here while every other assertion in this test still passes.
+     */
+    const consumed = fileAt(branches[0]!, unitFilePath(UNIT_A_ID));
+    expect(consumed).toContain("add the greeting export");
+    expect(consumed).toContain(`export const consumed_${UNIT_B_ID.slice(0, 8)} = true`);
+    expect(consumed).toContain(`export const consumed_${UNIT_C_ID.slice(0, 8)} = true`);
+  }, 240_000);
 
   it("T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement", async () => {
     const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
