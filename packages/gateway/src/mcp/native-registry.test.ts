@@ -344,6 +344,72 @@ describe("HIGH #2 adversarial-review fix — tracker.apply/observability.apply r
     };
   }
 
+  /**
+   * SAME FACTORY IS NOT SAME STACK. `mutation-apply-tool.ts` called the
+   * factory inside its handler — once per tool CALL — and
+   * `buildHttpClientForConnection` caches nothing. `GatewayHttpClient`'s
+   * `WriteSerializer` and `ConcurrencyGate` are per-INSTANCE fields, so two
+   * concurrent `tracker.apply` writes to one issue each got their own empty
+   * mutex table and their own gate, and contended on nothing. Three headers
+   * claimed otherwise, and the read path really does share one client per
+   * connection (`@crabgic/cli`'s `connection-activation.ts`).
+   */
+  it("builds ONE http client per connection across apply calls, not one per call", async () => {
+    const connections = new InMemoryExternalConnectionStore();
+    const providers = new ProviderRegistry<GenericProviderClient>();
+    const mutationApplyClients = new ProviderRegistry<MutationApplyClient>();
+    const connection = await connections.create({
+      provider: "apply-test-provider",
+      baseUrl: "https://apply-test-provider.invalid",
+      allowedRedirectOrigins: [],
+      allowedResources: ["issue"],
+      allowedActions: ["write"],
+      discoveryTtlSeconds: 900,
+      secretRef: { backend: "env", variable: "CRABGIC_GATEWAY_APPLY_TOOL_TEST_SECRET" },
+    });
+
+    mutationApplyClients.register("apply-test-provider", {
+      buildRequest: () => ({
+        url: new URL("https://apply-test-provider.invalid/apply"),
+        method: "PUT",
+        hasPrecondition: true,
+      }),
+      parseResponse: () => ({ appliedRevision: "rev-1" }),
+    });
+
+    const build = fakeBuildHttpClient("https://apply-test-provider.invalid");
+    const built: GatewayHttpClient[] = [];
+    const registry = buildNativeToolRegistry({
+      connections,
+      providers,
+      mutationApplyClients,
+      journal,
+      supervisorSocketPath: "/nonexistent.sock",
+      buildHttpClient: async () => {
+        const client = await build();
+        built.push(client);
+        return client;
+      },
+    });
+
+    const tool = registry.get("tracker.apply");
+    const first = await tool?.handler({
+      plan: buildValidPlan({ idempotencyKey: "apply-once-a" }, connection.id),
+    });
+    const second = await tool?.handler({
+      plan: buildValidPlan(
+        { id: "d0000000-0000-4000-8000-000000000002", idempotencyKey: "apply-once-b" },
+        connection.id,
+      ),
+    });
+
+    expect(first?.isError).toBeFalsy();
+    expect(second?.isError).toBeFalsy();
+    // One client, built once — the write serializer and the in-flight gate
+    // live on it, so a second instance is a second, empty set of both.
+    expect(built).toHaveLength(1);
+  });
+
   it("tracker.apply persists a pre-I/O pending record before performing the network call (journal-before-I/O)", async () => {
     const connections = new InMemoryExternalConnectionStore();
     const providers = new ProviderRegistry<GenericProviderClient>();

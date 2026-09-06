@@ -9,6 +9,10 @@
 
 import type { JournalStore } from "@crabgic/journal";
 import type { ExternalConnectionRepository } from "../connection-store/external-connection-store.js";
+import {
+  buildHttpClientForConnection,
+  ConnectionHttpClientCache,
+} from "../connection-store/connection-http-client.js";
 import { ProviderRegistry } from "../provider-dispatch/provider-registry.js";
 import { IdempotencyKeyLock } from "../mutation-pipeline/mutation-pipeline.js";
 import { GatewayToolRegistry } from "./tool-registry.js";
@@ -50,6 +54,15 @@ export function buildNativeToolRegistry(deps: NativeRegistryDeps): GatewayToolRe
   // SAME lock instance, not a fresh one per call.
   const lock = new IdempotencyKeyLock();
 
+  // ONE client per connection, for the same reason as the lock above and
+  // wrapping whatever factory this registry was handed. The stack the mutate
+  // path is documented to share — the write serializer and the in-flight gate
+  // — is per-client-INSTANCE state, and the apply tool calls its factory once
+  // per tool CALL, so an uncached factory gave every call its own empty pair.
+  const httpClients = new ConnectionHttpClientCache(
+    deps.buildHttpClient ?? buildHttpClientForConnection,
+  );
+
   // Forwarded to BOTH dep bags: a connection must be activated whichever
   // half of the surface reaches it first, and a read-only activation
   // would leave `*.apply` finding an empty registry (issue #135).
@@ -66,7 +79,7 @@ export function buildNativeToolRegistry(deps: NativeRegistryDeps): GatewayToolRe
     journal: deps.journal,
     lock,
     ...activation,
-    ...(deps.buildHttpClient !== undefined ? { buildHttpClient: deps.buildHttpClient } : {}),
+    buildHttpClient: (connection) => httpClients.get(connection),
   };
   const trackerDeps = { ...providerDispatchDeps, ...mutationApplyToolDeps };
   const observabilityDeps = { ...providerDispatchDeps, ...mutationApplyToolDeps };

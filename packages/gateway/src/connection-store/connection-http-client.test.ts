@@ -1,11 +1,13 @@
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CURRENT_SCHEMA_VERSION, type ExternalConnection } from "@crabgic/contracts";
+import { GatewayHttpClient } from "../transport/http-client.js";
 import {
   buildAllowlistForConnection,
   buildHttpClientForConnection,
+  ConnectionHttpClientCache,
   resolveCustomCaPem,
 } from "./connection-http-client.js";
 
@@ -94,5 +96,85 @@ describe("buildHttpClientForConnection", () => {
       method: "GET",
     });
     expect(response.status).toBe(200);
+  });
+});
+
+function newClient(): GatewayHttpClient {
+  return new GatewayHttpClient({
+    allowlist: { allowedSchemes: ["https:"], allowedOrigins: ["https://example.atlassian.net"] },
+  });
+}
+
+describe("ConnectionHttpClientCache", () => {
+  it("returns the same client for the same connection", async () => {
+    const build = vi.fn(async () => newClient());
+    const cache = new ConnectionHttpClientCache(build);
+    const connection = buildConnection();
+
+    const first = await cache.get(connection);
+    const second = await cache.get(connection);
+
+    expect(first).toBe(second);
+    expect(build).toHaveBeenCalledOnce();
+  });
+
+  /**
+   * The map holds the PENDING promise, not the awaited client. Caching only
+   * after the await would build one client per concurrent first caller — the
+   * very shape this cache exists to fix.
+   */
+  it("hands two concurrent first callers the same client", async () => {
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const build = vi.fn(async () => {
+      await gate;
+      return newClient();
+    });
+    const cache = new ConnectionHttpClientCache(build);
+    const connection = buildConnection();
+
+    const both = Promise.all([cache.get(connection), cache.get(connection)]);
+    release();
+    const [first, second] = await both;
+
+    expect(first).toBe(second);
+    expect(build).toHaveBeenCalledOnce();
+  });
+
+  it("does not cache a failed build", async () => {
+    const client = newClient();
+    const build = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("custom CA unreadable"))
+      .mockResolvedValue(client);
+    const cache = new ConnectionHttpClientCache(build);
+    const connection = buildConnection();
+
+    await expect(cache.get(connection)).rejects.toThrow("custom CA unreadable");
+    expect(cache.size).toBe(0);
+    await expect(cache.get(connection)).resolves.toBe(client);
+  });
+
+  it("builds a new client when the connection's derived config changes", async () => {
+    const build = vi.fn(async () => newClient());
+    const cache = new ConnectionHttpClientCache(build);
+
+    await cache.get(buildConnection());
+    await cache.get(buildConnection({ baseUrl: "https://moved.example.net" }));
+
+    expect(build).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps separate clients for separate connections", async () => {
+    const build = vi.fn(async () => newClient());
+    const cache = new ConnectionHttpClientCache(build);
+
+    const a = await cache.get(buildConnection());
+    const b = await cache.get(buildConnection({ id: "13131313-1313-4313-8313-131313131313" }));
+
+    expect(a).not.toBe(b);
+    expect(cache.size).toBe(2);
   });
 });
