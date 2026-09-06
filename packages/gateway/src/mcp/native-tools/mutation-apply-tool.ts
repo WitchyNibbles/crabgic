@@ -39,7 +39,16 @@ export interface MutationApplyToolDeps {
   readonly mutationApplyClients: ProviderRegistry<MutationApplyClient>;
   readonly journal: JournalStore;
   readonly lock: IdempotencyKeyLock;
-  /** Test-only seam (mirrors `../../connection-doctor/reachability-probe.js`'s own `buildClient` override) — production always omits this, defaulting to `buildHttpClientForConnection` (real DNS, real TLS). */
+  /**
+   * How a connection becomes an HTTP client. Tests override it (mirroring
+   * `../../connection-doctor/reachability-probe.js`'s own `buildClient` seam);
+   * the default is `buildHttpClientForConnection` (real DNS, real TLS).
+   *
+   * NO LONGER "production always omits this": `../native-registry.js` supplies
+   * a `ConnectionHttpClientCache`-backed builder on every registry it composes,
+   * so the default is now the fallback for a caller that constructs these deps
+   * directly, not the production path.
+   */
   readonly buildHttpClient?: (connection: ExternalConnection) => Promise<GatewayHttpClient>;
   /** Idempotent per-connection activation — see `ProviderDispatchDeps.activateConnection` for why it exists and why it is lazy. */
   readonly activateConnection?: (connection: ExternalConnection) => Promise<void>;

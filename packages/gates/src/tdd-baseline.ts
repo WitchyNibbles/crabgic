@@ -183,15 +183,6 @@ export function selectIntegrityCommand(grantedCommands: readonly string[]): stri
 }
 
 /**
- * Runs `command` in `cwd` and resolves its exit status.
- *
- * `stdio: "ignore"` deliberately: this function's product is an exit status,
- * and a test suite's stdout is the single most likely place for a secret to
- * appear in a form nothing downstream would redact. A timeout kills the tree
- * and reports a non-zero status — but the caller distinguishes that case, since
- * a timed-out run is not evidence that a test failed.
- */
-/**
  * One attempted execution of the granted command. `ran: false` means nothing
  * was executed to completion — a spawn failure, a timeout, or no grant at all —
  * and is never interchangeable with a non-zero exit status.
@@ -200,6 +191,20 @@ export type CommandRun =
   | { readonly ran: true; readonly command: string; readonly exitStatus: number }
   | { readonly ran: false; readonly command?: string; readonly reason: string };
 
+/**
+ * Runs `command` in `cwd` and resolves one `CommandRun`.
+ *
+ * `stdio: "ignore"` deliberately: this function's product is an exit status,
+ * and a test suite's stdout is the single most likely place for a secret to
+ * appear in a form nothing downstream would redact.
+ *
+ * A TIMEOUT REPORTS NO STATUS AT ALL. It kills the tree and returns the
+ * `ran: false` arm with a `reason` — never a synthesized non-zero exit, which
+ * would be this function inventing the very number its caller decides on (the
+ * kill block below says the same thing about a signalled child). A timed-out
+ * run is not evidence that a test failed, and the type is what keeps the two
+ * from sharing an outcome.
+ */
 async function runToExitStatus(
   command: string,
   cwd: string,
@@ -284,8 +289,17 @@ export async function runGrantedAcceptanceCommand(input: {
  *
  * `ran: false` when the envelope grants none — which is NOT a failure. A
  * project with no build step is a normal project, and callers proceed to the
- * acceptance command unchanged. Only a build that RAN and exited non-zero is a
- * refusal, because only then is there a measurement saying the tree is broken.
+ * acceptance command unchanged.
+ *
+ * ⚠️ `ran: false` IS NOT ONE CASE, and reading it as one is the defect the
+ * three "GUARDED ON SELECTION, NEVER ON COMPLETION" warnings beside the call
+ * sites exist to prevent. A grant that was SELECTED and then did not complete
+ * — a spawn failure, or a timeout — also lands here, and every caller refuses
+ * it (`captureTddBaseline` returns `integrityDidNotRun`, and so do
+ * `runCandidateSuite` and `measureRedAtBase`): an unbuilt tree measures
+ * nothing, so proceeding would score a fabricated red. What distinguishes the
+ * two is whether `selectIntegrityCommand` returned a command, never the exit
+ * status — a build that RAN and exited non-zero is simply the third case.
  */
 export async function runGrantedIntegrityCommand(input: {
   readonly grantedCommands: readonly string[];

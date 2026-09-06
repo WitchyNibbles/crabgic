@@ -20,7 +20,17 @@ export interface RedBaselineTreeOptions<T> {
   readonly controlDir: string;
   /** Where throwaway worktrees live for this control clone. */
   readonly worktreesRootDir: string;
-  /** The run's ONE frozen base — what "red at base" is red against. */
+  /**
+   * The base THIS UNIT'S attempt was cut from — what "red at base" is red
+   * against.
+   *
+   * ⚠️ NOT NECESSARILY THE RUN'S FREEZE, which this said until 2026-09-06.
+   * Under the owner's "chain the base" ruling a dependent unit is cut from its
+   * predecessors' collected work, and the only production feeder
+   * (`createBaseTreeSurface` -> `resolveRunBase`) passes that chained base
+   * straight through. Measuring a chained unit against the run's freeze would
+   * score it against a tree it never saw.
+   */
   readonly baseObjectId: string;
   /** The user's checkout, whose `node_modules` the tree shares. */
   readonly projectDir: string;
@@ -48,11 +58,12 @@ export interface RedBaselineTreeOptions<T> {
 }
 
 /**
- * Materialises a tree at the frozen base carrying the candidate's versions of
- * `testPaths` and nothing else of the candidate, provisions its dependencies,
- * hands it to `use`, and removes it.
+ * Materialises a tree at `baseObjectId` — this unit's own base, which is the
+ * run's freeze only for a unit with no predecessors — carrying the candidate's
+ * versions of `testPaths` and nothing else of the candidate, provisions its
+ * dependencies, hands it to `use`, and removes it.
  *
- * ⚠️ `--detach` AT THE BASE, then a path-scoped checkout. Checking the whole
+ * ⚠️ `--detach` AT THAT BASE, then a path-scoped checkout. Checking the whole
  * candidate out would answer the wrong question entirely: the tests would run
  * against the code they were written for and pass, which is the opposite of
  * what is being measured.
@@ -120,7 +131,7 @@ export async function withRedBaselineTree<T>(
   }
 }
 
-/** Where a run's frozen base lives, as the dispatcher knows it. */
+/** Where a work unit's base lives, as the dispatcher knows it — the run's freeze, or the unit's chained base when it has predecessors. */
 export interface RunBaseResolution {
   readonly baseObjectId: string;
   /** The control clone the throwaway tree is cut from and removed through. */

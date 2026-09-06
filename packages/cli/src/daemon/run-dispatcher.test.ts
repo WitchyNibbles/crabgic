@@ -1725,23 +1725,6 @@ describe("createRealRunDispatcher — dispatch", () => {
 });
 
 /**
- * THE IDLE-RUN WEDGE. An ordinary single-unit failure used to wedge its change
- * set forever: `driveRun` classified any all-terminal DAG `completed`,
- * `terminalStateFor("completed")` wrote no transition (a completed run's
- * successor is `verifying`, owned by a verification pipeline nothing composes
- * yet), and the run stayed `running` with every unit terminal.
- * `findLiveRunForChangeSet` then refused every re-dispatch — "already has run
- * … in flight (running)" — and `resume` answered `accepted: true` to a
- * re-drive that could dispatch nothing, forever. Only `run.cancel` escaped.
- *
- * This is PR #46's sibling: #46 fixed the restart-with-a-parked-run shape of
- * the same lying-accept and deliberately scoped the failure shape out.
- *
- * A failing run has no verification question to answer — `running → failed`
- * and `running → cancelled` are declared edges — so settling it needs none of
- * the deferred `completed → verifying` wiring.
- */
-/**
  * ⚠️ THE SHIPPED DAEMON ADJUDICATED WITH A CONSTANT DENY, AND JOURNALED NOTHING.
  *
  * `createEnvelopeAdjudicationPolicy` (06's real policy) and
@@ -1757,6 +1740,12 @@ describe("createRealRunDispatcher — dispatch", () => {
  * requires `permissions` already substituted against THIS attempt's worktree.
  * A run-level policy would see the literal `<worktree>` token, match no
  * owned-path rule, and deny every legitimate Edit in the unit's own paths.
+ *
+ * ⚠️ Substitution is NECESSARY, NOT SUFFICIENT (measured 2026-09-06): the
+ * compiled profile's blanket `Edit`/`Write` deny on the cache root covers the
+ * worktrees cut beneath it, and the policy is deny-wins, so a legitimate edit
+ * is journaled `deny` even with the token substituted. Recorded, never
+ * enforced, for a built-in — see `run-dispatcher.ts`'s adjudicator header.
  */
 describe("createRealRunDispatcher — every tool call is adjudicated against the envelope and journaled", () => {
   function scriptToolCall(toolName: string, toolInput: Record<string, unknown>) {
@@ -1881,6 +1870,23 @@ describe("createRealRunDispatcher — every tool call is adjudicated against the
   });
 });
 
+/**
+ * THE IDLE-RUN WEDGE. An ordinary single-unit failure used to wedge its change
+ * set forever: `driveRun` classified any all-terminal DAG `completed`,
+ * `terminalStateFor("completed")` wrote no transition (a completed run's
+ * successor is `verifying`, owned by a verification pipeline nothing composes
+ * yet), and the run stayed `running` with every unit terminal.
+ * `findLiveRunForChangeSet` then refused every re-dispatch — "already has run
+ * … in flight (running)" — and `resume` answered `accepted: true` to a
+ * re-drive that could dispatch nothing, forever. Only `run.cancel` escaped.
+ *
+ * This is PR #46's sibling: #46 fixed the restart-with-a-parked-run shape of
+ * the same lying-accept and deliberately scoped the failure shape out.
+ *
+ * A failing run has no verification question to answer — `running → failed`
+ * and `running → cancelled` are declared edges — so settling it needs none of
+ * the deferred `completed → verifying` wiring.
+ */
 describe("createRealRunDispatcher — an all-terminal DAG settles the run", () => {
   /** A DAG of one unit, whose scripted worker reports `outcome`. */
   function dispatcherFor(outcome: "failed" | "cancelled") {

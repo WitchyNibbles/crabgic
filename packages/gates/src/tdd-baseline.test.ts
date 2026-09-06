@@ -233,8 +233,9 @@ describe("captureTddBaseline — the harness runs the granted test command befor
  * materialises none of it — so the first cross-package `import` in a fresh
  * worktree fails with `ERR_MODULE_NOT_FOUND` and the suite exits non-zero
  * having run no test at all. `worktree-dependencies.ts` documents exactly this
- * ("Nothing currently orders that build first... it belongs to the scheduler's
- * ordering rather than to this module") and nothing ordered it.
+ * ("the gap belongs to the scheduler's ordering rather than to this module")
+ * and, before `captureTddBaseline` became one of its three named ordering
+ * sites, nothing ordered it.
  *
  * The cost is not a failed run, it is a FABRICATED one: a non-zero status from
  * an unbuilt tree is indistinguishable from a failing test, so the red half of

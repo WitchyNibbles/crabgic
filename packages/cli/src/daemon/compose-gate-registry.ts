@@ -452,8 +452,8 @@ async function runCandidateSuite(
    * package's `main` points into a gitignored `dist/` — so the acceptance
    * command in a fresh worktree resolves nothing and emits no report.
    * `@crabgic/git-engine`'s `worktree-dependencies.ts` documents that gap and
-   * assigns it here ("it belongs to the scheduler's ordering rather than to
-   * this module"); until this existed, nothing anywhere ordered the build.
+   * assigns it here ("the gap belongs to the scheduler's ordering rather than
+   * to this module"); until this existed, nothing anywhere ordered the build.
    *
    * The command is the envelope's own `integrity`-class grant, already compiled
    * into the worker's profile beside it — no authority the owner did not give.
@@ -653,7 +653,14 @@ async function measureRedAtBase(
   );
 }
 
-/** The frozen base this change set's run was cut from, when the dispatcher still knows it. */
+/**
+ * The base THIS WORK UNIT'S attempt was cut from, when the dispatcher still
+ * knows it — the run's freeze for a unit with no predecessors, and the unit's
+ * chained base otherwise ("chain the base", owner ruling 2026-09-06). It said
+ * "the frozen base this change set's run was cut from" until 2026-09-06, which
+ * is the change-set-wide answer this signature's own `workUnitId` parameter
+ * exists to avoid.
+ */
 function worktreeBaseObjectId(
   attempts: AttemptSurface,
   changeSetId: string,

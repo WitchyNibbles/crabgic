@@ -1185,10 +1185,19 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * ⚠️ NOT THE DAG'S JOB, and `dependsOn` does not stand in for it. Two
      * independent units may legitimately own an overlapping path (the run
      * whose four units all owned `scripts/check-stale-dist.test.mjs` is the
-     * shape this exists for), and nothing in the graph orders them. Dispatched
-     * together they each get a worktree cut from the same base, each rewrites
-     * the shared file, and the second candidate conflicts at integration — a
-     * run blocked on work that was never in conflict, only mis-scheduled.
+     * shape this exists for), and nothing in the graph orders them.
+     *
+     * ⚠️ WHAT THIS BUYS IS THE ROUND, NOT THE BASE — and the difference is a
+     * residual, stated because an earlier draft of this comment claimed the
+     * cure and did not deliver it. Serialization stops two workers editing the
+     * same file in worktrees live at the same time. It does NOT rebase the
+     * second unit: `baseFor` derives predecessors from `dependsOn` alone, so a
+     * unit that merely OVERLAPS has no predecessor, takes the run's frozen
+     * base, and `preflightMerge` still three-way-merges it onto a tip that
+     * already carries the first — the integration conflict survives, one round
+     * later. Chaining an overlap-serialized unit onto its predecessor's
+     * collected work is the fix, and it is a scheduling ruling this
+     * composition root does not get to make on its own.
      *
      * ⚠️ MEASURED INERT BEFORE THIS: the composition root passed no verdicts,
      * so `selectDispatchSet` saw an empty list and the round journaled

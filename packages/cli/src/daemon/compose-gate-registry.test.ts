@@ -475,9 +475,12 @@ describe("changeSetRequirementIds", () => {
  * coverage gate says "no coverage report was produced", and an operator reads
  * that as a project that forgot its reporter rather than as a tree nobody built.
  *
- * `worktree-dependencies.ts` predicted this and assigned it here: "Nothing
- * currently orders that build first, so an attempt can fail for this reason and
- * look like a genuine test failure... it belongs to the scheduler's ordering."
+ * `worktree-dependencies.ts` predicted this and assigned it here: "the gap
+ * belongs to the scheduler's ordering rather than to this module". That module
+ * now marks the gap DISCHARGED and names this as one of the three ordering
+ * sites, so the sentence this comment used to quote ("Nothing currently orders
+ * that build first") is gone from it — quoted here as it reads today, not as
+ * it read when the gap was open.
  */
 describe("the candidate suite runs the granted build first", () => {
   let candidateTree: string;

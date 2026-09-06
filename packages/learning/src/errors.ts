@@ -95,9 +95,12 @@ export class ProposalNotFoundError extends Error {
  * WHY THIS IS AN ERROR AND NOT `passed: false`. `runEvalSuite` derived its
  * verdict from `results.every(...)`, which is vacuously true on an empty
  * array — so a case set of zero reported a clean pass. Its only feeder,
- * `CaseFixtureStore.read()`, returns `[]` for a fixture it could not read,
+ * `CaseFixtureStore.read()`, returned `[]` for a fixture it could not read,
  * which made an unreadable or absent held-out set indistinguishable, at the
- * verdict, from a fully passing one. An empty set is not an eval that failed
+ * verdict, from a fully passing one. `read()` now throws for anything but a
+ * MISSING file, so the two failure modes have separated — but an absent
+ * fixture still yields `[]` legitimately, which is the case this error is
+ * for. An empty set is not an eval that failed
  * either: it is an eval that did not run, and the two deserve different
  * outcomes. `docs/verification-playbook.md` calls this the vacuity pattern.
  */

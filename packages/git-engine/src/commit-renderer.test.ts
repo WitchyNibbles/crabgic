@@ -202,6 +202,19 @@ describe("commitlint conformance", () => {
     expect(subject.startsWith("chore: a")).toBe(true);
   });
 
+  /**
+   * The WORD-BOUNDARY arm empties the subject too, which the single-token
+   * guard above cannot see. When everything before the last space in the hard
+   * cut is punctuation, stripping the trailing punctuation leaves "" — and
+   * `chore: ` fails exactly the format check that guard exists to avoid. The
+   * guard belongs on the RESULT, not on one branch of the trim.
+   */
+  it("hard-cuts rather than emptying when the word boundary leaves only punctuation", () => {
+    const subject = assembleCommitSubject({ ...longInput, outcome: `--- ${"A".repeat(200)}` });
+    expect(subject).not.toBe("chore: ");
+    expect(subject.length).toBe(COMMUNICATION_POLICY_LIMITS.commitSubject.maxChars);
+  });
+
   it("wraps every footer line to 100 characters — in what actually reaches git", async () => {
     // Asserted on `renderCommit`'s output, not on `assembleCommitBody`: the
     // wrap happens after the policy check, and what commitlint reads is the

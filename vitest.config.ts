@@ -142,7 +142,7 @@ export default defineConfig({
       // files were unmeasurable. The alternative — declaring `scripts` exempt
       // through the gate's `excludedFromCoverage` — was measured and rejected:
       // an excluded file `continue`s before any counter is touched
-      // (`changed-line-coverage.ts:215`), so a change set touching ONLY
+      // (`changed-line-coverage.ts:230-233`), so a change set touching ONLY
       // excluded paths scores `pct === undefined` with no absent files and the
       // gate publishes `passed: true` — the self-exemption
       // `coverage-gate-registration.ts` says "must not be reopened one level

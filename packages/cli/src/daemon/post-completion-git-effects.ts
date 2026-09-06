@@ -38,13 +38,17 @@
  * dependency bundle does not carry, and it affects no run-lifecycle state — so
  * it is a separate composition step rather than a silent omission.
  *
- * KNOWN LIMITATION, DISCLOSED: a `WorkUnit.title` longer than the commit-subject
+ * FORMER KNOWN LIMITATION — DISCHARGED 2026-09-06, and recorded rather than
+ * deleted because the register of disclosed limitations is only worth reading
+ * if its entries are true. A `WorkUnit.title` longer than the commit-subject
  * budget (`CommunicationPolicy.limits.commitSubject`, 72 chars including the
- * `<type>: ` prefix) makes `renderCommit` return `policy_blocked`, which this
- * surfaces as a `blocked` collection and the pipeline settles the run `blocked`.
- * That is 08's own `policy_blocked` terminal, reached honestly. Truncating the
- * outcome clause would be a change to 08's renderer contract, which this
- * composition has no authority to make.
+ * `<type>: ` prefix) used to make `renderCommit` return `policy_blocked`, which
+ * this surfaced as a `blocked` collection and the pipeline settled `blocked` —
+ * measured in production on run `70059608`, where a unit's finished work was
+ * never committed for it. `commit-renderer.ts`'s `assembleCommitSubject` now
+ * bounds the outcome clause against the POLICY's own limit, so an over-long
+ * title renders a trimmed subject instead of blocking. Nothing here surfaces
+ * that terminal for title length any more.
  */
 import {
   applyCasUpdate,

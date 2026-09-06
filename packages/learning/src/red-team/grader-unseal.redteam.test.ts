@@ -9,7 +9,7 @@ import { LEARNING_SEALED_DIR_MODE } from "../store/layout.js";
 /**
  * `@learning-redteam` — the seal, attacked through this package's OWN door.
  *
- * `../store/grader-isolation.redteam.test.ts` proves a hostile process
+ * `./grader-isolation.redteam.test.ts` proves a hostile process
  * calling `node:fs` directly cannot write into a sealed directory. It never
  * asks the question this suite asks: what happens when the attacker uses
  * `CaseFixtureStore` itself?

@@ -97,13 +97,22 @@ function wrapFooterLine(key: string, value: string): readonly string[] {
  * trailing period, so `...` would trade one block for another. A single token
  * longer than the whole budget has no boundary to cut at and is hard-cut —
  * trimming it to nothing would leave `type: `, which fails the format check.
+ * The same emptying is reachable through the word-boundary arm (a hard cut
+ * whose prefix is all punctuation), so the non-empty guard is applied to the
+ * trim's RESULT rather than to the single-token branch alone.
  */
 function trimToWidth(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   const hardCut = text.slice(0, maxChars);
   const lastSpace = hardCut.lastIndexOf(" ");
   if (lastSpace <= 0) return hardCut;
-  return hardCut.slice(0, lastSpace).replace(/[\s,;:.-]+$/u, "");
+  const atBoundary = hardCut.slice(0, lastSpace).replace(/[\s,;:.-]+$/u, "");
+  // ⚠️ THE WORD-BOUNDARY ARM EMPTIES TOO. `lastSpace > 0` guarantees a
+  // non-empty slice but not a non-empty RESULT: for `--- <one long token>`
+  // the slice is `---` and the punctuation strip takes all of it, leaving the
+  // `type: ` subject the guard above was written to prevent. The guard has to
+  // sit on the result, so both arms are covered by one rule.
+  return atBoundary.length > 0 ? atBoundary : hardCut;
 }
 
 /**

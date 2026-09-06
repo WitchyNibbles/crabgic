@@ -125,8 +125,14 @@ export class WriteSerializer {
     // `#tails`. Without it the map is append-only for the life of the process:
     // `../mutation-pipeline/mutation-pipeline.js`'s `IdempotencyKeyLock` wraps
     // ONE `WriteSerializer` per gateway process, keyed on
-    // `plan.idempotencyKey`, and those keys embed `Date.now()`, so they never
-    // repeat — one dead entry per mutation, forever.
+    // `plan.idempotencyKey`. SOME of those keys embed `Date.now()` and so can
+    // never repeat (`issue.create`, `worklog.create`), and every other shape is
+    // content-derived over an unbounded domain — issue keys, revisions,
+    // `JSON.stringify(fields)`. Either way the key space is not small enough
+    // to bound the map on its own: one dead entry per distinct mutation,
+    // forever. (The blanket claim that they ALL embed `Date.now()` was wrong;
+    // most are deterministic and do repeat, which the identity test below
+    // handles.)
     //
     // The `=== tailSibling` identity test is the whole correctness argument
     // and must not be reduced to a bare `delete`: a task that queued behind

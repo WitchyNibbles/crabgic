@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-09-06",
-  "generatedAtSha": "61790792d228117aed5fe472bd038721798249fc",
+  "generatedAtSha": "a93bf8cb361588c61faae9926e8f0159f149d3c2",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
@@ -11820,10 +11820,10 @@
       "qa": "ec309bfba344",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@67,94,120,136,755!span~repeat",
-        "MOVED/collapsed@756!span",
-        "MOVED/collapsed@760!span",
-        "MOVED/collapsed@762!span"
+        "MOVED-AMBIG/collapsed@67,94,120,136,775!span~repeat",
+        "MOVED/collapsed@776!span",
+        "MOVED/collapsed@780!span",
+        "MOVED/collapsed@782!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:599-621": {
@@ -11831,30 +11831,30 @@
       "ref": "OK",
       "pins": [
         "SKIP-commentary",
-        "MOVED-AMBIG/collapsed@64,117,439,789,912!span~repeat",
-        "MOVED/collapsed@790!span",
-        "MOVED/collapsed@792!span"
+        "MOVED-AMBIG/collapsed@64,117,439,809,932!span~repeat",
+        "MOVED/collapsed@810!span",
+        "MOVED/collapsed@812!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:623-666": {
       "qa": "0b313dd52618",
       "ref": "OK",
       "pins": [
-        "MOVED-AMBIG/collapsed@266,816,851,894!span~repeat",
-        "MOVED-AMBIG/collapsed@178,822!span~repeat",
-        "MOVED-AMBIG/collapsed@829,859!span~repeat",
-        "MOVED/collapsed@830!span",
-        "MOVED-AMBIG/collapsed@831,861!span~repeat"
+        "MOVED-AMBIG/collapsed@266,836,871,914!span~repeat",
+        "MOVED-AMBIG/collapsed@178,842!span~repeat",
+        "MOVED-AMBIG/collapsed@849,879!span~repeat",
+        "MOVED/collapsed@850!span",
+        "MOVED-AMBIG/collapsed@851,881!span~repeat"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.test.ts:668-691": {
       "qa": "8b644b805462",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@853!span",
-        "MOVED-AMBIG/collapsed@829,859!span~repeat",
-        "MOVED/collapsed@860!span",
-        "MOVED/collapsed@836!span"
+        "MOVED/collapsed@873!span",
+        "MOVED-AMBIG/collapsed@849,879!span~repeat",
+        "MOVED/collapsed@880!span",
+        "MOVED/collapsed@856!span"
       ]
     },
     "phase-24.json#c5#packages/scheduler/src/executor.ts:177-192": {
@@ -11888,8 +11888,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@1262!span",
-        "MOVED-AMBIG/collapsed@1268,1467!span~repeat",
+        "MOVED/collapsed@1271!span",
+        "MOVED-AMBIG/collapsed@1277,1476!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]
