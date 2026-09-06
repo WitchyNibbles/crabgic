@@ -428,6 +428,29 @@ meets the CRITICAL/HIGH bar that would block this release per 14's gate semantic
   **Deliberately NOT extended to `Read`/`Glob`/`Grep`/other tools:** the envelope policy
   default-denies any unlisted tool, while the engine grants read-only tools without any
   rule. Covering them would journal a meaningless deny verdict for every read and
+
+  #### Correction 2026-09-06 — this described the component, not the daemon
+
+  Everything above was true of the pieces and false of the shipped binary until this date.
+  `createEnvelopeAdjudicationPolicy` (the policy) and `createAdjudicationBus` (the
+  journal-tee) both existed, were tested, and were live-probed — and neither had a
+  production caller. `supervisord.ts` built the run dispatcher with no `adjudicate`, so the
+  daemon answered every tool call with its `REFUSE_ALL_ADJUDICATIONS` fallback: a constant
+  deny that the bus never wrapped, and therefore never journaled. This project's own
+  journal for 2026-08-15 to 2026-09-06 holds 29 `session_assignment` entries and not one
+  per-tool-call verdict.
+
+  Two consequences, neither of them the posture described above. There was no journaled
+  divergence for an auditor to read, because there was no record at all. And because the
+  policy's deny IS enforced for the gateway family, every `mcp__crabgic_gateway__*` call a
+  worker made was refused.
+
+  The composition now exists, per attempt rather than per run: the policy's own
+  precondition is that its `permissions` have already had the `<worktree>` placeholder
+  substituted, and each work unit has its own worktree. Held to it by
+  `packages/cli/src/daemon/run-dispatcher.test.ts` — an allow inside the unit's owned path,
+  a deny for an ungranted command, and the same adjudicator surviving a park resume.
+
   black-hole them all whenever adjudication is unavailable. `canUseTool` stays installed as
   a backstop for grant shapes not yet measured; no document here claims it adjudicates the
   compiled profile's own grants. Known measured/unmeasured divergences between the policy

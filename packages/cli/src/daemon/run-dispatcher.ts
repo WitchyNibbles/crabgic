@@ -65,6 +65,7 @@ import {
   type JournalStore,
 } from "@crabgic/journal";
 import {
+  createAdjudicationBus,
   createRun,
   findLiveRunForChangeSet,
   findPublishedRunForChangeSet,
@@ -95,7 +96,9 @@ import { compileEnvelope, isContained } from "@crabgic/engine-core";
 import type { AdjudicationCallback, EngineAdapter, SessionRef } from "@crabgic/engine-core";
 import {
   ClaudeEngineAdapter,
+  createEnvelopeAdjudicationPolicy,
   createSessionRef,
+  substituteWorktreePlaceholders,
   type WorkerAuthMaterial,
 } from "@crabgic/engine-claude";
 import {
@@ -176,10 +179,35 @@ export const WORKER_RESULT_SCHEMA: Record<string, unknown> = ((): Record<string,
 })();
 
 /**
- * Refuses every adjudication by default. roadmap/05 owns the real
- * adjudication bus; until one is attached, a daemon running unattended must
- * fail closed — an auto-approved escalation is exactly what the
- * human-in-the-loop gates exist to prevent.
+ * One retained worker: what a later resume needs in order to continue the SAME
+ * session under the SAME authority.
+ */
+interface RetainedWorker {
+  readonly adapter: EngineAdapter;
+  readonly worktreePath: string;
+  readonly configDir: string;
+  /**
+   * Built once, beside the adapter — see `buildWorkerAdjudicator` in `drive`.
+   * Retained because a park-resume happens on a LATER drive, which never
+   * re-enters `createAdapter`, and a resumed worker that dropped to the
+   * fail-closed fallback would find the gateway shut mid-session.
+   */
+  readonly adjudicate: AdjudicationCallback;
+}
+
+/**
+ * The LAST-RESORT adjudicator: an attempt whose adapter this dispatcher did
+ * not build has no worktree to substitute into the envelope policy, so it has
+ * no honest policy to adjudicate against and must fail closed — an
+ * auto-approved escalation is exactly what the human-in-the-loop gates exist
+ * to prevent.
+ *
+ * Every attempt this dispatcher DOES build now gets the real per-worker bus.
+ * Until 2026-09-06 nothing built one, and this constant answered every tool
+ * call in the shipped daemon: unwrapped by the bus, so no
+ * `adjudication_decision` was ever journaled either, and — because
+ * `tool-adjudication-hook.ts` enforces the deny for the gateway family — every
+ * the gateway MCP family call a worker made was refused.
  */
 const REFUSE_ALL_ADJUDICATIONS: AdjudicationCallback = () =>
   Promise.resolve({
@@ -199,6 +227,7 @@ export interface RealRunDispatcherOptions {
   readonly serviceEmail?: string;
   readonly targetRef?: string;
   /** Adjudication bus (05). Defaults to refusing every escalation. */
+  /** Overrides the per-worker adjudication bus for EVERY attempt. Tests inject one; production leaves it unset and gets 06's envelope policy behind 05's journal-teed bus. */
   readonly adjudicate?: AdjudicationCallback;
   /** Reported when a worker's SessionEnd transcript pointer could not be journaled. Diagnostic only — the attempt is not failed for it. */
   readonly onEvidenceCaptureError?: (
@@ -527,13 +556,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
    * read-only session. Durable, restart-safe session context is the ledger's
    * separate carry-forward.
    */
-  const retainedByRun = new Map<
-    string,
-    Map<
-      string,
-      { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
-    >
-  >();
+  const retainedByRun = new Map<string, Map<string, RetainedWorker>>();
   /**
    * Each succeeded unit's collected work, PER RUN and across this daemon's
    * re-drives of it — owner ruling 2026-09-06, "chain the base".
@@ -818,20 +841,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     // that spawned the session — only it holds that session's `{packet,
     // profile}` context, so `adapter.resume` continues with full authority
     // instead of the read-only fallback a fresh adapter gets.
-    const retainedWorkers = ((): Map<
-      string,
-      { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
-    > => {
+    const retainedWorkers = ((): Map<string, RetainedWorker> => {
       const existing = retainedByRun.get(runId);
       if (existing !== undefined) return existing;
-      const created = new Map<
-        string,
-        {
-          readonly adapter: EngineAdapter;
-          readonly worktreePath: string;
-          readonly configDir: string;
-        }
-      >();
+      const created = new Map<string, RetainedWorker>();
       retainedByRun.set(runId, created);
       return created;
     })();
@@ -1104,6 +1117,41 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     });
 
     /**
+     * The per-worker adjudicator: 06's real `AdjudicationPolicy` behind 05's
+     * journal-teed bus — the composition `adjudication-policy.ts`'s own header
+     * describes, finally constructed.
+     *
+     * ⚠️ MEASURED INERT BEFORE THIS. No production code built either half, so
+     * the shipped daemon answered every tool call with
+     * `REFUSE_ALL_ADJUDICATIONS`: a constant deny the bus never wrapped and
+     * therefore never journaled — and, because `tool-adjudication-hook.ts`
+     * enforces the deny for the gateway family, one that refused every
+     * the gateway MCP family call a worker made.
+     *
+     * PER ATTEMPT, NOT PER RUN, which is the policy's own binding
+     * precondition: it requires `permissions` to have ALREADY had
+     * engine-core's `<worktree>`/`<worker-tmp>` tokens substituted. Each unit
+     * gets its own worktree, and a policy given the raw token matches no
+     * owned-path rule at all — it would deny every legitimate Edit and Write
+     * in the unit's own paths and journal the denial, turning the alarm an
+     * auditor reads into noise.
+     */
+    const buildWorkerAdjudicator = (
+      workUnitId: string,
+      worktreePath: string,
+      workerTmp: string,
+    ): AdjudicationCallback =>
+      options.adjudicate ??
+      createAdjudicationBus({
+        journal: deps.journal,
+        runId,
+        workUnitId,
+        policy: createEnvelopeAdjudicationPolicy({
+          permissions: substituteWorktreePlaceholders(profile, worktreePath, workerTmp).permissions,
+        }),
+      });
+
+    /**
      * Phase 07's rename-aware collision verdicts, which is how two units that
      * own the same path are kept out of the same round.
      *
@@ -1136,6 +1184,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,
         adjudicate,
+        /**
+         * The per-attempt adjudicator built alongside that attempt's adapter
+         * in `createAdapter` below. `adjudicate` above stays the FALLBACK: an
+         * attempt whose adapter this dispatcher did not build has no worktree
+         * to substitute, and must fail closed rather than adjudicate against
+         * the wrong one.
+         */
+        resolveAdjudicator: (ctx) => retainedWorkers.get(ctx.workUnit.id)?.adjudicate ?? adjudicate,
         nowSeconds,
         compileProfile: () => Promise.resolve(profile),
         // roadmap/24: the bar this unit is judged against. Both halves come
@@ -1340,6 +1396,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             adapter,
             worktreePath,
             configDir: provisioning.CLAUDE_CONFIG_DIR,
+            adjudicate: buildWorkerAdjudicator(ctx.workUnit.id, worktreePath, provisioning.TMP),
           });
           return adapter;
         },
@@ -1384,7 +1441,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             },
             sessionRef,
             workUnitId: ctx.workUnit.id,
-            adjudicate,
+            // The SAME adjudicator the spawn ran under, for the same reason it
+            // is the same adapter: a resumed worker must not silently drop to
+            // the fail-closed fallback and find the gateway shut mid-session.
+            adjudicate: retained.adjudicate,
             trigger: { kind: "parkResume" },
             runId,
             // The driver owns `liveWorkers` but holds no adapter at this

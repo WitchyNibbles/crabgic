@@ -1741,6 +1741,146 @@ describe("createRealRunDispatcher — dispatch", () => {
  * and `running → cancelled` are declared edges — so settling it needs none of
  * the deferred `completed → verifying` wiring.
  */
+/**
+ * ⚠️ THE SHIPPED DAEMON ADJUDICATED WITH A CONSTANT DENY, AND JOURNALED NOTHING.
+ *
+ * `createEnvelopeAdjudicationPolicy` (06's real policy) and
+ * `createAdjudicationBus` (05's journal-tee) both existed and neither had a
+ * production caller: grep across non-test `packages/*\/src` returned only
+ * their own definition sites. `supervisord.ts` builds this dispatcher with no
+ * `adjudicate`, so `REFUSE_ALL_ADJUDICATIONS` answered every tool call —
+ * unwrapped by the bus, so no `adjudication_decision` was written either, and,
+ * because `tool-adjudication-hook.ts` enforces the deny for the gateway
+ * family, every gateway MCP call a worker made was refused.
+ *
+ * The policy's own precondition is why the bus is built PER ATTEMPT: it
+ * requires `permissions` already substituted against THIS attempt's worktree.
+ * A run-level policy would see the literal `<worktree>` token, match no
+ * owned-path rule, and deny every legitimate Edit in the unit's own paths.
+ */
+describe("createRealRunDispatcher — every tool call is adjudicated against the envelope and journaled", () => {
+  function scriptToolCall(toolName: string, toolInput: Record<string, unknown>) {
+    return buildFakeEngineScript({
+      toolCalls: [{ toolName, toolInput, toolResult: "ok", toolResultIsError: false }],
+      structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+    });
+  }
+
+  async function verdicts(journal: JournalStore): Promise<string[]> {
+    const out: string[] = [];
+    for await (const entry of journal.queryEntries({ type: "adjudication_decision" })) {
+      out.push((entry as { payload: { decision: string } }).payload.decision);
+    }
+    return out;
+  }
+
+  it("ALLOWS and journals an edit inside the unit's own owned path", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            // Inside the envelope's own `packages/example/src/`, resolved
+            // against the attempt worktree — the substitution the policy
+            // requires and that a run-level bus could not have performed.
+            scriptToolCall("Edit", {
+              file_path: join(dir, "worktree", "packages", "example", "src", "x.ts"),
+            }),
+          ),
+        ),
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        expect(await verdicts(deps.journal)).toContain("allow");
+      },
+      { timeout: 10_000 },
+    );
+  });
+
+  /**
+   * The resume door calls `resumeAttempt` directly and never passes through
+   * the driver's `resolveAdjudicator`, so it takes whatever `adjudicate` it is
+   * handed. Handed the run-wide fallback, a resumed worker would silently drop
+   * to the constant deny and find the gateway shut mid-session — the same
+   * session it had been working in a moment earlier.
+   */
+  it("keeps the spawn's own adjudicator across a park resume", async () => {
+    const SESSION = "77777777-7777-4777-8777-777777777777";
+    const worktreePath = join(dir, "worktree");
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: () => Promise.resolve(worktreePath),
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              sessionId: SESSION,
+              projectDirectory: worktreePath,
+              worktreePath,
+              // Parks WITHOUT making a tool call, so any verdict below can
+              // only have come from the resumed session.
+              failure: {
+                kind: "limitSignal",
+                payload: { status: "rejected", resetsAt: 1, rateLimitType: "five_hour" },
+              },
+              onResume: buildFakeEngineScript({
+                sessionId: SESSION,
+                projectDirectory: worktreePath,
+                worktreePath,
+                toolCalls: [
+                  {
+                    toolName: "Edit",
+                    toolInput: {
+                      file_path: join(worktreePath, "packages", "example", "src", "x.ts"),
+                    },
+                    toolResult: "ok",
+                    toolResultIsError: false,
+                  },
+                ],
+                structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+              }),
+            }),
+          ),
+        ),
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        expect(await verdicts(deps.journal)).toContain("allow");
+      },
+      { timeout: 10_000 },
+    );
+  });
+
+  it("DENIES and journals a bash command the envelope grants no command for", async () => {
+    const deps = buildDeps({ ...fullySeeded(), run: false });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(scriptToolCall("Bash", { command: "curl https://example.com" })),
+        ),
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        const seen = await verdicts(deps.journal);
+        expect(seen).toContain("deny");
+        // The control against a fix that journals a CONSTANT deny: the allow
+        // case above must still be an allow, so this one is a real verdict.
+        expect(seen).not.toContain("allow");
+      },
+      { timeout: 10_000 },
+    );
+  });
+});
+
 describe("createRealRunDispatcher — an all-terminal DAG settles the run", () => {
   /** A DAG of one unit, whose scripted worker reports `outcome`. */
   function dispatcherFor(outcome: "failed" | "cancelled") {

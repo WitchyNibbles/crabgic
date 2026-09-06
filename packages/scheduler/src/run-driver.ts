@@ -90,7 +90,18 @@ export interface RunDriverDependencies {
   readonly journal: JournalStore;
   /** The supervisor's live-worker map — an in-flight attempt is registered under its work-unit id for the duration of the attempt. */
   readonly liveWorkers: Map<string, DriverTerminableWorker>;
+  /** The run-wide FALLBACK adjudicator — used for any attempt `resolveAdjudicator` does not answer for. */
   readonly adjudicate: AdjudicationCallback;
+  /**
+   * The adjudicator for ONE attempt, resolved per work unit exactly like the
+   * adapter, packet and profile beside it. The daemon builds a journal-teed
+   * bus over the real envelope policy here, and it can only be built once THIS
+   * attempt's worktree exists: the compiled profile's owned-path rules carry
+   * the `<worktree>` placeholder until they are substituted against it, and a
+   * policy handed the raw token matches no owned-path rule at all — it would
+   * deny every legitimate Edit and Write in the unit's own paths.
+   */
+  readonly resolveAdjudicator?: (ctx: WorkerDispatchContext) => AdjudicationCallback;
   readonly createAdapter: (ctx: WorkerDispatchContext) => Promise<EngineAdapter>;
   readonly buildPacket: (ctx: WorkerDispatchContext) => Promise<TaskPacket>;
   /**
@@ -296,7 +307,7 @@ async function runDispatch(
       journal: deps.journal,
       packet,
       profile,
-      adjudicate: deps.adjudicate,
+      adjudicate: deps.resolveAdjudicator?.(ctx) ?? deps.adjudicate,
       criteriaSeal: await deps.resolveCriteriaSeal(ctx),
       // First dispatch of a unit needs no repair evidence; a repair
       // re-dispatch is `resumeAttempt`'s evidence-gated path, never this
