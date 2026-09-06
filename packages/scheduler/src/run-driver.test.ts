@@ -545,11 +545,16 @@ describe("driveRun — the DAG dispatch loop", () => {
 
     const liveWorkers = new RecordingLiveWorkers();
     let sizeDuringResume = -1;
+    // Held by identity: what must reach `liveWorkers` is the handle the
+    // RESUME produced, so the control plane's `terminate` lands on the live
+    // worker. A driver that registered anything else — a placeholder, a
+    // handle from the earlier dispatch — satisfies a length check.
+    const resumeHandle = { terminate: () => Promise.resolve({ outcome: "terminated" as const }) };
     const deps: RunDriverDependencies = {
       ...buildDeps(new Map(), newObserved(), liveWorkers),
       nowSeconds: () => 1000,
       resumeParkedUnit: (_ctx, sessionId, registerWorker) => {
-        registerWorker({ terminate: () => Promise.resolve({ outcome: "terminated" }) });
+        registerWorker(resumeHandle);
         // Read INSIDE the resume: registration that only outlives the attempt
         // would satisfy a post-hoc check while helping nobody.
         sizeDuringResume = liveWorkers.size;
@@ -583,8 +588,8 @@ describe("driveRun — the DAG dispatch loop", () => {
     // Retired once the resume settled — the control plane never holds a
     // handle to a worker that is already gone.
     expect(liveWorkers.size).toBe(0);
-    const registered = liveWorkers.handles[0];
-    await expect(registered?.terminate(5_000)).resolves.toEqual({ outcome: "terminated" });
+    expect(liveWorkers.handles).toHaveLength(1);
+    expect(liveWorkers.handles[0]).toBe(resumeHandle);
   });
 
   it("completes a chain where each unit parks on dispatch then resumes — no false roundLimit", async () => {

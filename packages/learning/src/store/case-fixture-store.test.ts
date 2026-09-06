@@ -62,18 +62,30 @@ describe("CaseFixtureStore.read", () => {
     await expect(store.read()).rejects.toThrow();
   });
 
-  it("throws when the fixture file cannot be read at all", async () => {
-    const dir = join(root, "unreadable");
-    await mkdir(dir, { recursive: true });
-    const file = join(dir, "cases.jsonl");
-    await writeFile(file, "", "utf8");
-    await chmod(file, 0o000);
-    const store = new CaseFixtureStore(dir);
-    const mode = (await stat(file)).mode & 0o777;
-    // Running as root makes the mode unenforceable; skip rather than lie.
-    if (mode === 0 && process.getuid?.() !== 0) {
-      await expect(store.read()).rejects.toThrow();
-    }
-    await chmod(file, 0o600);
-  });
+  /**
+   * SKIPPED, NEVER SILENTLY SATISFIED. Root ignores the mode bits, so this
+   * cannot be asserted there. The earlier form guarded the assertion with an
+   * `if` and reported a pass when the guard was false — a green test that had
+   * checked nothing, which is the vacuity pattern `docs/verification-playbook.md`
+   * names. `skipIf` makes the non-run visible in the reporter instead, and the
+   * mode is now asserted rather than tested, so a `chmod` that does not take
+   * (an exotic filesystem) fails here rather than quietly passing.
+   */
+  it.skipIf(process.getuid?.() === 0)(
+    "throws when the fixture file cannot be read at all",
+    async () => {
+      const dir = join(root, "unreadable");
+      await mkdir(dir, { recursive: true });
+      const file = join(dir, "cases.jsonl");
+      await writeFile(file, "", "utf8");
+      await chmod(file, 0o000);
+      const store = new CaseFixtureStore(dir);
+      try {
+        expect((await stat(file)).mode & 0o777).toBe(0);
+        await expect(store.read()).rejects.toThrow();
+      } finally {
+        await chmod(file, 0o600);
+      }
+    },
+  );
 });

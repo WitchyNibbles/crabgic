@@ -531,11 +531,25 @@ describe("resumeAttempt", () => {
       evidenceKind: "none",
     });
 
+    // The name's claim is an ORDER, so the test records one. `resumeAttempt`
+    // hands the handle over, THEN writes the resume's own `dispatched`
+    // attempt, THEN consumes events. Asserting only "a handle arrived" passes
+    // just as happily with the handover moved to the end, which is the change
+    // that would put `worker.terminate` back out of reach for the window the
+    // attempt is actually running.
+    const timeline: string[] = [];
+    const recording: JournalStore = {
+      ...store,
+      appendEntry: (entry) => {
+        timeline.push("journal");
+        return store.appendEntry(entry);
+      },
+    };
     const handles: { readonly sessionRef: { readonly sessionId: string } }[] = [];
     await resumeAttempt({
       adapter,
       criteriaSeal: { requirements: [], approvalSeal: undefined },
-      journal: store,
+      journal: recording,
       sessionRef: {
         sessionId: SESSION,
         projectDirectory: "/fake/project",
@@ -545,12 +559,18 @@ describe("resumeAttempt", () => {
       workUnitId: WORK_UNIT_ID,
       adjudicate: allowAllAdjudicate,
       trigger: { kind: "parkResume" },
-      onWorkerHandle: (handle) => handles.push(handle),
+      onWorkerHandle: (handle) => {
+        timeline.push("handover");
+        handles.push(handle);
+      },
     });
 
     // Exactly one handover, and it is the RESUMED session — not a fresh one.
     expect(handles).toHaveLength(1);
     expect(handles[0]?.sessionRef.sessionId).toBe(SESSION);
+    // ...and it came FIRST, before this resume wrote anything at all.
+    expect(timeline[0]).toBe("handover");
+    expect(timeline).toContain("journal");
   });
 
   it("MAJOR-1 fix: resumeAttempt with trigger 'crashRepair' IS gated identically to dispatchAttempt — refused with a typed error once the cap is exhausted", async () => {
