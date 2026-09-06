@@ -55,6 +55,54 @@ describe("findUnusedAuthority", () => {
     expect(findUnusedAuthority(envelope(["./src/"]), units(["src/login/"])).tight).toBe(true);
   });
 
+  /**
+   * ⚠️ THE SPELLINGS THE PRIVATE MATCHER MISSED (2026-09-05).
+   *
+   * This module normalized with four lines of its own — trim, strip a leading
+   * `./`, strip trailing slashes — until it was collapsed into
+   * `@crabgic/contracts`' one predicate. The two cases below are the difference,
+   * and neither was reachable by any assertion above: a doubled separator or an
+   * interior `.` segment names the SAME directory on every filesystem, and the
+   * old matcher reported the grant as authority nobody used. That is the
+   * spurious warning this module's own doc comment says would "train the reader
+   * to ignore this".
+   *
+   * Pinned because a review round measured that reverting the delegation left
+   * the whole `packages/cli` suite green at 1517/1517 — a fix no test could
+   * tell from its own absence.
+   */
+  it("collapses doubled and dotted separators, which name one directory", () => {
+    expect(
+      findUnusedAuthority(
+        envelope(["scripts//stale-dist"]),
+        units(["scripts/stale-dist/units.mjs"]),
+      ).tight,
+    ).toBe(true);
+    expect(
+      findUnusedAuthority(
+        envelope(["scripts/./stale-dist"]),
+        units(["scripts/stale-dist/walk.mjs"]),
+      ).tight,
+    ).toBe(true);
+  });
+
+  /**
+   * FAIL CLOSED ON A SPELLING THAT GRANTS NOTHING, and say so rather than
+   * leaving it to be discovered. A claim carrying a glob is not a path this
+   * system can own — `validateOwnedPath` rejects every glob metacharacter, and
+   * `buildTaskPacket` refuses such a work unit at dispatch — so it uses no
+   * authority, and the grant beside it is genuinely unused. The old private
+   * matcher passed globs through untouched and reported the opposite.
+   */
+  it("counts a grant as UNUSED when the only claim on it cannot name a path", () => {
+    const result = findUnusedAuthority(
+      envelope(["packages/gateway/src"]),
+      units(["packages/gateway/src/**"]),
+    );
+    expect(result.tight).toBe(false);
+    expect(result.unusedOwnedPaths).toEqual(["packages/gateway/src"]);
+  });
+
   it("flags every granted path when the plan claims none at all", () => {
     const result = findUnusedAuthority(envelope(["src", "docs"]), units([]));
     expect(result.unusedOwnedPaths).toEqual(["src", "docs"]);

@@ -77,8 +77,9 @@ export default defineConfig({
       // as a `meta-checks` step in `ci.yml` against the real committed
       // records; this project is what unit-tests the validator's own
       // rejection paths, which a green run over valid records never
-      // exercises. Nothing under `scripts/` is in the coverage `include`
-      // globs, so this adds no denominator.
+      // exercises. These files ARE in the coverage `include` globs (see
+      // `scripts/**/*.mjs` below), so this project supplies the numerator for
+      // a denominator that is counted.
       {
         extends: true,
         test: { root: "scripts", name: "scripts" },
@@ -130,10 +131,27 @@ export default defineConfig({
       // narrower ground than "hooks are exempt": they are I/O-only shims that
       // execute their effect at import time (one reads fd 0, one writes
       // stderr), so importing them to measure them would run them.
+      // `scripts/**/*.mjs` is included on the same ground as
+      // `stop-autonomy-gate.mjs` above: leaving it out exempts the repository's
+      // own meta-checks from the gate that governs everything else. It is also
+      // REQUIRED for the changed-line gate to work at all — a file outside
+      // these globs is ABSENT from the report rather than reported at 0%, and
+      // `packages/gates/src/coverage/changed-line-coverage.ts` refuses on
+      // absence. Run `aff03e3a` (a change set building a check under
+      // `scripts/stale-dist/`) could not have passed verification while its own
+      // files were unmeasurable. The alternative — declaring `scripts` exempt
+      // through the gate's `excludedFromCoverage` — was measured and rejected:
+      // an excluded file `continue`s before any counter is touched
+      // (`changed-line-coverage.ts:215`), so a change set touching ONLY
+      // excluded paths scores `pct === undefined` with no absent files and the
+      // gate publishes `passed: true` — the self-exemption
+      // `coverage-gate-registration.ts` says "must not be reopened one level
+      // up". `scripts/` already has a suite (the project above); this counts it.
       include: [
         "packages/*/src/**/*.ts",
         "packages/*/statusline/*.mjs",
         "packages/plugin/hooks/stop-autonomy-gate.mjs",
+        "scripts/**/*.mjs",
         "e2e/report/src/**/*.ts",
       ],
       // `src/live/**` is exercised only by the `@live` engine suite (real

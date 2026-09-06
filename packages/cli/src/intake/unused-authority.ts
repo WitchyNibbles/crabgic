@@ -20,6 +20,7 @@
  * answer every time. A model-based critic can come later for the judgements this
  * cannot make — it does not need to come first.
  */
+import { isPathAtOrBelow } from "@crabgic/contracts";
 import type { AuthorizationEnvelope, WorkUnit } from "@crabgic/contracts";
 
 export interface UnusedAuthority {
@@ -29,26 +30,25 @@ export interface UnusedAuthority {
   readonly tight: boolean;
 }
 
-/** Normalizes a declared path for comparison: trailing slashes and `./` prefixes are noise, not intent. */
-function normalize(path: string): string {
-  return path.trim().replace(/^\.\//, "").replace(/\/+$/, "");
-}
-
 /**
- * True when `ownedPath` is at or below `claimed` — segment-aware, so `src`
+ * True when some claim is at or below `ownedPath` — segment-aware, so `src`
  * covers `src/login` and never `srcfoo`.
  *
  * Deliberately the same containment shape `isContained` uses for the policy
  * check. A work unit claiming `src/login` genuinely uses the authority an
  * envelope grant of `src` confers, so counting that grant as "unused" would
  * report every nested plan as over-broad and train the reader to ignore this.
+ *
+ * 2026-09-05: this used to normalize with a private four-line matcher that
+ * stripped only a leading `./` and trailing slashes, so an envelope path
+ * spelled `scripts//stale-dist` or `scripts/./stale-dist` was reported as
+ * authority nobody used while the plan used all of it — the spurious warning
+ * this module's own doc says would train the reader to ignore it. It now
+ * calls 02's one predicate. A grant that cannot be normalized at all grants
+ * nothing, and is correctly reported as unused.
  */
 function isUsedBy(ownedPath: string, claimed: readonly string[]): boolean {
-  const owned = normalize(ownedPath);
-  return claimed.some((raw) => {
-    const claim = normalize(raw);
-    return claim === owned || claim.startsWith(`${owned}/`);
-  });
+  return claimed.some((claim) => isPathAtOrBelow(claim, [ownedPath]));
 }
 
 /** Finds envelope authority the plan never uses. Reports only; refuses nothing. */

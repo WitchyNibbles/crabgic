@@ -119,6 +119,8 @@ import {
   type CoverageMeasurement,
   REQUIRED_SECURITY_FIXTURE_IDS,
   runGrantedAcceptanceCommand,
+  runGrantedIntegrityCommand,
+  selectIntegrityCommand,
   TDD_GATE_NAME,
   type GateContext,
   type GateRegistry,
@@ -203,7 +205,11 @@ export interface AttemptSurface {
    * re-drive after a restart. The coverage gate reports the changed-line check
    * as not run rather than as passed.
    */
-  diffAgainstBase(changeSetId: string, candidateObjectId: string): Promise<string | undefined>;
+  diffAgainstBase(
+    changeSetId: string,
+    workUnitId: string,
+    candidateObjectId: string,
+  ): Promise<string | undefined>;
   /**
    * Materialises the FROZEN BASE plus the candidate's versions of `testPaths`,
    * runs `use` in it, and disposes of the tree afterwards.
@@ -216,13 +222,29 @@ export interface AttemptSurface {
    * or a re-drive after a restart that lost the run's base. The gate reports the
    * red half as unestablished rather than presuming anything.
    */
-  /** The frozen base object id of the named change set's run, when this dispatcher still holds it. */
-  baseObjectIdFor?(changeSetId: string): string | undefined;
+  /**
+   * The base object id THIS UNIT'S attempt was cut from, when this dispatcher
+   * still holds the run.
+   *
+   * ⚠️ PER WORK UNIT, NOT PER RUN — owner ruling 2026-09-06, "chain the base".
+   * A unit whose `dependsOn` predecessors all succeeded is cut from their
+   * collected work rather than from the run's one freeze, so a change-set-wide
+   * answer would attribute a predecessor's lines to this unit's diff and
+   * measure its red baseline against a tree it was never cut from.
+   */
+  baseObjectIdFor?(changeSetId: string, workUnitId: string): string | undefined;
+  /**
+   * `prepareBaseTree` runs while the tree is still PRISTINE — provisioned, but
+   * before the candidate's test files are laid over it. Returning a value stops
+   * the flow and becomes the result.
+   */
   withBaseTree<T>(
     changeSetId: string,
+    workUnitId: string,
     candidateObjectId: string,
     testPaths: readonly string[],
     use: (worktreePath: string) => Promise<T>,
+    prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
   ): Promise<T | undefined>;
 }
 
@@ -240,6 +262,21 @@ export type GateRegistryDependencies = Pick<
    * own project hash is the identity that lasts.
    */
   readonly projectId: string;
+  /**
+   * Ceiling for the stack commands this registry runs in a worktree — ALL FOUR
+   * of them: the candidate's build and acceptance run, and the base tree's.
+   *
+   * ⚠️ THE PLURAL IS LOAD-BEARING, and it was false when this was introduced.
+   * It bound the candidate build alone, so the base tree's identical "did not
+   * complete" branch stayed fifteen minutes out of reach and no test could pin
+   * it — which is exactly how the guard it replaced shipped wrong. A ceiling
+   * that covers one of the commands it names sends the next reader to debug a
+   * test timeout instead of the unbounded command that caused it.
+   *
+   * Omitted in production, where `@crabgic/gates`' own `TDD_BASELINE_TIMEOUT_MS`
+   * applies to each.
+   */
+  readonly commandTimeoutMs?: number;
 };
 
 /**
@@ -315,21 +352,83 @@ export function workUnitRequirementIds(
  * answer that would let a run publish unverified work, which is the failure
  * owner ruling R5 exists to refuse.
  */
+/**
+ * One candidate suite execution.
+ *
+ * ⚠️ `suiteRan` IS NOT DERIVABLE FROM `exitStatus`, and conflating them is what
+ * made the ordering fix briefly worse than the bug. Every refusal here is a
+ * non-zero status, but only some of them mean the acceptance command actually
+ * executed — and `loadCandidateCoverage` reads a report off the same worktree
+ * afterwards. Once the build is ordered, the pre-dispatch base run leaves a
+ * real `coverage/lcov.info` in the attempt's own worktree, so a candidate that
+ * refused BEFORE its suite ran would have had the BASE's report scored as its
+ * own and published `passed: true` on a broken build.
+ */
+interface CandidateSuiteRun {
+  readonly command: string;
+  readonly exitStatus: number;
+  /** True only when the granted acceptance command itself ran to completion. */
+  readonly suiteRan: boolean;
+}
+
+/**
+ * What a candidate's verdict says when the granted build never COMPLETED —
+ * killed on the timeout, or never spawned.
+ *
+ * Distinct from its sibling below for the reason the outcome members are: a
+ * build that FAILED sends the reader to a build log, and one that never
+ * finished sends them to a budget or a host. Collapsing the two would tell an
+ * operator to go read a log that does not exist.
+ */
+export function describeIncompleteIntegrityCommand(command: string, reason: string): string {
+  return (
+    `eo-gates: the granted build did not complete in this candidate's worktree ` +
+    `("${command}": ${reason}), so the tree was never built`
+  );
+}
+
+/**
+ * What a candidate's verdict says when the granted build RAN and failed.
+ *
+ * Exported because it is the whole product of the refusal: the TDD gate
+ * surfaces this string verbatim as its verdict's `command`, and an operator
+ * reading "the granted build failed" goes and looks at the build, where the
+ * fault is. The message this replaces was the coverage gate's "no coverage
+ * report was produced for this candidate", which is true and points at the
+ * wrong thing entirely.
+ */
+export function describeFailedIntegrityCommand(command: string, exitStatus: number): string {
+  return (
+    `eo-gates: the granted build failed in this candidate's worktree ` +
+    `("${command}" exited ${String(exitStatus)}), so the suite would have measured an ` +
+    `unbuilt tree rather than this change`
+  );
+}
+
 async function runCandidateSuite(
   attempts: AttemptSurface,
   context: GateContext,
-): Promise<{ readonly command: string; readonly exitStatus: number }> {
+  commandTimeoutMs?: number,
+): Promise<CandidateSuiteRun> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) {
-    return { command: "eo-gates: no work unit to measure", exitStatus: 1 };
+    return { command: "eo-gates: no work unit to measure", exitStatus: 1, suiteRan: false };
   }
   const worktreePath = attempts.worktreePathFor(workUnitId);
   if (worktreePath === undefined) {
-    return { command: `eo-gates: no retained worktree for "${workUnitId}"`, exitStatus: 1 };
+    return {
+      command: `eo-gates: no retained worktree for "${workUnitId}"`,
+      exitStatus: 1,
+      suiteRan: false,
+    };
   }
   const granted = attempts.grantedCommandsFor(context.changeSetId);
   if (granted === undefined) {
-    return { command: "eo-gates: no envelope resolved for this change set", exitStatus: 1 };
+    return {
+      command: "eo-gates: no envelope resolved for this change set",
+      exitStatus: 1,
+      suiteRan: false,
+    };
   }
   /**
    * ⚠️ THE PRODUCER'S OWN RUNNER, not a second one, and not `captureTddBaseline`.
@@ -346,11 +445,67 @@ async function runCandidateSuite(
    * own `EvidenceRecord`, and a second record would be a duplicate claim about
    * one execution.
    */
-  const run = await runGrantedAcceptanceCommand({ grantedCommands: granted, worktreePath });
-  if (!run.ran) {
-    return { command: run.command ?? "eo-gates: candidate suite", exitStatus: 1 };
+  /**
+   * ⚠️ BUILD FIRST, AND SAY SO WHEN IT FAILS.
+   *
+   * `git worktree add` materialises tracked files only, and a workspace
+   * package's `main` points into a gitignored `dist/` — so the acceptance
+   * command in a fresh worktree resolves nothing and emits no report.
+   * `@crabgic/git-engine`'s `worktree-dependencies.ts` documents that gap and
+   * assigns it here ("it belongs to the scheduler's ordering rather than to
+   * this module"); until this existed, nothing anywhere ordered the build.
+   *
+   * The command is the envelope's own `integrity`-class grant, already compiled
+   * into the worker's profile beside it — no authority the owner did not give.
+   * A project granting no build proceeds unchanged, because a project with no
+   * build step is a normal project.
+   *
+   * A FAILED BUILD REFUSES WITH ITS OWN REASON. Letting it fall through to the
+   * suite produces "no coverage report was produced for this candidate", which
+   * reads as a project that forgot to configure a reporter and sends the reader
+   * to fix something that is not broken.
+   */
+  const integrityCommand = selectIntegrityCommand(granted);
+  if (integrityCommand !== undefined) {
+    const build = await runGrantedIntegrityCommand({
+      grantedCommands: granted,
+      worktreePath,
+      ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
+    });
+    /**
+     * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION — the same correction
+     * `captureTddBaseline` carries. A build killed on the timeout reports
+     * `ran: false`, and proceeding on that is proceeding into an unbuilt tree.
+     */
+    if (!build.ran) {
+      return {
+        command: describeIncompleteIntegrityCommand(integrityCommand, build.reason),
+        exitStatus: 1,
+        suiteRan: false,
+      };
+    }
+    if (build.exitStatus !== 0) {
+      return {
+        command: describeFailedIntegrityCommand(build.command, build.exitStatus),
+        exitStatus: build.exitStatus,
+        suiteRan: false,
+      };
+    }
   }
-  return { command: run.command, exitStatus: run.exitStatus };
+
+  const run = await runGrantedAcceptanceCommand({
+    grantedCommands: granted,
+    worktreePath,
+    ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
+  });
+  if (!run.ran) {
+    return {
+      command: run.command ?? "eo-gates: candidate suite",
+      exitStatus: 1,
+      suiteRan: false,
+    };
+  }
+  return { command: run.command, exitStatus: run.exitStatus, suiteRan: true };
 }
 
 /**
@@ -371,7 +526,7 @@ async function runCandidateSuite(
  */
 async function loadCandidateCoverage(
   attempts: AttemptSurface,
-  runCandidateOnce: (context: GateContext) => Promise<{ readonly exitStatus: number }>,
+  runCandidateOnce: (context: GateContext) => Promise<CandidateSuiteRun>,
   context: GateContext,
 ): Promise<CoverageMeasurement | undefined> {
   const workUnitId = context.workUnitId;
@@ -384,10 +539,20 @@ async function loadCandidateCoverage(
    * nothing. Shared with the TDD gate, so this costs one execution per candidate
    * rather than one per gate.
    */
-  await runCandidateOnce(context);
+  const run = await runCandidateOnce(context);
+  /**
+   * ⚠️ NO SUITE, NO MEASUREMENT — whatever file is on disk. See
+   * `CandidateSuiteRun.suiteRan`: the report in this worktree may be the
+   * pre-dispatch BASE run's, and scoring it would attest the wrong tree.
+   */
+  if (!run.suiteRan) return undefined;
   const report = await readCoverageSummary(worktreePath);
   if (report === undefined) return undefined;
-  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  const diffText = await attempts.diffAgainstBase(
+    context.changeSetId,
+    workUnitId,
+    context.objectId,
+  );
   return { summary: report.summary, ...(diffText !== undefined ? { diffText } : {}) };
 }
 
@@ -405,6 +570,7 @@ async function measureRedAtBase(
   workUnits: GateRegistryDependencies["workUnits"],
   _projectId: string,
   context: GateContext,
+  commandTimeoutMs?: number,
 ): Promise<ChangedTestsBaselineOutcome> {
   const workUnitId = context.workUnitId;
   if (workUnitId === undefined) return { kind: "noRequirements" };
@@ -412,7 +578,11 @@ async function measureRedAtBase(
   const granted = attempts.grantedCommandsFor(context.changeSetId);
   if (granted === undefined) return { kind: "noAcceptanceCommand" };
 
-  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  const diffText = await attempts.diffAgainstBase(
+    context.changeSetId,
+    workUnitId,
+    context.objectId,
+  );
   if (diffText === undefined) {
     return { kind: "didNotRun", command: "git diff", reason: "the run's frozen base is unknown" };
   }
@@ -423,6 +593,7 @@ async function measureRedAtBase(
   const requirementIds = workUnitRequirementIds(workUnits, workUnitId);
   const outcome = await attempts.withBaseTree(
     context.changeSetId,
+    workUnitId,
     context.objectId,
     testPaths,
     (worktreePath) =>
@@ -433,11 +604,45 @@ async function measureRedAtBase(
         requirementIds,
         // The tree IS the base, so the record is scoped to it — which is what
         // distinguishes a baseline from this gate's own firing.
-        baseObjectId: worktreeBaseObjectId(attempts, context.changeSetId) ?? context.objectId,
+        baseObjectId:
+          worktreeBaseObjectId(attempts, context.changeSetId, workUnitId) ?? context.objectId,
         worktreePath,
         grantedCommands: granted,
         testPaths,
+        ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
       }),
+    /**
+     * ⚠️ THE BUILD RUNS HERE, ON THE PRISTINE BASE, and never inside the
+     * capture. The capture receives a tree that already carries the candidate's
+     * test files, so a build there typechecks those tests against base source —
+     * and a change set adding `foo.test.ts` for a not-yet-existing `foo.ts`
+     * fails it. Measured on this repository's own history: one added test file
+     * flipped `tsc -b` from exit 0 to exit 2, which the gate then read as a
+     * broken tree rather than as the red signal it is.
+     */
+    async (worktreePath): Promise<ChangedTestsBaselineOutcome | undefined> => {
+      const integrityCommand = selectIntegrityCommand(granted);
+      if (integrityCommand === undefined) return undefined;
+      const build = await runGrantedIntegrityCommand({
+        grantedCommands: granted,
+        worktreePath,
+        ...(commandTimeoutMs !== undefined ? { timeoutMs: commandTimeoutMs } : {}),
+      });
+      /**
+       * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION — the mirror of
+       * `runCandidateSuite`'s guard, and it has to be, because the two are
+       * structurally identical and only one of them was ever reachable. A build
+       * killed on the timeout reports `ran: false`, and reading that as "no
+       * build was granted" measures the base tree unbuilt.
+       */
+      if (!build.ran) {
+        return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
+      }
+      if (build.exitStatus !== 0) {
+        return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+      }
+      return undefined;
+    },
   );
   return (
     outcome ?? {
@@ -449,8 +654,12 @@ async function measureRedAtBase(
 }
 
 /** The frozen base this change set's run was cut from, when the dispatcher still knows it. */
-function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): string | undefined {
-  return attempts.baseObjectIdFor?.(changeSetId);
+function worktreeBaseObjectId(
+  attempts: AttemptSurface,
+  changeSetId: string,
+  workUnitId: string,
+): string | undefined {
+  return attempts.baseObjectIdFor?.(changeSetId, workUnitId);
 }
 
 /**
@@ -471,13 +680,14 @@ function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): st
  */
 function createCandidateSuiteRunner(
   attempts: AttemptSurface,
-): (context: GateContext) => Promise<{ readonly command: string; readonly exitStatus: number }> {
-  const inFlight = new Map<string, Promise<{ command: string; exitStatus: number }>>();
+  commandTimeoutMs?: number,
+): (context: GateContext) => Promise<CandidateSuiteRun> {
+  const inFlight = new Map<string, Promise<CandidateSuiteRun>>();
   return (context) => {
     const key = `${context.changeSetId}:${context.workUnitId ?? "-"}:${context.objectId}`;
     let pending = inFlight.get(key);
     if (pending === undefined) {
-      pending = runCandidateSuite(attempts, context);
+      pending = runCandidateSuite(attempts, context, commandTimeoutMs);
       inFlight.set(key, pending);
     }
     return pending;
@@ -487,7 +697,7 @@ function createCandidateSuiteRunner(
 export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistry {
   const registry = createGateRegistry();
   /** Shared so a candidate's suite is executed once, however many gates need its result. */
-  const runCandidateOnce = createCandidateSuiteRunner(deps.attempts);
+  const runCandidateOnce = createCandidateSuiteRunner(deps.attempts, deps.commandTimeoutMs);
   registerCriteriaSealGate(registry, {
     requirements: (context): readonly Requirement[] =>
       resolveRequirementsStrict(
@@ -555,7 +765,13 @@ export function composeGateRegistry(deps: GateRegistryDependencies): GateRegistr
         ? []
         : workUnitRequirementIds(deps.workUnits, context.workUnitId),
     measureRedAtBase: (context) =>
-      measureRedAtBase(deps.attempts, deps.workUnits, deps.projectId, context),
+      measureRedAtBase(
+        deps.attempts,
+        deps.workUnits,
+        deps.projectId,
+        context,
+        deps.commandTimeoutMs,
+      ),
     runCandidate: (context) => runCandidateOnce(context),
   });
   /**

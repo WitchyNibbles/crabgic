@@ -160,6 +160,43 @@ describe("registerTddGate — red is measured, not read back", () => {
   });
 
   /**
+   * ⚠️ A BROKEN BASE TREE IS NOT A PASSING TEST SUITE, and the two build
+   * refusals are not each other (2026-09-05).
+   *
+   * Both arms were added with the build ordering and both were measured as
+   * dead: deleting either changed no test result. They matter because their
+   * repairs diverge from every other member's and from each other — a build
+   * that FAILED sends the reader to a build log, one that never COMPLETED sends
+   * them to a budget or a host, and neither is "write a discriminating test".
+   */
+  it("distinguishes a build that failed from one that never completed", async () => {
+    const failed = await fireOnce({
+      red: { kind: "integrityFailed", command: "npm run build", exitStatus: 3 },
+    });
+    const incomplete = await fireOnce({
+      red: {
+        kind: "integrityDidNotRun",
+        command: "npm run build",
+        reason: "timed out after 300ms",
+      },
+    });
+
+    // Inconclusive, like every other unestablished reason — the precondition
+    // failed, which is not a finding about the candidate's code.
+    expect(failed?.evidence.gateVerdict).toBeUndefined();
+    expect(failed?.verdict.detail).toMatch(/npm run build/);
+    expect(failed?.verdict.detail).toMatch(/FAILED/);
+    expect(failed?.verdict.detail).toContain("3");
+
+    expect(incomplete?.evidence.gateVerdict).toBeUndefined();
+    expect(incomplete?.verdict.detail).toMatch(/npm run build/);
+    expect(incomplete?.verdict.detail).toMatch(/did not complete/i);
+    expect(incomplete?.verdict.detail).toMatch(/timed out after 300ms/);
+
+    expect(failed?.verdict.detail).not.toBe(incomplete?.verdict.detail);
+  });
+
+  /**
    * Fail closed with no work unit. This gate is per-work-unit by construction, so
    * a `final_verifying` firing — where `workUnitId` is absent by design — has
    * nothing to judge.

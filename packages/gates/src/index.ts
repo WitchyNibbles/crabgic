@@ -40,7 +40,9 @@ export type { TddGateInput } from "./tdd-gate.js";
 export {
   captureTddBaseline,
   runGrantedAcceptanceCommand,
+  runGrantedIntegrityCommand,
   selectAcceptanceCommand,
+  selectIntegrityCommand,
   TDD_BASELINE_TIMEOUT_MS,
 } from "./tdd-baseline.js";
 export type { CommandRun, TddBaselineInput, TddBaselineOutcome } from "./tdd-baseline.js";

@@ -224,3 +224,166 @@ describe("captureTddBaseline — the harness runs the granted test command befor
     expect(outcome.kind).toBe("noRequirements");
   }, 60_000);
 });
+
+/**
+ * ORDER THE BUILD, OR THE RED HALF IS EARNED BY A MISSING `dist/` (2026-09-05).
+ *
+ * Found chasing run `aff03e3a`. Workspace packages here resolve through
+ * `main: ./dist/index.js`, `dist/` is gitignored, and `git worktree add`
+ * materialises none of it — so the first cross-package `import` in a fresh
+ * worktree fails with `ERR_MODULE_NOT_FOUND` and the suite exits non-zero
+ * having run no test at all. `worktree-dependencies.ts` documents exactly this
+ * ("Nothing currently orders that build first... it belongs to the scheduler's
+ * ordering rather than to this module") and nothing ordered it.
+ *
+ * The cost is not a failed run, it is a FABRICATED one: a non-zero status from
+ * an unbuilt tree is indistinguishable from a failing test, so the red half of
+ * red-before-green — the strongest evidence this system mints — was earned by
+ * an absent build output. That is the same class of defect `didNotRun` exists
+ * to refuse, arriving one layer lower.
+ *
+ * The build command is not invented here either. It is the envelope's own
+ * `integrity`-class grant, already compiled into the worker's profile, so
+ * running it takes no authority the owner did not give.
+ */
+
+/** A real worktree whose `build` and `test` scripts are whatever the caller needs. */
+async function makeScriptedWorktree(scripts: Record<string, string>): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "crabgic-tdd-integrity-"));
+  await writeFile(
+    join(dir, "package.json"),
+    JSON.stringify({ name: "fixture", private: true, scripts }),
+    "utf8",
+  );
+  return dir;
+}
+
+describe("selectIntegrityCommand", () => {
+  it("selects the integrity-class grant and never the acceptance one", async () => {
+    const { selectIntegrityCommand } = await import("./tdd-baseline.js");
+    expect(selectIntegrityCommand(["npm run test", "npm run build"])).toBe("npm run build");
+    expect(selectIntegrityCommand(["npm run build", "npm run test"])).toBe("npm run build");
+  });
+
+  it("returns undefined when the envelope grants no integrity command", async () => {
+    const { selectIntegrityCommand } = await import("./tdd-baseline.js");
+    expect(selectIntegrityCommand(["npm run test"])).toBeUndefined();
+    expect(selectIntegrityCommand([])).toBeUndefined();
+  });
+
+  /**
+   * The envelope's own string, never the matched prefix — the same rule
+   * `selectAcceptanceCommand` states: the compiled profile emits
+   * `Bash(<prefix>:*)`, so substituting the bare prefix would run a DIFFERENT
+   * command from the one the owner approved.
+   */
+  it("returns the granted string verbatim, not the prefix it matched", async () => {
+    const { selectIntegrityCommand } = await import("./tdd-baseline.js");
+    expect(selectIntegrityCommand(["npm run build:workspaces"])).toBe("npm run build:workspaces");
+  });
+
+  it("ignores a string matching no grantable prefix, so a policy typo is never executed", async () => {
+    const { selectIntegrityCommand } = await import("./tdd-baseline.js");
+    expect(selectIntegrityCommand(["npm run buidl"])).toBeUndefined();
+  });
+});
+
+describe("captureTddBaseline — the granted build runs BEFORE the granted test", () => {
+  /**
+   * The ordering is proven by execution, not by a spy: `test` exits 1 only if
+   * `build` already wrote its marker. A run that skips the build sees no
+   * marker, exits 0, and is `notRed` — which is exactly what this returned
+   * before the build was ordered.
+   */
+  it("captures red only because the build ran first", async () => {
+    worktree = await makeScriptedWorktree({
+      build: `node -e "require('fs').writeFileSync('built.txt','1')"`,
+      test: `node -e "process.exit(require('fs').existsSync('built.txt') ? 1 : 0)"`,
+    });
+    const outcome = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(outcome.kind).toBe("captured");
+  });
+
+  /**
+   * ⚠️ A FAILED BUILD MINTS NOTHING. The suite would exit non-zero for a reason
+   * that has nothing to do with any test, so treating it as red would fabricate
+   * the baseline this whole module exists to make honest.
+   */
+  it("refuses to mint a baseline when the granted build fails", async () => {
+    worktree = await makeScriptedWorktree({ build: "exit 3", test: "exit 1" });
+    const outcome = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(outcome.kind).toBe("integrityFailed");
+    if (outcome.kind === "integrityFailed") {
+      expect(outcome.command).toBe("npm run build");
+      expect(outcome.exitStatus).toBe(3);
+    }
+    expect(await hasRedBaseline(tj.store, REQUIREMENT_ID)).toBe(false);
+  });
+
+  /** No integrity grant means no build to order — unchanged behaviour, pinned so the fix cannot widen. */
+  it("runs the test command alone when the envelope grants no build", async () => {
+    worktree = await makeScriptedWorktree({ build: "exit 3", test: "exit 1" });
+    const outcome = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test"],
+    });
+    expect(outcome.kind).toBe("captured");
+  });
+});
+
+/**
+ * A BUILD THAT NEVER COMPLETED IS NOT A BUILD THAT SUCCEEDED (2026-09-05,
+ * found by adversarial review of the commit that ordered the build).
+ *
+ * The first version of the ordering guarded on `build.ran && exitStatus !== 0`,
+ * which reads "a build that RAN and failed refuses". A build killed on the
+ * timeout, or one that could not be spawned at all, reports `ran: false` — so
+ * it fell straight through to the acceptance command in a tree that was never
+ * built, and minted exactly the fabricated red baseline the ordering exists to
+ * prevent. The bug was the same shape as the one being fixed, one branch over.
+ *
+ * The guard is therefore on SELECTION, not on completion: if the envelope
+ * granted a build, that build must have completed successfully before any test
+ * result from this tree means anything.
+ */
+describe("captureTddBaseline — a granted build that did not complete refuses too", () => {
+  it("refuses when the granted build is killed on the timeout", async () => {
+    worktree = await makeScriptedWorktree({
+      build: `node -e "setTimeout(()=>{},60000)"`,
+      test: "exit 1",
+    });
+    const outcome = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+      timeoutMs: 300,
+    });
+    expect(outcome.kind).toBe("integrityDidNotRun");
+    expect(await hasRedBaseline(tj.store, REQUIREMENT_ID)).toBe(false);
+  });
+
+  /**
+   * ⚠️ DISTINCT FROM `integrityFailed`, because the repairs differ: a failed
+   * build is a broken tree, an incomplete one is a budget or a host problem.
+   * Folding them would tell an operator to go read a build log that does not
+   * exist.
+   */
+  it("distinguishes a build that did not complete from one that failed", async () => {
+    worktree = await makeScriptedWorktree({ build: "exit 3", test: "exit 1" });
+    const failed = await captureTddBaseline({
+      ...baseInput(),
+      worktreePath: worktree,
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+    expect(failed.kind).toBe("integrityFailed");
+  });
+});

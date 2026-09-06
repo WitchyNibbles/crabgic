@@ -255,12 +255,34 @@ export function createCoverageGate(input: CoverageGateInput): GateHandler {
 
     const changed = evaluateChangedLines(input);
 
+    /**
+     * What the AGGREGATE half of the verdict says when it is the failing half.
+     * Computed before the changed-line branch returns, because both branches
+     * need it — see the next comment.
+     */
+    const aggregateFailureDetail = regressed
+      ? `coverage regressed below the recorded floor (line ${input.summary.linePct.toFixed(2)}%, ` +
+        `branch ${input.summary.branchPct.toFixed(2)}%, prior floor line ${String(floorBefore?.linePct)}%, ` +
+        `branch ${String(floorBefore?.branchPct)}%)`
+      : `below the effective ${String(GREENFIELD_COVERAGE_MINIMUM_PCT)}% floor (line ` +
+        `${input.summary.linePct.toFixed(2)}% < ${effectiveMinLinePct.toFixed(2)}%, branch ` +
+        `${input.summary.branchPct.toFixed(2)}% < ${effectiveMinBranchPct.toFixed(2)}%) — greenfield ` +
+        `minimum never yet met`;
+
     const passed = !belowEffectiveFloor && changed.passed;
     if (!changed.passed) {
       /**
        * R6's check reports FIRST when it fails, because it is the one a change
        * set's author can act on. The aggregate checks describe the repository;
        * this one describes their diff.
+       *
+       * ⚠️ FIRST, NEVER INSTEAD (corrected 2026-09-05). `belowEffectiveFloor`
+       * was computed here and then discarded whenever the changed-line check
+       * failed, so a run failing BOTH reported one of them. The author covers
+       * their diff, spends another full attempt, and is refused a second time
+       * for a condition that was already known when the first refusal was
+       * written — and the evidence record of the first attempt cannot be used
+       * to reconstruct it, because the fact was never in it.
        */
       return {
         passed: false,
@@ -268,20 +290,15 @@ export function createCoverageGate(input: CoverageGateInput): GateHandler {
         exitStatus: 1,
         toolchainFingerprint: input.summary.toolchain,
         artifactDigests: [],
-        detail: changed.detail,
+        detail: belowEffectiveFloor
+          ? `${changed.detail} — and the aggregate is ALSO failing: ${aggregateFailureDetail}`
+          : changed.detail,
       };
     }
 
     const detail = passed
       ? `coverage OK (line ${input.summary.linePct.toFixed(2)}%, branch ${input.summary.branchPct.toFixed(2)}%; ${changed.detail})`
-      : regressed
-        ? `coverage regressed below the recorded floor (line ${input.summary.linePct.toFixed(2)}%, ` +
-          `branch ${input.summary.branchPct.toFixed(2)}%, prior floor line ${String(floorBefore?.linePct)}%, ` +
-          `branch ${String(floorBefore?.branchPct)}%)`
-        : `below the effective ${String(GREENFIELD_COVERAGE_MINIMUM_PCT)}% floor (line ` +
-          `${input.summary.linePct.toFixed(2)}% < ${effectiveMinLinePct.toFixed(2)}%, branch ` +
-          `${input.summary.branchPct.toFixed(2)}% < ${effectiveMinBranchPct.toFixed(2)}%) — greenfield ` +
-          `minimum never yet met`;
+      : aggregateFailureDetail;
 
     return {
       passed,

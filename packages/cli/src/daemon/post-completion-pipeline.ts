@@ -84,7 +84,12 @@ import {
   type RunsRegistry,
 } from "@crabgic/supervisor";
 import { changeSetRequirementIds } from "./compose-gate-registry.js";
-import { deriveBranchType, type PostCompletionGitEffects } from "./post-completion-git-effects.js";
+import type { BranchType } from "@crabgic/git-engine";
+import {
+  deriveBranchType,
+  type CollectCandidateResult,
+  type PostCompletionGitEffects,
+} from "./post-completion-git-effects.js";
 
 /** Names the coverage note this pipeline writes just before publication. */
 export const FINAL_GATE_COVERAGE_DECISION = "final_gate_coverage";
@@ -119,6 +124,41 @@ export interface PostCompletionPipelineInput {
   readonly statusById: ReadonlyMap<string, WorkUnitAttemptStatus>;
   /** Each unit's attempt worktree, from the dispatcher's retained per-run map — which is why this must run BEFORE `clearRetainedRun`. */
   readonly worktreePathByUnitId: ReadonlyMap<string, string>;
+  /**
+   * What the DRIVE already committed for each succeeded unit — owner ruling
+   * 2026-09-06, "chain the base".
+   *
+   * A unit's successors are cut from its collected work, so the drive has to
+   * commit it while the run is still going; by the time this pipeline runs,
+   * every one of those worktrees is already clean.
+   *
+   * ⚠️ THE DRIVE'S RESULT IS AUTHORITATIVE, and re-deriving it here would be
+   * WRONG rather than merely wasteful. `commitWorktreeCandidate` distinguishes
+   * "the worker changed nothing" from "the worker's work is already committed"
+   * by comparing the worktree tip against THE BASE IT WAS CUT FROM — and this
+   * pipeline only knows the run's frozen base. For a chained unit those differ,
+   * so a unit that produced nothing of its own would be reported as a candidate
+   * whose object id is its PREDECESSOR's commit, and this loop would fire that
+   * unit's own gates against a tree it did not write.
+   *
+   * Absent (or absent for a given unit) means nothing was collected mid-run and
+   * this pipeline collects it, exactly as it always did — the path a direct
+   * caller of this function, and only a direct caller, still takes.
+   */
+  readonly preCollectedByUnitId?: ReadonlyMap<string, CollectCandidateResult>;
+  /**
+   * The base each unit's attempt was cut from, when it is NOT the run's frozen
+   * base — owner ruling 2026-09-06, "chain the base".
+   *
+   * ⚠️ IT IS THE THREE-WAY MERGE BASE, and integration is wrong without it.
+   * Integration commits are single-parent, so no candidate is ever an ancestor
+   * of the integration tip and git derives the frozen base every time. For a
+   * chained candidate that produces a false add/add conflict on any file its
+   * predecessor created, and — worse — silently drops any change it made BACK
+   * to the frozen base's content, publishing a tree no unit's own verification
+   * saw. Both measured 2026-09-06.
+   */
+  readonly chainedBaseByUnitId?: ReadonlyMap<string, string>;
 }
 
 export interface PostCompletionPipelineDeps {
@@ -169,6 +209,37 @@ export function integrationOrderFor(
     ordered.push(unit);
   }
   return ordered;
+}
+
+/**
+ * Collects one unit's work here, in the pipeline — the path taken when the
+ * drive did not already collect it (a re-drive after a restart, or a caller
+ * that supplies no `preCollectedByUnitId` at all).
+ *
+ * `undefined` means this daemon no longer holds the unit's attempt worktree, so
+ * there is nothing to collect FROM; the caller turns that into the run-level
+ * refusal, which is a different sentence from every `CollectCandidateResult`.
+ */
+async function collectHere(
+  workUnit: WorkUnit,
+  deps: PostCompletionPipelineDeps,
+  input: PostCompletionPipelineInput,
+  branchType: BranchType,
+): Promise<CollectCandidateResult | undefined> {
+  const worktreePath = input.worktreePathByUnitId.get(workUnit.id);
+  if (worktreePath === undefined) return undefined;
+  return deps.git.collectCandidate({
+    workUnit,
+    changeSet: input.changeSet,
+    branchType,
+    worktreePath,
+    // THE UNIT'S OWN BASE, for the same reason the drive's own collection uses
+    // it: `commitWorktreeCandidate` tells "changed nothing" apart from
+    // "committed its own work" by comparing the worktree tip against exactly
+    // this id, and against the freeze a chained unit that produced nothing
+    // reports its PREDECESSOR's commit as its own candidate.
+    baseObjectId: input.chainedBaseByUnitId?.get(workUnit.id) ?? input.baseObjectId,
+  });
 }
 
 /** A gate failure, rendered for the operator-facing channel: which gate, under which tag, with its own `detail`. */
@@ -255,8 +326,16 @@ export async function runPostCompletionPipeline(
   const candidates: { readonly workUnit: WorkUnit; readonly objectId: string }[] = [];
   for (const workUnit of ordered) {
     if (input.statusById.get(workUnit.id) !== "succeeded") continue;
-    const worktreePath = input.worktreePathByUnitId.get(workUnit.id);
-    if (worktreePath === undefined) {
+    /**
+     * ⚠️ THE DRIVE'S OWN RESULT WINS — see `preCollectedByUnitId`. It was
+     * computed against the base this unit was actually cut from, which is the
+     * only base that can tell "produced nothing" from "produced its
+     * predecessor's commit".
+     */
+    const collected =
+      input.preCollectedByUnitId?.get(workUnit.id) ??
+      (await collectHere(workUnit, deps, input, branchType));
+    if (collected === undefined) {
       // The run reported this unit succeeded but this daemon no longer holds
       // its worktree (a re-drive after a restart seeded the status from the
       // journal). Publishing without its work would silently ship an
@@ -269,13 +348,6 @@ export async function runPostCompletionPipeline(
           `daemon, so its work cannot be collected. Cancel the run and dispatch the change set again.`,
       };
     }
-    const collected = await deps.git.collectCandidate({
-      workUnit,
-      changeSet: input.changeSet,
-      branchType,
-      worktreePath,
-      baseObjectId: input.baseObjectId,
-    });
     if (collected.status === "blocked") {
       await transition("blocked");
       return {
@@ -364,6 +436,8 @@ export async function runPostCompletionPipeline(
       // undetectable.
       tipObjectId,
       candidateObjectId: candidate.objectId,
+      candidateBaseObjectId:
+        input.chainedBaseByUnitId?.get(candidate.workUnit.id) ?? input.baseObjectId,
       workUnit: candidate.workUnit,
       changeSet: input.changeSet,
       branchType,

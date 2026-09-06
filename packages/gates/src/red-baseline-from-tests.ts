@@ -54,6 +54,22 @@ export type ChangedTestsBaselineOutcome =
   | { readonly kind: "noTestFiles" }
   | { readonly kind: "noAcceptanceCommand" }
   | { readonly kind: "didNotRun"; readonly command: string; readonly reason: string }
+  /**
+   * The granted `integrity`-class command ran and FAILED, so the base tree was
+   * never built and nothing run in it is evidence of anything.
+   *
+   * ⚠️ PRODUCED BY THE CALLER, NOT HERE, and that is a correction rather than a
+   * layering preference. This function receives a tree that ALREADY carries the
+   * candidate's test files, so a build run at this point typechecks those tests
+   * against base source — and a change set adding `foo.test.ts` for a
+   * not-yet-existing `foo.ts` fails it. That is the strongest red signal there
+   * is, and building here reported it as a broken tree. The build belongs to
+   * the PRISTINE tree, before the overlay, which is where
+   * `@crabgic/cli`'s `withRedBaselineTree` now runs it.
+   */
+  | { readonly kind: "integrityFailed"; readonly command: string; readonly exitStatus: number }
+  /** The granted build never completed — killed on the timeout, or never spawned. Distinct because the repair is. */
+  | { readonly kind: "integrityDidNotRun"; readonly command: string; readonly reason: string }
   | { readonly kind: "noRequirements" };
 
 export interface ChangedTestsBaselineInput {

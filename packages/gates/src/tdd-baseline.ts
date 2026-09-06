@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import {
   COMMAND_EVIDENCE_CLASS,
   classifyGrantedCommand,
+  type CommandEvidenceClass,
   type EvidenceRecord,
 } from "@crabgic/contracts";
 import type { JournalStore } from "@crabgic/journal";
@@ -96,6 +97,33 @@ export type TddBaselineOutcome =
    * for a test nobody wrote.
    */
   | { readonly kind: "didNotRun"; readonly command: string; readonly reason: string }
+  /**
+   * The granted `integrity`-class command (the build) ran and FAILED, so the
+   * tree the acceptance command would have run in was never built.
+   *
+   * ⚠️ DISTINCT FROM `didNotRun` AND FROM `captured`, and the distinction is the
+   * point. An unbuilt workspace tree fails its suite with
+   * `ERR_MODULE_NOT_FOUND` before a single test executes, at a non-zero status
+   * indistinguishable from a genuinely failing test — so folding this into the
+   * red path would mint the strongest evidence this system has for a build
+   * error. The repair is also different from every other member's: fix the
+   * build, not the tests, and not the policy.
+   */
+  | { readonly kind: "integrityFailed"; readonly command: string; readonly exitStatus: number }
+  /**
+   * The granted `integrity`-class command never completed — it could not be
+   * spawned, or it was killed on the timeout — so the tree was not built and
+   * nothing run in it means anything.
+   *
+   * ⚠️ DISTINCT FROM `integrityFailed`, on the same grounds `didNotRun` is
+   * distinct from `notRed`: a build that FAILED is a broken tree and sends the
+   * reader to a build log, while a build that never finished is a budget or a
+   * host problem and sends them somewhere else entirely. The first cut of this
+   * ordering guarded on `build.ran && exitStatus !== 0` and so had no member
+   * here at all — a timed-out build fell through to the acceptance command and
+   * minted the fabricated red baseline the ordering exists to prevent.
+   */
+  | { readonly kind: "integrityDidNotRun"; readonly command: string; readonly reason: string }
   /** The envelope grants no `acceptance`-class command, so nothing was run. */
   | { readonly kind: "noAcceptanceCommand" }
   /** The work unit declares no requirements, so there is nothing to scope a record to. */
@@ -114,14 +142,44 @@ export type TddBaselineOutcome =
  * treating it as runnable here would turn a policy author's typo into an
  * executed command.
  */
-export function selectAcceptanceCommand(grantedCommands: readonly string[]): string | undefined {
+function selectGrantedCommandOfClass(
+  grantedCommands: readonly string[],
+  evidenceClass: CommandEvidenceClass,
+): string | undefined {
   for (const command of grantedCommands) {
     const prefix = classifyGrantedCommand(command);
     if (prefix === undefined) continue;
-    if (COMMAND_EVIDENCE_CLASS[prefix] !== "acceptance") continue;
+    if (COMMAND_EVIDENCE_CLASS[prefix] !== evidenceClass) continue;
     return command;
   }
   return undefined;
+}
+
+export function selectAcceptanceCommand(grantedCommands: readonly string[]): string | undefined {
+  return selectGrantedCommandOfClass(grantedCommands, "acceptance");
+}
+
+/**
+ * The first granted command that establishes INTEGRITY — the build — in
+ * `grantedCommands` order.
+ *
+ * The sibling of `selectAcceptanceCommand`, sharing its selector so the two
+ * cannot disagree about what a granted string names, and carrying its rule
+ * verbatim: the envelope's own string is returned rather than the matched
+ * prefix, and a string matching no prefix returns nothing so a policy author's
+ * typo is never executed.
+ *
+ * WHY A BUILD IS SELECTABLE AT ALL. Workspace packages resolve through
+ * `main: ./dist/index.js`; `dist/` is gitignored; `git worktree add`
+ * materialises none of it. Running the acceptance command in a fresh worktree
+ * therefore measures the absence of a build output rather than the code
+ * (`@crabgic/git-engine`'s `worktree-dependencies.ts` documents this and assigns
+ * the ordering here). `npm run build` is already in the envelope and already
+ * compiled into the worker's own profile, so ordering it takes no authority the
+ * owner did not grant.
+ */
+export function selectIntegrityCommand(grantedCommands: readonly string[]): string | undefined {
+  return selectGrantedCommandOfClass(grantedCommands, "integrity");
 }
 
 /**
@@ -202,6 +260,26 @@ export async function runGrantedAcceptanceCommand(input: {
 }
 
 /**
+ * Runs the granted `integrity`-class command (the build) in `worktreePath`.
+ *
+ * `ran: false` when the envelope grants none — which is NOT a failure. A
+ * project with no build step is a normal project, and callers proceed to the
+ * acceptance command unchanged. Only a build that RAN and exited non-zero is a
+ * refusal, because only then is there a measurement saying the tree is broken.
+ */
+export async function runGrantedIntegrityCommand(input: {
+  readonly grantedCommands: readonly string[];
+  readonly worktreePath: string;
+  readonly timeoutMs?: number;
+}): Promise<CommandRun> {
+  const command = selectIntegrityCommand(input.grantedCommands);
+  if (command === undefined) {
+    return { ran: false, reason: "the envelope grants no integrity-class command" };
+  }
+  return runToExitStatus(command, input.worktreePath, input.timeoutMs ?? TDD_BASELINE_TIMEOUT_MS);
+}
+
+/**
  * Runs the granted acceptance command at base and journals one red-baseline
  * `EvidenceRecord` per declared requirement, or explains why it did not.
  *
@@ -220,6 +298,35 @@ export async function captureTddBaseline(input: TddBaselineInput): Promise<TddBa
 
   const command = selectAcceptanceCommand(input.grantedCommands);
   if (command === undefined) return { kind: "noAcceptanceCommand" };
+
+  /**
+   * ⚠️ BUILD FIRST. Without this the acceptance command measures whether
+   * `dist/` happens to exist, and a fresh worktree guarantees it does not — so
+   * every base tree was red, and the red half of red-before-green was earned by
+   * `ERR_MODULE_NOT_FOUND` rather than by a test. A build that RAN and failed
+   * refuses here; a project granting no build proceeds unchanged.
+   */
+  const integrityCommand = selectIntegrityCommand(input.grantedCommands);
+  if (integrityCommand !== undefined) {
+    const build = await runGrantedIntegrityCommand({
+      grantedCommands: input.grantedCommands,
+      worktreePath: input.worktreePath,
+      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+    });
+    /**
+     * ⚠️ GUARDED ON SELECTION, NEVER ON COMPLETION. `ran: false` means the
+     * build did not finish — killed on the timeout, or never spawned — which is
+     * not a reason to proceed as though the tree were built. Reading it as one
+     * is how the first cut of this ordering reintroduced the very defect it
+     * was written to close.
+     */
+    if (!build.ran) {
+      return { kind: "integrityDidNotRun", command: integrityCommand, reason: build.reason };
+    }
+    if (build.exitStatus !== 0) {
+      return { kind: "integrityFailed", command: build.command, exitStatus: build.exitStatus };
+    }
+  }
 
   const run = await runGrantedAcceptanceCommand({
     grantedCommands: input.grantedCommands,

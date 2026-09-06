@@ -90,9 +90,45 @@ function wrapFooterLine(key: string, value: string): readonly string[] {
   return lines;
 }
 
-export function assembleCommitSubject(input: RenderCommitInput): string {
+/**
+ * Trims `text` to at most `maxChars`, at a WORD boundary where there is one.
+ *
+ * No ellipsis, deliberately: commitlint's `subject-full-stop` rejects a
+ * trailing period, so `...` would trade one block for another. A single token
+ * longer than the whole budget has no boundary to cut at and is hard-cut —
+ * trimming it to nothing would leave `type: `, which fails the format check.
+ */
+function trimToWidth(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const hardCut = text.slice(0, maxChars);
+  const lastSpace = hardCut.lastIndexOf(" ");
+  if (lastSpace <= 0) return hardCut;
+  return hardCut.slice(0, lastSpace).replace(/[\s,;:.-]+$/u, "");
+}
+
+/**
+ * ⚠️ THE OUTCOME IS BOUNDED HERE, and it has to be — measured in production,
+ * run `70059608` (2026-09-06).
+ *
+ * A `WorkUnit` title is human-authored and routinely longer than the policy's
+ * subject budget: two of that run's four units rendered 75- and 76-char
+ * subjects. `renderWithRegeneration` blocked them, `collectCandidate` returned
+ * `blocked`, and a unit's finished work — 34 worker turns, $1.57 — was never
+ * committed. Regeneration cannot rescue a DETERMINISTIC generator: it re-runs
+ * `generate`, which reassembles the identical over-long string.
+ *
+ * The budget is the POLICY's own (`commitSubject.maxChars`), never a second
+ * copy of the number, and the prefix is subtracted from it so `type(scope): `
+ * is paid for rather than assumed. Trimming is assembly, not authorship: no
+ * word here is one this module invented.
+ */
+export function assembleCommitSubject(
+  input: RenderCommitInput,
+  policy: CommunicationPolicy = DEFAULT_COMMUNICATION_POLICY,
+): string {
   const prefix = input.scope !== undefined ? `${input.type}(${input.scope})` : input.type;
-  return `${prefix}: ${lowerFirst(input.outcome)}`;
+  const budget = policy.limits.commitSubject.maxChars - `${prefix}: `.length;
+  return `${prefix}: ${trimToWidth(lowerFirst(input.outcome), budget)}`;
 }
 
 export function assembleCommitBody(input: RenderCommitInput): string {
@@ -150,7 +186,7 @@ export async function renderCommit(
   const subjectOutcome = await renderWithRegeneration({
     kind: "commit_subject",
     policy,
-    generate: () => assembleCommitSubject(input),
+    generate: () => assembleCommitSubject(input, policy),
   });
   if (subjectOutcome.status === "blocked") {
     return {

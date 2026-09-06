@@ -131,8 +131,17 @@ try {
           /\bfrom\s*["']([^"'$./][^"'$]*)["']/g,
           /\bimport\s*\(\s*["']([^"'$./][^"'$]*)["']\s*\)/g,
         ];
+        // ⚠️ LINE COMMENTS ARE NOT CODE, and scanning them refuses honest
+        // bundles. esbuild keeps `//` comments, so any source comment reading
+        // `... apart from "two words"` matched the `from "<specifier>"` pattern
+        // below, produced a "specifier" with a space in it, and tripped the
+        // impossible-package guard — reporting a mangled artifact where the
+        // artifact was fine. Measured 2026-09-06 on a comment in
+        // `run-dispatcher.ts`. Block comments are already stripped by the
+        // bundler, so only these need removing.
+        const scannable = source.replace(/^[ \t]*\/\/.*$/gm, "");
         for (const pattern of patterns) {
-          for (const match of source.matchAll(pattern)) {
+          for (const match of scannable.matchAll(pattern)) {
             const specifier = match[1];
             if (specifier.startsWith("node:")) continue;
             const pkg = specifier.startsWith("@")

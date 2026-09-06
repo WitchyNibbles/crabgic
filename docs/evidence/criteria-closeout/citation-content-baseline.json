@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-19",
-  "generatedAtSha": "b2a2e584a1f019c0d5f30df25ecf45a5b4f47e02",
+  "generatedAt": "2026-09-06",
+  "generatedAtSha": "e9a537498a8eef1f6f56a67f94af3625ce532b3b",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4006,
-    "anchored": 2628,
-    "seededStale": 767,
-    "outsideSpan": 884,
+    "anchored": 2629,
+    "seededStale": 766,
+    "outsideSpan": 883,
     "repeatText": 532,
     "crossFile": 19,
     "skipped": 611
@@ -383,11 +383,11 @@
       ],
       "frozen": true
     },
-    "phase-01.json#c4#vitest.config.ts:150-155": {
-      "qa": "382e137e0b51",
+    "phase-01.json#c4#vitest.config.ts:168-173": {
+      "qa": "bf20e16f10a6",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@150-155"
+        "OK/collapsed@168-173"
       ]
     },
     "phase-01.json#c5#commitlint.config.js:8": {
@@ -3240,8 +3240,8 @@
       "qa": "f3957d71203f",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@775!span",
-        "MOVED/collapsed@807!span"
+        "MOVED/collapsed@808!span",
+        "MOVED/collapsed@840!span"
       ]
     },
     "phase-07.json#c8#packages/git-engine/src/control-clone.test.ts:31": {
@@ -3462,7 +3462,7 @@
       "pins": [
         "OK/collapsed@136-137!span",
         "ABSENT@-",
-        "OK/collapsed@57!file"
+        "OK/collapsed@58!file"
       ]
     },
     "phase-08.json#c3#packages/git-engine/src/renderer-corpus-shared.test.ts:28": {
@@ -3552,11 +3552,11 @@
       ],
       "frozen": true
     },
-    "phase-08.json#c5#packages/git-engine/src/commit-renderer.test.ts:78": {
-      "qa": "e1227929074b",
+    "phase-08.json#c5#packages/git-engine/src/commit-renderer.test.ts:92-98": {
+      "qa": "f88982cf2593",
       "ref": "OK",
       "pins": [
-        "OK-pieces/code@80-83,85-86!span"
+        "OK-pieces/code@92-95,97-98"
       ]
     },
     "phase-08.json#c5#packages/git-engine/src/publish-local.test.ts:234": {
@@ -7936,18 +7936,18 @@
         "MOVED-AMBIG/collapsed@19,84!span~repeat"
       ]
     },
-    "phase-17.json#c6#packages/git-engine/src/commit-renderer.test.ts:31-68": {
-      "qa": "d7c692cabf2d",
+    "phase-17.json#c6#packages/git-engine/src/commit-renderer.test.ts:32-69": {
+      "qa": "304d48055892",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@34",
-        "OK/collapsed@35,61~repeat",
+        "OK/collapsed@35",
+        "OK/collapsed@36,62~repeat",
         "SKIP-short",
-        "OK/collapsed@57",
         "OK/collapsed@58",
         "OK/collapsed@59",
         "OK/collapsed@60",
-        "MOVED/collapsed@61",
+        "OK/collapsed@61",
+        "OK/collapsed@62",
         "SKIP-commentary"
       ]
     },
@@ -11137,15 +11137,15 @@
         "OK/collapsed@70,144~repeat"
       ]
     },
-    "phase-23.json#c2#vitest.config.ts:150-155": {
-      "qa": "d592ca185638",
+    "phase-23.json#c2#vitest.config.ts:168-173": {
+      "qa": "f76ddb67351f",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@150",
-        "OK/collapsed@151",
-        "OK/collapsed@152",
-        "OK/collapsed@153",
-        "OK/collapsed@154",
+        "OK/collapsed@168",
+        "OK/collapsed@169",
+        "OK/collapsed@170",
+        "OK/collapsed@171",
+        "OK/collapsed@172",
         "SKIP-short"
       ]
     },
@@ -11890,8 +11890,8 @@
       "qa": "5db864578490",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@895!span",
-        "MOVED-AMBIG/collapsed@901,1089!span~repeat",
+        "MOVED/collapsed@1174!span",
+        "MOVED-AMBIG/collapsed@1180,1368!span~repeat",
         "ABSENT@-",
         "SKIP-short"
       ]

@@ -5,7 +5,29 @@ import globals from "globals";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "**/*.d.ts", ".changeset/**"],
+    /**
+     * The recursive coverage glob names GENERATED report directories, which every workspace
+     * root grows on `npm test`. It also matched `packages/gates/src/coverage/**`
+     * — the changed-line coverage gate's own source — so 25 tracked source files
+     * were exempt from `npm run lint` entirely, and were hiding real errors.
+     *
+     * ⚠️ THE RE-INCLUSION IS ANCHORED AT THE REPO ROOT, not on `src/`. An
+     * earlier form of this comment claimed no generated report is ever under a
+     * `src/` segment, and that is FALSE on disk right now:
+     * `coverage/lcov-report/packages/gates/src/coverage/` is one. What makes
+     * the negation safe is that every generated report lives beneath a
+     * `coverage/` report root, so no such path can begin with `packages/` —
+     * which this pattern requires. Re-widening the negation to a recursive
+     * `src/coverage` glob would start feeding istanbul's own HTML to eslint.
+     */
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "!packages/*/src/coverage/**",
+      "**/node_modules/**",
+      "**/*.d.ts",
+      ".changeset/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
