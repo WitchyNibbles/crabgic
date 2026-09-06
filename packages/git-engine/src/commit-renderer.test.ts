@@ -1,3 +1,4 @@
+import { COMMUNICATION_POLICY_LIMITS } from "@crabgic/contracts";
 import { describe, expect, it } from "vitest";
 import {
   assembleCommitBody,
@@ -68,8 +69,19 @@ describe("renderCommit", () => {
     });
   });
 
-  it("blocks on an over-long subject (never reaches the body render at all)", async () => {
-    const result = await renderCommit(baseInput({ outcome: "x".repeat(200) }));
+  /**
+   * The subject render still SHORT-CIRCUITS the body render — but length is no
+   * longer what can trip it. `assembleCommitSubject` bounds the outcome to the
+   * policy's own budget (see "bounds a long outcome..." below, and run
+   * `70059608`), so the reachable subject blocks are the content ones. An
+   * attribution leak is one, and it must be refused rather than trimmed away:
+   * silently deleting the leak would publish a commit whose message the policy
+   * never actually cleared.
+   */
+  it("blocks on a subject the policy refuses, never reaching the body render", async () => {
+    const result = await renderCommit(
+      baseInput({ outcome: "Co-Authored-By: Claude <noreply@anthropic.com>" }),
+    );
     expect(result.status).toBe("blocked");
     if (result.status === "blocked") {
       expect(result.which).toBe("subject");
@@ -140,6 +152,56 @@ describe("commitlint conformance", () => {
     expect(
       assembleCommitSubject({ ...longInput, outcome: "Add TaskPacket.spec passthrough" }),
     ).toBe("chore: add TaskPacket.spec passthrough");
+  });
+
+  /**
+   * ⚠️ MEASURED IN PRODUCTION, run `70059608` (2026-09-06). The title below is
+   * verbatim from that run's first work unit: it rendered a 75-char subject,
+   * `renderWithRegeneration` blocked it, `collectCandidate` returned `blocked`,
+   * and the unit's finished work — 34 worker turns, $1.57 — was never
+   * committed. Two of that run's four units were over the limit (75 and 76).
+   *
+   * Regeneration cannot save a DETERMINISTIC generator: it re-runs `generate`,
+   * which reassembles the same over-long subject. So the bound belongs where
+   * the subject is assembled, and it is the POLICY's own bound rather than a
+   * second copy of 72.
+   */
+  it("bounds a long outcome to the policy's own subject limit instead of blocking", async () => {
+    const overLong = {
+      ...longInput,
+      type: "feat" as const,
+      outcome: "Enumeration and mtime primitives: units.mjs and walk.mjs, tests first",
+    };
+    const subject = assembleCommitSubject(overLong);
+    expect(subject.length).toBeLessThanOrEqual(
+      COMMUNICATION_POLICY_LIMITS.commitSubject.maxChars,
+    );
+    // Trimmed at a WORD boundary, and with no trailing punctuation --
+    // commitlint's `subject-full-stop` rejects a trailing period, so an
+    // ellipsis would trade one block for another.
+    expect(subject).toBe("feat: enumeration and mtime primitives: units.mjs and walk.mjs, tests");
+    // ...and the whole point: it renders rather than blocking.
+    const rendered = await renderCommit(overLong);
+    expect(rendered.status).toBe("rendered");
+  });
+
+  it("leaves a subject that already fits exactly as it is", () => {
+    // The bound must not nibble at a subject the policy accepts: `longInput`
+    // is 57 chars and has to survive byte-for-byte.
+    expect(assembleCommitSubject(longInput)).toBe(
+      "chore: close the three admissibility clean-code advisories",
+    );
+  });
+
+  /**
+   * A single word longer than the whole budget has no word boundary to cut at.
+   * Trimming to nothing would produce `chore: `, which fails the format check
+   * — so the hard cut is taken and the subject stays within the limit.
+   */
+  it("hard-cuts a single unbroken token rather than emptying the subject", () => {
+    const subject = assembleCommitSubject({ ...longInput, outcome: "A".repeat(200) });
+    expect(subject.length).toBe(COMMUNICATION_POLICY_LIMITS.commitSubject.maxChars);
+    expect(subject.startsWith("chore: a")).toBe(true);
   });
 
   it("wraps every footer line to 100 characters — in what actually reaches git", async () => {

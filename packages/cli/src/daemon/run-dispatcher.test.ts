@@ -1164,6 +1164,154 @@ describe("createRealRunDispatcher — dispatch", () => {
    * The refusal names the unit and the cause, and the run settles `failed`
    * rather than sitting `running` forever.
    */
+  /**
+   * ⚠️ MEASURED IN PRODUCTION, run `70059608` (2026-09-06), and this is the
+   * more serious half of that run's two defects.
+   *
+   * `A` succeeded, its collection was REFUSED (the commit renderer blocked a
+   * 75-char subject), and `B` was then dispatched against the run's FROZEN
+   * base. Its worktree held none of `A`'s work while its plan said it did.
+   *
+   * The "unknown predecessor" refusal did not fire because it asks
+   * `preCollectedByUnitId.has(id)`, and a `blocked` entry answers yes; the
+   * `collected`-only filter then emptied the list, `predecessors.length === 0`,
+   * and the frozen base was returned as though `B` had no dependencies at all.
+   * Any collection failure therefore became a WRONG BASE rather than a refusal.
+   */
+  it("refuses to dispatch a unit whose predecessor could not be collected", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const basesGiven = new Map<string, string>();
+    const errors: unknown[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        collectCandidate: () =>
+          Promise.resolve({
+            status: "blocked" as const,
+            reason: "the communication policy refused the rendered commit subject",
+          }),
+      },
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    expect(message).toContain(UNIT_ID);
+    // The operator needs the CAUSE, not just the fact -- the renderer's own
+    // reason is the sentence that says what to shorten.
+    expect(message).toContain("the communication policy refused");
+    // And the whole point: `B` was never handed the freeze.
+    expect(basesGiven.has(UNIT_B)).toBe(false);
+  });
+
+  /**
+   * ⚠️ AND `nothing-to-commit` IS NOT THE SAME REFUSAL. A unit that genuinely
+   * produced nothing has a tree identical to its OWN base, so a successor
+   * chains onto that base rather than being refused — and rather than silently
+   * dropping back to the run's freeze, which is a different commit whenever the
+   * empty unit was itself chained.
+   *
+   * `A` collects, `B` (on `A`) produces nothing, `C` (on `B`) must be cut from
+   * `A`'s candidate — the base `B` actually had.
+   */
+  it("chains a successor onto an empty predecessor's OWN base, not the freeze", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const UNIT_C = "77777777-7777-4777-8777-777777777777";
+    const basesGiven = new Map<string, string>();
+    const inner = createFakePostCompletionGitEffects();
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_C,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_B],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...inner,
+        collectCandidate: (input: { workUnit: { id: string } }) =>
+          input.workUnit.id === UNIT_B
+            ? Promise.resolve({ status: "nothing-to-commit" as const })
+            : inner.collectCandidate(input as never),
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    expect(basesGiven.get(UNIT_ID)).toBe("a".repeat(40));
+    expect(basesGiven.get(UNIT_B)).toBe(fakeObjectId(`candidate:${UNIT_ID}`));
+    // `C` inherits `B`'s base, because `B`'s tree IS that base.
+    expect(basesGiven.get(UNIT_C)).toBe(fakeObjectId(`candidate:${UNIT_ID}`));
+  });
+
   it("refuses to dispatch a unit whose chained base cannot be resolved, naming the unit", async () => {
     const UNIT_B = "66666666-6666-4666-8666-666666666666";
     const deps = buildDeps({

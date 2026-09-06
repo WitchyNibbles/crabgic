@@ -977,14 +977,51 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
               `Cancel the run and dispatch the change set again.`,
           );
         }
-        const predecessors = orderedUnits
-          .filter((unit) => workUnit.dependsOn.includes(unit.id))
-          .map((unit) => preCollectedByUnitId.get(unit.id))
-          .filter(
-            (collected): collected is Extract<CollectCandidateResult, { status: "collected" }> =>
-              collected?.status === "collected",
-          )
-          .map((collected) => collected.objectId);
+        /**
+         * ⚠️ EVERY PREDECESSOR IS ACCOUNTED FOR, and a `collected`-only filter
+         * is what made this wrong — measured in production, run `70059608`
+         * (2026-09-06).
+         *
+         * `A` succeeded, its collection was REFUSED (the commit renderer
+         * blocked an over-long subject), and `B` was cut from the run's FROZEN
+         * base: the `unknown` check above passed because `preCollectedByUnitId`
+         * HAS a `blocked` entry, the filter then dropped it, and an empty list
+         * read as "no dependencies". Any collection failure became a wrong base
+         * instead of a refusal, silently.
+         *
+         * The three outcomes are three different facts:
+         *   `collected`          — chain onto its candidate.
+         *   `nothing-to-commit`  — its tree IS its own base, so chain onto THAT
+         *                          (the freeze only when it had no base of its
+         *                          own; contributing nothing then is exact,
+         *                          because the freeze is the fold's identity).
+         *   `blocked`            — its work exists and is UNCOMMITTED. There is
+         *                          no object id that stands for it, so refuse.
+         */
+        const predecessorObjectIds: string[] = [];
+        for (const unit of orderedUnits) {
+          if (!workUnit.dependsOn.includes(unit.id)) continue;
+          const collected = preCollectedByUnitId.get(unit.id);
+          /* c8 ignore next -- the `unknown` refusal above already rejected an absent entry */
+          if (collected === undefined) continue;
+          if (collected.status === "collected") {
+            predecessorObjectIds.push(collected.objectId);
+            continue;
+          }
+          if (collected.status === "nothing-to-commit") {
+            const ownBase = chainedBases.get(unit.id);
+            if (ownBase !== undefined) predecessorObjectIds.push(ownBase);
+            continue;
+          }
+          throw new Error(
+            `run dispatcher: work unit "${workUnit.id}" cannot be based on its predecessor ` +
+              `"${unit.id}", whose work could not be collected: ${collected.reason}`,
+          );
+        }
+        // A `nothing-to-commit` unit contributes the base it SHARES with a
+        // sibling, so the same id can arrive twice; folding it onto itself
+        // would build a commit for a tree already named.
+        const predecessors = [...new Set(predecessorObjectIds)];
         if (predecessors.length === 0) return baseObjectId;
         const chained = await git.resolveChainedBase({
           workUnit,

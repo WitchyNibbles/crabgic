@@ -237,8 +237,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/git-engine/src/commit-renderer.test.ts:78",
-          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:78-87 — 'const result = await renderCommit(baseInput({ why: \"🤖 Generated with Claude Code and Co-Authored-By: Claude\" })); expect(result.status).toBe(\"blocked\"); … expect(result.which).toBe(\"body\"); expect(result.findings.length).toBeGreaterThan(0);' — the same class asserted FUNCTIONALLY through this phase's own `renderCommit` path, not only through `lint()` on the fixture."
+          "ref": "packages/git-engine/src/commit-renderer.test.ts:92-98",
+          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:92-98 — 'const result = await renderCommit(baseInput({ why: \"🤖 Generated with Claude Code and Co-Authored-By: Claude\" })); expect(result.status).toBe(\"blocked\"); … expect(result.which).toBe(\"body\"); expect(result.findings.length).toBeGreaterThan(0);' — the same class asserted FUNCTIONALLY through this phase's own `renderCommit` path, not only through `lint()` on the fixture. (Ref and marker corrected 2026-09-06: the ref was `commit-renderer.test.ts:78`, now :92-98 — widened to cover both fragments this assertion walks, per the resolver README's recipe; the marker was `:78-87`, now :92-98. Pure line drift, and the quoted text is unchanged. Cause: the over-long-subject case directly above it was repointed at a content block rather than a length one, and four cases were added beside it, when `assembleCommitSubject` began BOUNDING the outcome to the policy's own `commitSubject.maxChars` instead of letting an over-long `WorkUnit` title block the render. That defect was measured in production on run `70059608`, 2026-09-06: a 75-char subject blocked collection and a unit's finished work was never committed. The claim here is untouched — an attribution leak in the BODY still blocks, and is still asserted by these same lines.)"
         },
         {
           "kind": "test",

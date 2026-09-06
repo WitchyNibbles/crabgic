@@ -316,8 +316,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/git-engine/src/commit-renderer.test.ts:31-68",
-          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:33-35 — 'expect(assembleCommitSubject(baseInput())).toBe(' / '\"fix(parser): correct the off-by-one in the tokenizer\",' / ');' and :56-60 — 'it(\"renders a clean subject+body through 17's renderWithRegeneration()\", async () => {' / 'const result = await renderCommit(baseInput());' / 'expect(result).toEqual({' / 'status: \"rendered\",' / 'subject: \"fix(parser): correct the off-by-one in the tokenizer\",'. This is 08's OWN commit-subject convention, produced independently of `renderPrTitle` and routed through 17's `renderWithRegeneration`/`lint()` — the other end of the 'against 08's convention' comparison."
+          "ref": "packages/git-engine/src/commit-renderer.test.ts:32-69",
+          "quotedAssertion": "packages/git-engine/src/commit-renderer.test.ts:35-37 — 'expect(assembleCommitSubject(baseInput())).toBe(' / '\"fix(parser): correct the off-by-one in the tokenizer\",' / ');' and :58-62 — 'it(\"renders a clean subject+body through 17's renderWithRegeneration()\", async () => {' / 'const result = await renderCommit(baseInput());' / 'expect(result).toEqual({' / 'status: \"rendered\",' / 'subject: \"fix(parser): correct the off-by-one in the tokenizer\",'. This is 08's OWN commit-subject convention, produced independently of `renderPrTitle` and routed through 17's `renderWithRegeneration`/`lint()` — the other end of the 'against 08's convention' comparison. (Ref and markers corrected 2026-09-06: the ref was `commit-renderer.test.ts:31-68`, now :32-69; the markers were `:33-35` and `:56-60`, now :35-37 and :58-62. Pure line drift, from a `@crabgic/contracts` import added at the top of the file so the new subject-bound cases could cite `COMMUNICATION_POLICY_LIMITS` rather than retype 72, and from the widened `renderCommit` describe above them. Every quoted fragment is unchanged and still present.)"
         },
         {
           "kind": "artifact",
