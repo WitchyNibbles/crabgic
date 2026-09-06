@@ -42,6 +42,31 @@ describe("createLineFramer", () => {
     expect(framer.push(Buffer.from("buf-line\n", "utf8"))).toEqual(["buf-line"]);
   });
 
+  /**
+   * A socket hands out chunks at arbitrary BYTE boundaries, not character
+   * boundaries. Decoding each chunk on its own turns a UTF-8 sequence split
+   * across two chunks into two U+FFFD replacement characters — and because the
+   * damage stays inside a JSON string, `JSON.parse` succeeds on the corrupted
+   * text rather than failing, so the peer's message is silently altered.
+   */
+  it("reassembles a multi-byte character split across two chunks", () => {
+    const framer = createLineFramer();
+    const bytes = Buffer.from("héllo\n", "utf8");
+    // Split INSIDE the two-byte "é" (h = 1 byte, é = bytes 1..2).
+    expect(framer.push(bytes.subarray(0, 2))).toEqual([]);
+    expect(framer.push(bytes.subarray(2))).toEqual(["héllo"]);
+  });
+
+  it("reassembles an astral character delivered one byte at a time", () => {
+    const framer = createLineFramer();
+    const bytes = Buffer.from("a🦀b\n", "utf8");
+    const collected: string[] = [];
+    for (const byte of bytes) {
+      collected.push(...framer.push(Buffer.from([byte])));
+    }
+    expect(collected).toEqual(["a🦀b"]);
+  });
+
   describe("MAX_LINE_BYTES cap — defensive bound against an unbounded newline-less stream", () => {
     it("a line exactly at the cap, newline-terminated, still parses fine", () => {
       const framer = createLineFramer();
