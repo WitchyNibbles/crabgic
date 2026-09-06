@@ -5,13 +5,27 @@ import { randomUUID } from "node:crypto";
 /**
  * `mkdir(dir, {mode})` is subject to the process umask (the same footgun
  * `@crabgic/supervisor`'s `runtime-dir.ts` documents for its own runtime
- * directory) — every directory this package creates is followed by an
+ * directory) — every directory this package CREATES is followed by an
  * explicit `chmod` so its on-disk mode is exactly what was requested,
  * never umask-widened.
+ *
+ * The `chmod` is scoped to the create path deliberately. Only a directory
+ * this call just made can have been umask-widened; re-`chmod`ing an existing
+ * one WIDENS whatever narrower mode it was deliberately given. That is not
+ * hypothetical: `./case-fixture-store.ts`'s `seal()` narrows the held-out
+ * directory to `LEARNING_SEALED_DIR_MODE` (0o500) and documents the result as
+ * an OS-enforced boundary — and its own `write()` calls this function one
+ * line before the write that boundary is supposed to refuse, so the
+ * unconditional `chmod` took the directory back to 0o700 and let the write
+ * through. `mkdir(recursive)` returns the first path it created, or
+ * `undefined` when the directory was already there, which is exactly the
+ * signal needed. Held to it by `../red-team/grader-unseal.redteam.test.ts`.
  */
 export async function ensureDir(dir: string, mode: number): Promise<void> {
-  await mkdir(dir, { recursive: true, mode });
-  await chmod(dir, mode);
+  const created = await mkdir(dir, { recursive: true, mode });
+  if (created !== undefined) {
+    await chmod(dir, mode);
+  }
 }
 
 /**
