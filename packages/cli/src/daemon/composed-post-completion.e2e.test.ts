@@ -256,7 +256,12 @@ function changeSetFixture(integrationOrder: readonly string[]): ChangeSet {
   });
 }
 
-function unitFixture(id: string, title: string, dependsOn: readonly string[] = []): WorkUnit {
+function unitFixture(
+  id: string,
+  title: string,
+  dependsOn: readonly string[] = [],
+  ownedPaths: readonly string[] = [`${OWNED_PREFIX}/`],
+): WorkUnit {
   return buildWorkUnit({
     id,
     changeSetId: CHANGE_SET_ID,
@@ -264,7 +269,7 @@ function unitFixture(id: string, title: string, dependsOn: readonly string[] = [
     attemptStatus: "pending",
     requirementIds: [REQ_ID],
     title,
-    ownedPaths: [`${OWNED_PREFIX}/`],
+    ownedPaths: [...ownedPaths],
   });
 }
 
@@ -998,7 +1003,7 @@ describe("a completed run walks to published_local through a fired gate (defect 
     seedIntakeState({
       requirement: approved,
       workUnits: [
-        unitFixture(UNIT_A_ID, "rewrite the base export"),
+        unitFixture(UNIT_A_ID, "rewrite the base export", [], [`${OWNED_PREFIX}/a/`]),
         /**
          * ⚠️ INDEPENDENT, AND IT HAD TO BECOME SO (2026-09-06). This pair
          * carried `dependsOn: [UNIT_A_ID]` to keep the case sequential, on the
@@ -1010,6 +1015,17 @@ describe("a completed run walks to published_local through a fired gate (defect 
          * conflict, and exactly what the ruling exists to allow. Measured: with
          * the edge in place this case stopped conflicting at all.
          *
+         * ⚠️ AND THEIR DECLARED PATHS HAD TO SEPARATE TOO (2026-09-06, second
+         * pass). Owner ruling: an OVERLAP collision now chains the base the
+         * same way a `dependsOn` edge does. Both units declared
+         * `packages/example/src/`, so they collided, so B was cut from A's
+         * collected work and the case stopped conflicting for the second time
+         * and the same reason. They now declare `.../a/` and `.../b/` — which
+         * do not collide — while both workers still write SHARED_FILE_PATH.
+         * That is not a contrived shape: it is the one class of cross-unit
+         * conflict the ruling cannot reach, a unit writing OUTSIDE its declared
+         * write set, and it is exactly what preflight has to keep catching.
+         *
          * The edge's other purpose was to remove concurrency from this path,
          * for an UNCONFIRMED `ubuntu-24.04-arm` flake (a suspected `git
          * worktree add` race on the control clone's config lock). That risk is
@@ -1017,7 +1033,7 @@ describe("a completed run walks to published_local through a fired gate (defect 
          * longer true; T3 above already dispatches two units concurrently, so
          * the shape is not new to this file.
          */
-        unitFixture(UNIT_B_ID, "rewrite the base export differently"),
+        unitFixture(UNIT_B_ID, "rewrite the base export differently", [], [`${OWNED_PREFIX}/b/`]),
       ],
       changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
       envelope: buildAuthorizationEnvelope({

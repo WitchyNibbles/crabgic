@@ -71,6 +71,38 @@ export interface RuntimeRootsDenyInput {
   readonly stateRoot: string;
   /** Absolute path of the resolved cache root holding the control clone (e.g. `$XDG_CACHE_HOME/crabgic`). */
   readonly cacheRoot: string;
+  /**
+   * The subdirectories of each project's cache root a worker must never
+   * mutate — `git-control`, `worktree-quarantine`, and their kind.
+   *
+   * ⚠️ SUPPLIED BY THE CALLER BECAUSE THE NAMES ARE NOT THIS PACKAGE'S.
+   * They belong to `@crabgic/git-engine`'s `layout.ts`, which this package
+   * must not import (phase graph; Gap 14 gives that module the sole say over
+   * its own subpaths). Passing them keeps one definition site.
+   *
+   * WHY THIS EXISTS AT ALL — measured 2026-09-06. The blanket
+   * `Edit(<cacheRoot>/**)` / `Write(<cacheRoot>/**)` was written when the
+   * cache root was assumed to hold "the control clone" (see this file's own
+   * header). Phase 07 then chose to nest the attempt WORKTREES under the same
+   * root — its own documented path choice — so the blanket deny came to cover
+   * the one place every worker must write. Deny-wins made the correctly
+   * substituted `Edit(//<worktree>/<owned>/**)` allow lose to it, and every
+   * legitimate edit adjudicated `deny`.
+   *
+   * When supplied, `Edit`/`Write` deny these subtrees PRECISELY instead of the
+   * whole cache root. `Read` is deliberately unchanged, and so is the sandbox's
+   * own `filesystem.denyRead` — this narrows exactly the two tools whose
+   * verdicts the measurement falsified, and nothing else.
+   *
+   * RESIDUAL, STATED: with this supplied, an attempt worktree belonging to
+   * ANOTHER unit or run is no longer covered by a blanket mutation deny. It
+   * cannot be expressed away — the rule grammar has no negation, and a
+   * sibling's path carries a random attempt token, so it cannot be enumerated
+   * ahead of time either. What still stands between a worker and one is its
+   * own allow list, which names only its own owned paths. Absent or empty,
+   * every caller keeps the previous blanket behaviour unchanged.
+   */
+  readonly cacheRootProtectedSubdirs?: readonly string[];
 }
 
 /**
@@ -92,5 +124,37 @@ export function mandatoryPathDenyRoots(runtimeRoots?: RuntimeRootsDenyInput): re
       SSH_DENY_PATH,
       AWS_DENY_PATH,
     ]),
+  ];
+}
+
+/**
+ * The mandatory deny roots as they apply to the MUTATION tools (`Edit`,
+ * `Write`) — `mandatoryPathDenyRoots` with each blanket cache-root entry
+ * replaced by the caller's protected subdirectories, when it named any.
+ *
+ * Identical to `mandatoryPathDenyRoots` when no subdirectories are supplied,
+ * so a caller that passes none is byte-for-byte unchanged.
+ */
+export function mandatoryMutationDenyRoots(
+  runtimeRoots?: RuntimeRootsDenyInput,
+): readonly string[] {
+  const roots = mandatoryPathDenyRoots(runtimeRoots);
+  const subdirs = runtimeRoots?.cacheRootProtectedSubdirs ?? [];
+  if (subdirs.length === 0) return roots;
+  const cacheBlankets = new Set([
+    CONTROL_REPO_CACHE_ROOT_DENY_PATH,
+    ...(runtimeRoots === undefined ? [] : [`${runtimeRoots.cacheRoot}/**`]),
+  ]);
+  return [
+    ...new Set(
+      roots.flatMap((root) =>
+        cacheBlankets.has(root)
+          ? // `<root>/*/<subdir>/**`: the `*` is the per-project hash segment
+            // this package knows is there (see the header) without knowing how
+            // it is derived.
+            subdirs.map((subdir) => `${root.slice(0, -"/**".length)}/*/${subdir}/**`)
+          : [root],
+      ),
+    ),
   ];
 }

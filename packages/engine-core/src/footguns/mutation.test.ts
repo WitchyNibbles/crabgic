@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileEnvelope } from "../compiler/compile-envelope.js";
 import { buildEnvelopeFixture } from "../compiler/envelope-fixture.js";
+import { STANDARD_IMPLEMENTATION_ENVELOPE } from "../goldens/canonical-envelopes.js";
 import type { CompiledWorkerProfile } from "../compiler/compiled-worker-profile.js";
 import {
   assertNoBlanketMcpDeny,
@@ -282,5 +283,57 @@ describe("assertNoFootguns — runs every check together", () => {
     expect(() => assertNoFootguns(withDroppedEditWriteDenyBackstopBug(baseline))).toThrow(
       MissingEditWriteDenyBackstopError,
     );
+  });
+});
+
+/**
+ * Seed 5b: the CACHE-ROOT mutation deny alone is removed, every other
+ * Edit/Write backstop left intact.
+ *
+ * Seed 5 cannot see this shape — it drops ALL Edit/Write denies, so the
+ * state-root rule catches it before the cache root is ever considered. That
+ * matters now, because the cache root is the one mandatory root a caller may
+ * NARROW (`RuntimeRootsDenyInput.cacheRootProtectedSubdirs`, added after the
+ * blanket was measured denying every legitimate worker edit), and the failure
+ * mode a narrowing introduces is exactly this: subdirs supplied, nothing
+ * emitted, invariant satisfied by the rules that were never at issue.
+ */
+function withDroppedCacheRootMutationDenyBug(
+  profile: CompiledWorkerProfile,
+): CompiledWorkerProfile {
+  return {
+    ...profile,
+    permissions: {
+      ...profile.permissions,
+      deny: profile.permissions.deny.filter(
+        (rule) =>
+          !(
+            (rule.startsWith("Edit(") || rule.startsWith("Write(")) &&
+            rule.includes("/.cache/crabgic/")
+          ),
+      ),
+    },
+  };
+}
+
+describe("mutation suite — seed 5b: the cache root's mutation deny may be NARROWED, never removed", () => {
+  it("a profile whose cache-root Edit/Write deny is gone IS caught", () => {
+    expect(() =>
+      assertEditWriteDenyBackstopPresent(withDroppedCacheRootMutationDenyBug(baseline)),
+    ).toThrow(MissingEditWriteDenyBackstopError);
+  });
+
+  it("a NARROWED profile — precise subtrees instead of the blanket — is accepted", () => {
+    const narrowed = compileEnvelope(STANDARD_IMPLEMENTATION_ENVELOPE, undefined, {
+      stateRoot: "/home/probe/.local/state/crabgic",
+      cacheRoot: "/home/probe/.cache/crabgic",
+      cacheRootProtectedSubdirs: ["git-control", "worktree-quarantine"],
+    });
+    expect(narrowed.permissions.deny).not.toContain("Edit(~/.cache/crabgic/**)");
+    expect(narrowed.permissions.deny).toContain("Edit(~/.cache/crabgic/*/git-control/**)");
+    // Read keeps its blanket: this narrowing is scoped to the two tools whose
+    // verdicts the measurement falsified.
+    expect(narrowed.permissions.deny).toContain("Read(~/.cache/crabgic/**)");
+    expect(() => assertEditWriteDenyBackstopPresent(narrowed)).not.toThrow();
   });
 });

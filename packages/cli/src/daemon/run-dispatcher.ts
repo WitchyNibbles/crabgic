@@ -90,6 +90,8 @@ import {
   freezeIntake,
   resolveGitControlDir,
   resolveWorktreesRootDir,
+  GIT_CONTROL_SUBDIR,
+  WORKTREE_QUARANTINE_SUBDIR,
   type GitPlumbing,
 } from "@crabgic/git-engine";
 import { compileEnvelope, isContained } from "@crabgic/engine-core";
@@ -977,6 +979,43 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      */
     const chainedBases = unitBases.chainedBasesFor(runId);
 
+    /**
+     * Phase 07's rename-aware collision verdicts, which is how two units that
+     * own the same path are kept out of the same round.
+     *
+     * ⚠️ NOT THE DAG'S JOB, and `dependsOn` does not stand in for it. Two
+     * independent units may legitimately own an overlapping path (the run
+     * whose four units all owned `scripts/check-stale-dist.test.mjs` is the
+     * shape this exists for), and nothing in the graph orders them.
+     *
+     * ⚠️ THE ROUND AND THE BASE, and it took both — stated because an earlier
+     * draft of this comment claimed the cure with only the first half built.
+     * Serialization alone stops two workers editing the same file at the same
+     * time and changes nothing about what the second is cut FROM: `baseFor`
+     * derived predecessors from `dependsOn` alone, so an overlap-only unit had
+     * none, took the run's frozen base, and `preflightMerge` still
+     * three-way-merged it onto a tip already carrying the first — the same
+     * integration conflict, one round later. Owner ruling 2026-09-06 closed it:
+     * these verdicts feed `baseFor` too, and a collision chains the base
+     * exactly as a `dependsOn` edge does. That is why they are computed HERE,
+     * above `baseFor`, rather than beside the `driveRun` call they are also
+     * passed to.
+     *
+     * ⚠️ MEASURED INERT BEFORE THIS: the composition root passed no verdicts,
+     * so `selectDispatchSet` saw an empty list and the round journaled
+     * "independence proven by zero pairwise overlap collisions among them" for
+     * units that overlapped completely — a false claim in the audit trail, not
+     * merely a missing check. Every scheduler test that pins the mechanism
+     * passed throughout, because they all supply the verdicts themselves.
+     *
+     * `ownedPaths` is the only write set this daemon has: a unit declares no
+     * renames ahead of its attempt, and the non-Git resource registry is
+     * caller-supplied config this composition root is not given.
+     */
+    const overlapVerdicts = analyzeOverlap(
+      workUnits.map((unit) => ({ unitId: unit.id, paths: [...unit.ownedPaths] })),
+    );
+
     const baseByUnitId = new Map<string, Promise<string>>();
     const baseFor = (workUnit: WorkUnit): Promise<string> => {
       const existing = baseByUnitId.get(workUnit.id);
@@ -1024,9 +1063,37 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
          *   `blocked`            — its work exists and is UNCOMMITTED. There is
          *                          no object id that stands for it, so refuse.
          */
+        /**
+         * AN OVERLAP COLLISION CHAINS THE BASE, exactly as a `dependsOn` edge
+         * does — owner ruling 2026-09-06, closing the half that serializing the
+         * round did not deliver. Two units owning one path are put in different
+         * rounds by `selectDispatchSet`, but a round is not a base: the second
+         * used to take the run's freeze, and its candidate still three-way
+         * merged onto a tip already carrying the first, reporting the very
+         * conflict the serialization was documented as curing.
+         *
+         * ⚠️ ONLY THE ONES ALREADY COLLECTED, and that asymmetry with
+         * `dependsOn` is deliberate. Readiness guarantees every `dependsOn`
+         * predecessor has succeeded, so a missing entry there is a fault and
+         * refuses above. An overlap peer carries NO such guarantee — it may be
+         * scheduled after this unit, in which case it is not a predecessor at
+         * all and there is nothing to chain onto. Dispatch order is what
+         * decides, which is precisely what serializing the round established.
+         */
+        const collidedWith = new Set(
+          overlapVerdicts
+            .filter(
+              (verdict) =>
+                verdict.collides &&
+                (verdict.unitA === workUnit.id || verdict.unitB === workUnit.id),
+            )
+            .map((verdict) => (verdict.unitA === workUnit.id ? verdict.unitB : verdict.unitA))
+            .filter((peerId) => preCollectedByUnitId.has(peerId)),
+        );
+        const chainOnto = new Set([...workUnit.dependsOn, ...collidedWith]);
         const predecessorObjectIds: string[] = [];
         for (const unit of orderedUnits) {
-          if (!workUnit.dependsOn.includes(unit.id)) continue;
+          if (!chainOnto.has(unit.id)) continue;
           const collected = preCollectedByUnitId.get(unit.id);
           /* c8 ignore next -- the `unknown` refusal above already rejected an absent entry */
           if (collected === undefined) continue;
@@ -1122,6 +1189,14 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
     const profile = compileEnvelope(envelope, policy, {
       stateRoot: `${resolveXdgStateHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
       cacheRoot: `${resolveXdgCacheHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
+      // ⚠️ NAMED HERE BECAUSE THE ATTEMPT WORKTREES LIVE UNDER THAT SAME CACHE
+      // ROOT. A blanket `Edit(<cacheRoot>/**)` covers the one directory every
+      // worker must write, and deny-wins made it beat the unit's own
+      // owned-path allow — measured 2026-09-06, every legitimate edit
+      // adjudicated `deny`. These two subtrees are what the blanket was
+      // written to protect (this file's compiler header says "the control
+      // clone"); `Read` and the sandbox's `denyRead` keep the blanket.
+      cacheRootProtectedSubdirs: [GIT_CONTROL_SUBDIR, WORKTREE_QUARANTINE_SUBDIR],
     });
 
     /**
@@ -1177,42 +1252,6 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           permissions: substituteWorktreePlaceholders(profile, worktreePath, workerTmp).permissions,
         }),
       });
-
-    /**
-     * Phase 07's rename-aware collision verdicts, which is how two units that
-     * own the same path are kept out of the same round.
-     *
-     * ⚠️ NOT THE DAG'S JOB, and `dependsOn` does not stand in for it. Two
-     * independent units may legitimately own an overlapping path (the run
-     * whose four units all owned `scripts/check-stale-dist.test.mjs` is the
-     * shape this exists for), and nothing in the graph orders them.
-     *
-     * ⚠️ WHAT THIS BUYS IS THE ROUND, NOT THE BASE — and the difference is a
-     * residual, stated because an earlier draft of this comment claimed the
-     * cure and did not deliver it. Serialization stops two workers editing the
-     * same file in worktrees live at the same time. It does NOT rebase the
-     * second unit: `baseFor` derives predecessors from `dependsOn` alone, so a
-     * unit that merely OVERLAPS has no predecessor, takes the run's frozen
-     * base, and `preflightMerge` still three-way-merges it onto a tip that
-     * already carries the first — the integration conflict survives, one round
-     * later. Chaining an overlap-serialized unit onto its predecessor's
-     * collected work is the fix, and it is a scheduling ruling this
-     * composition root does not get to make on its own.
-     *
-     * ⚠️ MEASURED INERT BEFORE THIS: the composition root passed no verdicts,
-     * so `selectDispatchSet` saw an empty list and the round journaled
-     * "independence proven by zero pairwise overlap collisions among them" for
-     * units that overlapped completely — a false claim in the audit trail, not
-     * merely a missing check. Every scheduler test that pins the mechanism
-     * passed throughout, because they all supply the verdicts themselves.
-     *
-     * `ownedPaths` is the only write set this daemon has: a unit declares no
-     * renames ahead of its attempt, and the non-Git resource registry is
-     * caller-supplied config this composition root is not given.
-     */
-    const overlapVerdicts = analyzeOverlap(
-      workUnits.map((unit) => ({ unitId: unit.id, paths: [...unit.ownedPaths] })),
-    );
 
     const result = await driveRun(
       { runId, changeSetId: changeSet.id, workUnits, overlapVerdicts },

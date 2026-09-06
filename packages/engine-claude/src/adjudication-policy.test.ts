@@ -15,7 +15,12 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
 import { createJournalStore, type JournalStore } from "@crabgic/journal";
 import { createAdjudicationBus, type AdjudicationPolicy } from "@crabgic/supervisor";
-import type { PermissionProfile } from "@crabgic/engine-core";
+import {
+  compileEnvelope,
+  STANDARD_IMPLEMENTATION_ENVELOPE,
+  type PermissionProfile,
+} from "@crabgic/engine-core";
+import { substituteWorktreePlaceholders } from "./options-assembler.js";
 import { GATEWAY_MCP_SERVER_NAME } from "@crabgic/contracts";
 import { evaluatePermissionLayer } from "@crabgic/testkit";
 import { createEnvelopeAdjudicationPolicy, UnparseableRuleError } from "./adjudication-policy.js";
@@ -598,5 +603,73 @@ describe("property test — verdict agreement with @crabgic/testkit's permission
       ),
       { numRuns: 3000 },
     );
+  });
+});
+
+/**
+ * THE END-TO-END SHAPE, not a hand-written rule pair. Every earlier suite in
+ * this file feeds the policy `permissions` it wrote itself, so none of them
+ * could see the defect measured on 2026-09-06: the profile the DISPATCHER
+ * actually compiles denied every legitimate worker edit.
+ *
+ * Attempt worktrees are cut under the cache root
+ * (`<cacheRoot>/<hash>/worktrees/...`), and the compiler emitted a blanket
+ * `Edit(<cacheRoot>/**)`. `evaluateToolCall` is deny-wins, so a correctly
+ * substituted `Edit(//<worktree>/<owned>/**)` allow LOST to it and the bus
+ * journaled `deny` for work the envelope had granted — the alarm an auditor
+ * reads, at a 100% false-positive rate.
+ *
+ * The composition root now names the cache root's protected subtrees, so
+ * `Edit`/`Write` deny those precisely instead of the whole root. This test
+ * runs the real `compileEnvelope` -> `substituteWorktreePlaceholders` ->
+ * `createEnvelopeAdjudicationPolicy` chain, because the defect lived in the
+ * seam between them and nowhere inside any one of them.
+ */
+describe("createEnvelopeAdjudicationPolicy — a worker's own worktree under the cache root", () => {
+  const CACHE_ROOT = "/home/probe/.cache/crabgic";
+  const STATE_ROOT = "/home/probe/.local/state/crabgic";
+  const WORKTREE = `${CACHE_ROOT}/2f8a91/worktrees/run-1/cs-1/wu-1/att-1`;
+
+  function policyFor(protectedSubdirs?: readonly string[]): AdjudicationPolicy {
+    const compiled = compileEnvelope(STANDARD_IMPLEMENTATION_ENVELOPE, undefined, {
+      stateRoot: STATE_ROOT,
+      cacheRoot: CACHE_ROOT,
+      ...(protectedSubdirs === undefined ? {} : { cacheRootProtectedSubdirs: protectedSubdirs }),
+    });
+    return createEnvelopeAdjudicationPolicy({
+      permissions: substituteWorktreePlaceholders(compiled, WORKTREE, `${WORKTREE}/.tmp`)
+        .permissions,
+    });
+  }
+
+  const OWNED_FILE = `${WORKTREE}/${STANDARD_IMPLEMENTATION_ENVELOPE.ownedPaths[0]?.replace(/\/\*\*$/u, "") ?? "src"}/a.ts`;
+
+  it("allows an Edit inside the unit's own owned path", async () => {
+    const decision = await policyFor(["git-control", "worktree-quarantine"])(
+      "Edit",
+      { file_path: OWNED_FILE },
+      NO_OP_CONTEXT,
+    );
+    expect(decision.behavior).toBe("allow");
+  });
+
+  it("still denies an Edit in the control clone beside it", async () => {
+    const decision = await policyFor(["git-control", "worktree-quarantine"])(
+      "Edit",
+      { file_path: `${CACHE_ROOT}/2f8a91/git-control/.git/config` },
+      NO_OP_CONTEXT,
+    );
+    expect(decision.behavior).toBe("deny");
+  });
+
+  /**
+   * The measurement itself, pinned: with the blanket deny (no protected
+   * subdirs named) the SAME call on the SAME path is refused. Without this
+   * arm the two assertions above would pass just as happily against a policy
+   * that had simply stopped denying anything.
+   */
+  it("is refused by the blanket cache-root deny the change replaced", async () => {
+    const decision = await policyFor()("Edit", { file_path: OWNED_FILE }, NO_OP_CONTEXT);
+    expect(decision.behavior).toBe("deny");
   });
 });

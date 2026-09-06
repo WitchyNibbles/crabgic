@@ -3,7 +3,11 @@ import type { AuthorizationEnvelope } from "@crabgic/contracts";
 import { PermissionProfileSchema, type PermissionProfile } from "./compiled-worker-profile.js";
 import { validateOwnedPath } from "./owned-path.js";
 import { WORKTREE_WRITE_PLACEHOLDER } from "./worktree-placeholders.js";
-import { mandatoryPathDenyRoots, type RuntimeRootsDenyInput } from "./xdg-default-paths.js";
+import {
+  mandatoryMutationDenyRoots,
+  mandatoryPathDenyRoots,
+  type RuntimeRootsDenyInput,
+} from "./xdg-default-paths.js";
 
 /**
  * The four doc-confirmed `Bash(...)` command-prefix literals, no space
@@ -58,10 +62,15 @@ const MANDATORY_FIXED_DENY: readonly string[] = [
  */
 function mandatoryPathDeny(runtimeRoots?: RuntimeRootsDenyInput): readonly string[] {
   const roots = mandatoryPathDenyRoots(runtimeRoots);
+  // Edit/Write deny a NARROWER set than Read when the caller named the cache
+  // root's protected subdirectories — see `RuntimeRootsDenyInput`'s own
+  // comment for the measurement that forced the split. With none named the two
+  // lists are identical, which is why every existing caller is unaffected.
+  const mutationRoots = mandatoryMutationDenyRoots(runtimeRoots);
   return [
     ...roots.map((path) => `Read(${path})`),
-    ...roots.map((path) => `Edit(${path})`),
-    ...roots.map((path) => `Write(${path})`),
+    ...mutationRoots.map((path) => `Edit(${path})`),
+    ...mutationRoots.map((path) => `Write(${path})`),
     `Edit(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
     `Write(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
   ];

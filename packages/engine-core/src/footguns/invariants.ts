@@ -133,10 +133,46 @@ export class MissingEditWriteDenyBackstopError extends Error {
 }
 
 const MANDATORY_EDIT_WRITE_DENY_BACKSTOP: readonly string[] = [
-  ...MANDATORY_SANDBOX_DENY_READ_PATHS.flatMap((path) => [`Edit(${path})`, `Write(${path})`]),
+  ...MANDATORY_SANDBOX_DENY_READ_PATHS.filter(
+    (path) => path !== CONTROL_REPO_CACHE_ROOT_DENY_PATH,
+  ).flatMap((path) => [`Edit(${path})`, `Write(${path})`]),
   `Edit(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
   `Write(//${WORKTREE_WRITE_PLACEHOLDER}/.git/**)`,
 ];
+
+/** `Edit(~/.cache/crabgic/` — the prefix every cache-root mutation deny shares, blanket or narrowed. */
+const CACHE_ROOT_DENY_PREFIX = CONTROL_REPO_CACHE_ROOT_DENY_PATH.slice(0, -"**".length);
+
+/**
+ * The cache root is the ONE mandatory root a caller may NARROW, and this is
+ * what stops narrowing from becoming removing.
+ *
+ * Why it may be narrowed at all: the attempt worktrees live under it (phase
+ * 07's own layout choice), so a blanket `Edit`/`Write` deny there covers the
+ * one directory every worker must write — measured 2026-09-06, it made every
+ * legitimate edit adjudicate `deny`. `RuntimeRootsDenyInput`'s
+ * `cacheRootProtectedSubdirs` lets the composition root deny the subtrees the
+ * blanket was written for (`git-control`, `worktree-quarantine`) precisely
+ * instead.
+ *
+ * So this accepts either shape — the blanket, or at least one subtree beneath
+ * it — and accepts NEITHER as satisfying it. A profile that simply stopped
+ * denying the cache root still throws, which is the whole point of keeping the
+ * invariant rather than deleting it. `Read` is unaffected and its blanket is
+ * still checked by `assertMandatoryDenyReadPathsPresent`.
+ */
+function assertCacheRootMutationDenyPresent(
+  profile: CompiledWorkerProfile,
+  tool: "Edit" | "Write",
+): void {
+  const blanket = `${tool}(${CONTROL_REPO_CACHE_ROOT_DENY_PATH})`;
+  if (profile.permissions.deny.includes(blanket)) return;
+  const narrowedPrefix = `${tool}(${CACHE_ROOT_DENY_PREFIX}`;
+  const narrowed = profile.permissions.deny.some(
+    (rule) => rule.startsWith(narrowedPrefix) && rule.endsWith("/**)"),
+  );
+  if (!narrowed) throw new MissingEditWriteDenyBackstopError(blanket);
+}
 
 /** The mandatory Edit/Write deny backstop rules must always be present in the compiled deny list. */
 export function assertEditWriteDenyBackstopPresent(profile: CompiledWorkerProfile): void {
@@ -145,6 +181,8 @@ export function assertEditWriteDenyBackstopPresent(profile: CompiledWorkerProfil
       throw new MissingEditWriteDenyBackstopError(rule);
     }
   }
+  assertCacheRootMutationDenyPresent(profile, "Edit");
+  assertCacheRootMutationDenyPresent(profile, "Write");
 }
 
 export class SandboxAutoAllowsBashError extends Error {

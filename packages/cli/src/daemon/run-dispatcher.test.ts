@@ -783,12 +783,17 @@ describe("createRealRunDispatcher — dispatch", () => {
     const deps = buildDeps({
       ...fullySeeded(),
       run: false,
-      workUnits: ids.map((id) =>
+      workUnits: ids.map((id, index) =>
         buildWorkUnit({
           id,
           changeSetId: CHANGE_SET_ID,
           dependsOn: [],
           attemptStatus: "pending",
+          // DISTINCT owned paths, or they are not independent. The fixture
+          // default is one shared path, which an overlap collision now chains
+          // exactly as a `dependsOn` edge does (owner ruling 2026-09-06) —
+          // and this test is about a unit with NEITHER kind of predecessor.
+          ownedPaths: [`packages/example/src/u${String(index)}/`],
         }),
       ),
     });
@@ -1048,6 +1053,74 @@ describe("createRealRunDispatcher — dispatch", () => {
     }
     expect([...succeeded].sort()).toEqual([UNIT_ID, UNIT_B].sort());
     expect(peak).toBe(1);
+  });
+
+  /**
+   * SERIALIZING THE ROUND IS NOT THE WHOLE FIX, and the round test above
+   * cannot see the half that was missing. Separating two overlapping units
+   * into different rounds does not change what the second is cut FROM: until
+   * this, `baseFor` derived predecessors from `dependsOn` alone, so an
+   * overlap-only unit had none, took the run's frozen base, and its candidate
+   * still three-way-merged onto a tip already carrying the first — the exact
+   * integration conflict serialization was documented as curing.
+   *
+   * Owner ruling 2026-09-06: an overlap collision chains the base the same way
+   * a `dependsOn` edge does. Observed at the seam that decides it —
+   * `resolveChainedBase` must be called for the SECOND unit with the FIRST's
+   * collected candidate, which a frozen-base build never calls at all.
+   */
+  it("cuts the second of two overlapping units from the first's collected work", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const chainCalls: { unitId: string; predecessors: string[] }[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [UNIT_ID, UNIT_B].map((id) =>
+        buildWorkUnit({
+          id,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+          ownedPaths: ["packages/example/src/shared.ts"],
+        }),
+      ),
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        resolveChainedBase: (input: {
+          readonly workUnit: { readonly id: string };
+          readonly predecessorCandidateObjectIds: readonly string[];
+          readonly frozenBaseObjectId: string;
+        }) => {
+          chainCalls.push({
+            unitId: input.workUnit.id,
+            predecessors: [...input.predecessorCandidateObjectIds],
+          });
+          return Promise.resolve({
+            status: "resolved" as const,
+            objectId: input.predecessorCandidateObjectIds[0] ?? input.frozenBaseObjectId,
+          });
+        },
+      },
+    });
+
+    expect((await dispatcher.dispatch(CHANGE_SET_ID)).accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // Exactly one chain: the unit dispatched SECOND, onto the first's work.
+    // The first has no predecessor and correctly takes the frozen base.
+    expect(chainCalls).toHaveLength(1);
+    expect(chainCalls[0]?.predecessors).toHaveLength(1);
+    expect([UNIT_ID, UNIT_B]).toContain(chainCalls[0]?.unitId);
   });
 
   /**
@@ -1434,18 +1507,25 @@ describe("createRealRunDispatcher — dispatch", () => {
           changeSetId: CHANGE_SET_ID,
           dependsOn: [],
           attemptStatus: "pending",
+          ownedPaths: ["packages/example/src/a/"],
         }),
+        // Unrelated to both others by PATH as well as by edge — the fixture
+        // default is one shared path, and an overlap collision now chains the
+        // base (owner ruling 2026-09-06), which would make this unit a
+        // predecessor of the very chain the test is measuring.
         buildWorkUnit({
           id: PARKING_UNIT,
           changeSetId: CHANGE_SET_ID,
           dependsOn: [],
           attemptStatus: "pending",
+          ownedPaths: ["packages/example/src/parking/"],
         }),
         buildWorkUnit({
           id: UNIT_B,
           changeSetId: CHANGE_SET_ID,
           dependsOn: [UNIT_ID],
           attemptStatus: "pending",
+          ownedPaths: ["packages/example/src/b/"],
         }),
       ],
     });
