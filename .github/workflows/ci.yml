@@ -208,24 +208,46 @@ jobs:
       - name: lint PR commits
         if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
-      - name: lint the subject a squash merge will write
+      - name: lint the message a squash merge will write
         # The range step above lints the BRANCH commits. A squash merge keeps
-        # none of them: GitHub writes one commit whose subject is this PR's
-        # title with ` (#<number>)` appended. That subject is linted by
-        # nothing before the merge button -- and on 2026-08-19 it put a
-        # 108-character header on `main` (commit cf67bd2) from a 100-character
-        # title that had passed the step above. `main` cannot be made green
-        # again without rewriting published history, so the subject is checked
-        # here, while the title can still be edited.
+        # none of them: GitHub writes ONE commit whose subject is this PR's
+        # title with ` (#<number>)` appended, and whose body is `* <subject>`
+        # followed by that commit's own body, once per squashed commit. None of
+        # that is linted by anything before the merge button.
+        #
+        # MEASURED TWICE, and the second time is why this step lints the whole
+        # message rather than the subject alone:
+        #
+        #   2026-08-19, commit cf67bd2 -- a 100-character PR title became a
+        #   108-character header. The first cut of this step caught that class.
+        #
+        #   2026-09-06, commit e0053e3 (PR #176) -- `footer-max-line-length`,
+        #   from a BODY line, on a squash whose subject was fine.
+        #   `header-max-length` and `footer-max-line-length` are both 100 in
+        #   config-conventional, so a 99- or 100-character subject -- legal on
+        #   the branch, and green in the range step above -- becomes a 101- or
+        #   102-character line once GitHub prefixes it with `* `. Two of that
+        #   PR's 53 subjects did exactly that.
+        #
+        # Neither `main` commit can be made green again without rewriting
+        # published history, which is why the check has to run while the branch
+        # can still be amended.
         #
         # PR_TITLE arrives via `env:` and NOT via `${{ }}` inside `run:`: a
         # title is attacker-controlled text, and direct interpolation is
-        # substituted before the shell parses the line.
+        # substituted before the shell parses the line. The shas travel the same
+        # way for consistency, though they are not attacker-controlled.
         if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: printf '%s (#%s)\n' "$PR_TITLE" "$PR_NUMBER" | npx commitlint --verbose
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            printf '%s (#%s)\n\n' "$PR_TITLE" "$PR_NUMBER"
+            git log --reverse --format='* %s%n%n%b' "$BASE_SHA..$HEAD_SHA"
+          } | npx commitlint --verbose
       - name: lint pushed commit
         if: github.event_name == 'push'
         run: npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }} --verbose
