@@ -75,6 +75,26 @@ export type CollectCandidateResult =
   /** 17's lint refused the rendered commit message (08's `policy_blocked` terminal). */
   | { readonly status: "blocked"; readonly reason: string };
 
+/**
+ * The base one work unit's attempt worktree is cut from — owner ruling
+ * 2026-09-06, "chain the base".
+ *
+ * ⚠️ WHY THIS IS NOT THE RUN'S FROZEN BASE. Until this existed, every unit of a
+ * run was cut from the one frozen base, so `dependsOn` ordered dispatch and
+ * propagated nothing: a plan split as "primitives, then the code that consumes
+ * them" could not run, because the consumer's tests imported modules that did
+ * not exist in its tree. Measured on change set `a05e7c91`, whose four-unit
+ * chain could not get past its second unit.
+ *
+ * A unit with no dependencies still resolves to the frozen base, so an
+ * independent DAG behaves exactly as before.
+ */
+export type ChainedBaseResult =
+  | { readonly status: "resolved"; readonly objectId: string }
+  /** Two predecessors' work cannot be combined. Typed resolution units straight from `preflightMerge`, never auto-resolved. */
+  | { readonly status: "conflict"; readonly resolutionUnits: readonly WorkUnit[] }
+  | { readonly status: "blocked"; readonly reason: string };
+
 export type BeginIntegrationResult =
   | { readonly status: "begun"; readonly ref: string; readonly tipObjectId: string }
   | { readonly status: "blocked"; readonly reason: string };
@@ -99,6 +119,29 @@ export interface PostCompletionGitEffects {
     /** The frozen base the worktree branch was cut at — lets `commitWorktreeCandidate` tell "changed nothing" apart from "committed its own work". */
     readonly baseObjectId: string;
   }): Promise<CollectCandidateResult>;
+  /**
+   * The object id `workUnit`'s attempt worktree is cut from: its predecessors'
+   * already-collected work, folded onto the run's frozen base.
+   *
+   * ⚠️ NO REF IS TOUCHED. This produces an object id, never a branch — the
+   * integration ref is the post-completion pipeline's and is created once, at
+   * the end. Landing a mid-run tip on it would make a half-integrated run
+   * indistinguishable from a finished one.
+   *
+   * `predecessorCandidateObjectIds` is in INTEGRATION ORDER, and the first is
+   * taken as the tip directly rather than merged: every candidate descends from
+   * the frozen base (or from another candidate that does), so merging the first
+   * one onto the base would build a commit for a tree already named by that
+   * candidate.
+   */
+  resolveChainedBase(input: {
+    readonly workUnit: WorkUnit;
+    readonly changeSet: ChangeSet;
+    readonly branchType: BranchType;
+    /** The run's ONE freeze — what a unit with no dependencies is cut from. */
+    readonly frozenBaseObjectId: string;
+    readonly predecessorCandidateObjectIds: readonly string[];
+  }): Promise<ChainedBaseResult>;
   /** Creates the run-scoped integration ref at the run's frozen base. */
   beginIntegration(input: {
     readonly runId: string;
@@ -296,6 +339,33 @@ export function createRealPostCompletionGitEffects(
       });
       if (committed.status === "nothing-to-commit") return { status: "nothing-to-commit" };
       return { status: "collected", objectId: committed.objectId };
+    },
+
+    async resolveChainedBase(input) {
+      let tip: string | undefined;
+      for (const candidateObjectId of input.predecessorCandidateObjectIds) {
+        if (tip === undefined) {
+          tip = candidateObjectId;
+          continue;
+        }
+        const preflight = await preflightMerge(plumbing, {
+          repoDir: controlDir,
+          candidateRef: candidateObjectId,
+          integrationTipObjectId: tip,
+          changeSetId: input.changeSet.id,
+        });
+        if (!preflight.ok) return { status: "conflict", resolutionUnits: preflight.conflicts };
+        const built = await integrationCommitFor({
+          treeId: preflight.treeId,
+          parentObjectId: tip,
+          workUnit: input.workUnit,
+          changeSet: input.changeSet,
+          branchType: input.branchType,
+        });
+        if (!built.ok) return { status: "blocked", reason: built.reason };
+        tip = built.objectId;
+      }
+      return { status: "resolved", objectId: tip ?? input.frozenBaseObjectId };
     },
 
     async beginIntegration(input) {

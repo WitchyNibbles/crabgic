@@ -134,8 +134,18 @@ export interface BaseTreeSurfaceOptions {
   readonly projectDir: string;
   /** Where throwaway trees are cut, given a control clone. */
   readonly worktreesRootDirFor: (controlDir: string) => string;
-  /** The dispatcher's run-scoped state: the ONE frozen base of `changeSetId`'s run, or `undefined`. */
-  readonly resolveRunBase: (changeSetId: string) => RunBaseResolution | undefined;
+  /**
+   * The dispatcher's run-scoped state: the base THIS UNIT'S attempt was cut
+   * from, or `undefined` when this dispatcher does not hold the run.
+   *
+   * ⚠️ PER WORK UNIT — owner ruling 2026-09-06, "chain the base". A dependent
+   * unit is cut from its predecessors' collected work, so a run-wide answer
+   * would measure its red baseline against a tree it never saw.
+   */
+  readonly resolveRunBase: (
+    changeSetId: string,
+    workUnitId: string,
+  ) => RunBaseResolution | undefined;
 }
 
 /**
@@ -158,12 +168,13 @@ export interface BaseTreeSurfaceOptions {
 export function createBaseTreeSurface(options: BaseTreeSurfaceOptions) {
   return async function withBaseTree<T>(
     changeSetId: string,
+    workUnitId: string,
     candidateObjectId: string,
     testPaths: readonly string[],
     use: (worktreePath: string) => Promise<T>,
     prepareBaseTree?: (worktreePath: string) => Promise<T | undefined>,
   ): Promise<T | undefined> {
-    const base = options.resolveRunBase(changeSetId);
+    const base = options.resolveRunBase(changeSetId, workUnitId);
     if (base === undefined) return undefined;
     return withRedBaselineTree(
       {

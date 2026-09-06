@@ -151,6 +151,27 @@ export interface RunDriverDependencies {
     ctx: WorkerDispatchContext,
     sessionId: string,
   ) => Promise<DispatchAttemptOutcome | undefined>;
+  /**
+   * Called for each unit that just SUCCEEDED, and AWAITED BEFORE THE NEXT
+   * ROUND'S READINESS IS COMPUTED. That ordering is the whole seam: a unit is
+   * ready only once every id in its `dependsOn` is `succeeded`, so this is the
+   * one window in which a predecessor's work can be turned into something its
+   * successors can be dispatched against.
+   *
+   * ⚠️ WHY THE DRIVER CANNOT DO THE WORK ITSELF. Owner ruling 2026-09-06
+   * ("chain the base") makes a dependent unit's worktree cut from its
+   * predecessors' collected work rather than from the run's frozen base. That
+   * means committing an attempt worktree, which is `@crabgic/git-engine`'s and
+   * the composition root's — this package owns the DAG and nothing else, the
+   * same boundary `captureBaseline` draws for the evidence half.
+   *
+   * ABSENT means nothing happens on success, which is the behaviour before this
+   * seam existed: every unit is then cut from the frozen base. A THROW is not
+   * caught here — the caller could not preserve what a succeeded unit produced,
+   * and dispatching its successors against a base that silently lacks that work
+   * would produce candidates nobody asked for.
+   */
+  readonly onUnitSucceeded?: (ctx: WorkerDispatchContext) => Promise<void>;
 }
 
 export interface DriveRunOptions {
@@ -410,8 +431,21 @@ export async function driveRun(
         // e.g. after a daemon restart) and declined rather than resume into a
         // read-only session — leave it parked.
         if (outcome === undefined) continue;
-        statusById.set(unit.id, statusForOutcome(outcome));
+        const status = statusForOutcome(outcome);
+        statusById.set(unit.id, status);
         outcomes.push({ workUnitId: unit.id, outcome });
+        // A resumed unit succeeds through a different door than a fresh
+        // dispatch, and its successors are dispatched by the same loop — so
+        // the hook fires here too, or a chained base would be built from the
+        // frozen tree for exactly the units that had to be resumed.
+        if (status === "succeeded" && deps.onUnitSucceeded !== undefined) {
+          await deps.onUnitSucceeded({
+            workUnit: unit,
+            model: resolveModel(unit.role),
+            runId: options.runId,
+            changeSetId: options.changeSetId,
+          });
+        }
         resumed.push(unit.id);
       } catch (err) {
         // An account-wide pause re-established while resuming refuses at the
@@ -487,8 +521,26 @@ export async function driveRun(
         globallyPaused = true;
         continue;
       }
-      statusById.set(entry.workUnitId, statusForOutcome(entry.outcome));
+      const status = statusForOutcome(entry.outcome);
+      statusById.set(entry.workUnitId, status);
       outcomes.push({ workUnitId: entry.workUnitId, outcome: entry.outcome });
+      /**
+       * ⚠️ INSIDE THE FOLD, NOT AFTER THE LOOP, AND AWAITED. The next
+       * iteration of the outer loop computes readiness, and a successor is
+       * ready the moment this unit reads `succeeded` — so anything its base
+       * has to contain must exist by the time this returns.
+       */
+      if (status === "succeeded" && deps.onUnitSucceeded !== undefined) {
+        const workUnit = unitById.get(entry.workUnitId);
+        /* c8 ignore next -- unreachable: every id in `roundOutcomes` came from `selected`, which came from `options.workUnits` */
+        if (workUnit === undefined) throw new Error(`run driver: unknown work unit "${entry.workUnitId}"`);
+        await deps.onUnitSucceeded({
+          workUnit,
+          model: resolveModel(workUnit.role),
+          runId: options.runId,
+          changeSetId: options.changeSetId,
+        });
+      }
     }
 
     if (globallyPaused) return finish("parked");

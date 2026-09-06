@@ -67,6 +67,7 @@ function baseTreeSurface(baseTree: string): Pick<AttemptSurface, "withBaseTree">
   return {
     async withBaseTree<T>(
       _changeSetId: string,
+      _workUnitId: string,
       _candidateObjectId: string,
       _testPaths: readonly string[],
       use: (worktreePath: string) => Promise<T>,

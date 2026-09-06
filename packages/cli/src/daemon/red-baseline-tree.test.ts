@@ -269,6 +269,7 @@ describe("createBaseTreeSurface", () => {
 
     const outcome = await withBaseTree(
       "unknown-change-set",
+      "unit-1",
       CANDIDATE_OBJECT_ID,
       ["src/feature.test.ts"],
       () => Promise.reject(new Error("must not run")),
@@ -282,7 +283,7 @@ describe("createBaseTreeSurface", () => {
     const { plumbing, calls } = fakePlumbing();
     const { withBaseTree, controlDir, worktreesRoot } = await surfaceFor({ plumbing });
 
-    await withBaseTree("cs", CANDIDATE_OBJECT_ID, ["src/feature.test.ts"], (worktreePath) =>
+    await withBaseTree("cs", "unit-1", CANDIDATE_OBJECT_ID, ["src/feature.test.ts"], (worktreePath) =>
       Promise.resolve(worktreePath),
     );
 
@@ -307,6 +308,7 @@ describe("createBaseTreeSurface", () => {
 
     const outcome = await withBaseTree(
       "cs",
+      "unit-1",
       CANDIDATE_OBJECT_ID,
       ["src/feature.test.ts"],
       () => Promise.reject(new Error("use must not run once preparation returned a result")),

@@ -756,6 +756,78 @@ describe("createRealRunDispatcher — dispatch", () => {
   });
 
   /**
+   * ⚠️ A CHAINED BASE THAT CANNOT BE BUILT REFUSES THE DISPATCH — owner ruling
+   * 2026-09-06, "chain the base". `B` depends on `A`, so its worktree is cut
+   * from what `A` collected; when that cannot be resolved, dispatching `B`
+   * against the frozen base instead would hand it a tree its plan says already
+   * holds `A`'s work, and `B` would then fail its own tests for a reason no
+   * operator could read off any verdict.
+   *
+   * The refusal names the unit and the cause, and the run settles `failed`
+   * rather than sitting `running` forever.
+   */
+  it("refuses to dispatch a unit whose chained base cannot be resolved, naming the unit", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      // `A` must genuinely succeed, or `B` never becomes ready and the chained
+      // base is never asked for.
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        resolveChainedBase: () =>
+          Promise.resolve({
+            status: "conflict" as const,
+            resolutionUnits: [
+              buildWorkUnit({
+                id: UNIT_B,
+                changeSetId: CHANGE_SET_ID,
+                dependsOn: [],
+                attemptStatus: "pending",
+              }),
+            ],
+          }),
+      },
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    expect(message).toMatch(/conflicts in 1 path/);
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("failed");
+    });
+  });
+
+  /**
    * The settle transition must tolerate the run having reached an absorbing
    * state independently — a `run.cancel` racing the drive. The drive's own
    * `blocked` transition is then an illegal edge from `cancelled`, which is

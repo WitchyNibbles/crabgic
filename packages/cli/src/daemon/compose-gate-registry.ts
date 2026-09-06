@@ -205,7 +205,11 @@ export interface AttemptSurface {
    * re-drive after a restart. The coverage gate reports the changed-line check
    * as not run rather than as passed.
    */
-  diffAgainstBase(changeSetId: string, candidateObjectId: string): Promise<string | undefined>;
+  diffAgainstBase(
+    changeSetId: string,
+    workUnitId: string,
+    candidateObjectId: string,
+  ): Promise<string | undefined>;
   /**
    * Materialises the FROZEN BASE plus the candidate's versions of `testPaths`,
    * runs `use` in it, and disposes of the tree afterwards.
@@ -218,8 +222,17 @@ export interface AttemptSurface {
    * or a re-drive after a restart that lost the run's base. The gate reports the
    * red half as unestablished rather than presuming anything.
    */
-  /** The frozen base object id of the named change set's run, when this dispatcher still holds it. */
-  baseObjectIdFor?(changeSetId: string): string | undefined;
+  /**
+   * The base object id THIS UNIT'S attempt was cut from, when this dispatcher
+   * still holds the run.
+   *
+   * ⚠️ PER WORK UNIT, NOT PER RUN — owner ruling 2026-09-06, "chain the base".
+   * A unit whose `dependsOn` predecessors all succeeded is cut from their
+   * collected work rather than from the run's one freeze, so a change-set-wide
+   * answer would attribute a predecessor's lines to this unit's diff and
+   * measure its red baseline against a tree it was never cut from.
+   */
+  baseObjectIdFor?(changeSetId: string, workUnitId: string): string | undefined;
   /**
    * `prepareBaseTree` runs while the tree is still PRISTINE — provisioned, but
    * before the candidate's test files are laid over it. Returning a value stops
@@ -227,6 +240,7 @@ export interface AttemptSurface {
    */
   withBaseTree<T>(
     changeSetId: string,
+    workUnitId: string,
     candidateObjectId: string,
     testPaths: readonly string[],
     use: (worktreePath: string) => Promise<T>,
@@ -534,7 +548,11 @@ async function loadCandidateCoverage(
   if (!run.suiteRan) return undefined;
   const report = await readCoverageSummary(worktreePath);
   if (report === undefined) return undefined;
-  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  const diffText = await attempts.diffAgainstBase(
+    context.changeSetId,
+    workUnitId,
+    context.objectId,
+  );
   return { summary: report.summary, ...(diffText !== undefined ? { diffText } : {}) };
 }
 
@@ -560,7 +578,11 @@ async function measureRedAtBase(
   const granted = attempts.grantedCommandsFor(context.changeSetId);
   if (granted === undefined) return { kind: "noAcceptanceCommand" };
 
-  const diffText = await attempts.diffAgainstBase(context.changeSetId, context.objectId);
+  const diffText = await attempts.diffAgainstBase(
+    context.changeSetId,
+    workUnitId,
+    context.objectId,
+  );
   if (diffText === undefined) {
     return { kind: "didNotRun", command: "git diff", reason: "the run's frozen base is unknown" };
   }
@@ -571,6 +593,7 @@ async function measureRedAtBase(
   const requirementIds = workUnitRequirementIds(workUnits, workUnitId);
   const outcome = await attempts.withBaseTree(
     context.changeSetId,
+    workUnitId,
     context.objectId,
     testPaths,
     (worktreePath) =>
@@ -581,7 +604,8 @@ async function measureRedAtBase(
         requirementIds,
         // The tree IS the base, so the record is scoped to it — which is what
         // distinguishes a baseline from this gate's own firing.
-        baseObjectId: worktreeBaseObjectId(attempts, context.changeSetId) ?? context.objectId,
+        baseObjectId:
+          worktreeBaseObjectId(attempts, context.changeSetId, workUnitId) ?? context.objectId,
         worktreePath,
         grantedCommands: granted,
         testPaths,
@@ -630,8 +654,12 @@ async function measureRedAtBase(
 }
 
 /** The frozen base this change set's run was cut from, when the dispatcher still knows it. */
-function worktreeBaseObjectId(attempts: AttemptSurface, changeSetId: string): string | undefined {
-  return attempts.baseObjectIdFor?.(changeSetId);
+function worktreeBaseObjectId(
+  attempts: AttemptSurface,
+  changeSetId: string,
+  workUnitId: string,
+): string | undefined {
+  return attempts.baseObjectIdFor?.(changeSetId, workUnitId);
 }
 
 /**

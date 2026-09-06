@@ -37,6 +37,7 @@ import { composeGateRegistry } from "./compose-gate-registry.js";
 import {
   commitFieldsFor,
   deriveBranchType,
+  type CollectCandidateResult,
   type PostCompletionGitEffects,
 } from "./post-completion-git-effects.js";
 import {
@@ -128,6 +129,7 @@ async function run(options: {
   readonly runsOverride?: RunsRegistry;
   readonly statuses?: ReadonlyMap<string, WorkUnitAttemptStatus>;
   readonly worktrees?: ReadonlyMap<string, string>;
+  readonly preCollected?: ReadonlyMap<string, CollectCandidateResult>;
 }): Promise<PostCompletionOutcome> {
   const units = options.units;
   return runPostCompletionPipeline(
@@ -140,6 +142,9 @@ async function run(options: {
         options.statuses ?? new Map(units.map((u) => [u.id, "succeeded" as WorkUnitAttemptStatus])),
       worktreePathByUnitId:
         options.worktrees ?? new Map(units.map((u) => [u.id, join(dir, "wt", u.id)])),
+      ...(options.preCollected !== undefined
+        ? { preCollectedByUnitId: options.preCollected }
+        : {}),
     },
     {
       journal,
@@ -506,6 +511,57 @@ describe("each git-effect refusal maps onto its own lifecycle terminal", () => {
     // Both were COLLECTED; only the one with work was INTEGRATED.
     expect(calls.filter((call) => call.startsWith("collect:"))).toHaveLength(2);
     expect(calls.filter((call) => call.startsWith("integrate:"))).toEqual([`integrate:${UNIT_A}`]);
+  });
+
+  /**
+   * ⚠️ THE DRIVE'S RESULT IS AUTHORITATIVE, AND MEASURABLY SO — owner ruling
+   * 2026-09-06, "chain the base". The drive commits each succeeded unit while
+   * the run is still going, so its successors have something to be cut from,
+   * and it does so against the base THAT unit was cut from. This pipeline knows
+   * only the run's frozen base, so re-deriving the answer here cannot tell "the
+   * unit produced nothing" from "the unit's tip is its predecessor's commit" —
+   * and would fire the unit's own gates against a tree it never wrote.
+   *
+   * The fake would answer `collected` for both units. `B`'s pre-collected
+   * `nothing-to-commit` must win, and `collectCandidate` must not be consulted
+   * for either.
+   */
+  it("honours the drive's own collection result, and re-collects nothing", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A), unit(UNIT_B)],
+      registry: passingRegistry(),
+      git: createFakePostCompletionGitEffects({ calls }),
+      preCollected: new Map<string, CollectCandidateResult>([
+        [UNIT_A, { status: "collected", objectId: "c".repeat(40) }],
+        [UNIT_B, { status: "nothing-to-commit" }],
+      ]),
+    });
+
+    expect(outcome.status).toBe("published");
+    expect(calls.filter((call) => call.startsWith("collect:"))).toEqual([]);
+    expect(calls.filter((call) => call.startsWith("integrate:"))).toEqual([`integrate:${UNIT_A}`]);
+  });
+
+  /** The same precedence on the refusing arm: a mid-run collection the drive could not make is the run's terminal, with the drive's own reason. */
+  it("settles blocked on the drive's own collection refusal, verbatim", async () => {
+    await seedRunningRun();
+    const calls: string[] = [];
+    const outcome = await run({
+      units: [unit(UNIT_A)],
+      registry: passingRegistry(),
+      git: createFakePostCompletionGitEffects({ calls }),
+      preCollected: new Map<string, CollectCandidateResult>([
+        [UNIT_A, { status: "blocked", reason: "the commit lint refused the rendered subject" }],
+      ]),
+    });
+
+    expect(outcome.status).toBe("blocked");
+    if (outcome.status !== "blocked") return;
+    expect(outcome.reason).toContain(UNIT_A);
+    expect(outcome.reason).toContain("the commit lint refused the rendered subject");
+    expect(calls.filter((call) => call.startsWith("collect:"))).toEqual([]);
   });
 
   it("a unit that succeeded but has no retained worktree fails the run rather than publishing without its work", async () => {

@@ -37,7 +37,7 @@
  *     ever holds, so a cached per-unit object id cannot satisfy it.
  */
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -295,6 +295,13 @@ interface BootOptions {
    * owner ruling R5. Used by the case that pins the publish gate refusing.
    */
   readonly unverified?: boolean;
+  /**
+   * Sees each unit's attempt worktree AS HANDED — before this fixture's fake
+   * worker writes anything into it. That is the only vantage point from which
+   * "cut from the frozen base" and "cut from a predecessor's collected work"
+   * look different.
+   */
+  readonly observeWorktree?: (workUnitId: string, worktreePath: string) => void;
 }
 
 /**
@@ -344,6 +351,7 @@ async function bootDaemon(options: BootOptions = {}): Promise<ComposedSupervisor
         // worktree it is handed, then reports success. Worker output is
         // uncommitted — exactly as production leaves it.
         createAdapter: (ctx, worktreePath) => {
+          options.observeWorktree?.(ctx.workUnit.id, worktreePath);
           const relative =
             options.collide === true ? SHARED_FILE_PATH : unitFilePath(ctx.workUnit.id);
           const target = join(worktreePath, relative);
@@ -671,6 +679,66 @@ describe("a completed run walks to published_local through a fired gate (defect 
     ]);
     expect(security.map((record) => record.objectId)).toStrictEqual(eachFixture(publishedTip));
     expect(security.map((record) => record.gateVerdict)).toStrictEqual(eachFixture("passed"));
+  }, 180_000);
+
+  /**
+   * ⚠️ OWNER RULING 2026-09-06, "chain the base", END TO END AND THROUGH REAL
+   * GIT. Until this, every unit of a run was cut from the ONE frozen base, so
+   * `dependsOn` ordered dispatch and propagated nothing: a plan split as
+   * "primitives, then the code that consumes them" could not run, because the
+   * consumer's tests imported modules absent from its tree. Measured on change
+   * set `a05e7c91`, which could not get past its second unit.
+   *
+   * ⚠️ BOTH ARMS ARE THE ASSERTION. `A` must see NOTHING — it has no
+   * dependencies, so it is still cut from the freeze — and `B` must see `A`'s
+   * file. An implementation that handed every unit the same accumulating tree
+   * would satisfy the second arm and fail the first, and one that changed
+   * nothing at all would satisfy the first and fail the second.
+   *
+   * Observed AS HANDED, before this fixture's own worker writes: the file
+   * `B` sees can only have arrived through the base its worktree was cut from.
+   */
+  it("T6 — a dependent unit's worktree is cut from its predecessor's collected work", async () => {
+    const approved = buildRequirement({ id: REQ_ID, acceptanceCriteria: [...APPROVED_CRITERIA] });
+    await seedApprovalSeal(approved.criteriaHash);
+    seedIntakeState({
+      requirement: approved,
+      workUnits: [
+        unitFixture(UNIT_A_ID, "add the greeting export"),
+        unitFixture(UNIT_B_ID, "add the farewell export", [UNIT_A_ID]),
+      ],
+      changeSet: changeSetFixture([UNIT_A_ID, UNIT_B_ID]),
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        ownedPaths: [`${OWNED_PREFIX}/`],
+        commands: ["npm run test"],
+      }),
+    });
+
+    const sawPredecessorFile = new Map<string, boolean>();
+    composed = await bootDaemon({
+      observeWorktree: (workUnitId, worktreePath) => {
+        sawPredecessorFile.set(
+          workUnitId,
+          existsSync(join(worktreePath, unitFilePath(UNIT_A_ID))),
+        );
+      },
+    });
+    const runId = await dispatchAndSettle(composed);
+
+    expect(driveErrors).toEqual([]);
+    expect(sawPredecessorFile.get(UNIT_A_ID)).toBe(false);
+    expect(sawPredecessorFile.get(UNIT_B_ID)).toBe(true);
+
+    // And the run still publishes both units' work — chaining must not cost
+    // the integration it exists to make possible.
+    expect(composed.deps.runs.get(runId)?.runState).toBe("published_local");
+    const branches = publishedBranches();
+    expect(branches).toHaveLength(1);
+    const paths = treePaths(branches[0]!);
+    expect(paths).toContain(unitFilePath(UNIT_A_ID));
+    expect(paths).toContain(unitFilePath(UNIT_B_ID));
   }, 180_000);
 
   it("T2 — a tamper landing AFTER every unit passed fails the run at the gate, naming the requirement", async () => {

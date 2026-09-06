@@ -107,7 +107,9 @@ function changeSet(): ChangeSet {
 }
 
 /** A real attempt worktree of the control clone, optionally with a worker edit already in it. */
-async function attemptWorktree(options: { readonly edit?: string } = {}): Promise<string> {
+async function attemptWorktree(
+  options: { readonly edit?: string; readonly file?: string } = {},
+): Promise<string> {
   const created = await createWorktree(plumbing, {
     repoDir: controlDir,
     worktreesRootDir,
@@ -118,10 +120,104 @@ async function attemptWorktree(options: { readonly edit?: string } = {}): Promis
     serviceEmail: SERVICE_EMAIL,
   });
   if (options.edit !== undefined) {
-    writeFileSync(join(created.worktreePath, "src", "shared.ts"), options.edit, "utf8");
+    writeFileSync(
+      join(created.worktreePath, "src", options.file ?? "shared.ts"),
+      options.edit,
+      "utf8",
+    );
   }
   return created.worktreePath;
 }
+
+/** One collected candidate, cut from the frozen base, whose only change is `content` in `src/<file>`. */
+async function candidateWriting(file: string, content: string): Promise<string> {
+  const collected = await effects.collectCandidate({
+    workUnit: unit(),
+    changeSet: changeSet(),
+    branchType: "chore",
+    baseObjectId,
+    worktreePath: await attemptWorktree({ edit: content, file }),
+  });
+  if (collected.status !== "collected") throw new Error(`expected a candidate: ${collected.status}`);
+  return collected.objectId;
+}
+
+/**
+ * ⚠️ OWNER RULING 2026-09-06, "chain the base". Every case here is a branch the
+ * composed end-to-end walk cannot reach on demand: it drives a linear
+ * two-unit chain, so the single-predecessor arm is the only one it exercises.
+ */
+describe("resolveChainedBase", () => {
+  async function resolve(
+    predecessorCandidateObjectIds: readonly string[],
+  ): ReturnType<PostCompletionGitEffects["resolveChainedBase"]> {
+    return effects.resolveChainedBase({
+      workUnit: unit(),
+      changeSet: changeSet(),
+      branchType: "chore",
+      frozenBaseObjectId: baseObjectId,
+      predecessorCandidateObjectIds,
+    });
+  }
+
+  /** Every path in a commit's tree, so "the base holds both predecessors' work" is a fact about git rather than about an id. */
+  function treePaths(objectId: string): readonly string[] {
+    return runFixtureGit(controlDir, ["ls-tree", "-r", "--name-only", objectId])
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  }
+
+  it("is the run's frozen base for a unit with no dependencies", async () => {
+    const resolved = await resolve([]);
+    expect(resolved).toStrictEqual({ status: "resolved", objectId: baseObjectId });
+  });
+
+  /**
+   * The candidate ITSELF, not a commit built on top of it. A merge commit here
+   * would be a second object naming a tree the candidate already names, and
+   * every attempt worktree of a linear chain would carry one.
+   */
+  it("is the predecessor's own candidate when there is exactly one", async () => {
+    const first = await candidateWriting("first.ts", "export const first = 1;\n");
+    const resolved = await resolve([first]);
+    expect(resolved).toStrictEqual({ status: "resolved", objectId: first });
+  });
+
+  it("folds two predecessors into one base whose tree holds BOTH", async () => {
+    const first = await candidateWriting("first.ts", "export const first = 1;\n");
+    const second = await candidateWriting("second.ts", "export const second = 2;\n");
+
+    const resolved = await resolve([first, second]);
+
+    expect(resolved.status).toBe("resolved");
+    if (resolved.status !== "resolved") return;
+    // Neither predecessor's own tree holds both, so a shortcut that returned
+    // one of them cannot satisfy this.
+    expect(treePaths(resolved.objectId)).toEqual(
+      expect.arrayContaining(["src/first.ts", "src/second.ts"]),
+    );
+    expect(resolved.objectId).not.toBe(first);
+    expect(resolved.objectId).not.toBe(second);
+  });
+
+  /**
+   * ⚠️ REFUSES, NEVER FALLS BACK. Returning the frozen base here would dispatch
+   * the unit against a tree its plan says already holds its dependencies' work,
+   * and it would then fail its own tests for a reason no operator could read
+   * off the verdict.
+   */
+  it("reports a conflict when two predecessors cannot be combined", async () => {
+    const first = await candidateWriting("shared.ts", "export const shared = 111;\n");
+    const second = await candidateWriting("shared.ts", "export const shared = 222;\n");
+
+    const resolved = await resolve([first, second]);
+
+    expect(resolved.status).toBe("conflict");
+    if (resolved.status !== "conflict") return;
+    expect(resolved.resolutionUnits.length).toBeGreaterThan(0);
+  });
+});
 
 describe("collectCandidate", () => {
   it("reports nothing-to-commit for a worktree the worker never touched", async () => {
