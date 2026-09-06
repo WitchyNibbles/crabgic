@@ -52,6 +52,7 @@ import type {
   AuthorizationEnvelope,
   ChangeSet,
   EnvelopePolicy,
+  Requirement,
   WorkUnit,
 } from "@crabgic/contracts";
 import type { XdgEnv } from "@crabgic/journal";
@@ -79,6 +80,7 @@ import {
   type TerminableWorker,
 } from "@crabgic/supervisor";
 import {
+  analyzeOverlap,
   createGitPlumbing,
   createNodeGitSpawn,
   createWorktree,
@@ -107,12 +109,20 @@ import {
 } from "@crabgic/scheduler";
 import { captureTddBaseline } from "@crabgic/gates";
 import type { LoadPolicyResult } from "../policy/policy-store.js";
-import { composeGateRegistry } from "./compose-gate-registry.js";
+import { changeSetRequirementIds, composeGateRegistry } from "./compose-gate-registry.js";
+import { createBaseTreeSurface, type RunBaseResolution } from "./red-baseline-tree.js";
+import { createUnitBaseRegistry } from "./unit-base-registry.js";
 import {
   createRealPostCompletionGitEffects,
+  deriveBranchType,
+  type CollectCandidateResult,
   type PostCompletionGitEffects,
 } from "./post-completion-git-effects.js";
-import { runPostCompletionPipeline, type PostCompletionStep } from "./post-completion-pipeline.js";
+import {
+  integrationOrderFor,
+  runPostCompletionPipeline,
+  type PostCompletionStep,
+} from "./post-completion-pipeline.js";
 
 /** Git identity for worktree commits. `@crabgic/git-engine` deliberately leaves resolving this to its caller (see `configureGitIdentity`'s own doc comment). */
 const DEFAULT_SERVICE_EMAIL = "crabgic@localhost";
@@ -279,6 +289,28 @@ interface DrivenRun {
   readonly result: DriveRunResult;
   readonly baseObjectId: string;
   readonly controlDir: string;
+  /**
+   * What each succeeded unit's worktree was committed to DURING the drive —
+   * owner ruling 2026-09-06, "chain the base".
+   *
+   * A unit's successors are cut from its collected work, so collection can no
+   * longer wait for the pipeline. The pipeline reads the typed result rather
+   * than re-deriving it, because only the drive knows the base each unit was
+   * cut from — and that base is what tells "this unit produced nothing" apart
+   * from "this unit's tip is its predecessor's commit".
+   */
+  readonly preCollectedByUnitId: ReadonlyMap<string, CollectCandidateResult>;
+  /**
+   * The base each unit was cut from, when it is not the run's frozen base.
+   *
+   * The pipeline needs it as the THREE-WAY MERGE BASE: integration commits are
+   * single-parent, so git derives the frozen base for every candidate, and for
+   * a chained one that is wrong in both directions — see `preflightMerge`'s
+   * `mergeBaseObjectId`.
+   */
+  readonly chainedBaseByUnitId: ReadonlyMap<string, string>;
+  /** The very effects object the drive collected through, so the pipeline integrates through one instance rather than a second one built over the same control clone. */
+  readonly git: PostCompletionGitEffects;
 }
 
 type PolicyGate =
@@ -497,8 +529,25 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       { readonly adapter: EngineAdapter; readonly worktreePath: string; readonly configDir: string }
     >
   >();
+  /**
+   * Each succeeded unit's collected work, PER RUN and across this daemon's
+   * re-drives of it — owner ruling 2026-09-06, "chain the base".
+   *
+   * ⚠️ PER RUN FOR THE SAME REASON `retainedByRun` IS. A unit parked on a rate
+   * limit is resumed on a LATER drive, and its successors are dispatched on
+   * that drive; a per-`drive()` map would be empty then, so every successor of
+   * an already-succeeded unit would silently be cut from the run's frozen base
+   * instead of from its predecessor's work — the exact behaviour this ruling
+   * exists to end, reappearing only on resume.
+   *
+   * SAME-DAEMON only, exactly like `retainedByRun`. A daemon restart loses it,
+   * and `baseFor` then REFUSES rather than falling back to the freeze.
+   */
+  const preCollectedByRun = new Map<string, Map<string, CollectCandidateResult>>();
   const clearRetainedRun = (runId: string): void => {
     retainedByRun.delete(runId);
+    preCollectedByRun.delete(runId);
+    unitBases.closeRun(runId);
   };
 
   /**
@@ -521,10 +570,18 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
   const worktreesRootDirFor = (controlDir: string): string =>
     join(controlDir, "..", "red-baselines");
 
-  const runBaseByChangeSetId = new Map<
-    string,
-    { readonly baseObjectId: string; readonly controlDir: string }
-  >();
+  /**
+   * Where each run's frozen base, control clone and per-unit chained bases live
+   * — `./unit-base-registry.ts`, extracted so the per-unit answer the GATES read
+   * is reachable by a test that can tell it from the run-scoped one.
+   */
+  const unitBases = createUnitBaseRegistry();
+
+  /** The run's control clone plus the base THIS unit was cut from, or `undefined` when this dispatcher does not hold the run. */
+  const resolveUnitBase = (
+    changeSetId: string,
+    workUnitId: string,
+  ): RunBaseResolution | undefined => unitBases.resolve(changeSetId, workUnitId);
 
   const attempts = {
     /**
@@ -569,9 +626,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      */
     async diffAgainstBase(
       changeSetId: string,
+      workUnitId: string,
       candidateObjectId: string,
     ): Promise<string | undefined> {
-      const base = runBaseByChangeSetId.get(changeSetId);
+      const base = resolveUnitBase(changeSetId, workUnitId);
       if (base === undefined) return undefined;
       try {
         const result = await plumbing.run(["diff", base.baseObjectId, candidateObjectId], {
@@ -592,54 +650,29 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         return undefined;
       }
     },
-    baseObjectIdFor(changeSetId: string): string | undefined {
-      return runBaseByChangeSetId.get(changeSetId)?.baseObjectId;
+    baseObjectIdFor(changeSetId: string, workUnitId: string): string | undefined {
+      return resolveUnitBase(changeSetId, workUnitId)?.baseObjectId;
     },
     /**
      * A throwaway worktree at the FROZEN BASE, carrying the candidate's versions
      * of `testPaths` and nothing else of the candidate — owner ruling
-     * 2026-08-18's "new tests against base code".
+     * 2026-08-18's "new tests against base code". What that tree must be, and
+     * why it is cut with `--detach` and removed in a `finally`, is
+     * `./red-baseline-tree.ts`'s to state; this line supplies only the
+     * run-scoped state it needs.
      *
-     * ⚠️ `--detach` AT THE BASE, then a path-scoped checkout. Checking the whole
-     * candidate out would answer the wrong question entirely: the tests would run
-     * against the code they were written for and pass, which is the opposite of
-     * what is being measured.
-     *
-     * ⚠️ REMOVED IN `finally`, and `--force` because the test run leaves the tree
-     * dirty by construction — a failed suite writes reports and caches. A worktree
-     * left behind pins disk and, worse, is registered in the control clone's
-     * metadata, so the next `worktree add` at the same path fails.
+     * ⚠️ THE ADAPTER IS `createBaseTreeSurface`, NOT AN INLINE METHOD, and the
+     * move is the same correction `withRedBaselineTree`'s own extraction was.
+     * Inline here it was executed by no test at all, so the one line forwarding
+     * `prepareBaseTree` — the whole base-tree build — could be deleted with the
+     * suite green.
      */
-    async withBaseTree<T>(
-      changeSetId: string,
-      candidateObjectId: string,
-      testPaths: readonly string[],
-      use: (worktreePath: string) => Promise<T>,
-    ): Promise<T | undefined> {
-      const base = runBaseByChangeSetId.get(changeSetId);
-      if (base === undefined || testPaths.length === 0) return undefined;
-      const treePath = join(
-        worktreesRootDirFor(base.controlDir),
-        `red-baseline-${candidateObjectId.slice(0, 12)}`,
-      );
-      try {
-        await plumbing.run(["worktree", "add", "--detach", treePath, base.baseObjectId], {
-          cwd: base.controlDir,
-        });
-      } catch {
-        return undefined;
-      }
-      try {
-        await plumbing.run(["checkout", candidateObjectId, "--", ...testPaths], { cwd: treePath });
-        return await use(treePath);
-      } catch {
-        return undefined;
-      } finally {
-        await plumbing
-          .run(["worktree", "remove", "--force", treePath], { cwd: base.controlDir })
-          .catch(() => undefined);
-      }
-    },
+    withBaseTree: createBaseTreeSurface({
+      plumbing,
+      projectDir,
+      worktreesRootDirFor,
+      resolveRunBase: (changeSetId, workUnitId) => resolveUnitBase(changeSetId, workUnitId),
+    }),
   };
 
   /**
@@ -830,7 +863,226 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
      * long after this scope has returned. Keyed by change set because that is
      * what a `GateContext` carries; a run id would be unreachable from the gate.
      */
-    runBaseByChangeSetId.set(changeSet.id, { baseObjectId, controlDir });
+    unitBases.openRun(changeSet.id, { runId, baseObjectId, controlDir });
+
+    /**
+     * ⚠️ BUILT ONCE PER DRIVE, NOT ONCE PER PIPELINE. The drive now commits a
+     * succeeded unit's worktree itself (see `onUnitSucceeded`), so the same
+     * effects instance has to serve both halves — a second one built over the
+     * same control clone would work, but "the pipeline integrates what the
+     * drive collected" would then be a coincidence rather than a wiring fact.
+     */
+    const git =
+      options.postCompletionGitEffects ??
+      createRealPostCompletionGitEffects({
+        plumbing,
+        controlDir,
+        projectDir,
+        serviceEmail,
+        journal: deps.journal,
+      });
+
+    const orderedUnits = integrationOrderFor(changeSet, workUnits);
+
+    /**
+     * The commit type the drive's own collect commits carry.
+     *
+     * Derived exactly as the pipeline derives it, so the collect and integrate
+     * commits of one run agree. An unresolvable requirement makes this NEUTRAL
+     * rather than fatal: the pipeline refuses that run with its own reason
+     * ("the run's acceptance basis could not be resolved") and crashing the
+     * drive here would replace that reason with a stack trace.
+     */
+    let branchTypeMemo: ReturnType<typeof deriveBranchType> | undefined;
+    const branchTypeForRun = (): ReturnType<typeof deriveBranchType> => {
+      if (branchTypeMemo !== undefined) return branchTypeMemo;
+      const requirements = ((): readonly Requirement[] => {
+        try {
+          return resolveRequirementsStrict(
+            deps.requirements,
+            changeSetRequirementIds(deps.workUnits, changeSet.id),
+            changeSet.id,
+          );
+        } catch {
+          return [];
+        }
+      })();
+      branchTypeMemo = deriveBranchType(requirements, orderedUnits);
+      return branchTypeMemo;
+    };
+
+    /**
+     * Every unit's collected work, as it happens — the drive's half of
+     * `DrivenRun.preCollectedByUnitId`. Resolved out of the per-RUN map so a
+     * re-drive sees what earlier drives of the same run collected.
+     */
+    const preCollectedByUnitId = ((): Map<string, CollectCandidateResult> => {
+      const existing = preCollectedByRun.get(runId);
+      if (existing !== undefined) return existing;
+      const created = new Map<string, CollectCandidateResult>();
+      preCollectedByRun.set(runId, created);
+      return created;
+    })();
+
+    /**
+     * The base ONE unit is dispatched against: its predecessors' collected
+     * work, folded onto the run's frozen base (owner ruling 2026-09-06).
+     *
+     * ⚠️ MEMOISED AS A PROMISE, not as a value. `runOneAttempt` resolves
+     * `createAdapter` and `buildPacket` with `Promise.all`, so two callers ask
+     * for the same unit's base concurrently — and for a unit with two or more
+     * predecessors the resolution BUILDS A COMMIT. Memoising the value would
+     * let both run, and the packet would then declare a different base object
+     * than the worktree was actually cut from.
+     *
+     * A predecessor that is not in `preCollectedByUnitId` contributes nothing:
+     * either it committed nothing (`nothing-to-commit`) or its collection was
+     * refused, and the pipeline reports the refusal with its own reason.
+     */
+    /**
+     * The chained bases this RUN has already resolved, surviving its re-drives.
+     *
+     * ⚠️ RE-RESOLVING IS NOT IDEMPOTENT for a unit with two or more
+     * predecessors: the fold BUILDS a commit, and a second fold of the same
+     * trees yields a different object id (the timestamp moves). A unit resumed
+     * on a later drive would then be collected against a base its worktree was
+     * never cut at, and `commitWorktreeCandidate`'s clean arm would report the
+     * PREDECESSORS' fold commit as that unit's candidate.
+     */
+    const chainedBases = unitBases.chainedBasesFor(runId);
+
+    const baseByUnitId = new Map<string, Promise<string>>();
+    const baseFor = (workUnit: WorkUnit): Promise<string> => {
+      const existing = baseByUnitId.get(workUnit.id);
+      if (existing !== undefined) return existing;
+      const resolving = (async (): Promise<string> => {
+        const alreadyResolved = chainedBases.get(workUnit.id);
+        if (alreadyResolved !== undefined) return alreadyResolved;
+        /**
+         * ⚠️ AN UNKNOWN PREDECESSOR REFUSES, IT DOES NOT FALL BACK. Readiness
+         * only offers this unit once every id in `dependsOn` is `succeeded`, so
+         * a missing entry here means this daemon cannot say what that unit
+         * produced — a re-drive after a restart, or a worktree it no longer
+         * retains. Cutting from the frozen base then would hand the unit a tree
+         * its plan says already holds that work, and it would fail its own
+         * tests for a reason no operator could read off any verdict.
+         */
+        const unknown = workUnit.dependsOn.filter(
+          (dependencyId) => !preCollectedByUnitId.has(dependencyId),
+        );
+        if (unknown.length > 0) {
+          throw new Error(
+            `run dispatcher: work unit "${workUnit.id}" depends on ${String(unknown.length)} ` +
+              `unit(s) whose collected work this daemon no longer holds (${unknown.join(", ")}). ` +
+              `Cancel the run and dispatch the change set again.`,
+          );
+        }
+        /**
+         * ⚠️ EVERY PREDECESSOR IS ACCOUNTED FOR, and a `collected`-only filter
+         * is what made this wrong — measured in production, run `70059608`
+         * (2026-09-06).
+         *
+         * `A` succeeded, its collection was REFUSED (the commit renderer
+         * blocked an over-long subject), and `B` was cut from the run's FROZEN
+         * base: the `unknown` check above passed because `preCollectedByUnitId`
+         * HAS a `blocked` entry, the filter then dropped it, and an empty list
+         * read as "no dependencies". Any collection failure became a wrong base
+         * instead of a refusal, silently.
+         *
+         * The three outcomes are three different facts:
+         *   `collected`          — chain onto its candidate.
+         *   `nothing-to-commit`  — its tree IS its own base, so chain onto THAT
+         *                          (the freeze only when it had no base of its
+         *                          own; contributing nothing then is exact,
+         *                          because the freeze is the fold's identity).
+         *   `blocked`            — its work exists and is UNCOMMITTED. There is
+         *                          no object id that stands for it, so refuse.
+         */
+        const predecessorObjectIds: string[] = [];
+        for (const unit of orderedUnits) {
+          if (!workUnit.dependsOn.includes(unit.id)) continue;
+          const collected = preCollectedByUnitId.get(unit.id);
+          /* c8 ignore next -- the `unknown` refusal above already rejected an absent entry */
+          if (collected === undefined) continue;
+          if (collected.status === "collected") {
+            predecessorObjectIds.push(collected.objectId);
+            continue;
+          }
+          if (collected.status === "nothing-to-commit") {
+            const ownBase = chainedBases.get(unit.id);
+            if (ownBase !== undefined) predecessorObjectIds.push(ownBase);
+            continue;
+          }
+          throw new Error(
+            `run dispatcher: work unit "${workUnit.id}" cannot be based on its predecessor ` +
+              `"${unit.id}", whose work could not be collected: ${collected.reason}`,
+          );
+        }
+        // A `nothing-to-commit` unit contributes the base it SHARES with a
+        // sibling, so the same id can arrive twice; folding it onto itself
+        // would build a commit for a tree already named.
+        const predecessors = [...new Set(predecessorObjectIds)];
+        if (predecessors.length === 0) return baseObjectId;
+        const chained = await git.resolveChainedBase({
+          workUnit,
+          changeSet,
+          branchType: branchTypeForRun(),
+          frozenBaseObjectId: baseObjectId,
+          predecessorCandidateObjectIds: predecessors,
+        });
+        if (chained.status !== "resolved") {
+          /**
+           * REFUSES THE DISPATCH rather than falling back to the frozen base.
+           * A unit dispatched against a base its plan says already contains its
+           * dependencies' work would fail its own tests for a reason no
+           * operator could read off the verdict.
+           *
+           * ⚠️ THE TYPED RESOLUTION UNITS ARE JOURNALED FIRST, and the paths
+           * ride the message. `preflightMerge` produces a `WorkUnit` per
+           * conflicting path precisely so an operator can see WHICH file to
+           * fix; a count would send them to read a diff they have no id for.
+           * Same entry shape as `runPostCompletionPipeline`'s own
+           * `integration_conflict`, because it is the same fact about the same
+           * change set, reached one stage earlier — ids, roles and repository
+           * paths only, no worker-authored text.
+           */
+          if (chained.status === "conflict") {
+            await deps.journal.appendEntry({
+              type: "adjudication_decision",
+              runId,
+              changeSetId: changeSet.id,
+              payload: {
+                decision: "integration_conflict",
+                subjectId: changeSet.id,
+                rationale: JSON.stringify({
+                  workUnitId: workUnit.id,
+                  resolutionWorkUnits: chained.resolutionUnits.map((unit) => ({
+                    id: unit.id,
+                    role: unit.role,
+                    ownedPaths: [...unit.ownedPaths],
+                  })),
+                }),
+              },
+            });
+          }
+          throw new Error(
+            `run dispatcher: work unit "${workUnit.id}" could not be based on its ` +
+              `${String(predecessors.length)} predecessor(s): ${
+                chained.status === "conflict"
+                  ? `their work conflicts in ${chained.resolutionUnits
+                      .flatMap((unit) => unit.ownedPaths)
+                      .join(", ")}, and ${String(chained.resolutionUnits.length)} resolution ` +
+                    `work unit(s) were journaled`
+                  : chained.reason
+              }`,
+          );
+        }
+        chainedBases.set(workUnit.id, chained.objectId);
+        return chained.objectId;
+      })();
+      baseByUnitId.set(workUnit.id, resolving);
+      return resolving;
+    };
 
     // Compiled once: the profile is a pure function of the envelope, and
     // every worker in this run runs under the same authorization.
@@ -846,8 +1098,35 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       cacheRoot: `${resolveXdgCacheHome(xdgEnv)}/${CRABGIC_DIR_NAME}`,
     });
 
+    /**
+     * Phase 07's rename-aware collision verdicts, which is how two units that
+     * own the same path are kept out of the same round.
+     *
+     * ⚠️ NOT THE DAG'S JOB, and `dependsOn` does not stand in for it. Two
+     * independent units may legitimately own an overlapping path (the run
+     * whose four units all owned `scripts/check-stale-dist.test.mjs` is the
+     * shape this exists for), and nothing in the graph orders them. Dispatched
+     * together they each get a worktree cut from the same base, each rewrites
+     * the shared file, and the second candidate conflicts at integration — a
+     * run blocked on work that was never in conflict, only mis-scheduled.
+     *
+     * ⚠️ MEASURED INERT BEFORE THIS: the composition root passed no verdicts,
+     * so `selectDispatchSet` saw an empty list and the round journaled
+     * "independence proven by zero pairwise overlap collisions among them" for
+     * units that overlapped completely — a false claim in the audit trail, not
+     * merely a missing check. Every scheduler test that pins the mechanism
+     * passed throughout, because they all supply the verdicts themselves.
+     *
+     * `ownedPaths` is the only write set this daemon has: a unit declares no
+     * renames ahead of its attempt, and the non-Git resource registry is
+     * caller-supplied config this composition root is not given.
+     */
+    const overlapVerdicts = analyzeOverlap(
+      workUnits.map((unit) => ({ unitId: unit.id, paths: [...unit.ownedPaths] })),
+    );
+
     const result = await driveRun(
-      { runId, changeSetId: changeSet.id, workUnits },
+      { runId, changeSetId: changeSet.id, workUnits, overlapVerdicts },
       {
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,
@@ -922,7 +1201,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             ctx.workUnit.requirementIds,
             ctx.workUnit.id,
           );
-          return Promise.resolve(
+          return (async () =>
             buildTaskPacket({
               id: randomUUID(),
               workUnitId: ctx.workUnit.id,
@@ -947,13 +1226,12 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
                 permittedInterfaces: [...ctx.workUnit.ownedPaths],
               },
               objective: ctx.workUnit.title,
-              baseObjectId,
+              baseObjectId: await baseFor(ctx.workUnit),
               ownedPaths: [...ctx.workUnit.ownedPaths],
               resourceLimits: { maxTurns: envelope.maxTurnsPerAttempt },
               resultSchema: WORKER_RESULT_SCHEMA,
               envelope,
-            }).packet,
-          );
+            }).packet)();
         },
         /**
          * The PRE-DISPATCH TDD BASELINE — owner decision 2026-08-18, "harness
@@ -1001,9 +1279,10 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
           });
         },
         createAdapter: async (ctx) => {
+          const unitBaseObjectId = await baseFor(ctx.workUnit);
           const worktreePath =
             options.createAttemptWorktree !== undefined
-              ? await options.createAttemptWorktree(ctx, baseObjectId)
+              ? await options.createAttemptWorktree(ctx, unitBaseObjectId)
               : await (async (): Promise<string> => {
                   const created = await createWorktree(plumbing, {
                     repoDir: controlDir,
@@ -1011,7 +1290,7 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
                     runId,
                     changeSetId: changeSet.id,
                     taskId: ctx.workUnit.id,
-                    baseObjectId,
+                    baseObjectId: unitBaseObjectId,
                     serviceEmail,
                   });
                   // `git worktree add` leaves no `node_modules`, and
@@ -1095,12 +1374,51 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
             runId,
           });
         },
+        /**
+         * ⚠️ COLLECTED HERE, NOT IN THE PIPELINE — owner ruling 2026-09-06,
+         * "chain the base". A successor is ready the moment this unit reads
+         * `succeeded`, and it is cut from what this unit produced, so the work
+         * has to become an object id before the driver's next round.
+         *
+         * A worktree this dispatcher no longer retains collects NOTHING and is
+         * not recorded: the pipeline's own "succeeded but its attempt worktree
+         * is not retained" refusal is the one that should speak, and it names
+         * the remedy. Recording a `blocked` here instead would replace that
+         * sentence with a vaguer one.
+         */
+        onUnitSucceeded: async (ctx): Promise<void> => {
+          const retained = retainedWorkers.get(ctx.workUnit.id);
+          if (retained === undefined) return;
+          preCollectedByUnitId.set(
+            ctx.workUnit.id,
+            await git.collectCandidate({
+              workUnit: ctx.workUnit,
+              changeSet,
+              branchType: branchTypeForRun(),
+              worktreePath: retained.worktreePath,
+              /**
+               * The base THIS unit was cut from, so `commitWorktreeCandidate`
+               * can still tell an untouched worktree apart from one whose work
+               * is already committed — a distinction it makes by comparing the
+               * worktree tip against this very id.
+               */
+              baseObjectId: await baseFor(ctx.workUnit),
+            }),
+          );
+        },
       },
     );
     // `baseObjectId` and `controlDir` are resolved HERE and nowhere else, so the
     // post-completion pipeline integrates against the same frozen base every
     // attempt was cut from rather than re-deriving it.
-    return { result, baseObjectId, controlDir };
+    return {
+      result,
+      baseObjectId,
+      controlDir,
+      preCollectedByUnitId,
+      chainedBaseByUnitId: chainedBases,
+      git,
+    };
   }
 
   /**
@@ -1220,6 +1538,8 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         baseObjectId: driven.baseObjectId,
         statusById: driven.result.statusById,
         worktreePathByUnitId,
+        preCollectedByUnitId: driven.preCollectedByUnitId,
+        chainedBaseByUnitId: driven.chainedBaseByUnitId,
       },
       {
         journal: deps.journal,
@@ -1228,15 +1548,9 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
         workUnitRegistry: deps.workUnits,
         // NOT injectable — see `RealRunDispatcherOptions.postCompletionGitEffects`.
         registry: gateRegistry,
-        git:
-          options.postCompletionGitEffects ??
-          createRealPostCompletionGitEffects({
-            plumbing,
-            controlDir: driven.controlDir,
-            projectDir,
-            serviceEmail,
-            journal: deps.journal,
-          }),
+        // The very instance the drive collected through, so "the pipeline
+        // integrates what the drive collected" is wiring rather than luck.
+        git: driven.git,
         ...(options.onPostCompletionStep !== undefined
           ? { onStep: options.onPostCompletionStep }
           : {}),

@@ -1,6 +1,7 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { buildAuthorizationEnvelope } from "@crabgic/testkit";
+import { normalizePathPrefix } from "@crabgic/contracts";
 import { buildTaskPacket } from "./task-packet-builder.js";
 import { PacketEnvelopeViolationError } from "./errors.js";
 
@@ -33,8 +34,24 @@ describe("buildTaskPacket — property: packet is never constructed wider than i
         fc.array(pathArb(), { minLength: 0, maxLength: 5 }),
         (envelopePaths, requestedPaths) => {
           const env = buildAuthorizationEnvelope({ ownedPaths: [...new Set(envelopePaths)] });
-          const envelopeSet = new Set(env.ownedPaths);
-          const requestIsSubset = requestedPaths.every((p) => envelopeSet.has(p));
+          // The oracle is written out HERE, independently, and never by
+          // calling the predicate under test. Until 2026-09-05 it read
+          // `new Set(env.ownedPaths).has(p)` — byte-identical to the
+          // implementation's own line — so it asserted whatever the builder
+          // did, and pinned the defect that killed run `aff03e3a` as correct
+          // behaviour (counterexample: envelope `["lib"]`, requested
+          // `["lib/packages"]`). A tautological oracle is the vacuity pattern
+          // `docs/verification-playbook.md` names; this one is a statement.
+          //
+          // Plain string comparison is SOUND here only because `pathArb()`
+          // draws from a fixed pool of bare segments: no `.`, `..`, `~`,
+          // leading `/`, glob metacharacter or empty segment is generable, so
+          // every path it produces is already its own normalized form. The
+          // hostile spellings normalization exists for are fuzzed by the
+          // fail-closed property below instead.
+          const requestIsSubset = requestedPaths.every((p) =>
+            env.ownedPaths.some((granted) => p === granted || p.startsWith(`${granted}/`)),
+          );
 
           const attempt = (): ReturnType<typeof buildTaskPacket> =>
             buildTaskPacket({
@@ -65,8 +82,13 @@ describe("buildTaskPacket — property: packet is never constructed wider than i
 
           if (requestIsSubset) {
             const { packet } = attempt();
-            // The built packet's ownedPaths is provably ⊆ the envelope's.
-            expect(packet.ownedPaths.every((p) => envelopeSet.has(p))).toBe(true);
+            // The built packet's ownedPaths are provably at or below the
+            // envelope's — never merely members of it.
+            expect(
+              packet.ownedPaths.every((p) =>
+                env.ownedPaths.some((granted) => p === granted || p.startsWith(`${granted}/`)),
+              ),
+            ).toBe(true);
           } else {
             expect(attempt).toThrow(PacketEnvelopeViolationError);
           }
@@ -126,6 +148,67 @@ describe("buildTaskPacket — property: packet is never constructed wider than i
         },
       ),
       { numRuns: 2000 },
+    );
+  });
+
+  /**
+   * FAIL CLOSED on a spelling that cannot name a worktree path.
+   *
+   * The relaxation from membership to containment is only safe if the
+   * comparison still refuses everything `normalizePathPrefix` refuses. This
+   * fuzzes the escapes directly — `..` traversal, absolute, `~`-anchored,
+   * glob — under an envelope that grants the very parent the escape is
+   * spelled from, which is the strongest form of the trap: a raw
+   * `startsWith` test, or a normalizer that resolved `..`, would admit them.
+   *
+   * The generated path is asserted UNNORMALIZABLE first, so a future change
+   * to the pool cannot quietly turn this into a test of nothing.
+   */
+  it("refuses an owned path that cannot be normalized, even under a granted parent", () => {
+    const escapeArb = fc.oneof(
+      fc.constantFrom("..", "../..", "../../etc").map((up) => `packages/example/${up}/secrets`),
+      fc.constantFrom("/etc/shadow", "/packages/example/src"),
+      fc.constantFrom("~", "~/.ssh/id_rsa", "~root/.ssh"),
+      fc.constantFrom("*", "**", "?", "[a-z]", "{a,b}").map((glob) => `packages/example/${glob}`),
+    );
+
+    fc.assert(
+      fc.property(escapeArb, (escape) => {
+        expect(normalizePathPrefix(escape)).toBeUndefined();
+
+        const attempt = (): ReturnType<typeof buildTaskPacket> =>
+          buildTaskPacket({
+            id: "11111111-1111-4111-8111-111111111111",
+            workUnitId: "22222222-2222-4222-8222-222222222222",
+            requirementIds: [],
+            spec: {
+              schemaVersion: 1,
+              id: "aaaaaaaa-0000-4000-8000-00000000000f",
+              taskId: "fixture-task",
+              requirements: [
+                {
+                  requirementId: "fixture-requirement",
+                  acceptanceCriteria: ["Objective observably met."],
+                },
+              ],
+              doneCriteria: ["A named test demonstrates it."],
+              testsFirst: true,
+              permittedInterfaces: [],
+            },
+            objective: "Implement the thing.",
+            baseObjectId: BASE_OBJECT_ID,
+            ownedPaths: [escape],
+            resourceLimits: { maxTurns: 10 },
+            resultSchema: {},
+            // Grants the parent the escape is spelled from, and the root.
+            envelope: buildAuthorizationEnvelope({
+              ownedPaths: ["packages/example", "packages", "etc"],
+            }),
+          });
+
+        expect(attempt).toThrow(PacketEnvelopeViolationError);
+      }),
+      { numRuns: 500 },
     );
   });
 });

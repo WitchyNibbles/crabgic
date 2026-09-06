@@ -126,6 +126,26 @@ export interface PreflightMergeOptions {
   readonly changeSetId: string;
   /** Role stamped onto every generated resolution `WorkUnit`; default `"merge-conflict-resolution"`. */
   readonly conflictRole?: string;
+  /**
+   * The three-way merge base, stated rather than computed.
+   *
+   * ⚠️ REQUIRED ONCE CANDIDATES DESCEND FROM EACH OTHER, and getting it wrong
+   * is silent. `git merge-tree` otherwise derives the base from the two commits'
+   * ancestry — and the integration ref is built from SINGLE-PARENT commits
+   * (`buildIntegrationCommit`), so no candidate is ever an ancestor of the tip
+   * and the derived base is always the run's frozen base. When a candidate was
+   * cut from a PREDECESSOR's candidate (owner ruling 2026-09-06, "chain the
+   * base"), that base is wrong in both directions: a file the predecessor
+   * created reads as added on both sides (a false add/add conflict that blocks
+   * the run), and a change the successor made BACK to the frozen base's content
+   * reads as no change at all (so the tip's version wins and the successor's
+   * work is silently dropped into a published branch). Both measured
+   * 2026-09-06.
+   *
+   * Omitted keeps git's own derivation, which is correct exactly when both
+   * sides descend from one shared commit and nothing else.
+   */
+  readonly mergeBaseObjectId?: string;
 }
 
 export type PreflightResult =
@@ -183,10 +203,18 @@ export async function preflightMerge(
 ): Promise<PreflightResult> {
   assertSafeRefPositional("candidateRef", options.candidateRef);
   assertObjectId("integrationTipObjectId", options.integrationTipObjectId);
+  if (options.mergeBaseObjectId !== undefined) {
+    assertObjectId("mergeBaseObjectId", options.mergeBaseObjectId);
+  }
 
   const args = [
     "merge-tree",
     "--write-tree",
+    // Before the terminator: it is an OPTION, and everything after
+    // `--end-of-options` is a revision by construction.
+    ...(options.mergeBaseObjectId !== undefined
+      ? [`--merge-base=${options.mergeBaseObjectId}`]
+      : []),
     OPTION_TERMINATOR,
     options.integrationTipObjectId,
     options.candidateRef,

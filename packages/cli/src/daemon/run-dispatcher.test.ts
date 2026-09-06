@@ -12,7 +12,7 @@
  * Git plumbing and the engine adapter are injected, so nothing here touches
  * a real repository, spawns an engine, or reaches the network.
  */
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -54,7 +54,10 @@ import {
   buildWorkUnit,
   FakeEngineAdapter,
 } from "@crabgic/testkit";
-import { createFakePostCompletionGitEffects } from "./test-support/fake-post-completion-git-effects.js";
+import {
+  createFakePostCompletionGitEffects,
+  fakeObjectId,
+} from "./test-support/fake-post-completion-git-effects.js";
 import { createRealRunDispatcher } from "./run-dispatcher.js";
 
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
@@ -753,6 +756,822 @@ describe("createRealRunDispatcher — dispatch", () => {
     await vi.waitFor(() => {
       expect(deps.runs.get(result.runId!)?.runState).toBe("blocked");
     });
+  });
+
+  /**
+   * ⚠️ ONLY THE EDGE CHAINS, AND THE ROUND BOUNDARY IS WHERE THAT BREAKS.
+   * `DEFAULT_CONCURRENCY_CAP` is 4, so a fifth ready unit is dispatched in the
+   * SECOND round — after four others have already collected. Replacing
+   * `baseFor`'s predecessor selector with "everything collected so far" is
+   * invisible to every other test, and hands that independent unit four other
+   * units' commits as its base: its worker, its gates and its candidate commit
+   * would all see work it does not own.
+   *
+   * Asserted on the value `createAttemptWorktree` is handed, which is the id
+   * `git worktree add` would actually be given.
+   */
+  it("cuts an independent unit from the frozen base even after others have collected", async () => {
+    const FROZEN = "a".repeat(40);
+    const ids = [
+      UNIT_ID,
+      "66666666-6666-4666-8666-666666666666",
+      "77777777-7777-4777-8777-777777777777",
+      "88888888-8888-4888-8888-888888888888",
+      "99999999-9999-4999-8999-999999999999",
+    ];
+    const basesGiven = new Map<string, string>();
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: ids.map((id) =>
+        buildWorkUnit({
+          id,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+      ),
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // Five units, more than the cap, so at least one was dispatched in a later
+    // round — and every one of them was still cut from the run's one freeze.
+    expect(basesGiven.size).toBe(ids.length);
+    expect([...new Set(basesGiven.values())]).toEqual([FROZEN]);
+  });
+
+  /**
+   * ⚠️ THE PRE-DISPATCH RED BASELINE IS RECORDED AGAINST THE UNIT'S OWN BASE,
+   * and this is the seam where "chain the base" could break the TDD gate
+   * outright rather than merely mis-measure it.
+   *
+   * `hasRedBaseline`'s `RedBaselineScope.baseObjectId` is the STRUCTURAL
+   * DISCRIMINATOR that tells a red baseline apart from the gate's own
+   * non-passing verdict, and the gate asks `attempts.baseObjectIdFor` — which
+   * answers the CHAINED base. A packet still carrying the run's freeze would
+   * journal the red half against an id the gate never asks about: the record
+   * exists, the gate cannot see it, and every chained unit fails closed on
+   * "no red baseline" for work that was properly red.
+   *
+   * WHAT THIS ALSO SETTLES, and it is a change in behaviour worth naming: before
+   * chaining, a successor's baseline was measured in a tree that did NOT hold
+   * its predecessors' work, so a suite red for `ERR_MODULE_NOT_FOUND` on a
+   * module the predecessor was to create was journaled as this unit's red
+   * evidence. That red was fabricated. Measured against the chained base it is
+   * the unit's own tests that have to fail, which is what the protocol claims.
+   */
+  it("journals the pre-dispatch red baseline against the CHAINED base, not the freeze", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const RED_REQ = "aaaaaaaa-4444-4444-8444-444444444444";
+    // A real directory with a real failing `npm run test` -- the red half has
+    // to be MEASURED, and `captureTddBaseline` records nothing for a command
+    // that never ran.
+    const redTree = join(dir, "red-tree");
+    await mkdir(redTree, { recursive: true });
+    await writeFile(
+      join(redTree, "package.json"),
+      JSON.stringify({ name: "red-tree", private: true, scripts: { test: "exit 1" } }),
+      "utf8",
+    );
+
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      requirements: [buildRequirement({ id: RED_REQ })],
+      envelope: buildAuthorizationEnvelope({
+        id: ENVELOPE_ID,
+        changeSetId: CHANGE_SET_ID,
+        commands: ["npm run test"],
+      }),
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+          requirementIds: [RED_REQ],
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      // Widened in step with the envelope above, so the containment check
+      // stays load-bearing rather than being bypassed for this case.
+      loadPolicy: () => ({
+        status: "loaded" as const,
+        policy: EnvelopePolicySchema.parse({
+          ...FIXTURE_POLICY,
+          allowedCommands: ["npm run test"],
+        }),
+        digest: "sha256:fixture-with-test-command",
+      }),
+      createAttemptWorktree: () => Promise.resolve(redTree),
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    const redBases: string[] = [];
+    for await (const entry of deps.journal.queryEntries({ type: "evidence_pointer" })) {
+      const record = entry.payload as { requirementId?: string; objectId?: string };
+      if (record.requirementId === RED_REQ && record.objectId !== undefined) {
+        redBases.push(record.objectId);
+      }
+    }
+    expect(redBases).toContain(fakeObjectId(`candidate:${UNIT_ID}`));
+    expect(redBases).not.toContain("a".repeat(40));
+  });
+
+  /**
+   * ⚠️ PREDECESSORS ARE FOLDED IN THE CHANGE SET'S INTEGRATION ORDER, and with
+   * two of them the order is observable: `resolveChainedBase` BUILDS a commit
+   * per fold step, so the same two trees folded the other way round produce a
+   * different object id — and then the unit's worktree, its gates and its
+   * candidate commit are all against a base no other stage agrees with.
+   *
+   * The declared order here is the REVERSE of the id sort `integrationOrderFor`
+   * falls back to, so a fold that ignored the change set would be caught.
+   */
+  it("folds two predecessors into a chained base in the change set's integration order", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const UNIT_C = "77777777-7777-4777-8777-777777777777";
+    const basesGiven = new Map<string, string>();
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      changeSet: buildChangeSet({
+        id: CHANGE_SET_ID,
+        authorizationEnvelopeId: ENVELOPE_ID,
+        state: "ready",
+        integrationOrder: [UNIT_B, UNIT_ID],
+      }),
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_C,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID, UNIT_B],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // `B` first, then `A` -- the declared order, not the id sort.
+    expect(basesGiven.get(UNIT_C)).toBe(
+      fakeObjectId(
+        `${fakeObjectId(`candidate:${UNIT_B}`)}+${fakeObjectId(`candidate:${UNIT_ID}`)}`,
+      ),
+    );
+  });
+
+  /**
+   * ⚠️ TWO UNITS THAT OWN THE SAME PATH MUST NOT RUN IN THE SAME ROUND, and
+   * `dependsOn` is not what stops them: independent units with overlapping
+   * `ownedPaths` are a supported plan shape (phase 07 serializes them through
+   * `analyzeOverlap`'s verdicts) and the DAG has no edge to order them by.
+   *
+   * Dispatched together they each get a worktree cut from the same base, each
+   * rewrites the shared file, and the second candidate conflicts at integration
+   * — a run blocked on work that was never in conflict, only mis-scheduled.
+   *
+   * `driveRun` takes the verdicts and `selectDispatchSet` honours them; until
+   * this existed the composition root passed NONE, so the whole mechanism was
+   * inert in production while every scheduler test that pins it passed.
+   */
+  it("never dispatches two units that own the same path in the same round", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    let inFlight = 0;
+    let peak = 0;
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [UNIT_ID, UNIT_B].map((id) =>
+        buildWorkUnit({
+          id,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+          // The SAME owned path, and no edge between them.
+          ownedPaths: ["packages/example/src/shared.ts"],
+        }),
+      ),
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: async () => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        inFlight -= 1;
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    // Both still ran -- SERIALIZED, not dropped.
+    const succeeded = new Set<string>();
+    for await (const entry of deps.journal.queryEntries({ type: "work_unit_transition" })) {
+      const payload = entry.payload as { status?: string };
+      if (payload.status === "succeeded" && entry.workUnitId !== undefined) {
+        succeeded.add(entry.workUnitId);
+      }
+    }
+    expect([...succeeded].sort()).toEqual([UNIT_ID, UNIT_B].sort());
+    expect(peak).toBe(1);
+  });
+
+  /**
+   * ⚠️ THE BRANCH-TYPE DERIVATION MUST NOT CRASH THE DRIVE. Resolving this
+   * change set's requirements is STRICT — a declared id with no record throws —
+   * and `resolveChainedBase` needs a branch type to render its commit message.
+   * Letting that throw escape would replace the run's own refusal ("the run's
+   * acceptance basis could not be resolved") with a stack trace, at the one
+   * moment an operator most needs the sentence.
+   *
+   * `B` is reached at all only because the catch returns an empty requirement
+   * set; without it the drive dies before any worktree is cut for `B`.
+   */
+  it("derives a branch type for the chained base even when a requirement id resolves to nothing", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const MISSING_REQ = "aaaaaaaa-3333-4333-8333-333333333333";
+    const reached: string[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      // No `requirements` seeded: `B`'s declared id resolves to no record.
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+          requirementIds: [MISSING_REQ],
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (ctx: { readonly workUnit: { readonly id: string } }) => {
+        reached.push(ctx.workUnit.id);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    expect(reached).toContain(UNIT_B);
+  });
+
+  /**
+   * ⚠️ COLLECTION IS TOLD THE UNIT'S OWN BASE, NOT THE RUN'S FREEZE.
+   * `commitWorktreeCandidate` tells "the worker changed nothing" apart from
+   * "the worker committed its own work" by comparing the worktree tip against
+   * exactly this id. Hand it the freeze for a CHAINED unit and a unit that
+   * produced nothing reports its PREDECESSOR's commit as its own candidate —
+   * collected, gated, integrated and published under the wrong unit's name.
+   *
+   * Asserted on the value the git effects are handed, per unit.
+   */
+  it("collects a chained unit against its own base, not the run's freeze", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const collectBases = new Map<string, string>();
+    const inner = createFakePostCompletionGitEffects();
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      postCompletionGitEffects: {
+        ...inner,
+        collectCandidate: (input: { workUnit: { id: string }; baseObjectId: string }) => {
+          collectBases.set(input.workUnit.id, input.baseObjectId);
+          return inner.collectCandidate(input as never);
+        },
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    expect(collectBases.get(UNIT_ID)).toBe("a".repeat(40));
+    expect(collectBases.get(UNIT_B)).toBe(fakeObjectId(`candidate:${UNIT_ID}`));
+  });
+
+  /**
+   * ⚠️ A CHAINED BASE THAT CANNOT BE BUILT REFUSES THE DISPATCH — owner ruling
+   * 2026-09-06, "chain the base". `B` depends on `A`, so its worktree is cut
+   * from what `A` collected; when that cannot be resolved, dispatching `B`
+   * against the frozen base instead would hand it a tree its plan says already
+   * holds `A`'s work, and `B` would then fail its own tests for a reason no
+   * operator could read off any verdict.
+   *
+   * The refusal names the unit and the cause, and the run settles `failed`
+   * rather than sitting `running` forever.
+   */
+  /**
+   * ⚠️ MEASURED IN PRODUCTION, run `70059608` (2026-09-06), and this is the
+   * more serious half of that run's two defects.
+   *
+   * `A` succeeded, its collection was REFUSED (the commit renderer blocked a
+   * 75-char subject), and `B` was then dispatched against the run's FROZEN
+   * base. Its worktree held none of `A`'s work while its plan said it did.
+   *
+   * The "unknown predecessor" refusal did not fire because it asks
+   * `preCollectedByUnitId.has(id)`, and a `blocked` entry answers yes; the
+   * `collected`-only filter then emptied the list, `predecessors.length === 0`,
+   * and the frozen base was returned as though `B` had no dependencies at all.
+   * Any collection failure therefore became a WRONG BASE rather than a refusal.
+   */
+  it("refuses to dispatch a unit whose predecessor could not be collected", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const basesGiven = new Map<string, string>();
+    const errors: unknown[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        collectCandidate: () =>
+          Promise.resolve({
+            status: "blocked" as const,
+            reason: "the communication policy refused the rendered commit subject",
+          }),
+      },
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    expect(message).toContain(UNIT_ID);
+    // The operator needs the CAUSE, not just the fact -- the renderer's own
+    // reason is the sentence that says what to shorten.
+    expect(message).toContain("the communication policy refused");
+    // And the whole point: `B` was never handed the freeze.
+    expect(basesGiven.has(UNIT_B)).toBe(false);
+  });
+
+  /**
+   * ⚠️ AND `nothing-to-commit` IS NOT THE SAME REFUSAL. A unit that genuinely
+   * produced nothing has a tree identical to its OWN base, so a successor
+   * chains onto that base rather than being refused — and rather than silently
+   * dropping back to the run's freeze, which is a different commit whenever the
+   * empty unit was itself chained.
+   *
+   * `A` collects, `B` (on `A`) produces nothing, `C` (on `B`) must be cut from
+   * `A`'s candidate — the base `B` actually had.
+   */
+  it("chains a successor onto an empty predecessor's OWN base, not the freeze", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const UNIT_C = "77777777-7777-4777-8777-777777777777";
+    const basesGiven = new Map<string, string>();
+    const inner = createFakePostCompletionGitEffects();
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_C,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_B],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      createAttemptWorktree: (
+        ctx: { readonly workUnit: { readonly id: string } },
+        baseObjectId: string,
+      ) => {
+        basesGiven.set(ctx.workUnit.id, baseObjectId);
+        return Promise.resolve(join(dir, "worktree"));
+      },
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...inner,
+        collectCandidate: (input: { workUnit: { id: string } }) =>
+          input.workUnit.id === UNIT_B
+            ? Promise.resolve({ status: "nothing-to-commit" as const })
+            : inner.collectCandidate(input as never),
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await dispatcher.whenIdle();
+
+    expect(basesGiven.get(UNIT_ID)).toBe("a".repeat(40));
+    expect(basesGiven.get(UNIT_B)).toBe(fakeObjectId(`candidate:${UNIT_ID}`));
+    // `C` inherits `B`'s base, because `B`'s tree IS that base.
+    expect(basesGiven.get(UNIT_C)).toBe(fakeObjectId(`candidate:${UNIT_ID}`));
+  });
+
+  it("refuses to dispatch a unit whose chained base cannot be resolved, naming the unit", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      // `A` must genuinely succeed, or `B` never becomes ready and the chained
+      // base is never asked for.
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        resolveChainedBase: () =>
+          Promise.resolve({
+            status: "conflict" as const,
+            resolutionUnits: [
+              buildWorkUnit({
+                id: UNIT_B,
+                changeSetId: CHANGE_SET_ID,
+                dependsOn: [],
+                attemptStatus: "pending",
+                ownedPaths: ["src/contested.ts"],
+              }),
+            ],
+          }),
+      },
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    // ⚠️ THE PATH, NOT A COUNT. `preflightMerge` produces one resolution
+    // `WorkUnit` per conflicting path exactly so an operator can see WHICH file
+    // to fix; a count sends them to read a diff they have no id for.
+    expect(message).toContain("src/contested.ts");
+    await vi.waitFor(() => {
+      expect(deps.runs.get(result.runId!)?.runState).toBe("failed");
+    });
+
+    // And the typed units are journaled, in the same shape the post-completion
+    // pipeline uses for the conflict it reaches one stage later.
+    const conflicts: string[] = [];
+    for await (const entry of deps.journal.queryEntries({ type: "adjudication_decision" })) {
+      const payload = entry.payload as { decision?: string; rationale?: string };
+      if (payload.decision === "integration_conflict") conflicts.push(payload.rationale ?? "");
+    }
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toContain("src/contested.ts");
+    expect(conflicts[0]).toContain(UNIT_B);
+  });
+
+  /**
+   * ⚠️ A CHAINED BASE MUST SURVIVE A RE-DRIVE OF THE SAME RUN. Owner ruling
+   * 2026-09-06 makes a dependent unit's worktree cut from its predecessors'
+   * collected work — and the first cut of that held the collected work in a
+   * map built inside `drive()`. A run that parks and is later resumed drives
+   * again, so on that drive every successor of an already-succeeded unit would
+   * have been cut from the run's frozen base instead: the exact behaviour the
+   * ruling ends, reappearing only on a rate-limited account.
+   *
+   * The topology forces the split: `P` parks with a reset in the FUTURE, and
+   * `parkWorkUnit` writes the account-wide pause timer, so the next round of
+   * the FIRST drive stops before `B` — which became ready the moment `A`
+   * succeeded — is ever dispatched.
+   */
+  it("keeps a unit's collected work across drives, so a resumed run still chains", async () => {
+    const PARKING_UNIT = "77777777-7777-4777-8777-777777777777";
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    let clock = 1000;
+    const chainCalls: { readonly unitId: string; readonly predecessors: readonly string[] }[] = [];
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: PARKING_UNIT,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    const dispatcher = newDispatcher(deps, {
+      nowSeconds: () => clock,
+      createAdapter: (ctx: { readonly workUnit: { readonly id: string } }) =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript(
+              ctx.workUnit.id === PARKING_UNIT
+                ? {
+                    failure: {
+                      kind: "limitSignal",
+                      payload: { status: "rejected", resetsAt: 5000, rateLimitType: "five_hour" },
+                    },
+                  }
+                : { structuredOutput: buildWorkerResult({ outcome: "succeeded" }) },
+            ),
+          ),
+        ),
+      postCompletionGitEffects: {
+        ...createFakePostCompletionGitEffects(),
+        resolveChainedBase: (input: {
+          readonly workUnit: { readonly id: string };
+          readonly predecessorCandidateObjectIds: readonly string[];
+          readonly frozenBaseObjectId: string;
+        }) => {
+          chainCalls.push({
+            unitId: input.workUnit.id,
+            predecessors: [...input.predecessorCandidateObjectIds],
+          });
+          return Promise.resolve({
+            status: "resolved" as const,
+            objectId: input.predecessorCandidateObjectIds[0] ?? input.frozenBaseObjectId,
+          });
+        },
+      },
+    });
+
+    const first = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(first.accepted).toBe(true);
+    const runId = first.runId;
+    if (runId === undefined) throw new Error("dispatch accepted without a runId");
+    await dispatcher.whenIdle();
+
+    // The first drive stopped at the account-wide pause: `A` succeeded, and `B`
+    // — ready since that moment — was never dispatched.
+    expect(chainCalls).toEqual([]);
+
+    clock = 9000;
+    expect((await dispatcher.resume(runId)).accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(chainCalls.some((call) => call.unitId === UNIT_B)).toBe(true);
+    });
+
+    // `B` was chained onto `A`'s candidate, which only the FIRST drive
+    // collected. A per-drive map would have offered the second drive nothing.
+    expect(chainCalls.find((call) => call.unitId === UNIT_B)?.predecessors).toEqual([
+      fakeObjectId(`candidate:${UNIT_ID}`),
+    ]);
+  });
+
+  /**
+   * ⚠️ AND WHEN IT GENUINELY CANNOT BE RECOVERED, IT REFUSES. A restarted
+   * daemon holds neither the retained worktrees nor what they were collected
+   * to; readiness still offers a successor whose predecessor the JOURNAL says
+   * succeeded. Cutting it from the frozen base then would hand it a tree its
+   * plan says already holds that work, and it would fail its own tests for a
+   * reason no operator could read off any verdict.
+   *
+   * The fresh dispatcher over the same journal and registries IS the restart.
+   */
+  it("refuses a successor whose predecessor's work a restarted daemon no longer holds", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const SESSION_ID = "99999999-9999-4999-8999-999999999999";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    deps.runs.upsert({
+      runId: RUN_ID,
+      changeSetId: CHANGE_SET_ID,
+      runState: "running",
+      updatedAt: "2026-07-31T00:00:00.000Z",
+    });
+    // The journal says the predecessor succeeded in this run; nothing in this
+    // process holds what it produced.
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "dispatched", RUN_ID);
+    await recordAttempt(deps.journal, UNIT_ID, SESSION_ID, "succeeded", RUN_ID);
+
+    const errors: unknown[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: () =>
+        Promise.resolve(
+          new FakeEngineAdapter(
+            buildFakeEngineScript({
+              structuredOutput: buildWorkerResult({ outcome: "succeeded" }),
+            }),
+          ),
+        ),
+      onDriveError: (_runId: string, err: unknown) => errors.push(err),
+    });
+
+    expect((await dispatcher.resume(RUN_ID)).accepted).toBe(true);
+    await vi.waitFor(() => {
+      expect(errors).toHaveLength(1);
+    });
+    const message = (errors[0] as Error).message;
+    expect(message).toContain(UNIT_B);
+    expect(message).toContain(UNIT_ID);
+    expect(message).toMatch(/no longer holds/i);
+    expect(message).toMatch(/dispatch the change set again/i);
   });
 
   /**

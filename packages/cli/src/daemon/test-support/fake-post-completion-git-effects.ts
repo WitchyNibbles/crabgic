@@ -47,6 +47,21 @@ export function createFakePostCompletionGitEffects(
         objectId: fakeObjectId(`candidate:${input.workUnit.id}`),
       });
     },
+    resolveChainedBase(input) {
+      calls?.push(`chain:${input.workUnit.id}`);
+      // Folds the predecessors in order, so the id depends on ALL of them — a
+      // test asserting a chained base cannot be satisfied by the frozen base
+      // nor by any single predecessor when there is more than one.
+      const chained = input.predecessorCandidateObjectIds.reduce<string | undefined>(
+        (acc, candidateObjectId) =>
+          acc === undefined ? candidateObjectId : fakeObjectId(`${acc}+${candidateObjectId}`),
+        undefined,
+      );
+      return Promise.resolve({
+        status: "resolved",
+        objectId: chained ?? input.frozenBaseObjectId,
+      });
+    },
     beginIntegration(input) {
       calls?.push(`begin:${input.runId}`);
       tip = input.baseObjectId;

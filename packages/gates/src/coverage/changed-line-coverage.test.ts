@@ -183,11 +183,17 @@ describe("the changed-line floor", () => {
 
 describe("isExcludedFromCoverage", () => {
   /**
-   * ⚠️ Found by running this gate against crabgic itself: `vitest.config.ts`
-   * scopes `coverage.include` to `packages/*​/src/**`, so `scripts/*.mjs` is
-   * genuinely absent from every report this repository produces. Without this,
-   * a change set touching a build script would be refused — a false refusal
-   * indistinguishable from the true one.
+   * ⚠️ THE PREMISE THIS WAS WRITTEN ON IS NO LONGER TRUE (corrected 2026-09-05).
+   *
+   * It said `scripts/*.mjs` is "genuinely absent from every report this
+   * repository produces", which held while `coverage.include` reached only each
+   * package's own `src` tree. Those files are now measured rather than
+   * exempted, and this predicate has no production caller at all — wiring it
+   * would reopen a self-exemption, because an excluded path is skipped before
+   * any counter is touched, so a change set touching only excluded paths passes
+   * with nothing measured. What is pinned below is the predicate's own
+   * behaviour, which is still correct; what is not claimed is that anything
+   * uses it.
    */
   it("suppresses the absent-file refusal for a path the project excludes from coverage", () => {
     const withoutExclusion = score(

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -203,4 +204,50 @@ describe("hasRedBaseline — scoped to the base object id", () => {
       "a baseline measured against one base satisfied a different one",
     ).toBe(false);
   }, 60_000);
+});
+
+/**
+ * ⚠️ THE BUILD IS NOT RUN HERE, AND THAT IS THE CORRECTION (2026-09-05).
+ *
+ * An earlier pass added the ordering to this function, on the reasoning that
+ * this is the path `registerTddGate` actually decides on. An adversarial round
+ * measured what that cost and it was worse than the gap: this function receives
+ * a tree that ALREADY carries the candidate's test files, so the build
+ * typechecks those tests against BASE source. A change set adding
+ * `foo.test.ts` for a not-yet-existing `foo.ts` fails it — measured on this
+ * repository's own history, where one added test file flipped `tsc -b` from
+ * exit 0 to exit 2 — and the gate then reported the strongest red signal there
+ * is as a broken tree, refusing exactly the test-first shape it exists to
+ * reward.
+ *
+ * The build belongs to the PRISTINE tree, before the overlay, and
+ * `@crabgic/cli`'s `withRedBaselineTree` runs it there. What is pinned here is
+ * the negative: this function must leave it alone however the envelope is
+ * spelled.
+ */
+describe("captureRedBaselineForChangedTests — the build is the caller's job, not this one's", () => {
+  it("never runs the granted build, even when the envelope grants one", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "crabgic-red-nobuild-"));
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "fixture",
+        private: true,
+        scripts: {
+          build: `node -e "require('fs').writeFileSync('sentinel.txt','ran')"`,
+          test: "exit 1",
+        },
+      }),
+      "utf8",
+    );
+
+    const outcome = await captureRedBaselineForChangedTests({
+      ...baseInput(dir),
+      grantedCommands: ["npm run test", "npm run build"],
+    });
+
+    expect(outcome.kind).toBe("captured");
+    expect(existsSync(join(dir, "sentinel.txt"))).toBe(false);
+    await rm(dir, { recursive: true, force: true });
+  });
 });

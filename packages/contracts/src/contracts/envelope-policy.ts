@@ -297,3 +297,49 @@ export function normalizePathPrefix(prefix: string): string | undefined {
   if (segments.some((segment) => segment === "..")) return undefined;
   return segments.join("/");
 }
+
+/**
+ * THE authority-path containment predicate: is `path` at or below any of
+ * `prefixes`?
+ *
+ * Segment-aware, and ONE-DIRECTIONAL. `src` contains `src` and `src/login`;
+ * it does not contain `srcfoo`, `src-secrets/keys`, or — the direction that
+ * matters here — `src`'s own parent. That last asymmetry is why this is not
+ * `./debt-index.js`'s `touches`: debt is reopened by a write on either side
+ * of the relation, but AUTHORITY only ever flows downward, and a
+ * bidirectional test would read a packet claiming the whole `scripts` tree
+ * as covered by a grant of `scripts/stale-dist`.
+ *
+ * Kept HERE for the reason `isUsablePathPrefix` is (see its comment above):
+ * 02 owns the predicate's specification, and "does this grant cover that
+ * path" must have exactly ONE answer, shared by the standing-policy gate
+ * (`@crabgic/engine-core`'s `isContained`), the TaskPacket builder
+ * (`@crabgic/scheduler`) and the unused-authority report (`@crabgic/cli`).
+ *
+ * WHY IT EXISTS (2026-09-05). Those three callers had three private
+ * matchers, and the TaskPacket builder's was exact string-set membership.
+ * Run `aff03e3a` reached its intake freeze and failed 36ms later with zero
+ * work units attempted: an envelope granting the directory
+ * `scripts/stale-dist` was held not to cover a work unit owning
+ * `scripts/stale-dist/units.mjs`, while the intake's own report — reading
+ * the same pair — counted that grant as used. The written ruling is
+ * interface-ledger Gap 18 part 1: "Containment is segment-aware prefix
+ * containment: `src` contains `src/login`, and does not contain `srcfoo`."
+ *
+ * FAIL CLOSED on BOTH sides. A path or prefix `normalizePathPrefix` cannot
+ * normalize grants nothing and is covered by nothing — an absolute path, a
+ * `~`-anchored one, a `..` traversal or a glob spelling resolves to "not
+ * contained" rather than to a throw or a lenient match.
+ */
+export function isPathAtOrBelow(path: string, prefixes: readonly string[]): boolean {
+  const candidate = normalizePathPrefix(path);
+  if (candidate === undefined) return false;
+
+  return prefixes.some((rawPrefix) => {
+    const prefix = normalizePathPrefix(rawPrefix);
+    if (prefix === undefined) return false;
+    // `startsWith(prefix + "/")` and never `startsWith(prefix)`: a bound any
+    // path can be spelled past is not a bound.
+    return candidate === prefix || candidate.startsWith(`${prefix}/`);
+  });
+}

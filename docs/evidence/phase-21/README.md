@@ -641,7 +641,9 @@ gate-firing evidence by `gateTag` (MINOR-2's fix — both kinds of
    > has no per-push net of its own (`workspaces` is `packages/*`; the root
    > `vitest.config.ts` declares exactly three projects — the `packages/*`
    > directories, `e2e/report` at `vitest.config.ts:71`, and `scripts` at
-   > `vitest.config.ts:84` — none of which is or contains `e2e/matrix`; and the
+   > `vitest.config.ts:85` (was `:84`; corrected 2026-09-05, when `scripts/**/*.mjs`
+   > joined `coverage.include` and shifted the block by one) — none of which is or
+   > contains `e2e/matrix`; and the
    > only workflow naming `e2e/matrix` is `release-e2e.yml`). The enforcement
    > was tested; the gate was not.
    >
