@@ -84,6 +84,42 @@ describe("the commitlint job lints the subject a squash merge will write", () =>
     expect(titleStep.length).toBeGreaterThan(0);
   });
 
+  /**
+   * ⚠️ THE SUBJECT WAS ONLY HALF OF IT, and the other half turned `main` red on
+   * 2026-09-06 (commit `e0053e3`, PR #176): `footer-max-line-length`, from a
+   * BODY line, on a squash whose subject was fine.
+   *
+   * GitHub's squash body is `* <subject>` followed by that commit's own body,
+   * once per squashed commit. `header-max-length` and `footer-max-line-length`
+   * are both 100 in `config-conventional`, so a subject of 99 or 100 characters
+   * — legal on the branch, and linted green by the range step — becomes a 101-
+   * or 102-character line once the `* ` prefix is added. Two of that PR's 53
+   * subjects did exactly that.
+   *
+   * This file's own doc comment already named the body shape ("whose body is
+   * the branch's subjects as a bullet list") while the guard checked the
+   * subject alone. Linting the WHOLE reconstructed message is what closes it.
+   */
+  it("lints the BODY the squash will write, not the subject alone", () => {
+    // The bullet list is the body's shape, and `git log` is the only source of
+    // the subjects it is built from.
+    expect(job, "no step reconstructs the `* <subject>` bullet body").toMatch(/git log[^\n]*\* %s/);
+    // Oldest first: GitHub lists the branch's commits in commit order.
+    expect(job, "the bullet list must be built oldest-first").toMatch(/git log[^\n]*--reverse/);
+    // And it must be the SAME message that reaches commitlint -- a second
+    // invocation over the body alone would lint a message with no header.
+    const squashStep = job.slice(job.indexOf("PR_TITLE"));
+    expect(squashStep, "the reconstructed body must be piped into commitlint").toMatch(
+      /git log[\s\S]*\|\s*npx commitlint/,
+    );
+  });
+
+  it("builds the bullet list from the PR's own commit range", () => {
+    // A range, not `HEAD~n`: the runner's checkout depth is not the PR's size.
+    expect(job).toMatch(/BASE_SHA:\s*\$\{\{\s*github\.event\.pull_request\.base\.sha\s*\}\}/);
+    expect(job).toMatch(/HEAD_SHA:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/);
+  });
+
   it("passes the title through the environment, never interpolated into the shell", () => {
     // A PR title is attacker-controlled text. `run: ... ${{ ...title }}` is
     // substituted before the shell parses the line, so a title containing
