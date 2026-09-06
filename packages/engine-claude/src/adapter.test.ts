@@ -753,3 +753,58 @@ describe("findNearestPackageJson", () => {
     expect(() => findNearestPackageJson(deep)).toThrow(EngineVersionResolutionError);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The prompt the worker actually receives.
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️ THE WORKER WAS GRADED ON CRITERIA IT WAS NEVER SHOWN.
+ *
+ * `TaskPacket.spec` is REQUIRED, and `task-packet-builder.ts` states why in its
+ * own words: "`requirementIds` is a reference the worker cannot resolve — the
+ * registry lives with the supervisor, not in the worktree — so the ids alone
+ * left the party doing the work as the only party without the criteria."
+ *
+ * Measured 2026-09-06: `buildPromptFromTaskPacket` rendered Objective,
+ * Non-goals, Constraints, Relevant interfaces and Owned paths — and not `spec`.
+ * The field had exactly one writer (`@crabgic/scheduler`'s
+ * `task-packet-builder.ts`) and no reader anywhere, so the criteria reached the
+ * packet and stopped there. No test asserted on prompt CONTENT at all, which is
+ * how it survived.
+ */
+describe("ClaudeEngineAdapter — the prompt carries the spec", () => {
+  it("puts the spec's acceptance and done criteria in the prompt the worker receives", async () => {
+    const { sdkQuery, calls } = createScriptedSdkQuery([[initMessage("s", "/fixture/worktree")]]);
+    const adapter = new ClaudeEngineAdapter(buildConfig({ sdkQuery }));
+    const packet = buildPacket({
+      spec: {
+        schemaVersion: 1,
+        id: "aaaaaaaa-0000-4000-8000-00000000000f",
+        taskId: "fixture-task",
+        requirements: [
+          { requirementId: "req-alpha", acceptanceCriteria: ["Refuses an empty batch."] },
+          { requirementId: "req-beta", acceptanceCriteria: ["Names the unit that failed."] },
+        ],
+        doneCriteria: ["A named test demonstrates each criterion."],
+        testsFirst: true,
+        permittedInterfaces: [],
+      },
+    });
+
+    const handle = adapter.spawn(packet, READ_ONLY_PROFILE, allowAdjudicate);
+    await handle.events[Symbol.asyncIterator]().next();
+
+    const prompt = calls[0]?.prompt;
+    expect(typeof prompt).toBe("string");
+    const text = String(prompt);
+    // Verbatim, because a paraphrase is a different criterion.
+    expect(text).toContain("Refuses an empty batch.");
+    expect(text).toContain("Names the unit that failed.");
+    expect(text).toContain("A named test demonstrates each criterion.");
+    // The owning requirement is named, so the worker can say WHICH one it met.
+    expect(text).toContain("req-alpha");
+    // `testsFirst` is a literal `true` on the schema; the worker has to be told.
+    expect(text.toLowerCase()).toContain("tests first");
+  });
+});

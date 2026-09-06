@@ -318,9 +318,57 @@ function bulletList(label: string, items: readonly string[]): string | undefined
   return `${label}:\n${items.map((item) => `- ${item}`).join("\n")}`;
 }
 
+/**
+ * The spec, rendered for the party doing the work.
+ *
+ * `TaskPacketSchema` makes `spec` REQUIRED and states why in its own words:
+ * "`requirementIds` is a reference the worker cannot resolve — the registry
+ * lives with the supervisor, not in the worktree — so the ids alone left the
+ * party doing the work as the only party without the criteria."
+ *
+ * Measured 2026-09-06: the packet carried the spec and this prompt did not.
+ * The field had exactly one writer (`@crabgic/scheduler`'s
+ * `task-packet-builder.ts`) and no reader anywhere, so every worker was graded
+ * on acceptance criteria it had never been shown.
+ *
+ * `permittedInterfaces` is deliberately NOT rendered here: its only production
+ * writer (`run-dispatcher.ts`) sets it to a copy of the work unit's
+ * `ownedPaths`, which this prompt already carries under "Owned paths".
+ */
+function specSections(spec: TaskPacket["spec"]): readonly string[] {
+  const sections: string[] = [];
+
+  // Each criterion is named by its owning requirement, so the worker can say
+  // WHICH one a given test discharges rather than gesturing at the set.
+  const criteria = spec.requirements.flatMap((requirement) =>
+    requirement.acceptanceCriteria.map(
+      (criterion) => `- ${requirement.requirementId}: ${criterion}`,
+    ),
+  );
+  if (criteria.length > 0) {
+    sections.push(`Acceptance criteria (you are graded on exactly these):\n${criteria.join("\n")}`);
+  }
+
+  const done = bulletList("Done criteria", spec.doneCriteria);
+  if (done !== undefined) {
+    sections.push(done);
+  }
+
+  // `testsFirst` is a literal `true` on the schema, so this is unconditional in
+  // practice; the guard keeps the rendering honest if that literal ever widens.
+  if (spec.testsFirst) {
+    sections.push(
+      "Write the tests first: every criterion above needs a test that fails before its implementation exists.",
+    );
+  }
+
+  return sections;
+}
+
 function buildPromptFromTaskPacket(packet: TaskPacket): string {
   const sections = [
     `Objective: ${packet.objective}`,
+    ...specSections(packet.spec),
     bulletList("Non-goals", packet.nonGoals),
     bulletList("Constraints", packet.constraints),
     bulletList("Relevant interfaces", packet.relevantInterfaces),
