@@ -32,6 +32,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSy
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { describeUndeclaredImports } from "./install-smoke/undeclared-imports.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_ROOT = join(REPO_ROOT, "packages", "cli");
@@ -175,10 +176,7 @@ try {
 
   const undeclared = [...emittedImports].filter((pkg) => !declared.has(pkg));
   if (undeclared.length > 0) {
-    fail(
-      `the installed package imports ${undeclared.join(", ")}, which its own package.json does ` +
-        "not declare. Those resolve inside this monorepo and would 404 for a real user.",
-    );
+    fail(describeUndeclaredImports(undeclared));
   }
 
   const binNames = Object.keys(manifest.bin ?? {});
