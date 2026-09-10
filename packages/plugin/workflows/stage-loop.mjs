@@ -35,6 +35,13 @@ const completedStages = Array.isArray(input.completedStages) ? input.completedSt
 const changeSetId = typeof input.changeSetId === "string" ? input.changeSetId : "";
 const artifactRef = typeof input.artifactRef === "string" ? input.artifactRef : "";
 const stageRoundPath = typeof input.stageRoundPath === "string" ? input.stageRoundPath : "";
+// Unique per loop invocation, computed here because a workflow script may
+// import nothing. Two concurrent loops once staged their verdicts at the same
+// scratchpad basename and one submitter read the other's payload (defect
+// `25-stage-loop-runs-share-one-scratchpad.md`). The submit prompt tells the
+// agent not to stage at all; this id is the belt to that brace — anything an
+// agent does write goes under a directory no other loop can name.
+const loopId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 if (changeSetId.length === 0) {
   // Refused rather than defaulted. Every server call below is scoped to a change
@@ -280,6 +287,10 @@ while (round <= budget && !closed) {
       "it noticed and refused. The payload above is the authoritative copy and",
       "needs no intermediate. Defect",
       "`25-stage-loop-runs-share-one-scratchpad.md`.",
+      "If you nevertheless must write ANYTHING to disk, write it ONLY under a",
+      `directory named \`stage-loop/${loopId}/\` inside your scratchpad — that`,
+      "id is unique to this loop invocation, so no concurrent loop can read or",
+      "overwrite it. Never a bare shared basename.",
       "",
       "Return the LAST `review.submit` response, plus how many lenses you",
       "submitted, plus its `findings` array VERBATIM as `openFindings`. Do not",

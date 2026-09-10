@@ -233,6 +233,20 @@ describe("the submit step must not stage verdicts on disk", () => {
   it("says why, so the instruction survives an edit", () => {
     expect(submitPrompt).toMatch(/concurrent runs/);
   });
+
+  /**
+   * The remedy the defect record names: a staging path scoped to the loop
+   * invocation. The prompt is an instruction; the id is the mechanism — two
+   * loops cannot name the same directory. It is computed in the script
+   * because a workflow may import nothing, so it is checked as text: the id
+   * must come from a clock AND a random draw, and the submit prompt must
+   * interpolate it rather than spell a constant.
+   */
+  it("names a per-invocation staging directory the submitter may use, and nothing shared", () => {
+    expect(CODE).toMatch(/const loopId = `\$\{Date\.now\(\)[\s\S]*Math\.random\(\)/);
+    expect(submitPrompt).toMatch(/stage-loop\/\$\{loopId\}\//);
+    expect(submitPrompt).toMatch(/unique to this loop invocation/);
+  });
 });
 
 /**

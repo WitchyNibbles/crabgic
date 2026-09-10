@@ -80,3 +80,24 @@ instruction in a prompt is not a namespace. Any agent that decides to stage inte
 work — for a large verdict set, or to survive a retry — lands on the same un-namespaced
 path, and the collision this record measured recurs with nothing to catch it. The
 convention itself is unchanged.
+
+## Addendum 2026-09-10 — remedied: the staging path is scoped to the loop invocation
+
+The remedy this record named — "scope the staging path by run" — is built, on top of the
+prompt line that already told the submitter not to stage at all. `stage-loop.mjs` now computes
+a `loopId` from a clock and a random draw at the top of every invocation (a workflow script may
+import nothing, so the id is derived inline), and the submit prompt names
+`stage-loop/<loopId>/` as the ONLY directory an agent may write under if it writes anything.
+Two concurrent loops cannot name the same directory, which is the property the colliding runs
+of 2026-08-17 lacked.
+
+**Pinned by** `packages/plugin/src/stage-loop-workflow.test.ts`, under
+`describe("the submit step must not stage verdicts on disk")` —
+`it("names a per-invocation staging directory the submitter may use, and nothing shared")`,
+which checks the id is derived from BOTH `Date.now()` and `Math.random()` and that the prompt
+interpolates it rather than spelling a constant.
+
+**Bound stated.** The id is a prompt-level instruction plus a name no other loop can guess; it is
+not a filesystem lock. An agent that ignores the instruction and writes to a shared basename is
+not prevented by this — it is the same agent that, on 2026-08-17, noticed and refused, and the
+"submit straight from this message" line removes its reason to write at all.
