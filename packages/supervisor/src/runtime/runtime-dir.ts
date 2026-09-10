@@ -19,8 +19,8 @@
  * note below for the residual).
  */
 
-import { chmod, mkdir, stat } from "node:fs/promises";
-import { createServer, type Server, type Socket } from "node:net";
+import { chmod, mkdir, stat, unlink } from "node:fs/promises";
+import { connect, createServer, type Server, type Socket } from "node:net";
 // Sole definition site for both mode constants is `./xdg-supervisor-
 // layout.js` (this package's barrel re-exports them from exactly there,
 // never a second time from this module — avoids a duplicate-export
@@ -76,11 +76,61 @@ export async function createControlSocketServer(
   onConnection: (socket: Socket) => void,
 ): Promise<Server> {
   const server = createServer(onConnection);
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(socketPath, () => resolve());
-  });
+  try {
+    await listenOnce(server, socketPath);
+  } catch (err: unknown) {
+    // A daemon killed without `close()` leaves its socket INODE behind, and
+    // Node's `listen` reports the leftover as `EADDRINUSE` exactly as it
+    // would a live peer. Measured 2026-09-10: `control.sock` four days old,
+    // no supervisord process, and every CLI-spawned daemon dying on this
+    // line — so the project was wedged behind a file nobody answered. The
+    // takeover is bounded three ways: the path must be a socket (a regular
+    // file is never unlinked), a connect probe must be REFUSED (a live
+    // server keeps its file), and the retry happens once.
+    if (!isAddrInUse(err) || !(await isStaleSocket(socketPath))) throw err;
+    await unlink(socketPath);
+    await listenOnce(server, socketPath);
+  }
   await chmod(socketPath, SUPERVISOR_SOCKET_MODE);
   await assertPathMode(socketPath, SUPERVISOR_SOCKET_MODE);
   return server;
+}
+
+function listenOnce(server: Server, socketPath: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, () => resolve());
+  });
+}
+
+function isAddrInUse(err: unknown): boolean {
+  return (
+    typeof err === "object" && err !== null && (err as { code?: unknown }).code === "EADDRINUSE"
+  );
+}
+
+/**
+ * True only for a socket inode nobody answers: `stat` says socket AND a
+ * connect probe is refused. Any other answer — a regular file, a live
+ * server, a probe that fails some other way — is `false`, and the caller
+ * surfaces the original `EADDRINUSE` untouched.
+ */
+async function isStaleSocket(socketPath: string): Promise<boolean> {
+  let st;
+  try {
+    st = await stat(socketPath);
+  } catch {
+    return false;
+  }
+  if (!st.isSocket()) return false;
+  return new Promise<boolean>((resolve) => {
+    const probe = connect(socketPath);
+    probe.once("connect", () => {
+      probe.destroy();
+      resolve(false);
+    });
+    probe.once("error", (probeErr: NodeJS.ErrnoException) => {
+      resolve(probeErr.code === "ECONNREFUSED");
+    });
+  });
 }

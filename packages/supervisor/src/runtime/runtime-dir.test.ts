@@ -95,3 +95,82 @@ describe("createControlSocketServer", () => {
     }
   });
 });
+
+describe("createControlSocketServer — a socket file left behind by a dead daemon", () => {
+  /**
+   * Leaves a socket INODE at `socketPath` with nobody listening behind it —
+   * exactly what a daemon killed without `close()` leaves on disk (measured
+   * 2026-09-10: `control.sock` dated four days earlier, no supervisord
+   * process, every spawn dying `listen EADDRINUSE`). Node unlinks a UDS
+   * path only in `server.close()`, so a child that exits from inside its
+   * own `listen` callback leaves the file.
+   */
+  async function leaveStaleSocket(socketPath: string): Promise<void> {
+    const { execFileSync } = await import("node:child_process");
+    execFileSync(process.execPath, [
+      "-e",
+      "require('node:net').createServer().listen(process.argv[1], () => process.exit(0))",
+      socketPath,
+    ]);
+    const st = await stat(socketPath);
+    expect(st.isSocket()).toBe(true);
+  }
+
+  it("replaces a stale socket nobody answers and serves at the same path", async () => {
+    const dir = join(root, "run");
+    await ensureRuntimeDir(dir);
+    const socketPath = join(dir, "control.sock");
+    await leaveStaleSocket(socketPath);
+
+    const server = await createControlSocketServer(socketPath, (socket) => socket.end());
+    try {
+      const { connect } = await import("node:net");
+      await new Promise<void>((resolve, reject) => {
+        const client = connect(socketPath);
+        client.once("connect", () => {
+          client.destroy();
+          resolve();
+        });
+        client.once("error", reject);
+      });
+      const st = await stat(socketPath);
+      expect(modeBits(st.mode)).toBe(SUPERVISOR_SOCKET_MODE);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("refuses to take over a socket a LIVE server still answers", async () => {
+    const dir = join(root, "run");
+    await ensureRuntimeDir(dir);
+    const socketPath = join(dir, "control.sock");
+    const first = await createControlSocketServer(socketPath, (socket) => socket.end());
+    try {
+      await expect(
+        createControlSocketServer(socketPath, () => {
+          // never reached
+        }),
+      ).rejects.toMatchObject({ code: "EADDRINUSE" });
+      // The live server's file was NOT unlinked out from under it.
+      const st = await stat(socketPath);
+      expect(st.isSocket()).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => first.close(() => resolve()));
+    }
+  });
+
+  it("refuses to unlink a path that is not a socket at all", async () => {
+    const dir = join(root, "run");
+    await ensureRuntimeDir(dir);
+    const socketPath = join(dir, "control.sock");
+    const { writeFile, readFile } = await import("node:fs/promises");
+    await writeFile(socketPath, "not a socket\n");
+
+    await expect(
+      createControlSocketServer(socketPath, () => {
+        // never reached
+      }),
+    ).rejects.toMatchObject({ code: "EADDRINUSE" });
+    expect(await readFile(socketPath, "utf8")).toBe("not a socket\n");
+  });
+});
