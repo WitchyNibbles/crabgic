@@ -144,6 +144,49 @@ function independent(...ids: readonly string[]): readonly WorkUnit[] {
 }
 
 describe("driveRun — the DAG dispatch loop", () => {
+  /**
+   * `run.cancel` flipped the run's registry state and nothing else: the drive
+   * kept computing readiness and dispatching successors, workers kept
+   * spending, and the change set stayed claimed in-flight until the DAG ran
+   * out on its own. The signal is polled at the top of every round, so a
+   * cancellation lands before the NEXT dispatch — the one it exists to stop.
+   */
+  it("stops dispatching the moment the run reads cancelled, leaving the rest pending", async () => {
+    const observed = newObserved();
+    let cancelled = false;
+    const result = await driveRun(
+      {
+        runId: RUN_ID,
+        changeSetId: CHANGE_SET_ID,
+        workUnits: chain(),
+        isCancelled: () => cancelled,
+      },
+      {
+        ...buildDeps(new Map(), observed, new Map()),
+        onUnitSucceeded: () => {
+          cancelled = true;
+          return Promise.resolve();
+        },
+      },
+    );
+
+    expect(observed.dispatchOrder).toEqual([A]);
+    expect(result.stopped).toBe("cancelled");
+    expect(result.statusById.get(A)).toBe("succeeded");
+    expect(result.statusById.get(B)).toBe("pending");
+  });
+
+  it("dispatches nothing at all when the run is already cancelled at entry", async () => {
+    const observed = newObserved();
+    const result = await driveRun(
+      { runId: RUN_ID, changeSetId: CHANGE_SET_ID, workUnits: chain(), isCancelled: () => true },
+      buildDeps(new Map(), observed, new Map()),
+    );
+
+    expect(observed.dispatchOrder).toEqual([]);
+    expect(result.stopped).toBe("cancelled");
+  });
+
   it("drives a dependency chain to completion in dependency order", async () => {
     const observed = newObserved();
     const result = await driveRun(

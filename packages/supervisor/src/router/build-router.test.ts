@@ -85,6 +85,83 @@ describe("buildSupervisorRouter", () => {
     expect(result.runState).toBe("cancelled");
   });
 
+  /**
+   * `run.cancel` flipped the registry and touched nothing that was actually
+   * running: the workers of the cancelled run kept spending until they
+   * finished on their own. A cancel now terminates every live worker whose
+   * work unit belongs to the cancelled run's change set — and ONLY those;
+   * another run's worker sharing the map is left alone.
+   */
+  it("run.cancel terminates the live workers of that run's change set, and no other run's", async () => {
+    const deps = buildDeps();
+    const changeSet = buildChangeSet();
+    const otherChangeSet = buildChangeSet({ id: "99999999-9999-4999-8999-999999999999" });
+    const mine = buildWorkUnit({
+      id: "11111111-1111-4111-8111-111111111111",
+      changeSetId: changeSet.id,
+    });
+    const theirs = buildWorkUnit({
+      id: "22222222-2222-4222-8222-222222222222",
+      changeSetId: otherChangeSet.id,
+    });
+    deps.workUnits.put(mine);
+    deps.workUnits.put(theirs);
+    await transitionRun({
+      journal: store,
+      runs: deps.runs,
+      runId: RUN_ID,
+      changeSetId: changeSet.id,
+      to: "awaiting_approval",
+    });
+    const terminated: string[] = [];
+    const worker = (id: string): TerminableWorker => ({
+      terminate: (graceMs) => {
+        terminated.push(`${id}:${String(graceMs)}`);
+        return Promise.resolve({ outcome: "terminated" });
+      },
+    });
+    const liveWorkers = new Map<string, TerminableWorker>([
+      [mine.id, worker("mine")],
+      [theirs.id, worker("theirs")],
+    ]);
+    const router = buildSupervisorRouter({ ...deps, liveWorkers });
+
+    const result = (await router.dispatch("run.cancel", { runId: RUN_ID })) as {
+      accepted: boolean;
+    };
+
+    expect(result.accepted).toBe(true);
+    expect(terminated).toEqual(["mine:5000"]);
+  });
+
+  it("run.cancel still cancels the run when a worker's terminate throws", async () => {
+    const deps = buildDeps();
+    const changeSet = buildChangeSet();
+    const mine = buildWorkUnit({
+      id: "11111111-1111-4111-8111-111111111111",
+      changeSetId: changeSet.id,
+    });
+    deps.workUnits.put(mine);
+    await transitionRun({
+      journal: store,
+      runs: deps.runs,
+      runId: RUN_ID,
+      changeSetId: changeSet.id,
+      to: "awaiting_approval",
+    });
+    const liveWorkers = new Map<string, TerminableWorker>([
+      [mine.id, { terminate: () => Promise.reject(new Error("engine already gone")) }],
+    ]);
+    const router = buildSupervisorRouter({ ...deps, liveWorkers });
+
+    const result = (await router.dispatch("run.cancel", { runId: RUN_ID })) as {
+      accepted: boolean;
+      runState?: string;
+    };
+
+    expect(result).toEqual({ accepted: true, runState: "cancelled" });
+  });
+
   it("run.cancel returns accepted: false for an unknown run", async () => {
     const router = buildSupervisorRouter(buildDeps());
     const result = await router.dispatch("run.cancel", { runId: RUN_ID });

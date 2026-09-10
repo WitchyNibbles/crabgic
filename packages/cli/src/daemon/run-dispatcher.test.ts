@@ -1668,6 +1668,72 @@ describe("createRealRunDispatcher — dispatch", () => {
    * the test has cancelled the run, so the settle's transition genuinely fires
    * against a `cancelled` run.
    */
+  /**
+   * The wire from `run.cancel` to the loop. Before it, a run cancelled on
+   * the control plane kept dispatching: the registry said `cancelled`, the
+   * drive never read it, and the dependent unit was cut and dispatched
+   * against a run the operator had already ended.
+   */
+  it("stops dispatching successors once the run is cancelled on the control plane", async () => {
+    const UNIT_B = "66666666-6666-4666-8666-666666666666";
+    const deps = buildDeps({
+      ...fullySeeded(),
+      run: false,
+      workUnits: [
+        buildWorkUnit({
+          id: UNIT_ID,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [],
+          attemptStatus: "pending",
+        }),
+        buildWorkUnit({
+          id: UNIT_B,
+          changeSetId: CHANGE_SET_ID,
+          dependsOn: [UNIT_ID],
+          attemptStatus: "pending",
+        }),
+      ],
+    });
+    let releaseAdapter!: () => void;
+    const adapterGate = new Promise<void>((resolve) => {
+      releaseAdapter = resolve;
+    });
+    const dispatched: string[] = [];
+    const dispatcher = newDispatcher(deps, {
+      createAdapter: async (ctx: { workUnit: { id: string } }) => {
+        dispatched.push(ctx.workUnit.id);
+        await adapterGate; // hold unit A until the test cancels the run
+        return new FakeEngineAdapter(
+          buildFakeEngineScript({ structuredOutput: buildWorkerResult({ outcome: "succeeded" }) }),
+        );
+      },
+    });
+
+    const result = await dispatcher.dispatch(CHANGE_SET_ID);
+    expect(result.accepted).toBe(true);
+    const runId = result.runId!;
+    await vi.waitFor(() => {
+      expect(dispatched).toEqual([UNIT_ID]);
+    });
+    deps.runs.upsert({
+      runId,
+      changeSetId: CHANGE_SET_ID,
+      runState: "cancelled",
+      updatedAt: "2026-07-30T00:00:00.000Z",
+    });
+    releaseAdapter();
+
+    // The drive has settled when the change set is no longer claimed — a
+    // fresh dispatch is not refused as "already being dispatched".
+    await vi.waitFor(async () => {
+      const again = await dispatcher.dispatch(CHANGE_SET_ID);
+      expect(again.reason).not.toBe("change set is already being dispatched");
+    });
+    // A succeeded and B — ready the instant A succeeded — was never dispatched.
+    expect(dispatched).toEqual([UNIT_ID]);
+    expect(deps.runs.get(runId)?.runState).toBe("cancelled");
+  });
+
   it("swallows the illegal transition when the run is cancelled before a blocked drive settles", async () => {
     const UNIT_B = "66666666-6666-4666-8666-666666666666";
     const deps = buildDeps({

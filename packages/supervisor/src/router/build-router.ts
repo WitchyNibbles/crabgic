@@ -123,6 +123,14 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
       changeSetId: current.changeSetId,
       to: "cancelled",
     });
+    // The registry flip alone cancelled nothing that was running: the run's
+    // workers kept spending until they finished on their own, and the drive
+    // kept dispatching successors. Terminate every live worker whose work
+    // unit belongs to THIS change set — the map is keyed by work-unit id
+    // and shared across runs — and leave the rest alone. A terminate that
+    // throws (an engine already gone) must not undo the cancellation: the
+    // run is cancelled the moment its transition is journaled.
+    await terminateLiveWorkersOf(deps, current.changeSetId);
     return { accepted: true, runState: record.runState };
   });
 
@@ -259,4 +267,21 @@ export function buildSupervisorRouter(deps: SupervisorDependencies): SupervisorR
   );
 
   return router;
+}
+
+const CANCEL_TERMINATE_GRACE_MS = 5_000;
+
+async function terminateLiveWorkersOf(
+  deps: SupervisorDependencies,
+  changeSetId: string,
+): Promise<void> {
+  for (const [workUnitId, live] of deps.liveWorkers) {
+    if (deps.workUnits.get(workUnitId)?.changeSetId !== changeSetId) continue;
+    try {
+      await live.terminate(CANCEL_TERMINATE_GRACE_MS);
+    } catch {
+      // Reported nowhere on purpose: the caller's answer is the transition,
+      // and a worker that cannot be reached is already not spending.
+    }
+  }
 }

@@ -1254,7 +1254,17 @@ export function createRealRunDispatcher(options: RealRunDispatcherOptions): Real
       });
 
     const result = await driveRun(
-      { runId, changeSetId: changeSet.id, workUnits, overlapVerdicts },
+      {
+        runId,
+        changeSetId: changeSet.id,
+        workUnits,
+        overlapVerdicts,
+        // `run.cancel` flips this record and terminates the live workers;
+        // the loop polls it so the NEXT round dispatches nothing. Read from
+        // the registry every time — never captured — because the flip
+        // happens on the control plane while this drive is mid-round.
+        isCancelled: () => deps.runs.get(runId)?.runState === "cancelled",
+      },
       {
         journal: deps.journal,
         liveWorkers: deps.liveWorkers,

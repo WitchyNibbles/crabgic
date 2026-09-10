@@ -211,6 +211,15 @@ export interface DriveRunOptions {
   readonly concurrencyCap?: number;
   /** Hard upper bound on dispatch rounds — a loop backstop, never the normal termination condition. Defaults to `workUnits.length + 1`. */
   readonly maxRounds?: number;
+  /**
+   * Polled at the top of every round. `true` means an operator has cancelled
+   * the run — `run.cancel` flips the run's registry state and terminates its
+   * live workers, but the loop is the only thing that can stop the NEXT
+   * dispatch, and before this seam existed it never looked: successors kept
+   * being dispatched against a run already recorded as `cancelled`, and the
+   * change set stayed claimed in-flight until the DAG ran out on its own.
+   */
+  readonly isCancelled?: () => boolean;
 }
 
 /**
@@ -225,10 +234,13 @@ export interface DriveRunOptions {
  *   re-drive of this run can dispatch anything, so the run must settle and
  *   the change set be retried as a fresh run.
  * - `cancelled`: every unit is terminal, none failed, and at least one was
- *   CANCELLED (`worker.terminate`, or a worker self-reporting `cancelled`).
- *   Kept distinct from `failed` because the transition written from it is an
- *   audit record — `running → cancelled` is legal and honest, and calling a
- *   cancellation a failure would misattribute how the run ended.
+ *   CANCELLED (`worker.terminate`, or a worker self-reporting `cancelled`) —
+ *   OR `isCancelled()` answered true at a round boundary, in which case the
+ *   remaining units are left `pending` on purpose: dispatching them would be
+ *   working on a run the operator has already ended. Kept distinct from
+ *   `failed` because the transition written from it is an audit record —
+ *   `running → cancelled` is legal and honest, and calling a cancellation a
+ *   failure would misattribute how the run ended.
  * - `blocked`: units remain pending but none is ready (a dependency failed
  *   or was cancelled) — the run needs repair or human intervention.
  * - `parked`: an account-wide rate limit halted dispatch; resumable once
@@ -501,6 +513,9 @@ export async function driveRun(
   };
 
   for (;;) {
+    // Before readiness, not after: a cancelled run has no ready set, whatever
+    // the DAG says.
+    if (options.isCancelled?.() === true) return finish("cancelled");
     const ready = computeReadyUnits({ workUnits: options.workUnits, statusById, overlapVerdicts });
     if (ready.length === 0) {
       // No FRESH unit is ready — but a parked unit's reset window may have
