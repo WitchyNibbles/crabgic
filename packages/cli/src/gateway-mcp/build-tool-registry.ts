@@ -35,6 +35,7 @@
  * per-connection `register()` call itself — see
  * `e2e/live/src/knownDeferredAllowlist.ts`.
  */
+import { statSync } from "node:fs";
 import { z } from "zod";
 import type { JournalStore } from "@crabgic/journal";
 import {
@@ -48,6 +49,7 @@ import {
   type ExternalConnectionRepository,
 } from "@crabgic/gateway";
 import {
+  buildStackEvidence,
   CAPABILITY_APPROVE_TOOL,
   CAPABILITY_AUDIT_TOOL,
   runCapabilityApprove,
@@ -56,7 +58,7 @@ import {
   type CapabilityAuditDeps,
 } from "@crabgic/detect";
 import { resolveRequirements, type ProjectInspectDeps, type Registry } from "@crabgic/supervisor";
-import { completedStageIds } from "@crabgic/contracts";
+import { type StackEvidence, completedStageIds } from "@crabgic/contracts";
 import type {
   AuthorizationEnvelope,
   ChangeSet,
@@ -97,6 +99,15 @@ import { runContractApprove } from "../intake/contract-approve-handler.js";
 /** Everything the composed registry needs, all of it already built by `../bootstrap.ts` for the CLI's own command surface. */
 export interface ProductionGatewayToolRegistryDeps {
   readonly journal: JournalStore;
+  /**
+   * The repository root 12's detector walks for `project.inspect`'s
+   * `stackEvidence`. Optional only so the provider-dispatch tests can build
+   * a registry without a repo; production always passes `process.cwd()`.
+   * Absent, the report carries the "not been wired" degradation and every
+   * stack-gated audit lens is skipped — which is what shipped until
+   * 2026-09-10, on every project, because nothing ever supplied this.
+   */
+  readonly stackEvidenceRoot?: string;
   readonly connections: ExternalConnectionRepository;
   /**
    * Fills the per-connection registries behind the two provider-dispatch
@@ -582,6 +593,27 @@ const REVIEW_CALIBRATE_SHAPE = {
 const CAPABILITY_AUDIT_SHAPE = { candidate: z.unknown() };
 const CAPABILITY_APPROVE_SHAPE = { digest: z.string(), token: z.string() };
 
+/**
+ * 12's detector as the `project.inspect` provider. A walk that cannot run
+ * — the root is missing, unreadable, or the detector throws — DEGRADES to
+ * `undefined`, which the aggregator reports as "provider returned no
+ * result"; a read-only inspection must never fail the whole tool call.
+ */
+function stackEvidenceProviderFor(root: string): () => Promise<StackEvidence | undefined> {
+  return () => {
+    try {
+      // The detector answers a missing root with an EMPTY evidence set, and
+      // an empty set reads as "no stack" downstream — every stack-gated audit
+      // lens skipped with a reason that blames the project. A root that is
+      // not a directory is the provider's failure, and is reported as one.
+      if (!statSync(root).isDirectory()) return Promise.resolve(undefined);
+      return Promise.resolve(buildStackEvidence(root));
+    } catch {
+      return Promise.resolve(undefined);
+    }
+  };
+}
+
 /** 11's two tools, bound to the durable registries the `run` command writes. */
 function buildIntakeTools(
   deps: ProductionGatewayToolRegistryDeps,
@@ -589,6 +621,9 @@ function buildIntakeTools(
   const projectInspectDeps: ProjectInspectDeps = {
     journal: deps.journal,
     changeSets: deps.changeSets,
+    ...(deps.stackEvidenceRoot !== undefined
+      ? { stackEvidenceProvider: stackEvidenceProviderFor(deps.stackEvidenceRoot) }
+      : {}),
   };
 
   const projectInspect: GatewayToolDefinition<typeof PROJECT_INSPECT_SHAPE> = {

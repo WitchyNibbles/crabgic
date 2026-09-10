@@ -196,6 +196,8 @@ export function buildProviderDispatchWiring(
 export interface BuildRealCliDependenciesOverrides {
   readonly xdgEnv?: XdgEnv;
   readonly projectHash?: string;
+  /** The repository root 12's stack detector walks for `project.inspect`. Defaults to `process.cwd()`; tests point it at a fixture tree. */
+  readonly repoRoot?: string;
   readonly resolveAuthState?: AuthProbeFn;
   /** Defaults to `process.cwd()`'s own real installer wiring (roadmap/10-plugin-and-installer.md) — `../commands/dispatch.ts` only invokes it for `install`/`upgrade`/`uninstall`. */
   readonly installer?: InstallerDependencies;
@@ -408,6 +410,7 @@ export function buildRealGatewayToolRegistry(
 
   return buildProductionGatewayToolRegistry({
     journal: intake.journal,
+    stackEvidenceRoot: overrides.repoRoot ?? process.cwd(),
     connections: deps.connection!.repository,
     providers: dispatch.providers,
     mutationApplyClients: dispatch.mutationApplyClients,

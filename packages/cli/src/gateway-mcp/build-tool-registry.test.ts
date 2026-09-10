@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -183,6 +183,53 @@ describe("buildRealGatewayToolRegistry", () => {
 
     expect(report.changeSets).toEqual([]);
     expect(report.degraded.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Phase 12's detector was consumed by nothing: `project.inspect` shipped
+   * with no `stackEvidenceProvider`, so every report carried the "12's stack
+   * detection has not been wired yet" degradation and `pipeline.plan`'s
+   * audit roster skipped every stack-gated lens on every project. Measured
+   * on this repository 2026-09-10: wired, `backend` and `infrastructure`
+   * apply; unwired, both were reported as "no stack evidence found".
+   */
+  it("INVOKES project.inspect with 12's detector wired to the repo root", async () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), "eo-reg-stack-"));
+    writeFileSync(
+      join(repoRoot, "package.json"),
+      JSON.stringify({ name: "probe", version: "1.0.0" }),
+    );
+    const result = await buildRealGatewayToolRegistry({
+      xdgEnv: { HOME: home },
+      projectHash: "registry-hash",
+      repoRoot,
+    })
+      .get("project.inspect")!
+      .handler({});
+    const report = JSON.parse(result.content[0]!.text) as {
+      stackEvidence?: { findings: { category: string; path?: string }[] };
+      degraded: string[];
+    };
+
+    expect(report.stackEvidence?.findings.some((f) => f.category === "manifest")).toBe(true);
+    expect(report.degraded.some((d) => d.includes("has not been wired"))).toBe(false);
+  });
+
+  it("degrades project.inspect, never throws, when the repo root cannot be walked", async () => {
+    const result = await buildRealGatewayToolRegistry({
+      xdgEnv: { HOME: home },
+      projectHash: "registry-hash",
+      repoRoot: join(home, "does-not-exist"),
+    })
+      .get("project.inspect")!
+      .handler({});
+    const report = JSON.parse(result.content[0]!.text) as {
+      stackEvidence?: unknown;
+      degraded: string[];
+    };
+
+    expect(report.stackEvidence).toBeUndefined();
+    expect(report.degraded.some((d) => d.includes("returned no result"))).toBe(true);
   });
 
   /**
