@@ -809,6 +809,64 @@ describe("ClaudeEngineAdapter — the prompt carries the spec", () => {
   });
 });
 
+/**
+ * ⚠️ THE WORKER WAS TOLD WHAT IT MAY RUN, BUT NOT THAT THE LIST WAS CLOSED.
+ *
+ * `task-packet-builder.ts` renders the envelope's commands into `constraints`
+ * as `Allowed command: <cmd>` lines, and adjudication denies every `Bash` call
+ * outside that exact set (Gap 18). The prompt rendered the lines and nothing
+ * else about them.
+ *
+ * Measured 2026-09-16 on run `50f710df` (change set `9d40e7c2`, unit 1): the
+ * worker spent 17 of its 40 turns on `ls`, `find`, `grep` and `mkdir` through
+ * `Bash` — every one denied and journaled as such — and hit `max_turns` with
+ * the work half done. Nothing in the prompt said the list was the whole of the
+ * shell, or that `Read`, `Grep` and `Glob` are the way to look at the tree.
+ */
+describe("ClaudeEngineAdapter — the prompt says the shell allowlist is closed", () => {
+  it("names the allowed commands as the complete set and points reads and searches at Read, Grep and Glob", async () => {
+    const { sdkQuery, calls } = createScriptedSdkQuery([[initMessage("s", "/fixture/worktree")]]);
+    const adapter = new ClaudeEngineAdapter(buildConfig({ sdkQuery }));
+    const packet = buildPacket({
+      constraints: ["Allowed command: npm run test", "Allowed command: git status"],
+    });
+
+    const handle = adapter.spawn(packet, READ_ONLY_PROFILE, allowAdjudicate);
+    await handle.events[Symbol.asyncIterator]().next();
+
+    const text = String(calls[0]?.prompt);
+    expect(text).toContain("Allowed command: npm run test");
+    expect(text).toContain("Allowed command: git status");
+    // The rule, not just the list: anything else through Bash is denied.
+    expect(text).toContain("Every other Bash command is denied");
+    // And where the exploration the worker wanted actually belongs.
+    for (const tool of ["Read", "Grep", "Glob"]) {
+      expect(text).toContain(tool);
+    }
+    // The rule is stated once, directly under the constraints it qualifies.
+    const constraintsAt = text.indexOf("Constraints:");
+    const ruleAt = text.indexOf("Every other Bash command is denied");
+    expect(constraintsAt).toBeGreaterThanOrEqual(0);
+    expect(ruleAt).toBeGreaterThan(constraintsAt);
+    expect(text.indexOf("Every other Bash command is denied", ruleAt + 1)).toBe(-1);
+  });
+
+  it("states the rule even when the envelope grants no command at all — that worker has no shell", async () => {
+    const { sdkQuery, calls } = createScriptedSdkQuery([[initMessage("s", "/fixture/worktree")]]);
+    const adapter = new ClaudeEngineAdapter(buildConfig({ sdkQuery }));
+    const handle = adapter.spawn(
+      buildPacket({ constraints: [] }),
+      READ_ONLY_PROFILE,
+      allowAdjudicate,
+    );
+    await handle.events[Symbol.asyncIterator]().next();
+
+    const text = String(calls[0]?.prompt);
+    expect(text).toContain("Constraints: none.");
+    expect(text).toContain("Every other Bash command is denied");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // The SessionEnd evidence hook's failure channel.
 // ---------------------------------------------------------------------------
