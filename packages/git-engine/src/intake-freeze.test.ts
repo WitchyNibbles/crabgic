@@ -101,6 +101,54 @@ describe("freezeIntake (WI5)", () => {
     expect(result.freeze.baseObjectId).toHaveLength(40);
   });
 
+  it("freezes at the user checkout's CURRENT target ref, never the control clone's stale copy of it (run 50f710df, 2026-09-16)", async () => {
+    // The daemon's dispatcher reuses an existing control clone as-is
+    // (`ensureControlClone` is idempotent) and nothing ever refreshed it, so
+    // every run after the first clone froze at the clone-time HEAD: run
+    // 50f710df was cut from 734da33, 71 commits behind main and missing the
+    // module its own unit imported. The freeze is "of the user checkout" by
+    // its own contract, so it must read the user checkout's ref THROUGH the
+    // control clone's origin, not the clone's stale branch tip.
+    const { userCheckout, controlDir } = await setUpFrozenControlClone();
+    const staleHead = fixtureGit(controlDir, ["rev-parse", "main"]).trim();
+    writeFileSync(join(userCheckout, "src", "moved.txt"), "the checkout moved on\n");
+    fixtureGit(userCheckout, ["add", "src/moved.txt"]);
+    fixtureGit(userCheckout, ["commit", "-q", "-m", "a commit the control clone has never seen"]);
+    const currentHead = fixtureGit(userCheckout, ["rev-parse", "HEAD"]).trim();
+    expect(currentHead).not.toBe(staleHead);
+
+    const result = await freezeIntake({
+      plumbing,
+      controlDir,
+      userCheckoutPath: userCheckout,
+      targetRef: "main",
+      plannedWritePaths: [],
+    });
+
+    expect(result.status).toBe("frozen");
+    expect(result.freeze.baseObjectId).toBe(currentHead);
+    // The object is now reachable in the control clone, so a worktree can be cut from it.
+    expect(fixtureGit(controlDir, ["cat-file", "-t", currentHead]).trim()).toBe("commit");
+  });
+
+  it("freezes HEAD — the dispatcher's default target ref — at the user checkout's current HEAD", async () => {
+    const { userCheckout, controlDir } = await setUpFrozenControlClone();
+    writeFileSync(join(userCheckout, "src", "moved-again.txt"), "and again\n");
+    fixtureGit(userCheckout, ["add", "src/moved-again.txt"]);
+    fixtureGit(userCheckout, ["commit", "-q", "-m", "HEAD moved"]);
+    const currentHead = fixtureGit(userCheckout, ["rev-parse", "HEAD"]).trim();
+
+    const result = await freezeIntake({
+      plumbing,
+      controlDir,
+      userCheckoutPath: userCheckout,
+      targetRef: "HEAD",
+      plannedWritePaths: [],
+    });
+
+    expect(result.freeze.baseObjectId).toBe(currentHead);
+  });
+
   it("captures the porcelain-v2 dirty snapshot and repository-format report", async () => {
     const { userCheckout, controlDir } = await setUpFrozenControlClone();
     writeFileSync(join(userCheckout, "untracked-new.txt"), "new\n");

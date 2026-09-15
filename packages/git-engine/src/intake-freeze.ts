@@ -83,8 +83,22 @@ export async function freezeIntake(options: FreezeIntakeOptions): Promise<Intake
   // `--end-of-options` token to stdout instead, which would corrupt this
   // function's `stdout.trim()` parsing.
   assertSafeRefPositional("targetRef", targetRef);
+  // The base is the USER CHECKOUT's target ref, read THROUGH the control
+  // clone: fetch it from origin (the control clone's origin IS the user
+  // checkout — `ensureControlClone` clones from it) and resolve FETCH_HEAD.
+  // A `rev-parse` of the control clone's own ref freezes whatever that clone
+  // held at the moment it was first made, because `ensureControlClone`
+  // reuses an existing clone as-is and nothing else refreshes it: run
+  // 50f710df (2026-09-16) was cut from a base 71 commits behind the checkout
+  // it was dispatched from, missing a module its own unit imported. The
+  // fetch also makes the object reachable in the control clone, which is
+  // what every worktree cut from `baseObjectId` needs.
+  await plumbing.run(["fetch", OPTION_TERMINATOR, "origin", targetRef], {
+    cwd: controlDir,
+    env: CONTROL_CONTEXT_ENV,
+  });
   const revParse = await plumbing.run(
-    ["rev-parse", "--verify", OPTION_TERMINATOR, targetRef],
+    ["rev-parse", "--verify", OPTION_TERMINATOR, "FETCH_HEAD"],
     // MAJOR 2 fix: this reads the control clone, not the user checkout —
     // ambient global/system git config neutralized like every other
     // control-context operation.
