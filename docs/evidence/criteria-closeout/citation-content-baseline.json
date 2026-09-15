@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10",
-  "generatedAtSha": "07aa4c52f812ec1745afbd98d179da79890e8d90",
+  "generatedAt": "2026-09-15",
+  "generatedAtSha": "fc8e29e01625b6439cb1199476d5b2869622952f",
   "note": "Bookkeeping inside the claim-space — NEVER citable as evidence. Pins where every quoted fragment of every content-checkable citation resolves, so that a PR which moves lines under a merged citation fails on that PR. Seeded stale entries are known legacy drift, burnt down by dated corrections beside the records; they are not licence to add more. Regenerate with `npm run check:citation-content -- --update-baseline`.",
   "counts": {
     "citations": 1367,
     "fragments": 4004,
-    "anchored": 2632,
-    "seededStale": 762,
-    "outsideSpan": 880,
-    "repeatText": 531,
+    "anchored": 2633,
+    "seededStale": 761,
+    "outsideSpan": 877,
+    "repeatText": 532,
     "crossFile": 18,
     "skipped": 610
   },
@@ -2809,10 +2809,10 @@
       "qa": "c3062777af15",
       "ref": "OK",
       "pins": [
-        "MOVED/collapsed@494!span",
-        "MOVED/collapsed@495!span",
-        "MOVED/collapsed@496!span",
-        "MOVED-AMBIG/collapsed@497,521,549!span~repeat"
+        "MOVED/collapsed@514!span",
+        "MOVED/collapsed@515!span",
+        "MOVED/collapsed@516!span",
+        "MOVED-AMBIG/collapsed@517,541,569!span~repeat"
       ]
     },
     "phase-06.json#c9#packages/engine-claude/src/version-gate.test.ts:108-128": {
@@ -2869,12 +2869,12 @@
         "SKIP-commentary"
       ]
     },
-    "phase-07.json#c1#packages/git-engine/src/intake-freeze.test.ts:186": {
-      "qa": "a3a3ee6091c0",
+    "phase-07.json#c1#packages/git-engine/src/intake-freeze.test.ts:234-245": {
+      "qa": "8be9c8bf1682",
       "ref": "OK",
       "pins": [
-        "ABSENT@-",
-        "OK/collapsed@197!span"
+        "OK/collapsed@234",
+        "OK/collapsed@245"
       ]
     },
     "phase-07.json#c1#packages/git-engine/src/invariance.test.ts:101": {
@@ -2980,11 +2980,11 @@
       "pins": [],
       "frozen": true
     },
-    "phase-07.json#c3#packages/git-engine/src/intake-freeze.test.ts:104": {
-      "qa": "108462a945b3",
+    "phase-07.json#c3#packages/git-engine/src/intake-freeze.test.ts:152-167": {
+      "qa": "44006620b9cd",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@116!span"
+        "OK/collapsed@164"
       ]
     },
     "phase-07.json#c3#packages/git-engine/src/intake-freeze.test.ts:48": {
@@ -2992,7 +2992,7 @@
       "ref": "OK",
       "pins": [
         "OK/collapsed@48",
-        "OK/collapsed@60!span"
+        "OK/collapsed@60,128!span~repeat"
       ]
     },
     "phase-07.json#c3#packages/git-engine/src/intake-freeze.test.ts:63": {
@@ -3191,11 +3191,11 @@
         "OK/collapsed@74!span"
       ]
     },
-    "phase-07.json#c7#packages/git-engine/src/intake-freeze.test.ts:154": {
-      "qa": "0f3c6956ab4d",
+    "phase-07.json#c7#packages/git-engine/src/intake-freeze.test.ts:202-204": {
+      "qa": "43bbffdbf561",
       "ref": "OK",
       "pins": [
-        "OK/collapsed@154-156!span"
+        "OK/collapsed@202-204"
       ]
     },
     "phase-07.json#c7#packages/git-engine/src/integration-journal-entry-type-compliance.test.ts:38": {

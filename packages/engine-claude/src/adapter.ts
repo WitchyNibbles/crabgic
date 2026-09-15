@@ -366,12 +366,32 @@ function specSections(spec: TaskPacket["spec"]): readonly string[] {
   return sections;
 }
 
+/**
+ * The shell rule, stated once beneath the constraints it qualifies.
+ *
+ * `task-packet-builder.ts` renders the envelope's commands into
+ * `constraints` as `Allowed command: <cmd>` lines, and adjudication denies
+ * every `Bash` call outside that exact set. The list alone did not say it
+ * was closed: on run `50f710df` (2026-09-16) the worker spent 17 of 40 turns
+ * on `ls`/`find`/`grep`/`mkdir` through `Bash`, every one denied, and hit
+ * `max_turns` half done. The tools that DO see the tree are named here so
+ * the next worker spends those turns on the work.
+ */
+const SHELL_RULE =
+  "The Allowed command lines above are the complete shell: run each exactly as written. " +
+  "Every other Bash command is denied — including ls, find, grep, cat and mkdir — and a denied " +
+  "call still costs a turn. Read files with Read, search with Grep and Glob, and create files " +
+  "with Write (which creates missing directories).";
+
 function buildPromptFromTaskPacket(packet: TaskPacket): string {
+  // An envelope granting no command still gets the rule: with no `Allowed
+  // command` line above it, the rule reads as "no shell", which is the truth.
+  const constraints = bulletList("Constraints", packet.constraints) ?? "Constraints: none.";
   const sections = [
     `Objective: ${packet.objective}`,
     ...specSections(packet.spec),
     bulletList("Non-goals", packet.nonGoals),
-    bulletList("Constraints", packet.constraints),
+    `${constraints}\n${SHELL_RULE}`,
     bulletList("Relevant interfaces", packet.relevantInterfaces),
     bulletList("Owned paths", packet.ownedPaths),
   ].filter((section): section is string => section !== undefined);
