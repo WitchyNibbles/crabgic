@@ -39,8 +39,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/git-engine/src/intake-freeze.test.ts:186",
-          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:186-197 — 'await withUserCheckoutInvariance(userCheckout, () => freezeIntake({…}));' followed by 'expect(afterIndexBytes.equals(beforeIndexBytes)).toBe(true);', under a deliberate racy-git `utimesSync` trigger (:180-181). This is the harness APPLIED — not merely tested — around the one phase-07 operation handed a real user checkout, and it transitively covers `validateRepository`'s own `ls-files` against that checkout, which `freezeIntake` runs internally (:117-118 asserts the resulting repositoryFormat report)."
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:234-245",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:234-245 — 'await withUserCheckoutInvariance(userCheckout, () =>' followed by 'expect(afterIndexBytes.equals(beforeIndexBytes)).toBe(true);', under a deliberate racy-git `utimesSync` trigger (:228-229). This is the harness APPLIED — not merely tested — around the one phase-07 operation handed a real user checkout, and it transitively covers `validateRepository`'s own `ls-files` against that checkout, which `freezeIntake` runs internally (:165-166 asserts the resulting repositoryFormat report). (Lines corrected 2026-09-16, in both the ref and this text: was `intake-freeze.test.ts:186-197, :180-181, :117-118`. PR #184 inserted two tests above it — the freeze now follows the user checkout's current ref instead of the control clone's stale copy — moving every line below by 48. The quoted text is unchanged and still present; the first quote's elided call tail `freezeIntake({…}))` was moved out of the file-quote notation, where `{…}` never resolved verbatim, into backticks — the wrapped `freezeIntake({…})` call occupies the six lines under the quoted opener.)"
         },
         {
           "kind": "test",
@@ -152,8 +152,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/git-engine/src/intake-freeze.test.ts:104",
-          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:104-119 — 'expect(result.freeze.dirtySnapshot.untracked.map((e) => e.path)).toContain(\"untracked-new.txt\");' — the block really is computed against a captured porcelain-v2 snapshot, not an ad-hoc path list; :121-137 then proves the blocked freeze leaves the unrelated dirt on disk untouched."
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:152-167",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:152-167 — 'expect(result.freeze.dirtySnapshot.untracked.map((e) => e.path)).toContain(\"untracked-new.txt\");' — the block really is computed against a captured porcelain-v2 snapshot, not an ad-hoc path list; :169-185 then proves the blocked freeze leaves the unrelated dirt on disk untouched. (Lines corrected 2026-09-16, in both the ref and this text: was `intake-freeze.test.ts:104-119, :121-137`. PR #184 inserted two tests above it — the freeze now follows the user checkout's current ref instead of the control clone's stale copy — moving every line below by 48. The quoted text is unchanged and still present.)"
         },
         {
           "kind": "test",
@@ -348,8 +348,8 @@
         },
         {
           "kind": "test",
-          "ref": "packages/git-engine/src/intake-freeze.test.ts:154",
-          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:154-156 — 'const freezeEntries = entries.filter((e) => e.type === \"git_freeze\"); expect(freezeEntries).toHaveLength(1); expect(() => JournalEntrySchema.parse(freezeEntries[0])).not.toThrow();' — an entry produced by the REAL freeze path, not a hand-constructed candidate; worktree-lifecycle.test.ts:180-186 is the same for a real `worktree_quarantine`."
+          "ref": "packages/git-engine/src/intake-freeze.test.ts:202-204",
+          "quotedAssertion": "packages/git-engine/src/intake-freeze.test.ts:202-204 — 'const freezeEntries = entries.filter((e) => e.type === \"git_freeze\"); expect(freezeEntries).toHaveLength(1); expect(() => JournalEntrySchema.parse(freezeEntries[0])).not.toThrow();' — an entry produced by the REAL freeze path, not a hand-constructed candidate; worktree-lifecycle.test.ts:180-186 is the same for a real `worktree_quarantine`. (Lines corrected 2026-09-16, in both the ref and this text: was `intake-freeze.test.ts:154-156`. PR #184 inserted two tests above it — the freeze now follows the user checkout's current ref instead of the control clone's stale copy — moving every line below by 48. The quoted text is unchanged and still present.)"
         },
         {
           "kind": "test",
